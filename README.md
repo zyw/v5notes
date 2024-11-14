@@ -19,7 +19,15 @@
 1. 后端API服务和后端管理页面部署可以参考`RuoYi-Vue-Plus`的部署方法[RuoYi-Vue-Plus部署](https://plus-doc.dromara.org/#/ruoyi-vue-plus/home)
 2. 下载`v5notes-client`客户端连接上就可以使用了。
 
-# 4. 截图
+# 4. 项目地址
+
+Github: https://github.com/zyw/v5notes
+
+Gitee: https://gitee.com/zyw/v5notes.git
+
+均可下载客户端安装文件和免安装压缩包。
+
+# 5. 截图
 
 ![login](./images/login.png)
 
