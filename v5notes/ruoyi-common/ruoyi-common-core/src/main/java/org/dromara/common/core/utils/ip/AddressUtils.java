@@ -1,5 +1,6 @@
 package org.dromara.common.core.utils.ip;
 
+import cn.hutool.core.lang.Validator;
 import cn.hutool.core.net.NetUtil;
 import cn.hutool.http.HtmlUtil;
 import org.dromara.common.core.utils.StringUtils;
@@ -23,9 +24,10 @@ public class AddressUtils {
         if (StringUtils.isBlank(ip)) {
             return UNKNOWN;
         }
+        log.info("ip地址：{}", ip);
         // 内网不查询
         ip = StringUtils.contains(ip, "0:0:0:0:0:0:0:1") ? "127.0.0.1" : HtmlUtil.cleanHtmlTag(ip);
-        if (NetUtil.isInnerIP(ip)) {
+        if (Validator.isIpv4(ip) && NetUtil.isInnerIP(ip)) {
             return "内网IP";
         }
         return RegionUtils.getCityInfo(ip);
