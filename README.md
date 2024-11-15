@@ -27,7 +27,15 @@ Gitee: https://gitee.com/zyw/v5notes.git
 
 均可下载客户端安装文件和免安装压缩包。
 
-# 5. 截图
+# 5. 创建用户
+
+![](./images/admin1.png)
+
+创建客户端用户时，用户类型一定要选择【客户端用户】
+
+![](./images/admin2.png)
+
+# 6. 截图
 
 ![login](./images/login.png)
 
