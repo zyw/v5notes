@@ -13,6 +13,9 @@ WORKDIR /ruoyi/server
 
 ENV SERVER_PORT=8080 LANG=C.UTF-8 LC_ALL=C.UTF-8 JAVA_OPTS=""
 
+## 应用参数 https://github.com/polovyivan/docker-pass-configs-to-container
+ENV ARGS=""
+
 EXPOSE ${SERVER_PORT}
 
 ADD ./target/ruoyi-admin.jar ./app.jar
@@ -22,5 +25,5 @@ ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${SERVER_P
            #-Dskywalking.agent.service_name=ruoyi-server \
            #-javaagent:/ruoyi/skywalking/agent/skywalking-agent.jar \
            -XX:+HeapDumpOnOutOfMemoryError -XX:+UseZGC ${JAVA_OPTS} \
-           -jar app.jar
+           -jar app.jar $ARGS
 

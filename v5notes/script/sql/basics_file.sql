@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 -- 存储类型字典
 INSERT INTO `sys_dict_type` (`dict_id`,`tenant_id`,`dict_name`,`dict_type`,`create_dept`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`)VALUES
     (113,'000000','文件存储器','basics_file_storage',103,1,'2024-04-02 00:28:25',NULL,NULL,'文件存储器');

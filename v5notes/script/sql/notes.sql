@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 DROP TABLE IF EXISTS note_directory;
 CREATE TABLE note_directory(
    `id` bigint(20) NOT NULL  COMMENT 'ID' ,

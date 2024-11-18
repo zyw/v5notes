@@ -1,6 +1,7 @@
 -- ----------------------------
 -- 第三方平台授权表
 -- ----------------------------
+SET NAMES utf8mb4;
 create table sys_social
 (
     id                 bigint           not null        comment '主键',

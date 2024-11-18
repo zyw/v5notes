@@ -1,0 +1,50 @@
+worker_processes 2;
+
+events {
+    worker_connections  10240;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    underscores_in_headers on; 
+    keepalive_timeout  65;
+
+    gzip on; # 启用gzip压缩，默认是off，不启用
+    # 对js、css、jpg、png、gif格式的文件启用gzip压缩功能
+    gzip_types application/javascript text/css image/jpeg image/png image/gif;
+    gzip_min_length 1024; # 所压缩文件的最小值，小于这个的不会压缩
+    gzip_buffers 4 1k; # 设置压缩响应的缓冲块的大小和个数，默认是内存一个页的大小
+    gzip_comp_level 1; # 压缩水平，默认1。取值范围1-9，取值越大压缩比率越大，但越耗cpu时
+
+  
+
+    upstream ruoyiadmin{
+        # 读取环境变量中的内容，使用envsubst完成环境变量替换，可以查看Dockerfile文件
+        server ${V5NOTES_SERVER_HOST}:${V5NOTES_SERVER_PORT};
+    }
+
+    server {
+        listen 8988;
+        
+        location / {
+            root /mnt/ruoyi-web;
+            try_files $uri $uri/ /index.html;
+            index index.html index.htm;
+        }
+
+        location /prod-api/ {
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_pass http://ruoyiadmin/;
+            proxy_connect_timeout 600;
+            proxy_read_timeout 600;
+            client_max_body_size    10000m;
+        }
+    }
+}
