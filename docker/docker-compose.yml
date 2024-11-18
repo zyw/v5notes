@@ -1,0 +1,77 @@
+services:
+  mysql:
+    container_name: v5notes-mysql
+    image: mysql:8.4.0
+    environment:
+      # 时区上海
+      TZ: Asia/Shanghai
+      # root123# 密码
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # 初始化数据库(后续的初始化sql会在这个库执行)
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      # MYSQL_ROOT_HOST: '%'
+    volumes:
+      - ./mysql/conf/:/etc/mysql/conf.d/
+      - ./mysql/logs/:/var/log/mysql/
+      - ./mysql/data/:/var/lib/mysql/
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ../v5notes/script/sql/ry_vue_5.X.sql:/mnt/sql/ry_vue_5.X.sql:ro
+      - ../v5notes/script/sql/basics_file.sql:/mnt/sql/basics_file.sql:ro
+      - ../v5notes/script/sql/notes.sql:/mnt/sql/notes.sql:ro
+    ports:
+      - "3306:3306"
+    # on-failure 若容器的退出状态非0，则docker自动重启容器，还可以指定重启次数，若超过指定次数未能启动容器则放弃
+    restart: on-failure:5
+    privileged: true
+  redis:
+    container_name: v5notes-redis
+    image: redis:7.4.1
+    volumes:
+      - ./redis/data:/data
+      # 自定义redis配置，如果不需要特殊要求，可以不添加
+      - ./redis/redis.conf:/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    restart: on-failure:5
+    privileged: true
+  v5notes:
+    container_name: v5notes-server
+    image: registry.cn-hangzhou.aliyuncs.com/zywlxh/ruoyi-server:1.0.4
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./ruoyi/logs:/ruoyi/server/logs
+      - ./uploadfile:/mnt/uploadfile
+    restart: on-failure:5
+    environment:
+      # https://github.com/polovyivan/docker-pass-configs-to-container
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: prod
+      ARGS:
+        --spring.datasource.dynamic.datasource.master.url=${MASTER_DATASOURCE_URL:-jdbc:mysql://yudao-mysql:3306/v5notes-prod?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+        --spring.datasource.dynamic.datasource.master.username=${MASTER_DATASOURCE_USERNAME:-root}
+        --spring.datasource.dynamic.datasource.master.password=${MASTER_DATASOURCE_PASSWORD:-root123#}
+        --spring.datasource.dynamic.datasource.slave.url=${SLAVE_DATASOURCE_URL:-jdbc:mysql://v5notes-mysql:3306/v5notes-prod?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+        --spring.datasource.dynamic.datasource.slave.username=${SLAVE_DATASOURCE_USERNAME:-root}
+        --spring.datasource.dynamic.datasource.slave.password=${SLAVE_DATASOURCE_PASSWORD:-root123#}
+        --spring.data.redis.host=${REDIS_HOST:-v5notes-redis}
+    depends_on:
+      - mysql
+      - redis
+  v5notes-admin:
+    container_name: v5notes-admin
+    image: registry.cn-hangzhou.aliyuncs.com/zywlxh/v5notes-admin:1.0.0
+    ports:
+      - "8988:8988"
+    environment:
+      - V5NOTES_SERVER_HOST=v5notes-server
+      # 容器内端口，而不是映射出来的端口
+      - V5NOTES_SERVER_PORT=8080
+    volumes:
+      - ./nginx/logs:/var/log/nginx
+      # - ./nginx.conf:/etc/nginx/nginx.conf
+    restart: on-failure:5
+    tty: true
+    privileged: true
+    depends_on:
+      - v5notes

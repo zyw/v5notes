@@ -27,7 +27,31 @@ Gitee: https://gitee.com/zyw/v5notes.git
 
 均可下载客户端安装文件和免安装压缩包。
 
-# 5. 创建用户
+# 5. Docker安装
+
+1. 第一步
+
+   ```bash
+   git clone https://gitee.com/zyw/v5notes.git
+   或者
+   git clone https://github.com/zyw/v5notes.git
+   ```
+
+2. 第二步
+
+   ```bash
+   cd v5notes/docker
+   # 使用docker compose安装
+   docker compose --env-file ./env/v5notes.env up -d
+   # 查看启动状态
+   docker compose --env-file ./env/v5notes.env ps
+   ```
+
+3.  第三步
+
+   如果安装完成访问http://localhost:8988访问后端管理页面
+
+# 6. 创建用户
 
 ![](./images/admin1.png)
 
@@ -35,7 +59,7 @@ Gitee: https://gitee.com/zyw/v5notes.git
 
 ![](./images/admin2.png)
 
-# 6. 截图
+# 7. 截图
 
 ![login](./images/login.png)
 
