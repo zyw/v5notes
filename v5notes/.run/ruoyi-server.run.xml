@@ -2,7 +2,11 @@
   <configuration default="false" name="ruoyi-server" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
+<<<<<<< HEAD
         <option name="imageTag" value="zywlxh/ruoyi-server:1.0.4" />
+=======
+        <option name="imageTag" value="zywlxh/ruoyi-server:1.0.3" />
+>>>>>>> 00dc0f56f004f1aa9fda6014a533ac73eb75d47b
         <option name="buildOnly" value="true" />
         <option name="sourceFilePath" value="ruoyi-admin/Dockerfile" />
       </settings>
