@@ -23,7 +23,7 @@ module.exports = (appInfo) => {
    * 主窗口
    */
   config.windowsOption = {
-    title: 'EE框架',
+    title: 'V5Notes',
     width: 1200,
     height: 800,
     minWidth: 400,

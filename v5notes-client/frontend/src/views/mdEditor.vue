@@ -174,6 +174,10 @@
             after () {
                 notesInfo(route.params.id as string)
             },
+            preview: {
+                // 设置编辑器预览区域的最大宽度
+                maxWidth: 1920
+            }
         })
     }
 
