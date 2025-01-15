@@ -55,7 +55,8 @@
         <!-- 面向运行时的D-ORM依赖 -->
         <anyline.version>8.7.2-20240808</anyline.version>
         <!--工作流配置-->
-        <flowable.version>7.0.1</flowable.version>
+<!--        <flowable.version>7.0.1</flowable.version>-->
+        <coze.version>0.2.0</coze.version>
 
         <!-- 插件版本 -->
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
@@ -117,6 +118,7 @@
                 <scope>import</scope>
             </dependency>
 
+            <!--
             <dependency>
                 <groupId>org.flowable</groupId>
                 <artifactId>flowable-bom</artifactId>
@@ -124,6 +126,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            -->
 
             <!-- JustAuth 的依赖配置-->
             <dependency>
@@ -359,6 +362,12 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.coze</groupId>
+                <artifactId>coze-api</artifactId>
+                <version>${coze.version}</version>
             </dependency>
 
             <dependency>
