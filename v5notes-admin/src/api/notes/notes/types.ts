@@ -20,6 +20,16 @@ export interface NotesVO {
   dirId: string | number;
 
   /**
+   * 修改时间
+   */
+  updateTime: string;
+
+  /**
+   * 文件大小
+   */
+  fileSize: string;
+
+  /**
    * 笔记内容
    */
   content: string;
@@ -54,24 +64,14 @@ export interface NotesForm extends BaseEntity {
 
 export interface NotesQuery extends PageQuery {
   /**
-   * 笔记所属用户
-   */
-  userId?: string | number;
-
-  /**
    * 笔记名
    */
-  name?: string;
+  searchValue?: string;
 
   /**
    * 所属目录ID
    */
   dirId?: string | number;
-
-  /**
-   * 笔记内容
-   */
-  content?: string;
 
   /**
    * 日期范围参数

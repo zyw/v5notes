@@ -36,6 +36,11 @@ public class NoteNotes extends TenantEntity {
     private Long userId;
 
     /**
+     * 部门id
+     */
+    private Long deptId;
+
+    /**
      * 笔记名
      */
     private String name;

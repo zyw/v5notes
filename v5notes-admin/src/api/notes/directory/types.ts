@@ -78,3 +78,30 @@ export interface DirectoryQuery extends PageQuery {
    */
   params?: any;
 }
+
+export interface NotesTreeVo {
+  /**
+   * ID
+   */
+  id: number;
+
+  /**
+   * 父节点ID
+   */
+  pid: number;
+
+  /**
+   * 节点名称
+   */
+  label: string;
+
+  /**
+   * 节点类型，1：目录，2：笔记
+   */
+  type: number;
+
+  /**
+   * 树形子目录
+   */
+  children: NotesTreeVo[];
+}

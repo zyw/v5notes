@@ -36,6 +36,11 @@ public class NoteDirectory extends TenantEntity {
     private Long userId;
 
     /**
+     * 部门id
+     */
+    private Long deptId;
+
+    /**
      * 目录名称
      */
     private String name;

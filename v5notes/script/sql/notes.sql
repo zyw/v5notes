@@ -1,13 +1,14 @@
 SET NAMES utf8mb4;
 DROP TABLE IF EXISTS note_directory;
 CREATE TABLE note_directory(
-   `id` bigint(20) NOT NULL  COMMENT 'ID' ,
-   `user_id` bigint(20) NOT NULL  COMMENT '目录所属用户ID' ,
-   `name` VARCHAR(100) NOT NULL  COMMENT '目录名称' ,
-   `pid` bigint(20) NOT NULL DEFAULT 0 COMMENT '父目录ID' ,
-   `del_flag` char(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0代表存在 2代表删除）' ,
-   `tenant_id` VARCHAR(20) NOT NULL DEFAULT 000000 COMMENT '租户编号' ,
-   `descr` VARCHAR(255)   COMMENT '描述' ,
+   `id` bigint(20) NOT NULL  COMMENT 'ID',
+   `user_id` bigint(20) NOT NULL  COMMENT '目录所属用户ID',
+   `dept_id` bigint(20) NOT NULL DEFAULT 0 COMMENT '所属部门ID',
+   `name` VARCHAR(100) NOT NULL  COMMENT '目录名称',
+   `pid` bigint(20) NOT NULL DEFAULT 0 COMMENT '父目录ID',
+   `del_flag` char(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0代表存在 2代表删除）',
+   `tenant_id` VARCHAR(20) NOT NULL DEFAULT 000000 COMMENT '租户编号',
+   `descr` VARCHAR(255)   COMMENT '描述',
    `create_dept` bigint(20)   COMMENT '创建部门' ,
    `create_by` varchar(64)   COMMENT '创建者' ,
    `create_time` DATETIME  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间' ,
@@ -20,6 +21,7 @@ DROP TABLE IF EXISTS note_notes;
 CREATE TABLE note_notes(
     `id` bigint(20) NOT NULL  COMMENT '笔记ID编号' ,
     `user_id` bigint(20) NOT NULL  COMMENT '笔记所属用户' ,
+    `dept_id` bigint(20) NOT NULL DEFAULT 0 COMMENT '所属部门ID',
     `name` VARCHAR(100) NOT NULL  COMMENT '笔记名' ,
     `dir_id` bigint(20) NOT NULL DEFAULT 0 COMMENT '所属目录ID' ,
     `content` MEDIUMTEXT   COMMENT '笔记内容' ,

@@ -98,6 +98,8 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     public Boolean insertByBo(NoteDirectoryBo bo) {
         NoteDirectory add = MapstructUtils.convert(bo, NoteDirectory.class);
         add.setUserId(LoginHelper.getUserId());
+        Long deptId = add.getDeptId();
+        add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
@@ -149,7 +151,9 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     public List<NotesTreeVo> dirTreeList() {
         List<NotesTreeVo> result = Lists.newArrayList();
         Long userId = LoginHelper.getUserId();
-        List<NoteDirectoryVo> dirlist = baseMapper.selectByUserId(userId);
+//        List<NoteDirectoryVo> dirlist = baseMapper.selectByUserId(userId);
+        // 使用数据权限，不需要单独指定用户ID
+        List<NoteDirectoryVo> dirlist = baseMapper.selectVoList();
         List<NoteDirectoryVo> parentDirList = dirlist.stream().filter(item -> item.getPid() == 0).toList();
         parentDirList.forEach(item -> {
             NotesTreeVo vo = NotesConvert.INSTANCE.dirVoToNotesTreeVo(item);
@@ -163,8 +167,12 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     public List<NotesTreeVo> notesTreeList() {
         List<NotesTreeVo> result = Lists.newArrayList();
         Long userId = LoginHelper.getUserId();
-        List<NoteDirectoryVo> dirlist = baseMapper.selectByUserId(userId);
-        List<NoteNotesVo> notesList = notesMapper.selectByUserId(userId);
+//        List<NoteDirectoryVo> dirlist = baseMapper.selectByUserId(userId);
+        // 使用数据权限，不需要单独指定用户ID
+        List<NoteDirectoryVo> dirlist = baseMapper.selectVoList();
+//        List<NoteNotesVo> notesList = notesMapper.selectByUserId(userId);
+        // 使用数据权限，不需要单独指定用户ID
+        List<NoteNotesVo> notesList = notesMapper.selectVoList();
         List<NoteDirectoryVo> parentDirList = dirlist.stream().filter(item -> item.getPid() == 0).toList();
         parentDirList.forEach(item -> {
             NotesTreeVo vo = NotesConvert.INSTANCE.dirVoToNotesTreeVo(item);

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.*;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import org.dromara.notes.domain.vo.NotesTreeVo;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 import org.dromara.common.idempotent.annotation.RepeatSubmit;
@@ -101,5 +102,14 @@ public class NoteDirectoryController extends BaseController {
     public R<Void> remove(@NotEmpty(message = "主键不能为空")
                           @PathVariable Long[] ids) {
         return toAjax(noteDirectoryService.deleteWithValidByIds(List.of(ids), true));
+    }
+
+    /**
+     * 目录和笔记树
+     * @return
+     */
+    @GetMapping("/tree")
+    public R<List<NotesTreeVo>> notesTreeList() {
+        return R.ok(noteDirectoryService.notesTreeList());
     }
 }

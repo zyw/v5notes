@@ -71,6 +71,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     public TableDataInfo<NoteNotesVo> queryPageList(NoteNotesBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<NoteNotes> lqw = buildQueryWrapper(bo);
         Page<NoteNotesVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
+        // 计算文件大小
+        calcFileSize(result);
         return TableDataInfo.build(result);
     }
 
@@ -88,10 +90,21 @@ public class NoteNotesServiceImpl implements INoteNotesService {
 
     private LambdaQueryWrapper<NoteNotes> buildQueryWrapper(NoteNotesBo bo) {
         Map<String, Object> params = bo.getParams();
+        String searchValue = bo.getSearchValue();
         LambdaQueryWrapper<NoteNotes> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getName()), NoteNotes::getName, bo.getName());
+        lqw.and(StringUtils.isNotBlank(searchValue),wapper ->
+                wapper.like(NoteNotes::getName, searchValue)
+                .or()
+                .like(NoteNotes::getContent, searchValue)
+            );
+//        lqw.and(wapper -> {
+//            wapper.eq(bo.getDirId() != null, NoteNotes::getDirId, bo.getDirId());
+//            wapper.between(params.get("beginTime") != null && params.get("endTime") != null,
+//                NoteNotes::getCreateTime, params.get("beginTime"), params.get("endTime"));
+//        });
         lqw.eq(bo.getDirId() != null, NoteNotes::getDirId, bo.getDirId());
-        lqw.eq(StringUtils.isNotBlank(bo.getContent()), NoteNotes::getContent, bo.getContent());
+        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
+            NoteNotes::getCreateTime, params.get("beginTime"), params.get("endTime"));
         return lqw;
     }
 
@@ -105,6 +118,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     public Boolean insertByBo(NoteNotesBo bo) {
         NoteNotes add = MapstructUtils.convert(bo, NoteNotes.class);
         add.setUserId(LoginHelper.getUserId());
+        Long deptId = add.getDeptId();
+        add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
@@ -166,6 +181,12 @@ public class NoteNotesServiceImpl implements INoteNotesService {
         }
 
         Page<NoteNotesVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
+        // 计算文件大小
+        calcFileSize(result);
+        return TableDataInfo.build(result);
+    }
+
+    private static void calcFileSize(Page<NoteNotesVo> result) {
         // 计算内容大小
         result.getRecords().forEach(item -> {
             String content = item.getContent();
@@ -179,7 +200,6 @@ public class NoteNotesServiceImpl implements INoteNotesService {
             String format = DataSizeUtil.format(textLong);
             item.setFileSize(format);
         });
-        return TableDataInfo.build(result);
     }
 
     /**

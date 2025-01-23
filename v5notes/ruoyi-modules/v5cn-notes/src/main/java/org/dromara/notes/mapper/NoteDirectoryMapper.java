@@ -1,5 +1,7 @@
 package org.dromara.notes.mapper;
 
+import org.dromara.common.mybatis.annotation.DataColumn;
+import org.dromara.common.mybatis.annotation.DataPermission;
 import org.dromara.notes.domain.NoteDirectory;
 import org.dromara.notes.domain.vo.NoteDirectoryVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
@@ -12,6 +14,10 @@ import java.util.List;
  * @author Lion Li
  * @date 2024-10-25
  */
+@DataPermission({
+    @DataColumn(key = "deptName", value = "dept_id"),
+    @DataColumn(key = "userName", value = "user_id")
+})
 public interface NoteDirectoryMapper extends BaseMapperPlus<NoteDirectory, NoteDirectoryVo> {
     List<NoteDirectoryVo> selectByUserId(Long userId);
 }
