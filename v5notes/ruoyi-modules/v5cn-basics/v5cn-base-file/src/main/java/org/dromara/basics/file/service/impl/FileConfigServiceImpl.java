@@ -164,13 +164,17 @@ public class FileConfigServiceImpl implements IFileConfigService {
         validateFileConfigExists(id);
         // 获取主配置
         FileConfig config = getMasterConfig();
-        // 更新其它为非 master
-        int flag = baseMapper.update(Wrappers.<FileConfig>lambdaUpdate().set(FileConfig::getMaster, false).eq(FileConfig::getId, config.getId()));
+        int flag = 1;
+        if (config != null) {
+            // 更新其它为非 master
+            flag = baseMapper.update(Wrappers.<FileConfig>lambdaUpdate().set(FileConfig::getMaster, false).eq(FileConfig::getId, config.getId()));
+            // 清空缓存
+            clearCache(config.getId());
+        }
+
         // 更新当前为 master
         int flag2 = baseMapper.update(Wrappers.<FileConfig>lambdaUpdate().set(FileConfig::getMaster, true).eq(FileConfig::getId, id));
 
-        // 清空缓存
-        clearCache(config.getId());
         // 返回结果
         return flag > 0 && flag2 > 0;
     }
@@ -242,7 +246,8 @@ public class FileConfigServiceImpl implements IFileConfigService {
     private FileConfig getMasterConfig() {
         FileConfig config = baseMapper.selectOne(Wrappers.<FileConfig>lambdaQuery().eq(FileConfig::getMaster, true));
         if (config == null) {
-            throw new ServiceException("主配置不存在");
+//            throw new ServiceException("主配置不存在");
+            log.warn("主配置不存在");
         }
         return config;
     }

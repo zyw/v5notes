@@ -63,6 +63,16 @@ export const delDirectory = (id: string | number | Array<string | number>) => {
 };
 
 /**
+ * 目录Tree列表
+ */
+export const dirTree = (): AxiosPromise<NotesTreeVo[]> => {
+  return request({
+    url: '/notes/directory/tree-dir',
+    method: 'get'
+  });
+}
+
+/**
  * 云笔记Tree目录列表
  */
 export const dirNotesTree = (): AxiosPromise<NotesTreeVo[]> => {

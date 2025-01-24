@@ -86,7 +86,7 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:edit")
     @Log(title = "笔记", businessType = BusinessType.UPDATE)
-    @RepeatSubmit()
+    @RepeatSubmit(message = "内容保存中，请不要重复提交")
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody NoteNotesBo bo) {
         return toAjax(noteNotesService.updateByBo(bo));

@@ -100,7 +100,7 @@
         contentEditor.value = new Vditor('contentVditor', {
             height: 'calc(100vh - 40px)',
             width: "100%",
-            "mode": "wysiwyg",
+            "mode": "ir",
             toolbarConfig: {
                 pin: false,
             },

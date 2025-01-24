@@ -31,8 +31,12 @@
         </el-card>
       </el-col>
       <el-col :lg="20" :xs="24">
-        <notes-list ref="notesListRef" v-if="pageState === 'list'" @clear-query="handleClearQuery"/>
-        <editor-md v-else/>
+        <notes-list v-show="pageState === 'list'" 
+          ref="notesListRef" 
+          @clear-query="handleClearQuery"
+          @view-or-edtor="handleViewOrEditor"/>
+        <editor-md v-show="pageState === 'editor'" ref="notesEditorRef"/>
+        <preview-md v-show="pageState === 'preview'" ref="notesPreviewRef" @edit-notes="handleEditNotes"/>
       </el-col>
     </el-row>
   </div>
@@ -42,6 +46,7 @@
 import { Tickets, Folder } from '@element-plus/icons-vue'
 import NotesList from '@/views/notes/notes/notes-list.vue';
 import EditorMd from '@/views/notes/notes/editor-md.vue';
+import PreviewMd from '@/views/notes/notes/preview-md.vue';
 import { dirNotesTree } from '@/api/notes/directory';
 import { NotesTreeVo } from '@/api/notes/directory/types';
 import { NotesVO } from '@/api/notes/notes/types';
@@ -56,7 +61,9 @@ const notesTreeList = ref<NotesTreeVo[]>()
 const notesList = ref<NotesVO[]>([]);
 
 const notesTreeRef = ref<ElTreeInstance>();
-const notesListRef = ref<ElTreeInstance>();
+const notesListRef = ref();
+const notesEditorRef =ref();
+const notesPreviewRef = ref();
 
 
 const notesTreeListFun = async () => {
@@ -84,7 +91,8 @@ const filterNode = (value: string, data: any) => {
 const handleNodeClick = (data: NotesTreeVo) => {
   // 节点类型，1：目录，2：笔记
   if(data.type === 2) {
-      pageState.value = "editor";
+      pageState.value = "preview";
+      notesPreviewRef.value?.previewNotes(data.id)
   } else {
     notesListRef.value?.handleDirIdQuery(data.id);
     pageState.value = "list";
@@ -93,6 +101,21 @@ const handleNodeClick = (data: NotesTreeVo) => {
 
 const handleClearQuery = () => {
   notesTreeRef.value?.setCurrentKey(undefined);
+}
+
+const handleEditNotes = (id: number) => {
+  pageState.value = "editor";
+  notesEditorRef.value.notesInfo(id);
+}
+
+const handleViewOrEditor = (info: any) => {
+  if(info.type === "editor") {
+    pageState.value = "editor";
+    notesEditorRef.value.notesInfo(info.notesId);
+  } else {
+    pageState.value = "preview";
+    notesPreviewRef.value?.previewNotes(info.notesId)
+  }
 }
 
 onMounted(() => {

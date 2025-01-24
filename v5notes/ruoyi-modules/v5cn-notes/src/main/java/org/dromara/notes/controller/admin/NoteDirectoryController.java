@@ -105,6 +105,15 @@ public class NoteDirectoryController extends BaseController {
     }
 
     /**
+     * 目录树
+     * @return
+     */
+    @GetMapping("/tree-dir")
+    public R<List<NotesTreeVo>> dirTreeList() {
+        return R.ok(noteDirectoryService.dirTreeList());
+    }
+
+    /**
      * 目录和笔记树
      * @return
      */
