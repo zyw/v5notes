@@ -23,6 +23,11 @@ export interface DirectoryVO {
    * 描述
    */
   descr: string;
+
+  /**
+   * 创建时间
+   */
+  createTime: string;
 }
 
 export interface DirectoryForm extends BaseEntity {

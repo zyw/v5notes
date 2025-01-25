@@ -1,15 +1,17 @@
 <template>
     <div class="editor-container">
         <div class="note-title">
-            <el-text size="large">
-                <el-tooltip
-                    class="box-item"
-                    effect="dark"
-                    content="编辑笔记"
-                    placement="top">
-                    <el-link :icon="Edit" @click="handleEditNotes">&nbsp;{{ notesName }}</el-link>
-                </el-tooltip>
-            </el-text>
+            <el-card shadow="hover">
+                <el-text size="large">
+                    <el-tooltip
+                        class="box-item"
+                        effect="dark"
+                        content="编辑笔记"
+                        placement="top">
+                        <el-link :icon="Edit" @click="handleEditNotes">&nbsp;{{ notesName }}</el-link>
+                    </el-tooltip>
+                </el-text>
+            </el-card>
         </div>
         <div class="editor-wrapper">
             <div id="previewVditor" class="vditor preview-content"></div>
@@ -75,9 +77,7 @@ onMounted(() => {
 
   .note-title {
     flex: none;
-    margin-bottom: 16px;
-    padding: 8px;
-    border-bottom: 1px solid #e4e7ed;
+    margin-bottom: 12px;
   }
 
   .editor-wrapper {

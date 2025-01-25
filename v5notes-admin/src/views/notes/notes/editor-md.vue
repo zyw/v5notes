@@ -1,15 +1,17 @@
 <template>
   <div class="editor-container">
     <div class="note-title">
-      <el-text size="large">
-          <el-tooltip
-              class="box-item"
-              effect="dark"
-              content="保存笔记，使用 Ctrl + S 快捷键保存"
-              placement="top">
-              <el-link :icon="MessageBox" @click="handleSaveContent">&nbsp;{{ mdEditorForm?.name }}</el-link>
-          </el-tooltip>
-      </el-text>
+      <el-card shadow="hover">
+        <el-text size="large">
+            <el-tooltip
+                class="box-item"
+                effect="dark"
+                content="保存笔记，使用 Ctrl + S 快捷键保存"
+                placement="top">
+                <el-link :icon="MessageBox" @click="handleSaveContent">&nbsp;{{ mdEditorForm?.name }}</el-link>
+            </el-tooltip>
+        </el-text>
+      </el-card>
     </div>
     <div class="editor-wrapper">
       <div id="contentVditor" class="vditor"></div>
@@ -224,9 +226,7 @@ onBeforeUnmount(() => {
 
   .note-title {
     flex: none;
-    margin-bottom: 16px;
-    padding: 8px;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 12px;
   }
 
   .editor-wrapper {

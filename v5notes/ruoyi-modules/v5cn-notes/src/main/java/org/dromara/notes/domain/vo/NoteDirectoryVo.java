@@ -55,4 +55,10 @@ public class NoteDirectoryVo implements Serializable {
      */
     @ExcelProperty(value = "描述")
     private String descr;
+
+    /**
+     * 创建时间
+     */
+    @ExcelProperty(value = "创建时间")
+    private Date createTime;
 }

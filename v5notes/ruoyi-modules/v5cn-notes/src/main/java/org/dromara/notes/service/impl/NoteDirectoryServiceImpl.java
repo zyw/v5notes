@@ -82,9 +82,10 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     private LambdaQueryWrapper<NoteDirectory> buildQueryWrapper(NoteDirectoryBo bo) {
         Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<NoteDirectory> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getName()), NoteDirectory::getName, bo.getName());
         lqw.eq(bo.getPid() != null, NoteDirectory::getPid, bo.getPid());
-        lqw.eq(StringUtils.isNotBlank(bo.getDescr()), NoteDirectory::getDescr, bo.getDescr());
+        lqw.like(StringUtils.isNotBlank(bo.getName()), NoteDirectory::getName, bo.getName());
+        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
+            NoteDirectory::getCreateTime, params.get("beginTime"), params.get("endTime"));
         return lqw;
     }
 
