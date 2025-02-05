@@ -75,4 +75,7 @@ public class FileInfoVo implements Serializable {
 
     @ExcelProperty(value = "创建时间")
     private LocalDateTime createTime;
+
+    @ExcelProperty(value = "更新时间")
+    private LocalDateTime updateTime;
 }

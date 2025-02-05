@@ -70,21 +70,21 @@
                 <el-icon><Folder /></el-icon>
                 <span>全部文件</span>
               </el-menu-item>
-              <el-menu-item index="image">
-                <el-icon><Picture /></el-icon>
-                <span>图片</span>
+              <el-menu-item index="markdown">
+                &nbsp;<svg-icon icon-class="markdown" />&nbsp;&nbsp;
+                <span>MarkDown</span>
+              </el-menu-item>
+              <el-menu-item index="pdf">
+                &nbsp;<svg-icon icon-class="pdf" />&nbsp;&nbsp;
+                <span>PDF</span>
               </el-menu-item>
               <el-menu-item index="doc">
                 <el-icon><Document /></el-icon>
                 <span>文档</span>
               </el-menu-item>
-              <el-menu-item index="video">
-                <el-icon><VideoCamera /></el-icon>
-                <span>视频</span>
-              </el-menu-item>
-              <el-menu-item index="audio">
-                <el-icon><Headset /></el-icon>
-                <span>音频</span>
+              <el-menu-item index="image">
+                <el-icon><Picture /></el-icon>
+                <span>图片</span>
               </el-menu-item>
               <el-menu-item index="other">
                 <el-icon><More /></el-icon>
@@ -120,7 +120,11 @@
                 {{ formatFileSize(row.size) }}
               </template>
             </el-table-column>
-            <el-table-column label="扩展名" align="center" prop="extension" width="100" />
+            <el-table-column label="扩展名" align="center" prop="suffix" width="100">
+              <template #default="scope">
+                <el-tag type="primary">{{ scope.row.suffix }}</el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="更新时间" align="center" prop="updateTime" width="180">
               <template #default="{ row }">
                 <span>{{ parseTime(row.updateTime) }}</span>
@@ -156,19 +160,29 @@
     </el-card>
 
     <!-- 上传文件对话框 -->
-    <el-dialog title="上传文件" v-model="upload.open" width="400px" append-to-body>
-      <el-upload
+    <el-dialog v-model="dialog.visible" :title="dialog.title" width="400px" append-to-body>
+      <!-- <el-upload
         class="upload-demo"
         drag
         action="/upload"
         multiple
-        :on-success="handleUploadSuccess"
-      >
+        :on-success="handleUploadSuccess">
         <el-icon class="el-icon--upload"><upload-filled /></el-icon>
         <div class="el-upload__text">
           将文件拖到此处，或<em>点击上传</em>
         </div>
-      </el-upload>
+      </el-upload> -->
+      <el-form ref="ossFormRef" :model="form" :rules="rules" label-width="80px">
+        <el-form-item label="文件名">
+          <fileUpload v-model="form.file" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="cancel">取 消</el-button>
+        </div>
+      </template>
     </el-dialog>
 
     <!-- 重命名对话框 -->
@@ -207,11 +221,14 @@
 import { getCurrentInstance, ref, reactive } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { parseTime } from '@/utils/ruoyi'
+import { listFile, delFile } from '@/api/basics/file';
+import { FileForm, FileQuery, FileVO } from '@/api/basics/file/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance
 
 // 遮罩层
 const loading = ref(false)
+const buttonLoading = ref(false);
 // 选中数组
 const ids = ref<Array<string | number>>([])
 // 非单个禁用
@@ -227,21 +244,54 @@ const dateRange = ref<[DateModelType, DateModelType]>(['', ''])
 // 当前选中的文件类型
 const activeType = ref('all')
 
+const previewListResource = ref(true);
+const dateRangeCreateTime = ref<[DateModelType, DateModelType]>(['', '']);
+
+const ossFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<ElFormInstance>();
+
+const dialog = reactive<DialogOption>({
+  visible: false,
+  title: '上传文件'
+});
+
+const initFormData = {
+  file: undefined
+};
+
+const data = reactive<PageData<FileForm, FileQuery>>({
+  form: { ...initFormData },
+  // 查询参数
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    name: '',
+    type: undefined,
+    createTime: undefined
+  },
+  rules: {
+    file: [{ required: true, message: '文件不能为空', trigger: 'blur' }]
+  }
+});
+
 // 查询参数
-const queryParams = reactive({
-  pageNum: 1,
-  pageSize: 10,
-  name: undefined,
-  type: undefined,
-})
+const { queryParams, form, rules } = toRefs(data);
+
+
+// const queryParams = reactive({
+//   pageNum: 1,
+//   pageSize: 10,
+//   name: undefined,
+//   type: undefined,
+// })
 
 // 文件列表数据
 const fileList = ref([])
 
 // 上传参数
-const upload = reactive({
-  open: false
-})
+// const upload = reactive({
+//   open: false
+// })
 
 // 重命名参数
 const rename = reactive({
@@ -263,29 +313,34 @@ const folderTree = ref([])
 
 /** 查询文件列表 */
 const getList = async () => {
-  loading.value = true
-  // TODO: 调用后端API获取文件列表
-  loading.value = false
+  loading.value = true;
+  const res = await proxy?.getConfigKey('sys.file.previewListResource');
+  previewListResource.value = res?.data === undefined ? true : res.data === 'true';
+  const response = await listFile(proxy?.addDateRange(queryParams.value, dateRangeCreateTime.value, 'CreateTime'));
+  fileList.value = response.rows;
+  total.value = response.total;
+  loading.value = false;
+  // showTable.value = true;
 }
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
-  queryParams.pageNum = 1
+  queryParams.value.pageNum = 1
   getList()
 }
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   dateRange.value = ['', '']
-  queryParams.pageNum = 1
-  proxy?.$refs['queryFormRef'].resetFields()
+  queryParams.value.pageNum = 1
+  queryFormRef.value.resetFields()
   handleQuery()
 }
 
 /** 文件类型选择 */
 const handleTypeSelect = (index: string) => {
   activeType.value = index
-  queryParams.type = index === 'all' ? undefined : index
+  queryParams.value.type = index === 'all' ? undefined : index
   handleQuery()
 }
 
@@ -298,15 +353,15 @@ const handleSelectionChange = (selection: any[]) => {
 
 /** 上传按钮操作 */
 const handleUpload = () => {
-  upload.open = true
+  dialog.visible = true
 }
 
 /** 上传成功回调 */
-const handleUploadSuccess = () => {
-  upload.open = false
-  getList()
-  ElMessage.success('上传成功')
-}
+// const handleUploadSuccess = () => {
+//   dialog.visible = false
+//   getList()
+//   ElMessage.success('上传成功')
+// }
 
 /** 重命名按钮操作 */
 const handleRename = (row?: any) => {
@@ -377,4 +432,24 @@ const formatFileSize = (size: number) => {
   }
   return `${size.toFixed(2)} ${units[index]}`
 }
+
+/** 表单重置 */
+function reset() {
+  form.value = { ...initFormData };
+  ossFormRef.value?.resetFields();
+}
+
+/** 提交按钮 */
+const submitForm = () => {
+  dialog.visible = false;
+  getList();
+};
+/** 取消按钮 */
+function cancel() {
+  dialog.visible = false;
+  reset();
+}
+onMounted(() => {
+  getList();
+});
 </script>
