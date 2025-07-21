@@ -16,6 +16,7 @@
         <module>v5cn-system</module>
         <module>v5cn-basics</module>
         <module>v5cn-notes</module>
+        <module>v5cn-ai</module>
     </modules>
 
     <artifactId>v5cn-modules</artifactId>

@@ -92,6 +92,12 @@
             <artifactId>v5cn-notes</artifactId>
         </dependency>
 
+        <!--  ai大模型模块  -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>v5cn-ai</artifactId>
+        </dependency>
+
         <!--  demo模块  -->
         <dependency>
             <groupId>org.dromara</groupId>
