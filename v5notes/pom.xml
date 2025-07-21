@@ -138,7 +138,7 @@
             <!-- common 的依赖配置-->
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-bom</artifactId>
+                <artifactId>v5cn-common-bom</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -372,25 +372,25 @@
 
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-system</artifactId>
+                <artifactId>v5cn-system</artifactId>
                 <version>${revision}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-job</artifactId>
+                <artifactId>v5cn-job</artifactId>
                 <version>${revision}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-generator</artifactId>
+                <artifactId>v5cn-generator</artifactId>
                 <version>${revision}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-demo</artifactId>
+                <artifactId>v5cn-demo</artifactId>
                 <version>${revision}</version>
             </dependency>
 
@@ -423,10 +423,10 @@
     </dependencyManagement>
 
     <modules>
-        <module>ruoyi-admin</module>
-        <module>ruoyi-common</module>
-        <module>ruoyi-extend</module>
-        <module>ruoyi-modules</module>
+        <module>v5cn-admin</module>
+        <module>v5cn-common</module>
+        <module>v5cn-extend</module>
+        <module>v5cn-modules</module>
     </modules>
     <packaging>pom</packaging>
 
