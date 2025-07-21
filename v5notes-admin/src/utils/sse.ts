@@ -23,6 +23,7 @@ export const initSSE = (url: string) => {
   });
 
   watch(data, () => {
+    console.log('SSE message:', data.value);
     if (!data.value) return;
     useNoticeStore().addNotice({
       message: data.value,

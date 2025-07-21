@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.dromara</groupId>
-    <artifactId>ruoyi-vue-plus</artifactId>
+    <artifactId>v5notes</artifactId>
     <version>${revision}</version>
 
-    <name>RuoYi-Vue-Plus</name>
-    <url>https://gitee.com/dromara/RuoYi-Vue-Plus</url>
-    <description>RuoYi-Vue-Plus多租户管理系统</description>
+    <name>V5Notes</name>
+    <url>https://github.com/zyw/v5notes</url>
+    <description>V5Notes</description>
 
     <properties>
         <revision>5.2.2</revision>
