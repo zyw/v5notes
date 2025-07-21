@@ -11,10 +11,10 @@ import org.springframework.boot.context.metrics.buffering.BufferingApplicationSt
  */
 
 @SpringBootApplication
-public class DromaraApplication {
+public class V5NotesApplication {
 
     public static void main(String[] args) {
-        SpringApplication application = new SpringApplication(DromaraApplication.class);
+        SpringApplication application = new SpringApplication(V5NotesApplication.class);
         application.setApplicationStartup(new BufferingApplicationStartup(2048));
         application.run(args);
         System.out.println("(♥◠‿◠)ﾉﾞ  V5Notes启动成功   ლ(´ڡ`ლ)ﾞ");

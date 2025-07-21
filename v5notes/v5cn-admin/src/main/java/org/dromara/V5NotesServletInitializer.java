@@ -8,11 +8,11 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
  *
  * @author Lion Li
  */
-public class DromaraServletInitializer extends SpringBootServletInitializer {
+public class V5NotesServletInitializer extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(DromaraApplication.class);
+        return application.sources(V5NotesApplication.class);
     }
 
 }
