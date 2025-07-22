@@ -26,6 +26,13 @@ snail-job:
   # 随主应用端口飘逸
   port: 2${server.port}
 
+# 需要设置一下配置，否则会报数据库password错误
+# Failed to bind properties under ‘spring.datasource.dynamic.datasource.master.password‘ to java.lang.String
+jasypt:
+  encryptor:
+    algorithm: PBEWithMD5AndDES
+    iv-generator-classname: org.jasypt.iv.NoIvGenerator
+
 --- # 数据源配置
 spring:
   datasource:
@@ -45,9 +52,9 @@ spring:
           driverClassName: com.mysql.cj.jdbc.Driver
           # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
           # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://localhost:3306/v5notes-dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: root
-          password: admin123#
+          url: jdbc:mysql://mysql.v5ai.xin:3306/v5notes_local?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+          username: v5notes
+          password: "ENC(7M9mD4Qd3si0ej2LOvtUmLam4L0qIIg68rVEVS2Pl3AvBcJd2kHuJAgqzKUspmmK)"
         # 从库数据源
         slave:
           lazy: true
