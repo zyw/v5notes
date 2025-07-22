@@ -31,7 +31,7 @@ import org.dromara.common.mybatis.core.page.TableDataInfo;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/models")
+@RequestMapping("/ai-llm/models")
 public class LlmModelsController extends BaseController {
 
     private final ILlmModelsService llmModelsService;
@@ -39,7 +39,7 @@ public class LlmModelsController extends BaseController {
     /**
      * 查询模型列表
      */
-    @SaCheckPermission("system:models:list")
+    @SaCheckPermission("ai-llm:models:list")
     @GetMapping("/list")
     public TableDataInfo<LlmModelsVo> list(LlmModelsBo bo, PageQuery pageQuery) {
         return llmModelsService.queryPageList(bo, pageQuery);
@@ -48,7 +48,7 @@ public class LlmModelsController extends BaseController {
     /**
      * 导出模型列表
      */
-    @SaCheckPermission("system:models:export")
+    @SaCheckPermission("ai-llm:models:export")
     @Log(title = "模型", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(LlmModelsBo bo, HttpServletResponse response) {
@@ -61,7 +61,7 @@ public class LlmModelsController extends BaseController {
      *
      * @param id 主键
      */
-    @SaCheckPermission("system:models:query")
+    @SaCheckPermission("ai-llm:models:query")
     @GetMapping("/{id}")
     public R<LlmModelsVo> getInfo(@NotNull(message = "主键不能为空")
                                      @PathVariable Long id) {
@@ -71,7 +71,7 @@ public class LlmModelsController extends BaseController {
     /**
      * 新增模型
      */
-    @SaCheckPermission("system:models:add")
+    @SaCheckPermission("ai-llm:models:add")
     @Log(title = "模型", businessType = BusinessType.INSERT)
     @RepeatSubmit()
     @PostMapping()
@@ -82,7 +82,7 @@ public class LlmModelsController extends BaseController {
     /**
      * 修改模型
      */
-    @SaCheckPermission("system:models:edit")
+    @SaCheckPermission("ai-llm:models:edit")
     @Log(title = "模型", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
     @PutMapping()
@@ -95,7 +95,7 @@ public class LlmModelsController extends BaseController {
      *
      * @param ids 主键串
      */
-    @SaCheckPermission("system:models:remove")
+    @SaCheckPermission("ai-llm:models:remove")
     @Log(title = "模型", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
     public R<Void> remove(@NotEmpty(message = "主键不能为空")

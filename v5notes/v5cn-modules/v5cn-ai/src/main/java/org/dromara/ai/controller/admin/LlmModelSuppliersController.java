@@ -31,7 +31,7 @@ import org.dromara.common.mybatis.core.page.TableDataInfo;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/modelSuppliers")
+@RequestMapping("/ai-llm/model-sup")
 public class LlmModelSuppliersController extends BaseController {
 
     private final ILlmModelSuppliersService llmModelSuppliersService;
@@ -39,7 +39,7 @@ public class LlmModelSuppliersController extends BaseController {
     /**
      * 查询模型供应商列表
      */
-    @SaCheckPermission("system:modelSuppliers:list")
+    @SaCheckPermission("ai-llm:model-sup:list")
     @GetMapping("/list")
     public TableDataInfo<LlmModelSuppliersVo> list(LlmModelSuppliersBo bo, PageQuery pageQuery) {
         return llmModelSuppliersService.queryPageList(bo, pageQuery);
@@ -48,7 +48,7 @@ public class LlmModelSuppliersController extends BaseController {
     /**
      * 导出模型供应商列表
      */
-    @SaCheckPermission("system:modelSuppliers:export")
+    @SaCheckPermission("ai-llm:model-sup:export")
     @Log(title = "模型供应商", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(LlmModelSuppliersBo bo, HttpServletResponse response) {
@@ -61,7 +61,7 @@ public class LlmModelSuppliersController extends BaseController {
      *
      * @param id 主键
      */
-    @SaCheckPermission("system:modelSuppliers:query")
+    @SaCheckPermission("ai-llm:model-sup:query")
     @GetMapping("/{id}")
     public R<LlmModelSuppliersVo> getInfo(@NotNull(message = "主键不能为空")
                                      @PathVariable Long id) {
@@ -71,7 +71,7 @@ public class LlmModelSuppliersController extends BaseController {
     /**
      * 新增模型供应商
      */
-    @SaCheckPermission("system:modelSuppliers:add")
+    @SaCheckPermission("ai-llm:model-sup:add")
     @Log(title = "模型供应商", businessType = BusinessType.INSERT)
     @RepeatSubmit()
     @PostMapping()
@@ -82,7 +82,7 @@ public class LlmModelSuppliersController extends BaseController {
     /**
      * 修改模型供应商
      */
-    @SaCheckPermission("system:modelSuppliers:edit")
+    @SaCheckPermission("ai-llm:model-sup:edit")
     @Log(title = "模型供应商", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
     @PutMapping()
@@ -95,7 +95,7 @@ public class LlmModelSuppliersController extends BaseController {
      *
      * @param ids 主键串
      */
-    @SaCheckPermission("system:modelSuppliers:remove")
+    @SaCheckPermission("ai-llm:model-sup:remove")
     @Log(title = "模型供应商", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
     public R<Void> remove(@NotEmpty(message = "主键不能为空")

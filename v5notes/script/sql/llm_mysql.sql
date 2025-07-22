@@ -43,7 +43,7 @@ CREATE TABLE llm_models(
 
 
 insert into sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_dept, create_by, create_time, update_by, update_time, remark)
-values(9, 'AI大模型'  , '0',    '9', 'ai-llm','ai-llm/index',1, 0, 'M', '0', '0', '', 'log', '103', 1, sysdate(), NULL, NULL, 'AI大模型');
+values(9, 'AI大模型'  , '0',    '9', 'ai-llm',null,1, 0, 'M', '0', '0', '', 'log', '103', 1, sysdate(), NULL, NULL, 'AI大模型');
 
 insert into sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_dept, create_by, create_time, update_by, update_time, remark)
-values(190, '接入模型'  , '9',    '1', 'ai-llm','ai-llm/index',1, 0, 'C', '0', '0', '', 'log', '103', 1, sysdate(), NULL, NULL, '接入模型管理');
+values(190, '接入模型'  , '9',    '1', 'ai-llm','ai-llm/models/index',1, 0, 'C', '0', '0', '', 'log', '103', 1, sysdate(), NULL, NULL, '接入模型管理');
