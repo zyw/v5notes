@@ -41,6 +41,7 @@
     "pinia": "2.1.7",
     "ruoyi-vue-plus": "file:",
     "screenfull": "6.0.2",
+    "vditor": "^3.10.7",
     "vue": "3.4.34",
     "vue-cropper": "1.1.1",
     "vue-i18n": "9.10.2",

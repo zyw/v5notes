@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>v5notes</artifactId>
+        <groupId>org.dromara</groupId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <modules>
+        <module>v5cn-common-bom</module>
+        <module>v5cn-common-social</module>
+        <module>v5cn-common-core</module>
+        <module>v5cn-common-doc</module>
+        <module>v5cn-common-excel</module>
+        <module>v5cn-common-idempotent</module>
+        <module>v5cn-common-job</module>
+        <module>v5cn-common-log</module>
+        <module>v5cn-common-mail</module>
+        <module>v5cn-common-mybatis</module>
+        <module>v5cn-common-oss</module>
+        <module>v5cn-common-ratelimiter</module>
+        <module>v5cn-common-redis</module>
+        <module>v5cn-common-satoken</module>
+        <module>v5cn-common-security</module>
+        <module>v5cn-common-sms</module>
+        <module>v5cn-common-web</module>
+        <module>v5cn-common-translation</module>
+        <module>v5cn-common-sensitive</module>
+        <module>v5cn-common-json</module>
+        <module>v5cn-common-encrypt</module>
+        <module>v5cn-common-tenant</module>
+        <module>v5cn-common-websocket</module>
+        <module>v5cn-common-sse</module>
+        <module>v5cn-common-coze</module>
+    </modules>
+
+    <artifactId>v5cn-common</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        common 通用模块
+    </description>
+
+</project>

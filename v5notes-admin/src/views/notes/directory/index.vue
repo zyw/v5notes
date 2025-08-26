@@ -4,18 +4,31 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="目录所属用户ID" prop="userId">
-              <el-input v-model="queryParams.userId" placeholder="请输入目录所属用户ID" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="所属目录" prop="pid">
+              <el-tree-select
+                v-model="queryParams.pid"
+                :data="dirTreeData"
+                value-key="id"
+                default-expand-all
+                check-strictly
+                :render-after-expand="false"
+                placeholder="请选择所属目录"
+              />
             </el-form-item>
             <el-form-item label="目录名称" prop="name">
               <el-input v-model="queryParams.name" placeholder="请输入目录名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="父目录ID" prop="pid">
-              <el-input v-model="queryParams.pid" placeholder="请输入父目录ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="描述" prop="descr">
-              <el-input v-model="queryParams.descr" placeholder="请输入描述" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
+            <el-form-item label="创建时间" style="width: 308px">
+              <el-date-picker
+                v-model="dateRange"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                type="daterange"
+                range-separator="-"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+              />
+          </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -47,17 +60,18 @@
       <el-table v-loading="loading" :data="directoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="目录所属用户ID" align="center" prop="userId" />
+        <!-- <el-table-column label="目录所属用户ID" align="center" prop="userId" /> -->
         <el-table-column label="目录名称" align="center" prop="name" />
-        <el-table-column label="父目录ID" align="center" prop="pid" />
+        <!-- <el-table-column label="父目录ID" align="center" prop="pid" /> -->
         <el-table-column label="描述" align="center" prop="descr" />
-        <!-- <el-table-column label="创建部门" align="center" prop="createdDept" />
-        <el-table-column label="创建者" align="center" prop="createdBy" />
-        <el-table-column label="创建时间" align="center" prop="createdTime" width="180">
+        <el-table-column label="创建时间" align="center" prop="createTime" width="180">
           <template #default="scope">
-            <span>{{ parseTime(scope.row.createdTime, '{y}-{m}-{d}') }}</span>
+            <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
+        <!-- <el-table-column label="创建部门" align="center" prop="createdDept" />
+        <el-table-column label="创建者" align="center" prop="createdBy" />
+        
         <el-table-column label="更新者" align="center" prop="updatedBy" />
         <el-table-column label="更新时间" align="center" prop="updatedTime" width="180">
           <template #default="scope">
@@ -81,17 +95,22 @@
     <!-- 添加或修改目录对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="directoryFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="目录所属用户ID" prop="userId">
-          <el-input v-model="form.userId" placeholder="请输入目录所属用户ID" />
+        <el-form-item label="所属目录" prop="userId">
+          <el-tree-select
+                v-model="form.pid"
+                :data="dirTreeData"
+                value-key="id"
+                default-expand-all
+                check-strictly
+                :render-after-expand="false"
+                placeholder="请选择所属目录"
+              />
         </el-form-item>
         <el-form-item label="目录名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入目录名称" />
         </el-form-item>
-        <el-form-item label="父目录ID" prop="pid">
-          <el-input v-model="form.pid" placeholder="请输入父目录ID" />
-        </el-form-item>
         <el-form-item label="描述" prop="descr">
-          <el-input v-model="form.descr" placeholder="请输入描述" />
+          <el-input v-model="form.descr" placeholder="请输入描述" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -105,10 +124,12 @@
 </template>
 
 <script setup name="Directory" lang="ts">
-import { listDirectory, getDirectory, delDirectory, addDirectory, updateDirectory } from '@/api/notes/directory';
-import { DirectoryVO, DirectoryQuery, DirectoryForm } from '@/api/notes/directory/types';
+import { listDirectory, getDirectory, delDirectory, addDirectory, updateDirectory, dirTree } from '@/api/notes/directory';
+import { DirectoryVO, DirectoryQuery, DirectoryForm, NotesTreeVo } from '@/api/notes/directory/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+
+const dateRange = ref<[DateModelType, DateModelType]>(['', '']);
 
 const directoryList = ref<DirectoryVO[]>([]);
 const buttonLoading = ref(false);
@@ -127,6 +148,12 @@ const dialog = reactive<DialogOption>({
   title: ''
 });
 
+const dirTreeData = ref<NotesTreeVo[]>([{
+  id: 0,
+  label: '根节点',
+  type: 1
+} as NotesTreeVo]);
+
 const initFormData: DirectoryForm = {
   id: undefined,
   userId: undefined,
@@ -139,18 +166,14 @@ const data = reactive<PageData<DirectoryForm, DirectoryQuery>>({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    userId: undefined,
     name: undefined,
     pid: undefined,
-    descr: undefined,
     params: {}
   },
   rules: {
     id: [{ required: true, message: 'ID不能为空', trigger: 'blur' }],
-    userId: [{ required: true, message: '目录所属用户ID不能为空', trigger: 'blur' }],
     name: [{ required: true, message: '目录名称不能为空', trigger: 'blur' }],
     pid: [{ required: true, message: '父目录ID不能为空', trigger: 'blur' }],
-    descr: [{ required: true, message: '描述不能为空', trigger: 'blur' }]
   }
 });
 
@@ -159,7 +182,7 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询目录列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listDirectory(queryParams.value);
+  const res = await listDirectory(proxy?.addDateRange(queryParams.value, dateRange.value));
   directoryList.value = res.rows;
   total.value = res.total;
   loading.value = false;
@@ -185,6 +208,8 @@ const handleQuery = () => {
 
 /** 重置按钮操作 */
 const resetQuery = () => {
+  dateRange.value = ['', ''];
+  queryParams.value.pageNum = 1;
   queryFormRef.value?.resetFields();
   handleQuery();
 }
@@ -233,7 +258,7 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: DirectoryVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除目录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
   await delDirectory(_ids);
   proxy?.$modal.msgSuccess("删除成功");
   await getList();
@@ -246,7 +271,13 @@ const handleExport = () => {
   }, `directory_${new Date().getTime()}.xlsx`)
 }
 
+const dirTreeList = async () => {
+  const res = await dirTree()
+  dirTreeData.value[0].children = res.data
+}
+
 onMounted(() => {
+  dirTreeList();
   getList();
 });
 </script>

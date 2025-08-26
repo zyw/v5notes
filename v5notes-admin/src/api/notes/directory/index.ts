@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { DirectoryVO, DirectoryForm, DirectoryQuery } from '@/api/notes/directory/types';
+import { DirectoryVO, DirectoryForm, DirectoryQuery, NotesTreeVo } from '@/api/notes/directory/types';
 
 /**
  * 查询目录列表
@@ -61,3 +61,23 @@ export const delDirectory = (id: string | number | Array<string | number>) => {
     method: 'delete'
   });
 };
+
+/**
+ * 目录Tree列表
+ */
+export const dirTree = (): AxiosPromise<NotesTreeVo[]> => {
+  return request({
+    url: '/notes/directory/tree-dir',
+    method: 'get'
+  });
+}
+
+/**
+ * 云笔记Tree目录列表
+ */
+export const dirNotesTree = (): AxiosPromise<NotesTreeVo[]> => {
+  return request({
+    url: '/notes/directory/tree',
+    method: 'get'
+  });
+}

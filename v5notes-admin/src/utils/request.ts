@@ -53,6 +53,7 @@ service.interceptors.request.use(
       config.url = url;
     }
 
+    // 防止重复提交，只要是post和put请求,都会进入下面的分支语句
     if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
       const requestObj = {
         url: config.url,
