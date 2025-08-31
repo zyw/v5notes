@@ -14,6 +14,8 @@ const useGlobalStore = defineStore("global", {
     return {
       // 是否全屏
       serverUrl: "",
+      indexWinHeight: "",
+      editorWinHeight: "",
     //   // 是否折叠菜单
     //   isCollapse: false,
     //   // 菜单展开宽度[默认：220px]

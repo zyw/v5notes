@@ -1,5 +1,6 @@
 const { Application } = require('ee-core');
 const { app: electronApp, ipcMain, BrowserWindow } = require('electron')
+const os = require('os')
 
 class Index extends Application {
 
@@ -34,6 +35,11 @@ class Index extends Application {
     // 还原窗口
     ipcMain.on('restore', () => {
       BrowserWindow.getFocusedWindow().restore()
+    })
+    
+    // 获取操作系统平台信息
+    ipcMain.handle('get-platform', () => {
+      return os.platform()
     })
   }
 

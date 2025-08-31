@@ -17,9 +17,11 @@
     padding: 0;
   }
 
+  /* 自定义窗口拖动 */
   .win-title {
     -webkit-app-region: drag;
   }
+  /* 自定义窗口按钮 自定义窗口拖动中如果不使用这个样式，按钮不能点击*/
   .win-btn {
     -webkit-app-region: no-drag;
   }

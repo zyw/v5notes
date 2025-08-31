@@ -198,6 +198,24 @@ const getServerUrl = ():string => {
     return globalStore.serverUrl;
 }
 
+const getIndexWinHeight = ():string => {
+    let globalStore = null;
+    if(!globalStore) {
+        globalStore = useGlobalStore();
+    }
+    console.log("getIndexWinHeight:----->",globalStore.indexWinHeight);
+    return globalStore.indexWinHeight;
+}
+
+const getEditorWinHeight = ():string => {
+    let globalStore = null;
+    if(!globalStore) {
+        globalStore = useGlobalStore();
+    }
+    console.log("getEditorWinHeight:----->",globalStore.editorWinHeight);
+    return globalStore.editorWinHeight;
+}
+
 /**
  * @description 生成唯一 uuid
  * @returns {String}
@@ -212,4 +230,14 @@ const generateUUID = () => {
     return uuid;
 }
 
-export { layoutDrag, getAssets, koiMsgWarning, koiMsgError, tansParams, getServerUrl, generateUUID }
+export { 
+    layoutDrag, 
+    getAssets, 
+    koiMsgWarning, 
+    koiMsgError, 
+    tansParams, 
+    getServerUrl,
+    getIndexWinHeight,
+    getEditorWinHeight, 
+    generateUUID 
+}

@@ -14,7 +14,7 @@
         
       </div>
     </el-container>
-    <el-scrollbar max-height="calc(100vh - 120px)">
+    <el-scrollbar :max-height="getIndexWinHeight()">
       <el-table 
         v-loading="loading"
         :data="notesList" 
@@ -58,6 +58,7 @@
   import Markdown from '@/components/svg/Markdown.vue';
   import SearchView from '@/components/Search.vue'
   import { MenuTypeEnum } from '@/enums/MenuTypeEnum';
+  import { getIndexWinHeight } from '@/utils/commons';
 
 
   const router = useRouter();
@@ -120,7 +121,7 @@
     searchViewRef.value.open()
   }
 
-  onMounted(() => {
+  onMounted(async () => {
     // isLogin();
     notesListFun();
   })

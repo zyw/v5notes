@@ -13,6 +13,7 @@
     import { useRoute } from 'vue-router'
     import useEditorStore from '@/stores/modules/editor'
     import { ElLoading } from 'element-plus'
+    import { getEditorWinHeight } from '@/utils/commons';
 
     const route = useRoute()
     const editorStore = useEditorStore();
@@ -78,7 +79,7 @@
         "undo",
         "redo",
         "|",
-        "fullscreen",
+        // "fullscreen",
         "edit-mode",
         {
             name: "more",
@@ -98,8 +99,9 @@
 
     const initEditor = () => {
         contentEditor.value = new Vditor('contentVditor', {
-            height: 'calc(100vh - 40px)',
+            height: getEditorWinHeight(), // 'calc(100vh - 40px - 25px)', 
             width: "100%",
+            lang: 'zh_CN',
             "mode": "ir",
             toolbarConfig: {
                 pin: false,

@@ -27,12 +27,23 @@ declare module 'vue' {
     ElImageViewer: typeof import('element-plus/es')['ElImageViewer']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElMain: typeof import('element-plus/es')['ElMain']
+    ElPagination: typeof import('element-plus/es')['ElPagination']
     ElRadio: typeof import('element-plus/es')['ElRadio']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElRow: typeof import('element-plus/es')['ElRow']
+    ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
+    ElTable: typeof import('element-plus/es')['ElTable']
+    ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElTree: typeof import('element-plus/es')['ElTree']
     ElTreeSelect: typeof import('element-plus/es')['ElTreeSelect']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    LinuxClose: typeof import('./../components/svg/LinuxClose.vue')['default']
+    LinuxMaximize: typeof import('./../components/svg/LinuxMaximize.vue')['default']
+    LinuxMinimize: typeof import('./../components/svg/LinuxMinimize.vue')['default']
+    MacClose: typeof import('./../components/svg/MacClose.vue')['default']
+    MacMaximize: typeof import('./../components/svg/MacMaximize.vue')['default']
+    MacMinimize: typeof import('./../components/svg/MacMinimize.vue')['default']
     Markdown: typeof import('./../components/svg/Markdown.vue')['default']
     Maximize: typeof import('./../components/svg/Maximize.vue')['default']
     Minimize: typeof import('./../components/svg/Minimize.vue')['default']
@@ -43,5 +54,9 @@ declare module 'vue' {
     Search: typeof import('./../components/Search.vue')['default']
     UploadImage: typeof import('./../components/UploadImage.vue')['default']
     UserInfo: typeof import('./../components/UserInfo.vue')['default']
+    WindowControls: typeof import('./../components/WindowControls.vue')['default']
+  }
+  export interface ComponentCustomProperties {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
   }
 }
