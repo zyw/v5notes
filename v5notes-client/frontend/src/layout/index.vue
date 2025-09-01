@@ -48,12 +48,12 @@
   }
  }
 
- // 处理窗口事件
+ // 处理MacOS窗口事件
  const handleWinEvent = (eventName: string) => {
-   if(eventName === 'maximize') {
+   if(eventName === 'enter-fullscreen') {
      isMaximized.value = true
    }
-   if(eventName === 'restore') {
+   if(eventName === 'exit-fullscreen') {
      isMaximized.value = false
    }
  }

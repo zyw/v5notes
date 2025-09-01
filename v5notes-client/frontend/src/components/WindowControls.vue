@@ -2,14 +2,18 @@
   <div class="window-controls" :class="platformClass">
     <!-- macOS 风格 - 按钮在左侧 -->
     <template v-if="windowStyle === WindowControlStyle.MAC">
-      <div class="mac-controls">
+      <div 
+        class="mac-controls"
+        @mouseenter="controlsHover = true"
+        @mouseleave="controlsHover = false"
+      >
         <button 
           @click="handleAction('close')" 
           @mouseenter="closeHover = true"
           @mouseleave="closeHover = false"
           class="mac-control-btn"
         >
-          <MacClose :hover="closeHover" />
+          <MacClose :hover="closeHover || controlsHover" />
         </button>
         <button 
           v-if="showMinimize"
@@ -18,16 +22,16 @@
           @mouseleave="minimizeHover = false"
           class="mac-control-btn"
         >
-          <MacMinimize :hover="minimizeHover" />
+          <MacMinimize :hover="minimizeHover || controlsHover" />
         </button>
         <button 
           v-if="showMaximize"
-          @click="handleAction(isMaximized ? 'restore' : 'maximize')" 
+          @click="handleAction(isMaximized ? 'exit-fullscreen' : 'enter-fullscreen')" 
           @mouseenter="maximizeHover = true"
           @mouseleave="maximizeHover = false"
           class="mac-control-btn"
         >
-          <MacMaximize :hover="maximizeHover" :isMaximized="isMaximized" />
+          <MacMaximize :hover="maximizeHover || controlsHover" :isMaximized="isMaximized" />
         </button>
       </div>
     </template>
@@ -115,6 +119,7 @@ const windowStyle = ref<WindowControlStyle>(WindowControlStyle.WINDOWS)
 const closeHover = ref(false)
 const minimizeHover = ref(false)
 const maximizeHover = ref(false)
+const controlsHover = ref(false) // 整个控制区域的悬浮状态
 
 const platformClass = computed(() => {
   return {

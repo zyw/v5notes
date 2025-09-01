@@ -15,7 +15,7 @@
     <path 
       v-if="hover"
       d="M3.5 6 L8.5 6" 
-      stroke="#fff" 
+      stroke="#000" 
       stroke-width="1.2" 
       stroke-linecap="round"
     />
