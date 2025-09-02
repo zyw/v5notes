@@ -34,7 +34,11 @@ module.exports = (appInfo) => {
       nodeIntegration: true,
       //preload: path.join(appInfo.baseDir, 'preload', 'bridge.js'),
     },
-    frame: false,
+    // 窗口是否显示顶部菜单，但是显示关闭、最小化和最大化按钮
+    // 教程：https://zhuanlan.zhihu.com/p/677492706
+    titleBarStyle: 'hidden',
+    // 如果设置成false, 则不会显示顶部菜单，包括 关闭、最小化和最大化按钮
+    frame: true,
     show: false,
     icon: path.join(appInfo.home, 'public', 'images', 'logo-32.png'),
   };

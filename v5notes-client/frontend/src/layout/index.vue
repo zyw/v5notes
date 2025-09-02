@@ -1,12 +1,12 @@
 <template>
     <div class="app-container home">
         <div class="mac-controls-area win-title" v-if="isMacOS">
-            <WindowControls 
+            <!-- <WindowControls 
                 class="win-btn"
                 :isMaximized="isMaximized" 
                 :showMaximize="true"
                 @action="handleWinEvent"
-            />
+            /> -->
         </div>
         <el-container id="dept" class="win-height">
             <el-aside width="260px" id="drag-dept-left" :style="{display: isDisplay}">
@@ -38,7 +38,7 @@
 
  const isDisplay = ref('block')
  const isMacOS = ref(false);
- const isMaximized = ref(false);
+//  const isMaximized = ref(false);
 
  const displayLeft = (_isDisplay) => {
   if(_isDisplay) {
@@ -49,24 +49,24 @@
  }
 
  // 处理MacOS窗口事件
- const handleWinEvent = (eventName: string) => {
-   if(eventName === 'enter-fullscreen') {
-     isMaximized.value = true
-   }
-   if(eventName === 'exit-fullscreen') {
-     isMaximized.value = false
-   }
- }
+//  const handleWinEvent = (eventName: string) => {
+//    if(eventName === 'enter-fullscreen') {
+//      isMaximized.value = true
+//    }
+//    if(eventName === 'exit-fullscreen') {
+//      isMaximized.value = false
+//    }
+//  }
  
  const initIsMaximized = () => {
-   ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
-     isMaximized.value = result
-   })
+  //  ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
+  //    isMaximized.value = result
+  //  })
    // 监听由主进程中发送的事件
    ipcRenderer.removeAllListeners(specialIpcRoute.onUpdateMaximize);
-   ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
-     isMaximized.value = result
-   })
+  //  ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
+  //    isMaximized.value = result
+  //  })
  }
 
  const calcWinHeight = async () => {
