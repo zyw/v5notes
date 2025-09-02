@@ -1,12 +1,12 @@
 <template>
     <div class="app-container home">
         <div class="mac-controls-area win-title" v-if="isMacOS">
-            <WindowControls 
+            <!-- <WindowControls 
                 class="win-btn"
                 :isMaximized="isMaximized" 
                 :showMaximize="true"
                 @action="handleWinEvent"
-            />
+            /> -->
         </div>
         <el-container id="dept" class="win-height">
             <el-aside width="260px" id="drag-dept-left" :style="{display: isDisplay}">
@@ -27,10 +27,10 @@
  import { onMounted } from 'vue';
  import { layoutDrag } from "../utils/commons"
  import {AppMain,AppLeft} from './components'
- import WindowControls from '@/components/WindowControls.vue';
+//  import WindowControls from '@/components/WindowControls.vue';
  import { isMac } from '@/utils/platform';
- import { ipcApiRoute, specialIpcRoute } from '@/api/ipcMain';
- import { ipc as ipcRenderer } from '@/utils/ipcRenderer';
+//  import { ipcApiRoute, specialIpcRoute } from '@/api/ipcMain';
+//  import { ipc as ipcRenderer } from '@/utils/ipcRenderer';
  import useGlobalStore from "@/stores/modules/global";
  import { calcWindowHeight } from '@/utils/platform';
 
@@ -38,7 +38,7 @@
 
  const isDisplay = ref('block')
  const isMacOS = ref(false);
- const isMaximized = ref(false);
+//  const isMaximized = ref(false);
 
  const displayLeft = (_isDisplay) => {
   if(_isDisplay) {
@@ -48,26 +48,26 @@
   }
  }
 
- // 处理窗口事件
- const handleWinEvent = (eventName: string) => {
-   if(eventName === 'maximize') {
-     isMaximized.value = true
-   }
-   if(eventName === 'restore') {
-     isMaximized.value = false
-   }
- }
+ // 处理MacOS窗口事件
+//  const handleWinEvent = (eventName: string) => {
+//    if(eventName === 'enter-fullscreen') {
+//      isMaximized.value = true
+//    }
+//    if(eventName === 'exit-fullscreen') {
+//      isMaximized.value = false
+//    }
+//  }
  
- const initIsMaximized = () => {
-   ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
-     isMaximized.value = result
-   })
-   // 监听由主进程中发送的事件
-   ipcRenderer.removeAllListeners(specialIpcRoute.onUpdateMaximize);
-   ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
-     isMaximized.value = result
-   })
- }
+//  const initIsMaximized = () => {
+//   //  ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
+//   //    isMaximized.value = result
+//   //  })
+//    // 监听由主进程中发送的事件
+//    ipcRenderer.removeAllListeners(specialIpcRoute.onUpdateMaximize);
+//   //  ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
+//   //    isMaximized.value = result
+//   //  })
+//  }
 
  const calcWinHeight = async () => {
     const indexHeight = await calcWindowHeight(120);
@@ -79,7 +79,7 @@
  onMounted(async () => {
     layoutDrag("dragBar-dept")
     isMacOS.value = await isMac()
-    initIsMaximized()
+    // initIsMaximized()
     await calcWinHeight()
  })
 </script>

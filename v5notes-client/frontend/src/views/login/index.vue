@@ -1,6 +1,7 @@
 <template>
-    <div class="absolute flex w-full h-30px z-500 bg-white win-title" :class="{ 'justify-start': isMacOS, 'justify-end': !isMacOS }">
+    <div class="absolute flex w-full h-30px z-500 bg-white justify-end win-title">
       <WindowControls 
+        v-if="!isMacOS"
         class="win-btn"
         :showMaximize="false"
         :showMinimize="false"
@@ -83,7 +84,7 @@
   import { ipc as ipcRenderer } from '@/utils/ipcRenderer'
   import { to } from 'await-to-js';
   import { User, Lock, OfficeBuilding } from "@element-plus/icons-vue";
-  import { ref, reactive, onMounted, computed } from "vue";
+  import { ref, reactive, onMounted } from "vue";
   import type { FormInstance, FormRules } from "element-plus";
   import { koiMsgWarning, koiMsgError } from "@/utils/commons";
   import { useRouter } from "vue-router";
@@ -152,9 +153,6 @@
   const handleCloseWin = (action?: string) => {
     // 只处理关闭操作，忽略其他操作（登录页不支持最大化/最小化）
     console.log("action: ", action)
-    // if (!action || action === 'close') {
-    //   ipcRenderer.send("close");
-    // }
   }
   
   /** 登录 */

@@ -2,32 +2,36 @@
   <div class="window-controls" :class="platformClass">
     <!-- macOS 风格 - 按钮在左侧 -->
     <template v-if="windowStyle === WindowControlStyle.MAC">
-      <div class="mac-controls">
+      <div 
+        class="mac-controls"
+        @mouseenter="controlsHover = true"
+        @mouseleave="controlsHover = false"
+      >
         <button 
-          @click="handleAction('close')" 
+          @click="handleAction(ipcEvents.close)" 
           @mouseenter="closeHover = true"
           @mouseleave="closeHover = false"
           class="mac-control-btn"
         >
-          <MacClose :hover="closeHover" />
+          <MacClose :hover="closeHover || controlsHover" />
         </button>
         <button 
           v-if="showMinimize"
-          @click="handleAction('minimize')" 
+          @click="handleAction(ipcEvents.minimize)" 
           @mouseenter="minimizeHover = true"
           @mouseleave="minimizeHover = false"
           class="mac-control-btn"
         >
-          <MacMinimize :hover="minimizeHover" />
+          <MacMinimize :hover="minimizeHover || controlsHover" />
         </button>
         <button 
           v-if="showMaximize"
-          @click="handleAction(isMaximized ? 'restore' : 'maximize')" 
+          @click="handleAction(isMaximized ? ipcEvents.exitFullscreen : ipcEvents.enterFullscreen)" 
           @mouseenter="maximizeHover = true"
           @mouseleave="maximizeHover = false"
           class="mac-control-btn"
         >
-          <MacMaximize :hover="maximizeHover" :isMaximized="isMaximized" />
+          <MacMaximize :hover="maximizeHover || controlsHover" :isMaximized="isMaximized" />
         </button>
       </div>
     </template>
@@ -37,7 +41,7 @@
       <div class="win-controls">
         <button 
           v-if="showMinimize"
-          @click="handleAction('minimize')" 
+          @click="handleAction(ipcEvents.minimize)" 
           class="win-control-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -50,7 +54,7 @@
         
         <button 
           v-if="showMaximize"
-          @click="handleAction(isMaximized ? 'restore' : 'maximize')" 
+          @click="handleAction(isMaximized ? ipcEvents.restore : ipcEvents.maximize)" 
           class="win-control-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -63,7 +67,7 @@
         </button>
         
         <button 
-          @click="handleAction('close')" 
+          @click="handleAction(ipcEvents.close)" 
           class="win-control-btn close-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -83,6 +87,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Minus, Close } from "@element-plus/icons-vue"
 import { WindowControlStyle, getWindowControlStyle } from '@/utils/platform'
 import { ipc as ipcRenderer } from '@/utils/ipcRenderer'
+import { ipcEvents } from '@/api/ipcMain'
 import Maximize from '@/components/svg/Maximize.vue'
 import Minimize from '@/components/svg/Minimize.vue'
 import MacClose from '@/components/svg/MacClose.vue'
@@ -115,6 +120,7 @@ const windowStyle = ref<WindowControlStyle>(WindowControlStyle.WINDOWS)
 const closeHover = ref(false)
 const minimizeHover = ref(false)
 const maximizeHover = ref(false)
+const controlsHover = ref(false) // 整个控制区域的悬浮状态
 
 const platformClass = computed(() => {
   return {

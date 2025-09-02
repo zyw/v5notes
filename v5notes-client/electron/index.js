@@ -36,6 +36,21 @@ class Index extends Application {
     ipcMain.on('restore', () => {
       BrowserWindow.getFocusedWindow().restore()
     })
+
+    // 全屏切换
+    ipcMain.on('enter-fullscreen', () => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) {
+        win.setFullScreen(true);
+      }
+    })
+
+    ipcMain.on('exit-fullscreen', () => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) {
+        win.setFullScreen(false);
+      }
+    })
     
     // 获取操作系统平台信息
     ipcMain.handle('get-platform', () => {
@@ -64,6 +79,15 @@ class Index extends Application {
       win.on('unmaximize', () => {
         win.webContents.send('update-maximize', false)
       })
+
+      // 添加全屏事件监听
+      win.on('enter-full-screen', () => {
+        win.webContents.send('update-fullscreen', true);
+      });
+
+      win.on('leave-full-screen', () => {
+        win.webContents.send('update-fullscreen', false);
+      });
     }
   }
 

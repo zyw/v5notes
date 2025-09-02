@@ -13,25 +13,41 @@
       :class="{ 'hover:opacity-80': hover }"
     />
     <g v-if="hover">
-      <path 
-        v-if="!isMaximized"
-        d="M3.5 3.5 L8.5 3.5 L8.5 8.5 L3.5 8.5 Z" 
-        stroke="#fff" 
-        stroke-width="1" 
-        fill="none"
-      />
-      <g v-else>
-        <!-- 还原图标：两个重叠的小方块 -->
+      <g v-if="!isMaximized">
+        <!-- 全屏图标：左上到右下的两个对角箭头 -->
+        <!-- 左上箭头 -->
         <path 
-          d="M4 4 L7 4 L7 7 L4 7 Z" 
-          stroke="#fff" 
-          stroke-width="0.8" 
+          d="M3.5 3.5 L3.5 5.5 M3.5 3.5 L5.5 3.5" 
+          stroke="#000" 
+          stroke-width="1.2" 
+          stroke-linecap="round"
+        />
+        <!-- 右下箭头 -->
+        <path 
+          d="M8.5 8.5 L8.5 6.5 M8.5 8.5 L6.5 8.5" 
+          stroke="#000" 
+          stroke-width="1.2" 
+          stroke-linecap="round"
+        />
+      </g>
+      <g v-else>
+        <!-- 退出全屏图标：两个相反方向的L形路径 -->
+        <!-- 第一个 L 形路径：左下到右下到右上 -->
+        <path 
+          d="M3.5 8.5 L6.5 8.5 L6.5 5.5" 
+          stroke="#000" 
+          stroke-width="1.2" 
+          stroke-linecap="round"
+          stroke-linejoin="round"
           fill="none"
         />
+        <!-- 第二个 L 形路径：右上到左上到左下 -->
         <path 
-          d="M5 5 L8 5 L8 8 L5 8 Z" 
-          stroke="#fff" 
-          stroke-width="0.8" 
+          d="M8.5 3.5 L5.5 3.5 L5.5 6.5" 
+          stroke="#000" 
+          stroke-width="1.2" 
+          stroke-linecap="round"
+          stroke-linejoin="round"
           fill="none"
         />
       </g>
