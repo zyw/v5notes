@@ -27,10 +27,10 @@
  import { onMounted } from 'vue';
  import { layoutDrag } from "../utils/commons"
  import {AppMain,AppLeft} from './components'
- import WindowControls from '@/components/WindowControls.vue';
+//  import WindowControls from '@/components/WindowControls.vue';
  import { isMac } from '@/utils/platform';
- import { ipcApiRoute, specialIpcRoute } from '@/api/ipcMain';
- import { ipc as ipcRenderer } from '@/utils/ipcRenderer';
+//  import { ipcApiRoute, specialIpcRoute } from '@/api/ipcMain';
+//  import { ipc as ipcRenderer } from '@/utils/ipcRenderer';
  import useGlobalStore from "@/stores/modules/global";
  import { calcWindowHeight } from '@/utils/platform';
 
@@ -58,16 +58,16 @@
 //    }
 //  }
  
- const initIsMaximized = () => {
-  //  ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
-  //    isMaximized.value = result
-  //  })
-   // 监听由主进程中发送的事件
-   ipcRenderer.removeAllListeners(specialIpcRoute.onUpdateMaximize);
-  //  ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
-  //    isMaximized.value = result
-  //  })
- }
+//  const initIsMaximized = () => {
+//   //  ipcRenderer.invoke(ipcApiRoute.winStatus).then(result => {
+//   //    isMaximized.value = result
+//   //  })
+//    // 监听由主进程中发送的事件
+//    ipcRenderer.removeAllListeners(specialIpcRoute.onUpdateMaximize);
+//   //  ipcRenderer.on(specialIpcRoute.onUpdateMaximize, (event, result) => {
+//   //    isMaximized.value = result
+//   //  })
+//  }
 
  const calcWinHeight = async () => {
     const indexHeight = await calcWindowHeight(120);
@@ -79,7 +79,7 @@
  onMounted(async () => {
     layoutDrag("dragBar-dept")
     isMacOS.value = await isMac()
-    initIsMaximized()
+    // initIsMaximized()
     await calcWinHeight()
  })
 </script>

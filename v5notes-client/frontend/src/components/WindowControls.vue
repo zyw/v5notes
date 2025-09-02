@@ -8,7 +8,7 @@
         @mouseleave="controlsHover = false"
       >
         <button 
-          @click="handleAction('close')" 
+          @click="handleAction(ipcEvents.close)" 
           @mouseenter="closeHover = true"
           @mouseleave="closeHover = false"
           class="mac-control-btn"
@@ -17,7 +17,7 @@
         </button>
         <button 
           v-if="showMinimize"
-          @click="handleAction('minimize')" 
+          @click="handleAction(ipcEvents.minimize)" 
           @mouseenter="minimizeHover = true"
           @mouseleave="minimizeHover = false"
           class="mac-control-btn"
@@ -26,7 +26,7 @@
         </button>
         <button 
           v-if="showMaximize"
-          @click="handleAction(isMaximized ? 'exit-fullscreen' : 'enter-fullscreen')" 
+          @click="handleAction(isMaximized ? ipcEvents.exitFullscreen : ipcEvents.enterFullscreen)" 
           @mouseenter="maximizeHover = true"
           @mouseleave="maximizeHover = false"
           class="mac-control-btn"
@@ -41,7 +41,7 @@
       <div class="win-controls">
         <button 
           v-if="showMinimize"
-          @click="handleAction('minimize')" 
+          @click="handleAction(ipcEvents.minimize)" 
           class="win-control-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -54,7 +54,7 @@
         
         <button 
           v-if="showMaximize"
-          @click="handleAction(isMaximized ? 'restore' : 'maximize')" 
+          @click="handleAction(isMaximized ? ipcEvents.restore : ipcEvents.maximize)" 
           class="win-control-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -67,7 +67,7 @@
         </button>
         
         <button 
-          @click="handleAction('close')" 
+          @click="handleAction(ipcEvents.close)" 
           class="win-control-btn close-btn"
         >
           <template v-if="windowStyle === WindowControlStyle.LINUX">
@@ -87,6 +87,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Minus, Close } from "@element-plus/icons-vue"
 import { WindowControlStyle, getWindowControlStyle } from '@/utils/platform'
 import { ipc as ipcRenderer } from '@/utils/ipcRenderer'
+import { ipcEvents } from '@/api/ipcMain'
 import Maximize from '@/components/svg/Maximize.vue'
 import Minimize from '@/components/svg/Minimize.vue'
 import MacClose from '@/components/svg/MacClose.vue'

@@ -1,11 +1,12 @@
 <template>
-    <div class="absolute flex w-full h-30px z-500 bg-white win-title">
-      <!-- <WindowControls 
+    <div class="absolute flex w-full h-30px z-500 bg-white justify-end win-title">
+      <WindowControls 
+        v-if="!isMacOS"
         class="win-btn"
         :showMaximize="false"
         :showMinimize="false"
         @action="handleCloseWin"
-      /> -->
+      />
     </div>
     <div class="h-full">
       <el-row class="h-100%">
@@ -94,8 +95,8 @@
   import KoiLoading from "./components/KoiLoading.vue";
   import { setToken } from "@/utils/auth";
   import useGlobalStore from "@/stores/modules/global";
-  // import WindowControls from '@/components/WindowControls.vue';
-  // import { isMac } from '@/utils/platform';
+  import WindowControls from '@/components/WindowControls.vue';
+  import { isMac } from '@/utils/platform';
   
   const globalStore = useGlobalStore();
   const router = useRouter();
@@ -105,7 +106,7 @@
   const bg = getAssets("images/login/bg.png");
   const loginFormRef = ref<FormInstance>();
   const loading = ref(false);
-  // const isMacOS = ref(false);
+  const isMacOS = ref(false);
 
   const redirect = ref(undefined);
 
@@ -149,13 +150,10 @@
   });
 
   // 关闭登录窗口
-  // const handleCloseWin = (action?: string) => {
-  //   // 只处理关闭操作，忽略其他操作（登录页不支持最大化/最小化）
-  //   console.log("action: ", action)
-  //   // if (!action || action === 'close') {
-  //   //   ipcRenderer.send("close");
-  //   // }
-  // }
+  const handleCloseWin = (action?: string) => {
+    // 只处理关闭操作，忽略其他操作（登录页不支持最大化/最小化）
+    console.log("action: ", action)
+  }
   
   /** 登录 */
   const handleKoiLogin = async () => {
@@ -210,7 +208,7 @@
   // 进入页面加载管理员信息
   onMounted(async () => {
     ipcRenderer.send(ipcApiRoute.loginWindow,{ width: 800, height: 600 })
-    // isMacOS.value = await isMac()
+    isMacOS.value = await isMac()
   });
 </script>
   

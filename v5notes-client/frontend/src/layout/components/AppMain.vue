@@ -19,7 +19,7 @@
     </div>
 </template>
 <script setup lang='ts'>
-  import { ipcApiRoute, specialIpcRoute } from '@/api/ipcMain';
+  import { ipcApiRoute, specialIpcRoute, ipcEvents } from '@/api/ipcMain';
   import { ipc as ipcRenderer } from '@/utils/ipcRenderer'
   import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
   import useLeftMenuStore from "@/stores/modules/leftMenu";
@@ -41,10 +41,10 @@ import { isMac } from '@/utils/platform';
 
   // 处理窗口事件
   const handleWinEvent = (eventName: string) => {
-    if(eventName === 'maximize') {
+    if(eventName === ipcEvents.maximize) {
       isMaximized.value = true
     }
-    if(eventName === 'restore') {
+    if(eventName === ipcEvents.restore) {
       isMaximized.value = false
     }
   }
