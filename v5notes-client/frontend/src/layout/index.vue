@@ -86,7 +86,7 @@
 <style scoped>
   .mac-controls-area {
     width: 100%;
-    height: 24px;
+    height: 29px;
     background: var(--el-bg-color);
     border-bottom: 1px solid rgb(238,238,238);
     z-index: 1000;
