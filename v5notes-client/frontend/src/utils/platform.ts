@@ -81,6 +81,6 @@ export async function isLinux(): Promise<boolean> {
  */
 export async function calcWindowHeight(winTopHeight:number): Promise<string> {
   const isMacPlatform = await isMac();
-  const style = isMacPlatform ? 'calc(100vh - ' + (winTopHeight + 25) + 'px)' : 'calc(100vh - ' + winTopHeight + 'px)';
+  const style = isMacPlatform ? 'calc(100vh - ' + (winTopHeight + 30) + 'px)' : 'calc(100vh - ' + winTopHeight + 'px)';
   return style;
 }
