@@ -14,7 +14,7 @@ router.beforeEach(async (to, from, next) => {
   
   // 判断是否是登录页跳转到首页，如果是则调整窗口大小
   if((from.path === '/login' || from.path.startsWith('/login')) 
-    && to.path === '/' || to.path === '/index') {
+    && (to.path === '/' || to.path === '/index')) {
     ipcRenderer.send(ipcApiRoute.mainWindow,{ width: 1200, height: 800 })
   }
 
