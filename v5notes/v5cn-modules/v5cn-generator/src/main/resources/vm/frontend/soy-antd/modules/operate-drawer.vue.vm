@@ -1,0 +1,235 @@
+<script setup lang="ts">
+    import { computed, reactive, watch } from 'vue';
+    import { Drawer, Form, Input, Select, Radio, Checkbox, DatePicker, Button, Space } from 'ant-design-vue';
+    import { fetchCreate${BusinessName}, fetchUpdate${BusinessName} } from '@/service/api/${moduleName}/${business__name}';
+        #if($dictList && $dictList.size() > 0)import { useDict } from '@/hooks/business/dict';#end
+    import { $t } from '@/locales';
+
+    defineOptions({
+        name: '${BusinessName}OperateDrawer'
+    });
+
+    interface Props {
+        /** the type of operation */
+        operateType: NaiveUI.TableOperateType;
+        /** the edit row data */
+        rowData?: Api.$ModuleName.${BusinessName} | null;
+    }
+
+    const props = defineProps<Props>();
+
+    interface Emits {
+        (e: 'submitted'): void;
+    }
+
+    const emit = defineEmits<Emits>();
+
+    const visible = defineModel<boolean>('visible', {
+        default: false
+    });
+
+        #if($dictList && $dictList.size() > 0)
+            #foreach($dict in $dictList)
+            const { options: ${dict.name}Options } = useDict('${dict.type}'#if($dict.immediate), false#end);
+            #end#end
+
+    const formRef = ref();
+
+    const title = computed(() => {
+        const titles: Record<NaiveUI.TableOperateType, string> = {
+            add: '新增${functionName}',
+            edit: '编辑${functionName}'
+        };
+        return titles[props.operateType];
+    });
+
+    type Model = Api.$ModuleName.${BusinessName}OperateParams;
+
+    const model: Model = reactive(createDefaultModel());
+
+    function createDefaultModel(): Model {
+        return {
+            #foreach($column in $columns)
+                #if($column.insert)
+                    ${column.javaField}:#if($column.javaType == 'String' || ($!column.dictType && $column.dictType != '')) ''#else undefined#end#if($foreach.hasNext),#end
+                #end
+            #end
+        };
+    }
+
+    const rules = {
+        #foreach($column in $columns)
+            #if($column.required)
+                    $column.javaField: [{ required: true, message: '${column.columnComment}不能为空', trigger: 'blur' }]#if($foreach.hasNext),#end
+            #end
+        #end
+    };
+
+    function handleUpdateModelWhenEdit() {
+        if (props.operateType === 'add') {
+            Object.assign(model, createDefaultModel());
+            return;
+        }
+
+        if (props.operateType === 'edit' && props.rowData) {
+            Object.assign(model, props.rowData);
+        }
+    }
+
+    function closeDrawer() {
+        visible.value = false;
+    }
+
+    async function handleSubmit() {
+        try {
+            await formRef.value.validate();
+
+            #set($operateColumns = [])
+            #foreach($column in $columns)#if($column.insert || $column.edit)#set($dummy = $operateColumns.add($column))#end#end
+            const { #foreach($column in $operateColumns)$column.javaField#if($foreach.hasNext), #end#end } = model;
+
+            // request
+            if (props.operateType === 'add') {
+                #set($addFields = [])
+                #foreach($column in $columns)#if($column.insert)#set($dummy = $addFields.add($column.javaField))#end#end
+            const { error } = await fetchCreate${BusinessName}({ #foreach($field in $addFields)$field#if($foreach.hasNext), #end#end });
+                if (error) return;
+            }
+
+            if (props.operateType === 'edit') {
+                #set($editFields = [])
+                #foreach($column in $columns)#if($column.edit)#set($dummy = $editFields.add($column.javaField))#end#end
+            const { error } = await fetchUpdate${BusinessName}({ #foreach($field in $editFields)$field#if($foreach.hasNext), #end#end });
+                if (error) return;
+            }
+
+            window.$message?.success($t('common.updateSuccess'));
+            closeDrawer();
+            emit('submitted');
+        } catch (error) {
+            console.error('Validation failed', error);
+        }
+    }
+
+    watch(visible, () => {
+        if (visible.value) {
+            handleUpdateModelWhenEdit();
+            formRef.value?.resetFields();
+        }
+    });
+</script>
+
+<template>
+    <Drawer
+        v-model:visible="visible"
+        :title="title"
+        :width="800"
+        :destroyOnClose="false"
+        class="max-w-90%"
+    >
+        <Form
+            ref="formRef"
+            :model="model"
+            :rules="rules"
+            layout="vertical"
+        >
+            #foreach($column in $columns)
+                #set($field=$column.javaField)
+                #if(($column.insert || $column.edit) && !$column.pk)
+                    #set($parentheseIndex=$column.columnComment.indexOf("（"))
+                    #if($parentheseIndex != -1)
+                        #set($comment=$column.columnComment.substring(0, $parentheseIndex))
+                    #else
+                        #set($comment=$column.columnComment)
+                    #end
+                    #set($dictType=$!StrUtil.toCamelCase($column.dictType))
+                    <Form.Item label="$column.columnComment" name="$column.javaField">
+                        #if($column.htmlType == "textarea" || $column.htmlType == "editor")
+                            <Input.TextArea
+                                v-model:value="model.$column.javaField"
+                                :rows="3"
+                                placeholder="请输入$column.columnComment"
+                            />
+                        #elseif($column.htmlType == "select" && "" != $dictType)
+                            <Select
+                                v-model:value="model.$column.javaField"
+                                placeholder="请选择$column.columnComment"
+                                :options="${dictType}Options"
+                                allowClear
+                                style="width: 100%"
+                            />
+                        #elseif($column.htmlType == "select" && $dictType)
+                            <Select
+                                v-model:value="model.$column.javaField"
+                                placeholder="请选择$column.columnComment"
+                                :options="[]"
+                                allowClear
+                                style="width: 100%"
+                            />
+                        #elseif($column.htmlType == "radio" && "" != $dictType)
+                            <Radio.Group v-model:value="model.$column.javaField">
+                                <Space>
+                                    <Radio
+                                        v-for="option in ${dictType}Options"
+                                        :key="option.value"
+                                        :value="option.value"
+                                    >
+                                        {{ option.label }}
+                                    </Radio>
+                                </Space>
+                            </Radio.Group>
+                        #elseif($column.htmlType == "radio" && $dictType)
+                            <Radio.Group v-model:value="model.$column.javaField">
+                                <Space>
+                                    <Radio value="0">请选择字典生成</Radio>
+                                </Space>
+                            </Radio.Group>
+                        #elseif($column.htmlType == "checkbox" && "" != $dictType)
+                            <Checkbox.Group v-model:value="model.$column.javaField">
+                                <Space>
+                                    <Checkbox
+                                        v-for="option in ${dictType}Options"
+                                        :key="option.value"
+                                        :value="option.value"
+                                    >
+                                        {{ option.label }}
+                                    </Checkbox>
+                                </Space>
+                            </Checkbox.Group>
+                        #elseif($column.htmlType == "checkbox" && $dictType)
+                            <Checkbox.Group v-model:value="model.$column.javaField">
+                                <Space>
+                                    <Checkbox value="0">请选择字典生成</Checkbox>
+                                </Space>
+                            </Checkbox.Group>
+                        #elseif($column.htmlType == 'datetime')
+                            <DatePicker
+                                v-model:value="model.$column.javaField"
+                                show-time
+                                format="YYYY-MM-DD HH:mm:ss"
+                                value-format="YYYY-MM-DD HH:mm:ss"
+                                allowClear
+                                style="width: 100%"
+                            />
+                        #elseif($column.htmlType == "imageUpload")
+                            <OssUpload v-model:value="model.$column.javaField" upload-type="image" />
+                        #elseif($column.htmlType == "fileUpload")
+                            <OssUpload v-model:value="model.$column.javaField" upload-type="file" />
+                        #elseif($column.htmlType == "editor")
+                            <TinymceEditor v-model:value="model.$column.javaField" />
+                        #else        <Input v-model:value="model.$column.javaField" placeholder="请输入$column.columnComment" />
+                        #end
+                    </Form.Item>
+                #end
+            #end
+        </Form>
+        <template #footer>
+            <Space :size="16">
+                <Button @click="closeDrawer">{{ $t('common.cancel') }}</Button>
+                <Button type="primary" @click="handleSubmit">{{ $t('common.confirm') }}</Button>
+            </Space>
+        </template>
+    </Drawer>
+</template>
+
+<style scoped></style>

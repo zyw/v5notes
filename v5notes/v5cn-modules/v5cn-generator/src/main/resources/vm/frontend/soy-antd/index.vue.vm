@@ -1,0 +1,197 @@
+<script setup lang="tsx">
+    import { Button, Popconfirm, Divider } from 'ant-design-vue';
+    import { fetchBatchDelete${BusinessName}, fetchGet${BusinessName}List } from '@/service/api/${moduleName}/${business__name}';
+    import { useTable, useTableOperate, useTableScroll } from '@/hooks/common/table';
+    import { $t } from '@/locales';
+    import { formatCreatedAt } from '@/utils/date';
+    import ${BusinessName}OperateDrawer from './modules${business__name}-operate-drawer.vue';
+    import ${BusinessName}Search from './modules${business__name}-search.vue';
+
+    defineOptions({
+        name: '${BusinessName}List'
+    });
+
+    const { tableWrapperRef, scrollConfig } = useTableScroll();
+    const { hasAuth } = useAuth();
+
+    const {
+        columns,
+        columnChecks,
+        data,
+        getData,
+        getDataByPage,
+        loading,
+        mobilePagination,
+        searchParams,
+        resetSearchParams
+    } = useTable({
+        apiFn: fetchGet${BusinessName}List,
+        apiParams: {
+            page: 1,
+            pageSize: 10,
+            // if you want to use the searchParams in Form, you need to define the following properties, and the value is null
+            // the value can not be undefined, otherwise the property in Form will not be reactive
+            #foreach ($column in $columns)
+                #if($column.query)
+                        $column.javaField: null#if($foreach.hasNext),#end
+                #end
+            #end
+            params: {}
+        },
+        columns: () => [
+            {
+                key: 'index',
+                title: $t('common.index'),
+                dataIndex: 'index',
+                align: 'center',
+                width: 64
+            },
+            #foreach ($column in $columns)
+                #if($column.list)
+                    {
+                        key: '$column.javaField',
+                        title: '$column.columnComment',
+                        dataIndex: '$column.javaField',
+                        align: 'center',
+                        minWidth: 120
+                    },
+                #end
+            #end
+            {
+                key: 'operate',
+                title: $t('common.operate'),
+                align: 'center',
+                width: 130,
+                customRender: ({ record }) => {
+                    const renderContent = () => {
+                        const editBtn = () => {
+                            if (!hasAuth('${moduleName}:${businessName}:edit')) {
+                                return null;
+                            }
+                            return (
+                                <Button type="primary" ghost size="small" onClick={() => edit(record.#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end)}>
+                                    {$t('common.edit')}
+                                </Button>
+                            );
+                        };
+
+                        const divider = () => {
+                            if (!hasAuth('${moduleName}:${businessName}:edit') || !hasAuth('${moduleName}:${businessName}:remove')) {
+                                return null;
+                            }
+                            return <Divider type="vertical" />;
+                        };
+
+                        const deleteBtn = () => {
+                            if (!hasAuth('${moduleName}:${businessName}:remove')) {
+                                return null;
+                            }
+                            return (
+                                <Popconfirm title={$t('common.confirmDelete')} onConfirm={() => handleDelete(record.#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end)}>
+                                    <Button danger size="small">
+                                        {$t('common.delete')}
+                                    </Button>
+                                </Popconfirm>
+                            );
+                        };
+
+                        return (
+                            <>
+                                {editBtn()}
+                                {divider()}
+                                {deleteBtn()}
+                            </>
+                        );
+                    };
+
+                    return (
+                        <div class="flex-center gap-8px">
+                            {renderContent()}
+                        </div>
+                    );
+                }
+            }
+        ]
+    });
+
+    const {
+        drawerVisible,
+        operateType,
+        editingData,
+        handleAdd,
+        handleEdit,
+        checkedRowKeys,
+        rowSelection,
+        onBatchDeleted,
+        onDeleted
+    } = useTableOperate(data, getData);
+
+    async function handleBatchDelete() {
+        // request
+        const { error } = await fetchBatchDelete${BusinessName}(checkedRowKeys.value);
+        if (error) return;
+        onBatchDeleted();
+    }
+
+    async function handleDelete(#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end: CommonType.IdType) {
+        // request
+        const { error } = await fetchBatchDelete${BusinessName}([#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end]);
+        if (error) return;
+        onDeleted();
+    }
+
+    function edit(#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end: CommonType.IdType) {
+        handleEdit('#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end', #foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end);
+    }
+
+    function handleExport() {
+        download('/${moduleName}/${businessName}/export', searchParams, `${functionName}_#[[${new Date().getTime()}]]#.xlsx`);
+    }
+</script>
+
+<template>
+    <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
+        <${BusinessName}Search v-model:model="searchParams" @reset="resetSearchParams" @search="getDataByPage" />
+        <ACard
+            title="${functionName}列表"
+            :bordered="false"
+            :body-style="{ flex: 1, overflow: 'hidden' }"
+            class="flex-col-stretch sm:flex-1-hidden card-wrapper"
+        >
+            <template #extra>
+                <TableHeaderOperation
+                    v-model:columns="columnChecks"
+                    :disabled-delete="checkedRowKeys.length === 0"
+                    :loading="loading"
+                    :show-add="hasAuth('${moduleName}:${businessName}:add')"
+                    :show-delete="hasAuth('${moduleName}:${businessName}:remove')"
+                    :show-export="hasAuth('${moduleName}:${businessName}:export')"
+                    @add="handleAdd"
+                    @delete="handleBatchDelete"
+                    @export="handleExport"
+                    @refresh="getData"
+                />
+            </template>
+            <ATable
+                ref="tableWrapperRef"
+                :columns="columns"
+                :data-source="data"
+                size="small"
+                :row-selection="rowSelection"
+                :scroll="scrollConfig"
+                :loading="loading"
+                :row-key="row => row.#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end"
+                :pagination="mobilePagination"
+                class="h-full"
+            />
+            <${BusinessName}OperateDrawer
+                v-model:visible="drawerVisible"
+                :operate-type="operateType"
+                :row-data="editingData"
+                @submitted="getDataByPage"
+            />
+        </ACard>
+    </div>
+</template>
+
+<style scoped></style>

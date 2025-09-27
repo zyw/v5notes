@@ -1,19 +1,27 @@
 package org.dromara.generator.util;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.core.lang.Dict;
-import org.dromara.generator.constant.GenConstants;
-import org.dromara.common.core.utils.DateUtils;
-import org.dromara.common.core.utils.StringUtils;
-import org.dromara.common.json.utils.JsonUtils;
-import org.dromara.common.mybatis.helper.DataBaseHelper;
-import org.dromara.generator.domain.GenTable;
-import org.dromara.generator.domain.GenTableColumn;
+import cn.hutool.core.util.StrUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.velocity.VelocityContext;
+import org.dromara.common.core.utils.DateUtils;
+import org.dromara.common.core.utils.SpringUtils;
+import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.json.utils.JsonUtils;
+import org.dromara.common.mybatis.enums.DataBaseType;
+import org.dromara.common.mybatis.helper.DataBaseHelper;
+import org.dromara.generator.constant.GenConstants;
+import org.dromara.generator.domain.GenTable;
+import org.dromara.generator.domain.GenTableColumn;
 
+import java.io.File;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -21,6 +29,7 @@ import java.util.*;
  *
  * @author ruoyi
  */
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class VelocityUtils {
 
@@ -57,9 +66,12 @@ public class VelocityUtils {
         velocityContext.put("functionName", StringUtils.isNotEmpty(functionName) ? functionName : "【请填写功能名称】");
         velocityContext.put("ClassName", genTable.getClassName());
         velocityContext.put("className", StringUtils.uncapitalize(genTable.getClassName()));
-        velocityContext.put("moduleName", genTable.getModuleName());
+        velocityContext.put("moduleName", StrUtil.toSymbolCase(genTable.getModuleName(), '-'));
         velocityContext.put("BusinessName", StringUtils.capitalize(genTable.getBusinessName()));
         velocityContext.put("businessName", genTable.getBusinessName());
+        velocityContext.put("business_name", StrUtil.toUnderlineCase(genTable.getBusinessName()));
+        velocityContext.put("business__name", StrUtil.toSymbolCase(genTable.getBusinessName(), '-'));
+        velocityContext.put("businessname", StrUtil.toSymbolCase(genTable.getBusinessName(), ' '));
         velocityContext.put("basePackage", getPackagePrefix(packageName));
         velocityContext.put("packageName", packageName);
         velocityContext.put("author", genTable.getFunctionAuthor());
@@ -67,9 +79,11 @@ public class VelocityUtils {
         velocityContext.put("pkColumn", genTable.getPkColumn());
         velocityContext.put("importList", getImportList(genTable));
         velocityContext.put("permissionPrefix", getPermissionPrefix(moduleName, businessName));
+        velocityContext.put("dicts", getDicts(genTable));
+        velocityContext.put("dictList", getDictList(genTable));
         velocityContext.put("columns", genTable.getColumns());
         velocityContext.put("table", genTable);
-        velocityContext.put("dicts", getDicts(genTable));
+        velocityContext.put("StrUtil", new StrUtil());
         setMenuVelocityContext(velocityContext, genTable);
         if (GenConstants.TPL_TREE.equals(tplCategory)) {
             setTreeVelocityContext(velocityContext, genTable);
@@ -105,34 +119,45 @@ public class VelocityUtils {
 
     /**
      * 获取模板信息
+     * @param tplCategory 模板类别
+     * @param beType 后端类型
+     * @param feType 前端类型
      *
      * @return 模板列表
      */
-    public static List<String> getTemplateList(String tplCategory) {
+    public static List<String> getTemplateList(String tplCategory,String beType,String feType) {
+
         List<String> templates = new ArrayList<>();
-        templates.add("vm/java/domain.java.vm");
-        templates.add("vm/java/vo.java.vm");
-        templates.add("vm/java/bo.java.vm");
-        templates.add("vm/java/mapper.java.vm");
-        templates.add("vm/java/service.java.vm");
-        templates.add("vm/java/serviceImpl.java.vm");
-        templates.add("vm/java/controller.java.vm");
-        templates.add("vm/xml/mapper.xml.vm");
-        if (DataBaseHelper.isOracle()) {
+        String beUri = "vm/backend/" + beType;
+        List<String> templateList = getResourcesTemplateList(beUri);
+        log.info("模板列表======>：{}", JsonUtils.toJsonString(templateList));
+        templates.add(beUri + "/domain.java.vm");
+        templates.add(beUri + "/vo.java.vm");
+        templates.add(beUri + "/bo.java.vm");
+        templates.add(beUri + "/mapper.java.vm");
+        templates.add(beUri + "/service.java.vm");
+        templates.add(beUri + "/serviceImpl.java.vm");
+        templates.add(beUri + "/controller.java.vm");
+        templates.add(beUri + "/xml/mapper.xml.vm");
+        DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
+        if (dataBaseType.isOracle()) {
             templates.add("vm/sql/oracle/sql.vm");
-        } else if (DataBaseHelper.isPostgerSql()) {
+        } else if (dataBaseType.isPostgreSql()) {
             templates.add("vm/sql/postgres/sql.vm");
-        } else if (DataBaseHelper.isSqlServer()) {
+        } else if (dataBaseType.isSqlServer()) {
             templates.add("vm/sql/sqlserver/sql.vm");
         } else {
             templates.add("vm/sql/sql.vm");
         }
-        templates.add("vm/ts/api.ts.vm");
-        templates.add("vm/ts/types.ts.vm");
+        String feUri = "vm/frontend/" + feType;
+        templates.add(feUri + "/typings/api.d.ts.vm");
+        templates.add(feUri + "/api/api.ts.vm");
+        templates.add(feUri + "/modules/search.vue.vm");
+        templates.add(feUri + "/modules/operate-drawer.vue.vm");
         if (GenConstants.TPL_CRUD.equals(tplCategory)) {
-            templates.add("vm/vue/index.vue.vm");
+            templates.add(feUri + "/index.vue.vm");
         } else if (GenConstants.TPL_TREE.equals(tplCategory)) {
-            templates.add("vm/vue/index-tree.vue.vm");
+            templates.add(feUri + "/index-tree.vue.vm");
         }
         return templates;
     }
@@ -154,8 +179,8 @@ public class VelocityUtils {
 
         String javaPath = PROJECT_PATH + "/" + StringUtils.replace(packageName, ".", "/");
         String mybatisPath = MYBATIS_PATH + "/" + moduleName;
-        String vuePath = "vue";
-
+        String soybeanPath = "soy";
+        String soybeanModuleName = StrUtil.toSymbolCase(moduleName, '-');
         if (template.contains("domain.java.vm")) {
             fileName = StringUtils.format("{}/domain/{}.java", javaPath, className);
         }
@@ -177,14 +202,18 @@ public class VelocityUtils {
             fileName = StringUtils.format("{}/{}Mapper.xml", mybatisPath, className);
         } else if (template.contains("sql.vm")) {
             fileName = businessName + "Menu.sql";
-        } else if (template.contains("api.ts.vm")) {
-            fileName = StringUtils.format("{}/api/{}/{}/index.ts", vuePath, moduleName, businessName);
-        } else if (template.contains("types.ts.vm")) {
-            fileName = StringUtils.format("{}/api/{}/{}/types.ts", vuePath, moduleName, businessName);
         } else if (template.contains("index.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", vuePath, moduleName, businessName);
+            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("index-tree.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", vuePath, moduleName, businessName);
+            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+        } else if (template.contains("api.d.ts.vm")) {
+            fileName = StringUtils.format("{}/typings/api/{}.{}.api.d.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+        } else if (template.contains("api.ts.vm")) {
+            fileName = StringUtils.format("{}/service/api/{}/{}.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+        } else if (template.contains("search.vue.vm")) {
+            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-search.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
+        } else if (template.contains("operate-drawer.vue.vm")) {
+            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         }
         return fileName;
     }
@@ -239,15 +268,48 @@ public class VelocityUtils {
     /**
      * 添加字典列表
      *
-     * @param dicts 字典列表
+     * @param dicts   字典列表
      * @param columns 列集合
      */
     public static void addDicts(Set<String> dicts, List<GenTableColumn> columns) {
         for (GenTableColumn column : columns) {
             if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
                 column.getHtmlType(),
-                new String[] { GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX })) {
+                new String[]{GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX})) {
                 dicts.add("'" + column.getDictType() + "'");
+            }
+        }
+    }
+
+    /**
+     * 根据列类型获取字典组
+     *
+     * @param genTable 业务表对象
+     * @return 返回字典组
+     */
+    public static Set<Map<String, Object>> getDictList(GenTable genTable) {
+        List<GenTableColumn> columns = genTable.getColumns();
+        Set<Map<String, Object>> dicts = new HashSet<>();
+        addDictList(dicts, columns);
+        return dicts;
+    }
+
+    /**
+     * 添加字典列表
+     *
+     * @param dicts   字典列表
+     * @param columns 列集合
+     */
+    public static void addDictList(Set<Map<String, Object>> dicts, List<GenTableColumn> columns) {
+        for (GenTableColumn column : columns) {
+            if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
+                column.getHtmlType(),
+                new String[]{GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX})) {
+                Map<String, Object> dict = new HashMap<>();
+                dict.put("type", column.getDictType());
+                dict.put("name", StringUtils.toCamelCase(column.getDictType()));
+                dict.put("immediate", !column.isList());
+                dicts.add(dict);
             }
         }
     }
@@ -337,5 +399,32 @@ public class VelocityUtils {
             }
         }
         return num;
+    }
+
+    // 递归获取目录下的全部模板
+    private static List<String> getResourcesTemplateList(String path) {
+        List<URL> resources = ResourceUtil.getResources("classpath*:" + path + "/**/*.vm");
+        List<String> templates = new ArrayList<>();
+        if(CollUtil.isNotEmpty(resources)) {
+            for (URL resource : resources) {
+                String vmPath = resource.getPath();
+                // 提取vm目录之后的路径
+                String relativePath = extractVmRelativePath(vmPath);
+                if (relativePath != null) {
+                    templates.add(relativePath);
+                }
+            }
+        }
+
+        return templates;
+    }
+
+    private static String extractVmRelativePath(String fullPath) {
+        // 查找"vm/"在路径中的位置
+        int vmIndex = fullPath.indexOf("vm/");
+        if (vmIndex != -1) {
+            return fullPath.substring(vmIndex);
+        }
+        return null;
     }
 }

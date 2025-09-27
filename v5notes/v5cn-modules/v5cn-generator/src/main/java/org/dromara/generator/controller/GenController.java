@@ -3,21 +3,23 @@ package org.dromara.generator.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
+import com.baomidou.lock.annotation.Lock4j;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.dromara.common.core.domain.R;
-import org.dromara.common.mybatis.helper.DataBaseHelper;
-import org.dromara.common.web.core.BaseController;
-import org.dromara.common.mybatis.core.page.PageQuery;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.idempotent.annotation.RepeatSubmit;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.mybatis.helper.DataBaseHelper;
+import org.dromara.common.web.core.BaseController;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
 import org.dromara.generator.service.IGenTableService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +52,7 @@ public class GenController extends BaseController {
      *
      * @param tableId 表ID
      */
+    @RepeatSubmit()
     @SaCheckPermission("tool:gen:query")
     @GetMapping(value = "/{tableId}")
     public R<Map<String, Object>> getInfo(@PathVariable Long tableId) {
@@ -80,11 +83,8 @@ public class GenController extends BaseController {
     @SaCheckPermission("tool:gen:list")
     @GetMapping(value = "/column/{tableId}")
     public TableDataInfo<GenTableColumn> columnList(@PathVariable("tableId") Long tableId) {
-        TableDataInfo<GenTableColumn> dataInfo = new TableDataInfo<>();
         List<GenTableColumn> list = genTableService.selectGenTableColumnListByTableId(tableId);
-        dataInfo.setRows(list);
-        dataInfo.setTotal(list.size());
-        return dataInfo;
+        return TableDataInfo.build(list);
     }
 
     /**
@@ -94,6 +94,7 @@ public class GenController extends BaseController {
      */
     @SaCheckPermission("tool:gen:import")
     @Log(title = "代码生成", businessType = BusinessType.IMPORT)
+    @RepeatSubmit()
     @PostMapping("/importTable")
     public R<Void> importTableSave(String tables, String dataName) {
         String[] tableNames = Convert.toStrArray(tables);
@@ -108,6 +109,7 @@ public class GenController extends BaseController {
      */
     @SaCheckPermission("tool:gen:edit")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
+    @RepeatSubmit()
     @PutMapping
     public R<Void> editSave(@Validated @RequestBody GenTable genTable) {
         genTableService.validateEdit(genTable);
@@ -173,6 +175,7 @@ public class GenController extends BaseController {
      */
     @SaCheckPermission("tool:gen:edit")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
+    @Lock4j
     @GetMapping("/synchDb/{tableId}")
     public R<Void> synchDb(@PathVariable("tableId") Long tableId) {
         genTableService.synchDb(tableId);

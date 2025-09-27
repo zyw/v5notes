@@ -125,6 +125,15 @@ public class GenTable extends BaseEntity {
     private List<GenTableColumn> columns;
 
     /**
+     * 后端模板类型（可以生产任何语言的后端代码）
+     */
+    private String beType;
+    /**
+     * 前端模板类型（可以生产任何语言的前端代码）
+     */
+    private String feType;
+
+    /**
      * 其它生成选项
      */
     private String options;
@@ -162,7 +171,7 @@ public class GenTable extends BaseEntity {
      * 上级菜单ID字段
      */
     @TableField(exist = false)
-    private String parentMenuId;
+    private Long parentMenuId;
 
     /**
      * 上级菜单名称字段

@@ -1,0 +1,145 @@
+#set($ModuleName=$moduleName.substring(0, 1).toUpperCase() + $moduleName.substring(1))
+<script setup lang="ts">
+    import { ref } from 'vue';
+    import { Form, Input, Select, DatePicker, Button, Card, Collapse, Space, Grid } from 'ant-design-vue';
+    import { SearchOutlined, ReloadOutlined } from '@ant-design/icons-vue';
+    import { $t } from '@/locales';
+        #if($dictList && $dictList.size() > 0)import { useDict } from '@/hooks/business/dict';#end
+
+    defineOptions({
+        name: '${BusinessName}Search'
+    });
+
+    interface Emits {
+        (e: 'reset'): void;
+        (e: 'search'): void;
+    }
+
+    const emit = defineEmits<Emits>();
+
+    const formRef = ref();
+
+        #foreach ($column in $columns)
+            #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
+                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+            const dateRange${AttrName} = ref<[string, string] | null>(null);
+            #end#end
+
+    const model = defineModel<Api.$ModuleName.${BusinessName}SearchParams>('model', { required: true });
+
+        #if($dictList && $dictList.size() > 0)
+            #foreach($dict in $dictList)
+            const { options: ${dict.name}Options } = useDict('${dict.type}'#if($dict.immediate), false#end);
+            #end#end
+
+    async function reset() {
+        #foreach ($column in $columns)
+            #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
+                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                dateRange${AttrName}.value = null;
+            #end
+        #end
+        Object.assign(model.value.params!, {});
+        formRef.value?.resetFields();
+        emit('reset');
+    }
+
+    async function search() {
+        try {
+            await formRef.value?.validate();
+            #foreach ($column in $columns)
+                #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
+                    #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                    if (dateRange${AttrName}.value?.length) {
+                        model.value.params!.begin${AttrName} = dateRange${AttrName}.value[0];
+                        model.value.params!.end${AttrName} = dateRange${AttrName}.value[1];
+                    }
+                #end
+            #end
+            emit('search');
+        } catch (error) {
+            console.error('Validation failed', error);
+        }
+    }
+</script>
+
+<template>
+    <Card :bordered="false" size="small" class="card-wrapper">
+        <Collapse>
+            <Collapse.Panel :header="$t('common.search')" key="user-search">
+                <Form ref="formRef" :model="model" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                    <Grid :gutter="[16, 16]">
+                        #foreach($column in $columns)
+                            #if($column.query)
+                                #set($dictType=$!StrUtil.toCamelCase($column.dictType))
+                                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                                #set($parentheseIndex=$column.columnComment.indexOf("（"))
+                                #if($parentheseIndex != -1)
+                                    #set($comment=$column.columnComment.substring(0, $parentheseIndex))
+                                #else
+                                    #set($comment=$column.columnComment)
+                                #end
+                                <Grid.Item :xs="24" :sm="12" :md="8" :lg="6">
+                                    <Form.Item label="$column.columnComment" name="$column.javaField">
+                                        #if($!StrUtil.contains("select, radio, checkbox", $column.htmlType) && $dictType && "" != $dictType)
+                                            <Select
+                                                v-model:value="model.$column.javaField"
+                                                placeholder="请选择$column.columnComment"
+                                                :options="${dictType}Options"
+                                                allowClear
+                                                style="width: 100%"
+                                            />
+                                        #elseif($!StrUtil.contains("select, radio, checkbox", $column.htmlType))
+                                            <Select
+                                                v-model:value="model.$column.javaField"
+                                                placeholder="请选择$column.columnComment"
+                                                :options="[]"
+                                                allowClear
+                                                style="width: 100%"
+                                            />
+                                        #elseif($column.htmlType == 'datetime' && $column.queryType != "BETWEEN")
+                                            <DatePicker
+                                                v-model:value="model.$column.javaField"
+                                                show-time
+                                                format="YYYY-MM-DD HH:mm:ss"
+                                                value-format="YYYY-MM-DD HH:mm:ss"
+                                                allowClear
+                                                style="width: 100%"
+                                            />
+                                        #elseif($column.htmlType == 'datetime' && $column.queryType == "BETWEEN")
+                                            <DatePicker.RangePicker
+                                                v-model:value="dateRange${AttrName}"
+                                                show-time
+                                                format="YYYY-MM-DD HH:mm:ss"
+                                                value-format="YYYY-MM-DD HH:mm:ss"
+                                                allowClear
+                                                style="width: 100%"
+                                            />
+                                        #else                <Input v-model:value="model.$column.javaField" placeholder="请输入$column.columnComment" />
+                                        #end
+                                    </Form.Item>
+                                </Grid.Item>
+                            #end
+                        #end
+                        <Grid.Item :span="24">
+                            <Form.Item :wrapper-col="{ span: 24 }">
+                                <Space class="w-full" justify="end">
+                                    <Button @click="reset">
+                                        <template #icon><ReloadOutlined /></template>
+                                        {{ $t('common.reset') }}
+                                    </Button>
+                                    <Button type="primary" @click="search">
+                                        <template #icon><SearchOutlined /></template>
+                                        {{ $t('common.search') }}
+                                    </Button>
+                                </Space>
+                            </Form.Item>
+                        </Grid.Item>
+                    </Grid>
+                </Form>
+            </Collapse.Panel>
+        </Collapse>
+    </Card>
+</template>
+
+<style scoped></style>

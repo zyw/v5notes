@@ -56,25 +56,25 @@ spring:
           username: v5notes
           password: "ENC(7M9mD4Qd3si0ej2LOvtUmLam4L0qIIg68rVEVS2Pl3AvBcJd2kHuJAgqzKUspmmK)"
         # 从库数据源
-        slave:
-          lazy: true
-          type: ${spring.datasource.type}
-          driverClassName: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://localhost:3306/v5notes-dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: root
-          password: admin123#
+#        slave:
+#          lazy: true
+#          type: ${spring.datasource.type}
+#          driverClassName: com.mysql.cj.jdbc.Driver
+#          url: jdbc:mysql://localhost:3306/v5notes-dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+#          username: root
+#          password: admin123#
 #        oracle:
 #          type: ${spring.datasource.type}
 #          driverClassName: oracle.jdbc.OracleDriver
 #          url: jdbc:oracle:thin:@//localhost:1521/XE
 #          username: ROOT
 #          password: root
-#        postgres:
-#          type: ${spring.datasource.type}
-#          driverClassName: org.postgresql.Driver
-#          url: jdbc:postgresql://localhost:5432/postgres?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
-#          username: root
-#          password: root
+        postgres:
+          type: ${spring.datasource.type}
+          driverClassName: org.postgresql.Driver
+          url: jdbc:postgresql://pgsql.v5ai.xin:15432/perm-auth?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
+          username: mypgsql
+          password: "ENC(xzHt7EKI9qpbQX5h0XkQHV80YEiaCVnRm1KWtQ6Wg6PbSOCTj8JzQQ==)"
 #        sqlserver:
 #          type: ${spring.datasource.type}
 #          driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -101,7 +101,8 @@ spring:
 spring.data:
   redis:
     # 地址
-    host: 192.168.1.103
+#    host: 192.168.1.103
+    host: 192.168.10.13
     # 端口，默认为6379
     port: 6379
     # 数据库索引
