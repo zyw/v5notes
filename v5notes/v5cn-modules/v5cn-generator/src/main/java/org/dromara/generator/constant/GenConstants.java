@@ -140,36 +140,6 @@ public interface GenConstants {
     String HTML_EDITOR = "editor";
 
     /**
-     * 字符串类型
-     */
-    String TYPE_STRING = "String";
-
-    /**
-     * 整型
-     */
-    String TYPE_INTEGER = "Integer";
-
-    /**
-     * 长整型
-     */
-    String TYPE_LONG = "Long";
-
-    /**
-     * 浮点型
-     */
-    String TYPE_DOUBLE = "Double";
-
-    /**
-     * 高精度计算类型
-     */
-    String TYPE_BIGDECIMAL = "BigDecimal";
-
-    /**
-     * 时间类型
-     */
-    String TYPE_DATE = "Date";
-
-    /**
      * 模糊查询
      */
     String QUERY_LIKE = "LIKE";
@@ -183,4 +153,58 @@ public interface GenConstants {
      * 需要
      */
     String REQUIRE = "1";
+
+    interface JAVA_TYPE {
+        /**
+         * 字符串类型
+         */
+        String STRING = "String";
+        /**
+         * 整型
+         */
+        String INTEGER = "Integer";
+        /**
+         * 长整型
+         */
+        String LONG = "Long";
+        /**
+         * 浮点型
+         */
+        String DOUBLE = "Double";
+        /**
+         * 高精度计算类型
+         */
+        String BIG_DECIMAL = "BigDecimal";
+        /**
+         * 时间类型
+         */
+        String DATE = "Date";
+    }
+
+    interface GO_TYPE {
+        /**
+         * 字符串类型
+         */
+        String STRING = "string";
+        /**
+         * 整型
+         */
+        String INTEGER = "int";
+        /**
+         * 长整型
+         */
+        String LONG = "int64";
+        /**
+         * 浮点型
+         */
+        String DOUBLE = "float64";
+        /**
+         * 高精度计算类型
+         */
+        String BIG_DECIMAL = "decimal";
+        /**
+         * 时间类型
+         */
+        String DATE = "time.Time";
+    }
 }

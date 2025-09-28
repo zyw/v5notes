@@ -1,0 +1,21 @@
+package models
+
+import (
+    "time"
+
+    "github.com/zyw/perm-auth/global"
+)
+
+// 用户模型
+type ${ClassName} struct {
+    global.BaseModel
+    #foreach ($column in $columns)
+        #if(!$table.isSuperColumn($column.javaField))
+            $column.javaType $column.javaField `gorm:"size:${column.clumnLength};column:${column.columnName};comment:${column.columnComment}" json:"${column.javaField}"`
+        #end
+    #end
+}
+
+func (${ClassName}) TableName() string {
+    return "${table.tableName}"
+}

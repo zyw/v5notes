@@ -2,12 +2,13 @@ package org.dromara.generator.util;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RegExUtils;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.generator.config.GenConfig;
-import org.dromara.generator.constant.GenConstants;
-import org.dromara.generator.domain.GenTable;
-import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.core.TableColumnHandle;
 
 import java.util.Arrays;
 
@@ -16,96 +17,23 @@ import java.util.Arrays;
  *
  * @author ruoyi
  */
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class GenUtils {
 
     /**
-     * 初始化表信息
+     * 获取TableColumnHandle
+     *
+     * @param beType
+     * @return
      */
-    public static void initTable(GenTable genTable) {
-        genTable.setClassName(convertClassName(genTable.getTableName()));
-        genTable.setPackageName(GenConfig.getPackageName());
-        genTable.setModuleName(getModuleName(GenConfig.getPackageName()));
-        genTable.setBusinessName(getBusinessName(genTable.getTableName()));
-        genTable.setFunctionName(replaceText(genTable.getTableComment()));
-        genTable.setFunctionAuthor(GenConfig.getAuthor());
-        genTable.setCreateTime(null);
-        genTable.setUpdateTime(null);
-    }
-
-    /**
-     * 初始化列属性字段
-     */
-    public static void initColumnField(GenTableColumn column, GenTable table) {
-        String dataType = getDbType(column.getColumnType());
-        // 统一转小写 避免有些数据库默认大写问题 如果需要特别书写方式 请在实体类增加注解标注别名
-        String columnName = column.getColumnName().toLowerCase();
-        column.setTableId(table.getTableId());
-        column.setCreateTime(null);
-        column.setUpdateTime(null);
-        // 设置java字段名
-        column.setJavaField(StringUtils.toCamelCase(columnName));
-        // 设置默认类型
-        column.setJavaType(GenConstants.TYPE_STRING);
-        column.setQueryType(GenConstants.QUERY_EQ);
-
-        if (arraysContains(GenConstants.COLUMNTYPE_STR, dataType) || arraysContains(GenConstants.COLUMNTYPE_TEXT, dataType)) {
-            // 字符串长度超过500设置为文本域
-            Integer columnLength = getColumnLength(column.getColumnType());
-            String htmlType = columnLength >= 500 || arraysContains(GenConstants.COLUMNTYPE_TEXT, dataType) ? GenConstants.HTML_TEXTAREA : GenConstants.HTML_INPUT;
-            column.setHtmlType(htmlType);
-        } else if (arraysContains(GenConstants.COLUMNTYPE_TIME, dataType)) {
-            column.setJavaType(GenConstants.TYPE_DATE);
-            column.setHtmlType(GenConstants.HTML_DATETIME);
-        } else if (arraysContains(GenConstants.COLUMNTYPE_NUMBER, dataType)) {
-            column.setHtmlType(GenConstants.HTML_INPUT);
-            // 数据库的数字字段与java不匹配 且很多数据库的数字字段很模糊 例如oracle只有number没有细分
-            // 所以默认数字类型全为Long可在界面上自行编辑想要的类型 有什么特殊需求也可以在这里特殊处理
-            column.setJavaType(GenConstants.TYPE_LONG);
+    public static TableColumnHandle getTableColumnHandle(String beType) {
+        TableColumnHandle bean = SpringUtils.getBean(beType + "TableColumnHandle");
+        if (bean == null) {
+            log.error("未找到 {} 对应的 TableColumnHandle 实现类", beType);
+            throw new ServiceException("未找到 " + beType + " 对应的 TableColumnHandle 实现类");
         }
-
-        // BO对象 默认插入勾选
-        if (!arraysContains(GenConstants.COLUMNNAME_NOT_ADD, columnName) && !column.isPk()) {
-            column.setIsInsert(GenConstants.REQUIRE);
-        }
-        // BO对象 默认编辑勾选
-        if (!arraysContains(GenConstants.COLUMNNAME_NOT_EDIT, columnName)) {
-            column.setIsEdit(GenConstants.REQUIRE);
-        }
-        // VO对象 默认返回勾选
-        if (!arraysContains(GenConstants.COLUMNNAME_NOT_LIST, columnName)) {
-            column.setIsList(GenConstants.REQUIRE);
-        }
-        // BO对象 默认查询勾选
-        if (!arraysContains(GenConstants.COLUMNNAME_NOT_QUERY, columnName) && !column.isPk()) {
-            column.setIsQuery(GenConstants.REQUIRE);
-        }
-
-        // 查询字段类型
-        if (StringUtils.endsWithIgnoreCase(columnName, "name")) {
-            column.setQueryType(GenConstants.QUERY_LIKE);
-        }
-        // 状态字段设置单选框
-        if (StringUtils.endsWithIgnoreCase(columnName, "status")) {
-            column.setHtmlType(GenConstants.HTML_RADIO);
-        }
-        // 类型&性别字段设置下拉框
-        else if (StringUtils.endsWithIgnoreCase(columnName, "type")
-            || StringUtils.endsWithIgnoreCase(columnName, "sex")) {
-            column.setHtmlType(GenConstants.HTML_SELECT);
-        }
-        // 图片字段设置图片上传控件
-        else if (StringUtils.endsWithIgnoreCase(columnName, "image")) {
-            column.setHtmlType(GenConstants.HTML_IMAGE_UPLOAD);
-        }
-        // 文件字段设置文件上传控件
-        else if (StringUtils.endsWithIgnoreCase(columnName, "file")) {
-            column.setHtmlType(GenConstants.HTML_FILE_UPLOAD);
-        }
-        // 内容字段设置富文本控件
-        else if (StringUtils.endsWithIgnoreCase(columnName, "content")) {
-            column.setHtmlType(GenConstants.HTML_EDITOR);
-        }
+        return bean;
     }
 
     /**
@@ -215,5 +143,16 @@ public class GenUtils {
         } else {
             return 0;
         }
+    }
+
+    public static String getDefaultValue(String defaultVal) {
+        if (StringUtils.isBlank(defaultVal)) {
+            return "";
+        }
+        // 'sys_user'::character varying
+        if (defaultVal.contains("::")) {
+            defaultVal = StringUtils.substringBefore(defaultVal, "::");
+        }
+        return defaultVal;
     }
 }

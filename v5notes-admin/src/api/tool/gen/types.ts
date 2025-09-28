@@ -42,8 +42,8 @@ export interface DbColumnVO extends BaseEntity {
   columnName?: any;
   columnComment?: any;
   columnType?: any;
-  javaType?: any;
-  javaField?: any;
+  fieldType?: any;
+  fieldName?: any;
   isPk?: any;
   isIncrement?: any;
   isRequired?: any;
@@ -56,7 +56,7 @@ export interface DbColumnVO extends BaseEntity {
   dictType?: any;
   sort?: any;
   increment: boolean;
-  capJavaField?: any;
+  capFieldName?: any;
   usableColumn: boolean;
   superColumn: boolean;
   list: boolean;
@@ -116,8 +116,8 @@ export interface DbColumnForm extends BaseEntity {
   columnName: string;
   columnComment: string;
   columnType: string;
-  javaType: string;
-  javaField: string;
+  fieldType: string;
+  fieldName: string;
   isPk: string;
   isIncrement: string;
   isRequired: string;
@@ -130,7 +130,7 @@ export interface DbColumnForm extends BaseEntity {
   dictType: string;
   sort: number;
   increment: boolean;
-  capJavaField: string;
+  capFieldName: string;
   usableColumn: boolean;
   superColumn: boolean;
   list: boolean;
@@ -177,4 +177,12 @@ export interface DbTableForm extends BaseEntity {
   tree: boolean;
   crud: boolean;
   params: DbParamForm;
+}
+
+export interface ImportTableForm {
+  tableNames?: string;
+  dataName?: string;
+  beType: string;
+  feType: string;
+  packageName: string;
 }

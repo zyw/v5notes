@@ -4,6 +4,7 @@ import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.bo.ImportTableBo;
 
 import java.util.List;
 import java.util.Map;
@@ -42,11 +43,10 @@ public interface IGenTableService {
     /**
      * 查询据库列表
      *
-     * @param tableNames 表名称组
-     * @param dataName   数据源名称
+     * @param bo 导入表信息
      * @return 数据库表集合
      */
-    List<GenTable> selectDbTableListByNames(String[] tableNames, String dataName);
+    List<GenTable> selectDbTableListByNames(ImportTableBo bo);
 
     /**
      * 查询所有表信息

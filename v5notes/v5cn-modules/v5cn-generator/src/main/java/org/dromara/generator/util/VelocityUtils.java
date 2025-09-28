@@ -1,27 +1,28 @@
 package org.dromara.generator.util;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.velocity.VelocityContext;
-import org.dromara.common.core.utils.DateUtils;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.mybatis.enums.DataBaseType;
 import org.dromara.common.mybatis.helper.DataBaseHelper;
 import org.dromara.generator.constant.GenConstants;
+import org.dromara.generator.core.PrepareContext;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourcePatternResolver;
 
-import java.io.File;
-import java.net.URL;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -54,40 +55,17 @@ public class VelocityUtils {
      * @return 模板列表
      */
     public static VelocityContext prepareContext(GenTable genTable) {
-        String moduleName = genTable.getModuleName();
-        String businessName = genTable.getBusinessName();
-        String packageName = genTable.getPackageName();
-        String tplCategory = genTable.getTplCategory();
-        String functionName = genTable.getFunctionName();
-
+        // 处理模板变量，为不同后端类型添加不同的变量
+        PrepareContext specialContext = SpringUtils.getBean(genTable.getBeType() + "PrepareContext");
         VelocityContext velocityContext = new VelocityContext();
-        velocityContext.put("tplCategory", genTable.getTplCategory());
-        velocityContext.put("tableName", genTable.getTableName());
-        velocityContext.put("functionName", StringUtils.isNotEmpty(functionName) ? functionName : "【请填写功能名称】");
-        velocityContext.put("ClassName", genTable.getClassName());
-        velocityContext.put("className", StringUtils.uncapitalize(genTable.getClassName()));
-        velocityContext.put("moduleName", StrUtil.toSymbolCase(genTable.getModuleName(), '-'));
-        velocityContext.put("BusinessName", StringUtils.capitalize(genTable.getBusinessName()));
-        velocityContext.put("businessName", genTable.getBusinessName());
-        velocityContext.put("business_name", StrUtil.toUnderlineCase(genTable.getBusinessName()));
-        velocityContext.put("business__name", StrUtil.toSymbolCase(genTable.getBusinessName(), '-'));
-        velocityContext.put("businessname", StrUtil.toSymbolCase(genTable.getBusinessName(), ' '));
-        velocityContext.put("basePackage", getPackagePrefix(packageName));
-        velocityContext.put("packageName", packageName);
-        velocityContext.put("author", genTable.getFunctionAuthor());
-        velocityContext.put("datetime", DateUtils.getDate());
-        velocityContext.put("pkColumn", genTable.getPkColumn());
-        velocityContext.put("importList", getImportList(genTable));
-        velocityContext.put("permissionPrefix", getPermissionPrefix(moduleName, businessName));
-        velocityContext.put("dicts", getDicts(genTable));
-        velocityContext.put("dictList", getDictList(genTable));
-        velocityContext.put("columns", genTable.getColumns());
-        velocityContext.put("table", genTable);
-        velocityContext.put("StrUtil", new StrUtil());
-        setMenuVelocityContext(velocityContext, genTable);
-        if (GenConstants.TPL_TREE.equals(tplCategory)) {
-            setTreeVelocityContext(velocityContext, genTable);
+
+        if (specialContext == null) {
+            log.error("未找到{}的PrepareContext", genTable.getBeType());
+            throw new ServiceException("未找到" + genTable.getBeType() + "的PrepareContext");
         }
+
+        specialContext.addPrepareContextItems(velocityContext, genTable);
+
         return velocityContext;
     }
 
@@ -127,18 +105,33 @@ public class VelocityUtils {
      */
     public static List<String> getTemplateList(String tplCategory,String beType,String feType) {
 
-        List<String> templates = new ArrayList<>();
+        // 后端模板列表
         String beUri = "vm/backend/" + beType;
-        List<String> templateList = getResourcesTemplateList(beUri);
-        log.info("模板列表======>：{}", JsonUtils.toJsonString(templateList));
-        templates.add(beUri + "/domain.java.vm");
-        templates.add(beUri + "/vo.java.vm");
-        templates.add(beUri + "/bo.java.vm");
-        templates.add(beUri + "/mapper.java.vm");
-        templates.add(beUri + "/service.java.vm");
-        templates.add(beUri + "/serviceImpl.java.vm");
-        templates.add(beUri + "/controller.java.vm");
-        templates.add(beUri + "/xml/mapper.xml.vm");
+        List<String> beTemplateList = getResourcesTemplateList(beUri);
+        // 前端模板列表
+        String feUri = "vm/frontend/" + feType;
+        List<String> feTemplateList = getResourcesTemplateList(feUri);
+        if (GenConstants.TPL_CRUD.equals(tplCategory)) {
+            feTemplateList.remove(feUri + "/index-tree.vue.vm");
+            feTemplateList.add(feUri + "/index.vue.vm");
+        } else if (GenConstants.TPL_TREE.equals(tplCategory)) {
+            feTemplateList.remove(feUri + "/index.vue.vm");
+            feTemplateList.add(feUri + "/index-tree.vue.vm");
+        }
+        // 模板列表合并
+        List<String> templates = new ArrayList<>(beTemplateList);
+        templates.addAll(feTemplateList);
+//        log.info("模板列表======>：{}", JsonUtils.toJsonString(templateList));
+//        templates.add(beUri + "/domain.java.vm");
+//        templates.add(beUri + "/vo.java.vm");
+//        templates.add(beUri + "/bo.java.vm");
+//        templates.add(beUri + "/mapper.java.vm");
+//        templates.add(beUri + "/service.java.vm");
+//        templates.add(beUri + "/serviceImpl.java.vm");
+//        templates.add(beUri + "/controller.java.vm");
+//        templates.add(beUri + "/xml/mapper.xml.vm");
+
+        // 添加SQL模板
         DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
         if (dataBaseType.isOracle()) {
             templates.add("vm/sql/oracle/sql.vm");
@@ -149,16 +142,13 @@ public class VelocityUtils {
         } else {
             templates.add("vm/sql/sql.vm");
         }
-        String feUri = "vm/frontend/" + feType;
-        templates.add(feUri + "/typings/api.d.ts.vm");
-        templates.add(feUri + "/api/api.ts.vm");
-        templates.add(feUri + "/modules/search.vue.vm");
-        templates.add(feUri + "/modules/operate-drawer.vue.vm");
-        if (GenConstants.TPL_CRUD.equals(tplCategory)) {
-            templates.add(feUri + "/index.vue.vm");
-        } else if (GenConstants.TPL_TREE.equals(tplCategory)) {
-            templates.add(feUri + "/index-tree.vue.vm");
-        }
+
+//        String feUri = "vm/frontend/" + feType;
+//        templates.add(feUri + "/typings/api.d.ts.vm");
+//        templates.add(feUri + "/api/api.ts.vm");
+//        templates.add(feUri + "/modules/search.vue.vm");
+//        templates.add(feUri + "/modules/operate-drawer.vue.vm");
+
         return templates;
     }
 
@@ -227,29 +217,6 @@ public class VelocityUtils {
     public static String getPackagePrefix(String packageName) {
         int lastIndex = packageName.lastIndexOf(".");
         return StringUtils.substring(packageName, 0, lastIndex);
-    }
-
-    /**
-     * 根据列类型获取导入包
-     *
-     * @param genTable 业务表对象
-     * @return 返回需要导入的包列表
-     */
-    public static HashSet<String> getImportList(GenTable genTable) {
-        List<GenTableColumn> columns = genTable.getColumns();
-        HashSet<String> importList = new HashSet<>();
-        for (GenTableColumn column : columns) {
-            if (!column.isSuperColumn() && GenConstants.TYPE_DATE.equals(column.getJavaType())) {
-                importList.add("java.util.Date");
-                importList.add("com.fasterxml.jackson.annotation.JsonFormat");
-            } else if (!column.isSuperColumn() && GenConstants.TYPE_BIGDECIMAL.equals(column.getJavaType())) {
-                importList.add("java.math.BigDecimal");
-            } else if (!column.isSuperColumn() && "imageUpload".equals(column.getHtmlType())) {
-                importList.add("org.dromara.common.translation.annotation.Translation");
-                importList.add("org.dromara.common.translation.constant.TransConstant");
-            }
-        }
-        return importList;
     }
 
     /**
@@ -401,24 +368,38 @@ public class VelocityUtils {
         return num;
     }
 
-    // 递归获取目录下的全部模板
+    /**
+     * 获取资源文件模板列表
+     * @param path 模板路径
+     * @return 模板列表
+     */
     private static List<String> getResourcesTemplateList(String path) {
-        List<URL> resources = ResourceUtil.getResources("classpath*:" + path + "/**/*.vm");
         List<String> templates = new ArrayList<>();
-        if(CollUtil.isNotEmpty(resources)) {
-            for (URL resource : resources) {
-                String vmPath = resource.getPath();
+        ApplicationContext resolver = SpringUtils.getApplicationContext();
+        try {
+            Resource[] resources = resolver.getResources(ResourcePatternResolver.CLASSPATH_URL_PREFIX + path + "/**/*.vm");
+
+            for (Resource resource : resources) {
+                String pathUrl = resource.getURL().getPath();
                 // 提取vm目录之后的路径
-                String relativePath = extractVmRelativePath(vmPath);
+                String relativePath = extractVmRelativePath(pathUrl);
                 if (relativePath != null) {
                     templates.add(relativePath);
                 }
             }
+        } catch (IOException e) {
+            log.error("获取目录下的全部模板失败：{}", e.getMessage(),e);
+            throw new ServiceException("获取目录下的全部模板失败");
         }
 
         return templates;
     }
 
+    /**
+     * 提取vm目录之后的路径
+     * @param fullPath 全路径
+     * @return 提取后的路径
+     */
     private static String extractVmRelativePath(String fullPath) {
         // 查找"vm/"在路径中的位置
         int vmIndex = fullPath.indexOf("vm/");

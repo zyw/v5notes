@@ -1,6 +1,7 @@
 package org.dromara.generator.service;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.ObjectUtil;
@@ -28,9 +29,11 @@ import org.dromara.common.core.utils.file.FileUtils;
 import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.generator.config.GenConfig;
 import org.dromara.generator.constant.GenConstants;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.bo.ImportTableBo;
 import org.dromara.generator.mapper.GenTableColumnMapper;
 import org.dromara.generator.mapper.GenTableMapper;
 import org.dromara.generator.util.GenUtils;
@@ -173,13 +176,14 @@ public class GenTableServiceImpl implements IGenTableService {
     /**
      * 查询据库列表
      *
-     * @param tableNames 表名称组
-     * @param dataName   数据源名称
+     * @param bo 导入表信息
      * @return 数据库表集合
      */
     @DS("#dataName")
     @Override
-    public List<GenTable> selectDbTableListByNames(String[] tableNames, String dataName) {
+    public List<GenTable> selectDbTableListByNames(ImportTableBo bo) {
+        String[] tableNames = Convert.toStrArray(bo.getTableNames());
+
         Set<String> tableNameSet = new HashSet<>(List.of(tableNames));
         LinkedHashMap<String, Table<?>> tablesMap = ServiceProxy.metadata().tables();
 
@@ -196,7 +200,10 @@ public class GenTableServiceImpl implements IGenTableService {
         }
         return tableList.stream().map(x -> {
             GenTable gen = new GenTable();
-            gen.setDataName(dataName);
+            gen.setDataName(bo.getDataName());
+            gen.setBeType(bo.getBeType());
+            gen.setFeType(bo.getFeType());
+            gen.setPackageName(ObjectUtil.defaultIfBlank(bo.getPackageName(), GenConfig.getPackageName()));
             gen.setTableName(x.getName());
             gen.setTableComment(x.getComment());
             gen.setCreateTime(x.getCreateTime());
@@ -258,7 +265,8 @@ public class GenTableServiceImpl implements IGenTableService {
         try {
             for (GenTable table : tableList) {
                 String tableName = table.getTableName();
-                GenUtils.initTable(table);
+                // 处理表信息
+                GenUtils.getTableColumnHandle(table.getBeType()).handleTable(table);
                 table.setDataName(dataName);
                 int row = baseMapper.insert(table);
                 if (row > 0) {
@@ -266,7 +274,8 @@ public class GenTableServiceImpl implements IGenTableService {
                     List<GenTableColumn> genTableColumns = SpringUtils.getAopProxy(this).selectDbTableColumnsByName(tableName, dataName);
                     List<GenTableColumn> saveColumns = new ArrayList<>();
                     for (GenTableColumn column : genTableColumns) {
-                        GenUtils.initColumnField(column, table);
+                        // 处理列信息
+                        GenUtils.getTableColumnHandle(table.getBeType()).handleColumn(column, table);
                         saveColumns.add(column);
                     }
                     if (CollUtil.isNotEmpty(saveColumns)) {
@@ -301,6 +310,11 @@ public class GenTableServiceImpl implements IGenTableService {
             tableColumn.setColumnName(column.getName());
             tableColumn.setColumnComment(column.getComment());
             tableColumn.setColumnType(column.getOriginType().toLowerCase());
+            tableColumn.setSize(column.getLength() == null ? "" : String.valueOf(column.getLength()));
+            // 非主键列才设置默认值
+            if(!column.isPrimaryKey()){
+                tableColumn.setDefaultVal(ObjectUtil.defaultIfNull(column.getDefaultValue(), "").toString());
+            }
             tableColumn.setSort(column.getPosition());
             tableColumn.setIsRequired(column.isNullable() ? "0" : "1");
             tableColumn.setIsIncrement(column.isAutoIncrement() ? "1" : "0");
@@ -412,7 +426,7 @@ public class GenTableServiceImpl implements IGenTableService {
 
         List<GenTableColumn> saveColumns = new ArrayList<>();
         dbTableColumns.forEach(column -> {
-            GenUtils.initColumnField(column, table);
+            GenUtils.getTableColumnHandle(table.getBeType()).handleColumn(column, table);
             if (tableColumnMap.containsKey(column.getColumnName())) {
                 GenTableColumn prevColumn = tableColumnMap.get(column.getColumnName());
                 column.setColumnId(prevColumn.getColumnId());

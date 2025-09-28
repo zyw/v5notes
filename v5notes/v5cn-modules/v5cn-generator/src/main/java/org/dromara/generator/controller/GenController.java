@@ -16,6 +16,7 @@ import org.dromara.common.mybatis.helper.DataBaseHelper;
 import org.dromara.common.web.core.BaseController;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.bo.ImportTableBo;
 import org.dromara.generator.service.IGenTableService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -90,17 +91,16 @@ public class GenController extends BaseController {
     /**
      * 导入表结构（保存）
      *
-     * @param tables 表名串
+     * @param bo 导入表信息
      */
     @SaCheckPermission("tool:gen:import")
     @Log(title = "代码生成", businessType = BusinessType.IMPORT)
     @RepeatSubmit()
     @PostMapping("/importTable")
-    public R<Void> importTableSave(String tables, String dataName) {
-        String[] tableNames = Convert.toStrArray(tables);
+    public R<Void> importTableSave(@Validated @RequestBody ImportTableBo bo) {
         // 查询表信息
-        List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames, dataName);
-        genTableService.importGenTable(tableList, dataName);
+        List<GenTable> tableList = genTableService.selectDbTableListByNames(bo);
+        genTableService.importGenTable(tableList, bo.getDataName());
         return R.ok();
     }
 
