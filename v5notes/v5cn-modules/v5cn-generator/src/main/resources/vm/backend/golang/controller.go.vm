@@ -1,0 +1,170 @@
+package payment
+
+import (
+    "github.com/gin-gonic/gin"
+    "go.uber.org/zap"
+    "${packageName}/global"
+    "${packageName}/models/response"
+    "${packageName}/models"
+    "${packageName}/models/request"
+)
+
+type ${ClassName}Ctr struct{}
+
+// Create${ClassName} 创建${className}表
+// @Tags ${ClassName}
+// @Summary 创建${className}表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Param data body payment.PayWay true "创建payWay表"
+// @Success 200 {object} response.Response{msg=string} "创建成功"
+// @Router /${className}/create${ClassName} [post]
+func (c *${ClassName}Ctr) Create${ClassName}(c *gin.Context) {
+    // 创建业务用Context
+    ctx := c.Request.Context()
+
+    var ${className} models.${ClassName}
+    err := c.ShouldBindJSON(&${className})
+    if err != nil {
+        response.FailWithMessage(err.Error(), c)
+        return
+    }
+    err = ${className}Service.Create${ClassName}(ctx, &${className})
+    if err != nil {
+        global.LOG.Error("创建失败!", zap.Error(err))
+        response.FailWithMessage("创建失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithMessage("创建成功", c)
+}
+
+// Delete${ClassName} 删除${className}表
+// @Tags ${ClassName}
+// @Summary 删除${className}表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Param data body models.${ClassName} true "删除${className}表"
+// @Success 200 {object} response.Response{msg=string} "删除成功"
+// @Router /${className}/delete${ClassName} [delete]
+func (c *${ClassName}Ctr) Delete${ClassName}(c *gin.Context) {
+    // 创建业务用Context
+    ctx := c.Request.Context()
+
+    id := c.Query("id")
+    err := ${className}Service.Delete${ClassName}(ctx, id)
+    if err != nil {
+        global.LOG.Error("删除失败!", zap.Error(err))
+        response.FailWithMessage("删除失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithMessage("删除成功", c)
+}
+
+// Delete${ClassName}ByIds 批量删除${className}表
+// @Tags ${ClassName}
+// @Summary 批量删除${className}表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} response.Response{msg=string} "批量删除成功"
+// @Router /${className}/delete${ClassName}ByIds [delete]
+func (c *${ClassName}Ctr) Delete${ClassName}ByIds(c *gin.Context) {
+    // 创建业务用Context
+    ctx := c.Request.Context()
+
+    ids := c.QueryArray("ids[]")
+    err := ${className}Service.Delete${ClassName}ByIds(ctx, ids)
+    if err != nil {
+        global.LOG.Error("批量删除失败!", zap.Error(err))
+        response.FailWithMessage("批量删除失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithMessage("批量删除成功", c)
+}
+
+// Update${ClassName} 更新${className}表
+// @Tags ${ClassName}
+// @Summary 更新${className}表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Param data body models.${ClassName} true "更新${className}表"
+// @Success 200 {object} response.Response{msg=string} "更新成功"
+// @Router /${className}/update${ClassName} [put]
+func (c *${ClassName}Ctr) Update${ClassName}(c *gin.Context) {
+    // 从ctx获取标准context进行业务行为
+    ctx := c.Request.Context()
+
+    var ${className} models.${ClassName}
+    err := c.ShouldBindJSON(&${className})
+    if err != nil {
+        response.FailWithMessage(err.Error(), c)
+        return
+    }
+    err = ${className}Service.Update${ClassName}(ctx, ${className})
+    if err != nil {
+        global.LOG.Error("更新失败!", zap.Error(err))
+        response.FailWithMessage("更新失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithMessage("更新成功", c)
+}
+
+// Find${ClassName} 用id查询${className}表
+// @Tags ${ClassName}
+// @Summary 用id查询${className}表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Param id query int true "用id查询${className}表"
+// @Success 200 {object} response.Response{data=models.${ClassName},msg=string} "查询成功"
+// @Router /${className}/find${ClassName}ById [get]
+func (c *${ClassName}Ctr) Find${ClassName}ById(c *gin.Context) {
+    // 创建业务用Context
+    ctx := c.Request.Context()
+
+    id := c.Query("id")
+    ${className}, err := ${className}Service.Get${ClassName}(ctx, id)
+    if err != nil {
+        global.LOG.Error("查询失败!", zap.Error(err))
+        response.FailWithMessage("查询失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithData(${className}, c)
+}
+
+
+// Get${ClassName}List 分页获取${className}表列表
+// @Tags ${ClassName}
+// @Summary 分页获取${className}表列表
+// @Security ApiKeyAuth
+// @Accept application/json
+// @Produce application/json
+// @Param data query ${packageName}.domain.bo.${ClassName}Search true "分页获取${className}表列表"
+// @Success 200 {object} response.Response{data=response.PageResult,msg=string} "获取成功"
+// @Router /${className}/get${ClassName}List [get]
+func (c *${ClassName}Ctr) Get${ClassName}List(c *gin.Context) {
+    // 创建业务用Context
+    ctx := c.Request.Context()
+
+    var pageInfo ${packageName}.domain.bo.${ClassName}Search
+    err := c.ShouldBindQuery(&pageInfo)
+    if err != nil {
+        response.FailWithMessage(err.Error(), c)
+        return
+    }
+    list, total, err := payWayService.GetPayWayInfoList(ctx, pageInfo)
+    if err != nil {
+        global.LOG.Error("获取失败!", zap.Error(err))
+        response.FailWithMessage("获取失败:"+err.Error(), c)
+        return
+    }
+    response.OkWithDetailed(response.PageResult{
+        List:     list,
+        Total:    total,
+        Page:     pageInfo.Page,
+        PageSize: pageInfo.PageSize,
+    }, "获取成功", c)
+}

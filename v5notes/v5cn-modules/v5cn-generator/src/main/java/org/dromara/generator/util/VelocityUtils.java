@@ -3,7 +3,6 @@ package org.dromara.generator.util;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
-import cn.hutool.core.util.StrUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +14,7 @@ import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.mybatis.enums.DataBaseType;
 import org.dromara.common.mybatis.helper.DataBaseHelper;
 import org.dromara.generator.constant.GenConstants;
+import org.dromara.generator.core.GenFilePath;
 import org.dromara.generator.core.PrepareContext;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
@@ -33,17 +33,6 @@ import java.util.*;
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class VelocityUtils {
-
-    /**
-     * 项目空间路径
-     */
-    private static final String PROJECT_PATH = "main/java";
-
-    /**
-     * mybatis空间路径
-     */
-    private static final String MYBATIS_PATH = "main/resources/mapper";
-
     /**
      * 默认上级菜单，系统工具
      */
@@ -56,15 +45,15 @@ public class VelocityUtils {
      */
     public static VelocityContext prepareContext(GenTable genTable) {
         // 处理模板变量，为不同后端类型添加不同的变量
-        PrepareContext specialContext = SpringUtils.getBean(genTable.getBeType() + "PrepareContext");
+        PrepareContext prepareContext = SpringUtils.getBean(genTable.getBeType() + "PrepareContext");
         VelocityContext velocityContext = new VelocityContext();
 
-        if (specialContext == null) {
+        if (prepareContext == null) {
             log.error("未找到{}的PrepareContext", genTable.getBeType());
             throw new ServiceException("未找到" + genTable.getBeType() + "的PrepareContext");
         }
 
-        specialContext.addPrepareContextItems(velocityContext, genTable);
+        prepareContext.addPrepareContextItems(velocityContext, genTable);
 
         return velocityContext;
     }
@@ -121,33 +110,19 @@ public class VelocityUtils {
         // 模板列表合并
         List<String> templates = new ArrayList<>(beTemplateList);
         templates.addAll(feTemplateList);
-//        log.info("模板列表======>：{}", JsonUtils.toJsonString(templateList));
-//        templates.add(beUri + "/domain.java.vm");
-//        templates.add(beUri + "/vo.java.vm");
-//        templates.add(beUri + "/bo.java.vm");
-//        templates.add(beUri + "/mapper.java.vm");
-//        templates.add(beUri + "/service.java.vm");
-//        templates.add(beUri + "/serviceImpl.java.vm");
-//        templates.add(beUri + "/controller.java.vm");
-//        templates.add(beUri + "/xml/mapper.xml.vm");
 
         // 添加SQL模板
         DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
+        String sqlTemplatePath = "vm/sql/" + beType;
         if (dataBaseType.isOracle()) {
-            templates.add("vm/sql/oracle/sql.vm");
+            templates.add(sqlTemplatePath + "/oracle/sql.vm");
         } else if (dataBaseType.isPostgreSql()) {
-            templates.add("vm/sql/postgres/sql.vm");
+            templates.add(sqlTemplatePath + "/postgres/sql.vm");
         } else if (dataBaseType.isSqlServer()) {
-            templates.add("vm/sql/sqlserver/sql.vm");
+            templates.add(sqlTemplatePath + "/sqlserver/sql.vm");
         } else {
-            templates.add("vm/sql/sql.vm");
+            templates.add(sqlTemplatePath + "/sql.vm");
         }
-
-//        String feUri = "vm/frontend/" + feType;
-//        templates.add(feUri + "/typings/api.d.ts.vm");
-//        templates.add(feUri + "/api/api.ts.vm");
-//        templates.add(feUri + "/modules/search.vue.vm");
-//        templates.add(feUri + "/modules/operate-drawer.vue.vm");
 
         return templates;
     }
@@ -156,56 +131,8 @@ public class VelocityUtils {
      * 获取文件名
      */
     public static String getFileName(String template, GenTable genTable) {
-        // 文件名称
-        String fileName = "";
-        // 包路径
-        String packageName = genTable.getPackageName();
-        // 模块名
-        String moduleName = genTable.getModuleName();
-        // 大写类名
-        String className = genTable.getClassName();
-        // 业务名称
-        String businessName = genTable.getBusinessName();
-
-        String javaPath = PROJECT_PATH + "/" + StringUtils.replace(packageName, ".", "/");
-        String mybatisPath = MYBATIS_PATH + "/" + moduleName;
-        String soybeanPath = "soy";
-        String soybeanModuleName = StrUtil.toSymbolCase(moduleName, '-');
-        if (template.contains("domain.java.vm")) {
-            fileName = StringUtils.format("{}/domain/{}.java", javaPath, className);
-        }
-        if (template.contains("vo.java.vm")) {
-            fileName = StringUtils.format("{}/domain/vo/{}Vo.java", javaPath, className);
-        }
-        if (template.contains("bo.java.vm")) {
-            fileName = StringUtils.format("{}/domain/bo/{}Bo.java", javaPath, className);
-        }
-        if (template.contains("mapper.java.vm")) {
-            fileName = StringUtils.format("{}/mapper/{}Mapper.java", javaPath, className);
-        } else if (template.contains("service.java.vm")) {
-            fileName = StringUtils.format("{}/service/I{}Service.java", javaPath, className);
-        } else if (template.contains("serviceImpl.java.vm")) {
-            fileName = StringUtils.format("{}/service/impl/{}ServiceImpl.java", javaPath, className);
-        } else if (template.contains("controller.java.vm")) {
-            fileName = StringUtils.format("{}/controller/{}Controller.java", javaPath, className);
-        } else if (template.contains("mapper.xml.vm")) {
-            fileName = StringUtils.format("{}/{}Mapper.xml", mybatisPath, className);
-        } else if (template.contains("sql.vm")) {
-            fileName = businessName + "Menu.sql";
-        } else if (template.contains("index.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
-        } else if (template.contains("index-tree.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
-        } else if (template.contains("api.d.ts.vm")) {
-            fileName = StringUtils.format("{}/typings/api/{}.{}.api.d.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
-        } else if (template.contains("api.ts.vm")) {
-            fileName = StringUtils.format("{}/service/api/{}/{}.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
-        } else if (template.contains("search.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-search.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
-        } else if (template.contains("operate-drawer.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
-        }
-        return fileName;
+        GenFilePath genFilePath = SpringUtils.getBean(genTable.getBeType() + "GenFilePath");
+        return genFilePath.filePath(template, genTable);
     }
 
     /**

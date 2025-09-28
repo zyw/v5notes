@@ -1,0 +1,3 @@
+# 配置 Docker 镜像加速
+[registry."docker.io"]
+    mirrors = ["https://docker.1panel.live","http://mirrors.ustc.edu.cn/","http://mirror.azure.cn/","https://docker.hpcloud.cloud","https://docker.m.daocloud.io"]
