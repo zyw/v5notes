@@ -74,8 +74,12 @@ public class GolangGenFilePath implements GenFilePath {
             filePath = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", GOLANG_PATH, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         }
         // sql 文件
-        else if (template.contains("sql.vm")) {
-            filePath = StringUtils.format("menu.sql", BACKEND_PATH, tableName);
+        else if (template.contains("sql.sql.vm")) {
+            filePath = StringUtils.format(businessName + "menu.sql");
+        }
+        // 其他文件,使用模版名称去掉.vm后缀命名
+        else {
+            filePath = StringUtils.format("",template.replace(".vm", ""));
         }
         return filePath;
     }

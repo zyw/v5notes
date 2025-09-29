@@ -55,8 +55,8 @@ public class JavaGenFilePath implements GenFilePath {
             fileName = StringUtils.format("{}/controller/{}Controller.java", javaPath, className);
         } else if (template.contains("mapper.xml.vm")) {
             fileName = StringUtils.format("{}/{}Mapper.xml", mybatisPath, className);
-        } else if (template.contains("sql.vm")) {
-            fileName = businessName + "Menu.sql";
+        } else if (template.contains("sql.sql.vm")) {
+            fileName = businessName + "menu.sql";
         } else if (template.contains("index.vue.vm")) {
             fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("index-tree.vue.vm")) {
@@ -69,6 +69,10 @@ public class JavaGenFilePath implements GenFilePath {
             fileName = StringUtils.format("{}/views/{}/{}/modules/{}-search.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("operate-drawer.vue.vm")) {
             fileName = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
+        }
+        // 其他文件,使用模版名称去掉.vm后缀命名
+        else {
+            fileName = StringUtils.format("",template.replace(".vm", ""));
         }
         return fileName;
     }

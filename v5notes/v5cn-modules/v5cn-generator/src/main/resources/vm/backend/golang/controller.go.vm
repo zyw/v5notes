@@ -17,7 +17,7 @@ type ${ClassName}Ctr struct{}
 // @Security ApiKeyAuth
 // @Accept application/json
 // @Produce application/json
-// @Param data body payment.PayWay true "创建payWay表"
+// @Param data body models.${ClassName} true "创建${className}表"
 // @Success 200 {object} response.Response{msg=string} "创建成功"
 // @Router /${className}/create${ClassName} [post]
 func (c *${ClassName}Ctr) Create${ClassName}(c *gin.Context) {

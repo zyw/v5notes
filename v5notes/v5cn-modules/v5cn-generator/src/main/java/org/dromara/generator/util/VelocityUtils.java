@@ -118,13 +118,13 @@ public class VelocityUtils {
         DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
         String sqlTemplatePath = "vm/sql/" + beType;
         if (dataBaseType.isOracle()) {
-            templates.add(sqlTemplatePath + "/oracle/sql.vm");
+            templates.add(sqlTemplatePath + "/oracle/sql.sql.vm");
         } else if (dataBaseType.isPostgreSql()) {
-            templates.add(sqlTemplatePath + "/postgres/sql.vm");
+            templates.add(sqlTemplatePath + "/postgres/sql.sql.vm");
         } else if (dataBaseType.isSqlServer()) {
-            templates.add(sqlTemplatePath + "/sqlserver/sql.vm");
+            templates.add(sqlTemplatePath + "/sqlserver/sql.sql.vm");
         } else {
-            templates.add(sqlTemplatePath + "/sql.vm");
+            templates.add(sqlTemplatePath + "/sql.sql.vm");
         }
 
         return templates;
