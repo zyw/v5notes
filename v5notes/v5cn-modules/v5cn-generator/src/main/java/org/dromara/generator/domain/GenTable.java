@@ -184,7 +184,7 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isTree(String tplCategory) {
-        return tplCategory != null && StringUtils.equals(GenConstants.TPL_TREE, tplCategory);
+        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CATEGORY.TPL_TREE, tplCategory);
     }
 
     public boolean isCrud() {
@@ -192,7 +192,7 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isCrud(String tplCategory) {
-        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CRUD, tplCategory);
+        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CATEGORY.TPL_CRUD, tplCategory);
     }
 
     public boolean isSuperColumn(String javaField) {
@@ -200,6 +200,6 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isSuperColumn(String tplCategory, String javaField) {
-        return StringUtils.equalsAnyIgnoreCase(javaField, GenConstants.BASE_ENTITY);
+        return StringUtils.equalsAnyIgnoreCase(javaField, GenConstants.OPERATE_BO.BASE_ENTITY);
     }
 }

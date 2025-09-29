@@ -185,4 +185,5 @@ export interface ImportTableForm {
   beType: string;
   feType: string;
   packageName: string;
+  moduleName: string;
 }

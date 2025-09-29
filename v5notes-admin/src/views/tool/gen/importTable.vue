@@ -1,6 +1,6 @@
 <template>
   <!-- 导入表 -->
-  <el-dialog v-model="visible" title="导入表" width="80%" top="5vh" append-to-body>
+  <el-dialog v-model="visible" title="导入表" width="85%" top="4vh" append-to-body>
     <el-card shadow="hover" style="margin-bottom: 10px">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="数据源" prop="dataName">
@@ -34,6 +34,9 @@
         </el-form-item>
         <el-form-item label="包名称" prop="packageName">
           <el-input v-model="tableParams.packageName" placeholder="请输入包名称/模块名称" clearable />
+        </el-form-item>
+        <el-form-item label="模块名称" prop="moduleName">
+          <el-input v-model="tableParams.moduleName" placeholder="请输入模块名称" clearable />
         </el-form-item>
       </el-form>
     </el-card>
@@ -75,7 +78,8 @@ const tableFormRef = ref<ElFormInstance>();
 const tableParams = reactive<ImportTableForm>({
   beType: 'java',
   feType: 'default',
-  packageName: ''
+  packageName: '',
+  moduleName: ''
 });
 
 const tableRules = reactive<any>({
@@ -99,6 +103,7 @@ const clearTableParams = () => {
   tableParams.beType = 'java';
   tableParams.feType = 'default';
   tableParams.packageName = '';
+  tableParams.moduleName = '';
 };
 
 /** 查询参数列表 */

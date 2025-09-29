@@ -145,6 +145,12 @@ public class GenUtils {
         }
     }
 
+    /**
+     * 获取默认值
+     *
+     * @param defaultVal 默认值
+     * @return 截取后的列类型
+     */
     public static String getDefaultValue(String defaultVal) {
         if (StringUtils.isBlank(defaultVal)) {
             return "";

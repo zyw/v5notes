@@ -30,19 +30,36 @@ public class GolangGenFilePath implements GenFilePath {
 
         String soybeanModuleName = StrUtil.toSymbolCase(moduleName, '-');
 
-        if (template.contains("services")) {
+        if (template.contains("services.go.vm")) {
             filePath = StringUtils.format("{}/services/{}.go", BACKEND_PATH, tableName);
-        } else if (template.contains("controller")) {
-            filePath = StringUtils.format("{}/controller/{}.go", BACKEND_PATH, tableName);
-        } else if (template.contains("models")) {
-            filePath = StringUtils.format("{}/models/{}.go", BACKEND_PATH, tableName);
-        } else if (template.contains("router")) {
-            filePath = StringUtils.format("{}/router/{}.go", BACKEND_PATH, tableName);
-        } else if (template.contains("request")) {
-            filePath = StringUtils.format("{}/request/{}.go", BACKEND_PATH, tableName);
-        } else if(template.contains("response")) {
-            filePath = StringUtils.format("{}/response/{}.go", BACKEND_PATH, tableName);
+        } else if (template.contains("services-export.go")) {
+            filePath = StringUtils.format("{}/services/export.go", BACKEND_PATH);
         }
+        // 控制器
+        else if (template.contains("controller.go.vm")) {
+            filePath = StringUtils.format("{}/controller/{}.go", BACKEND_PATH, tableName);
+        } else if (template.contains("controller-export.go.vm"))  {
+            filePath = StringUtils.format("{}/controller/export.go", BACKEND_PATH);
+        } else if (template.contains("controller-import.go.vm"))  {
+            filePath = StringUtils.format("{}/controller/import.go", BACKEND_PATH);
+        }
+        // 模型
+        else if (template.contains("models")) {
+            filePath = StringUtils.format("{}/models/{}.go", BACKEND_PATH, tableName);
+        } else if (template.contains("request")) {
+            filePath = StringUtils.format("{}/models/request/{}.go", BACKEND_PATH, tableName);
+        } else if(template.contains("response")) {
+            filePath = StringUtils.format("{}/models/response/{}.go", BACKEND_PATH, tableName);
+        }
+        // 路由
+        else if (template.contains("router.go.vm")) {
+            filePath = StringUtils.format("{}/router/{}.go", BACKEND_PATH, tableName);
+        } else if (template.contains("router-export.go.vm")) {
+            filePath = StringUtils.format("{}/router/export.go", BACKEND_PATH);
+        } else if (template.contains("router-import.go.vm")) {
+            filePath = StringUtils.format("{}/router/import.go", BACKEND_PATH);
+        }
+        // 前端页面
         else if (template.contains("index.vue.vm")) {
             filePath = StringUtils.format("{}/views/{}/{}/index.vue", GOLANG_PATH, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("index-tree.vue.vm")) {
@@ -55,6 +72,10 @@ public class GolangGenFilePath implements GenFilePath {
             filePath = StringUtils.format("{}/views/{}/{}/modules/{}-search.vue", GOLANG_PATH, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("operate-drawer.vue.vm")) {
             filePath = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", GOLANG_PATH, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
+        }
+        // sql 文件
+        else if (template.contains("sql.vm")) {
+            filePath = StringUtils.format("menu.sql", BACKEND_PATH, tableName);
         }
         return filePath;
     }

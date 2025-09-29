@@ -41,4 +41,8 @@ public class ImportTableBo implements Serializable {
      * 包名
      */
     private String packageName;
+    /**
+     * 模块名
+     */
+    private String moduleName;
 }

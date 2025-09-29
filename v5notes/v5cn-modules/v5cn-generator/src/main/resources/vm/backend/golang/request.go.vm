@@ -1,0 +1,9 @@
+package request
+
+type Get${ClassName}List struct {
+    PageInfo
+    #foreach($column in $columns)
+        #set($fieldName=$!StrUtil.lowerFirst($column.FieldName))
+        ${column.FieldName} ${column.FieldType} `json:"$fieldName" form:"$fieldName"`
+    #end
+}

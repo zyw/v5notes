@@ -3,6 +3,7 @@ package org.dromara.generator.util;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
+import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,17 +97,19 @@ public class VelocityUtils {
 
         // 后端模板列表
         String beUri = "vm/backend/" + beType;
-        List<String> beTemplateList = getResourcesTemplateList(beUri);
+        Set<String> beTemplateList = getResourcesTemplateList(beUri);
         // 前端模板列表
         String feUri = "vm/frontend/" + feType;
-        List<String> feTemplateList = getResourcesTemplateList(feUri);
-        if (GenConstants.TPL_CRUD.equals(tplCategory)) {
+        Set<String> feTemplateList = getResourcesTemplateList(feUri);
+
+        if (GenConstants.TPL_CATEGORY.TPL_CRUD.equals(tplCategory)) {
             feTemplateList.remove(feUri + "/index-tree.vue.vm");
             feTemplateList.add(feUri + "/index.vue.vm");
-        } else if (GenConstants.TPL_TREE.equals(tplCategory)) {
+        } else if (GenConstants.TPL_CATEGORY.TPL_TREE.equals(tplCategory)) {
             feTemplateList.remove(feUri + "/index.vue.vm");
             feTemplateList.add(feUri + "/index-tree.vue.vm");
         }
+        log.info("前端模板列表:{}", feTemplateList);
         // 模板列表合并
         List<String> templates = new ArrayList<>(beTemplateList);
         templates.addAll(feTemplateList);
@@ -169,7 +172,10 @@ public class VelocityUtils {
         for (GenTableColumn column : columns) {
             if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
                 column.getHtmlType(),
-                new String[]{GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX})) {
+                new String[]{
+                    GenConstants.HTML_TYPE.HTML_SELECT,
+                    GenConstants.HTML_TYPE.HTML_RADIO,
+                    GenConstants.HTML_TYPE.HTML_CHECKBOX})) {
                 dicts.add("'" + column.getDictType() + "'");
             }
         }
@@ -198,7 +204,9 @@ public class VelocityUtils {
         for (GenTableColumn column : columns) {
             if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
                 column.getHtmlType(),
-                new String[]{GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX})) {
+                new String[]{ GenConstants.HTML_TYPE.HTML_SELECT,
+                    GenConstants.HTML_TYPE.HTML_RADIO,
+                    GenConstants.HTML_TYPE.HTML_CHECKBOX})) {
                 Map<String, Object> dict = new HashMap<>();
                 dict.put("type", column.getDictType());
                 dict.put("name", StringUtils.toCamelCase(column.getDictType()));
@@ -300,8 +308,8 @@ public class VelocityUtils {
      * @param path 模板路径
      * @return 模板列表
      */
-    private static List<String> getResourcesTemplateList(String path) {
-        List<String> templates = new ArrayList<>();
+    private static Set<String> getResourcesTemplateList(String path) {
+        Set<String> templates = Sets.newHashSet();
         ApplicationContext resolver = SpringUtils.getApplicationContext();
         try {
             Resource[] resources = resolver.getResources(ResourcePatternResolver.CLASSPATH_URL_PREFIX + path + "/**/*.vm");

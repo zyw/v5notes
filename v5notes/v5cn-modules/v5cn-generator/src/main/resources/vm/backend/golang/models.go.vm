@@ -10,18 +10,18 @@ import (
 type ${ClassName} struct {
     global.BaseModel
     #foreach ($column in $columns)
-        $gorm = column:${column.columnName};
-        #if($column.size != "")
-            $gorm += size:${column.size};
+        #set($gorm = "column:${column.columnName}")
+        #if($column.size && $column.size != "")
+            #set($gorm = "$gorm;size:${column.size}")
         #end
-        #if($column.defaultVal != "")
-            $gorm += default:${column.defaultVal};
+        #if($column.defaultVal && $column.defaultVal != "")
+            #set($gorm = "$gorm;default:${column.defaultVal}")
         #end
-        #if($column.comment != "")
-            $gorm += comment:${column.comment};
+        #if($column.comment && $column.comment != "")
+            #set($gorm = "$gorm;comment:${column.comment}")
         #end
         #if(!$table.isSuperColumn($column.javaField))
-            $column.fieldName $column.fieldType  `gorm:"${gorm}" json:"${column.fieldName}"`
+            $column.fieldName $column.fieldType  `gorm:"${gorm}" json:"$!StrUtil.lowerFirst($column.fieldName)"`
         #end
     #end
 }

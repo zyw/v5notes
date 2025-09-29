@@ -203,7 +203,10 @@ public class GenTableServiceImpl implements IGenTableService {
             gen.setDataName(bo.getDataName());
             gen.setBeType(bo.getBeType());
             gen.setFeType(bo.getFeType());
+            // 设置默认的包名
             gen.setPackageName(ObjectUtil.defaultIfBlank(bo.getPackageName(), GenConfig.getPackageName()));
+            // 设置默认的模块名
+            gen.setModuleName(bo.getModuleName());
             gen.setTableName(x.getName());
             gen.setTableComment(x.getComment());
             gen.setCreateTime(x.getCreateTime());
@@ -484,6 +487,7 @@ public class GenTableServiceImpl implements IGenTableService {
         for (int i = 0; i < 6; i++) {
             menuIds.add(identifierGenerator.nextId(null).longValue());
         }
+        // 设置菜单ID
         table.setMenuIds(menuIds);
         // 设置主键列信息
         setPkColumn(table);
@@ -519,7 +523,7 @@ public class GenTableServiceImpl implements IGenTableService {
      */
     @Override
     public void validateEdit(GenTable genTable) {
-        if (GenConstants.TPL_TREE.equals(genTable.getTplCategory())) {
+        if (GenConstants.TPL_CATEGORY.TPL_TREE.equals(genTable.getTplCategory())) {
             String options = JsonUtils.toJsonString(genTable.getParams());
             Dict paramsObj = JsonUtils.parseMap(options);
             if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_CODE))) {

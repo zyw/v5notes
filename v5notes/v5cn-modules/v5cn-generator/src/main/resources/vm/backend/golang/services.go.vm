@@ -1,11 +1,11 @@
-package system
+package services
 
 import (
     "context"
 
-    "onedev.v5ai.xin/go-payment/payment-core/global"
-    "onedev.v5ai.xin/go-payment/payment-service/model/mch"
-    mchReq "onedev.v5ai.xin/go-payment/payment-service/model/mch/request"
+    "${packageName}/global"
+    "${packageName}/models"
+    "${packageName}/models/request"
 )
 
 type ${ClassName}Service struct{}

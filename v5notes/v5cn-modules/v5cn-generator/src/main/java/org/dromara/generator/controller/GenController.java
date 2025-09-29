@@ -6,7 +6,9 @@ import cn.hutool.core.io.IoUtil;
 import com.baomidou.lock.annotation.Lock4j;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.idempotent.annotation.RepeatSubmit;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
@@ -31,6 +33,7 @@ import java.util.Map;
  *
  * @author Lion Li
  */
+@Slf4j
 @Validated
 @RequiredArgsConstructor
 @RestController
@@ -190,10 +193,15 @@ public class GenController extends BaseController {
     @SaCheckPermission("tool:gen:code")
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/batchGenCode")
-    public void batchGenCode(HttpServletResponse response, String tableIdStr) throws IOException {
-        String[] tableIds = Convert.toStrArray(tableIdStr);
-        byte[] data = genTableService.downloadCode(tableIds);
-        genCode(response, data);
+    public void batchGenCode(HttpServletResponse response, String tableIdStr) {
+        try {
+            String[] tableIds = Convert.toStrArray(tableIdStr);
+            byte[] data = genTableService.downloadCode(tableIds);
+            genCode(response, data);
+        } catch (Exception e) {
+            log.error("批量生成代码失败", e);
+            throw new ServiceException("批量生成代码失败");
+        }
     }
 
     /**
@@ -203,7 +211,7 @@ public class GenController extends BaseController {
         response.reset();
         response.addHeader("Access-Control-Allow-Origin", "*");
         response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
-        response.setHeader("Content-Disposition", "attachment; filename=\"ruoyi.zip\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"code.zip\"");
         response.addHeader("Content-Length", "" + data.length);
         response.setContentType("application/octet-stream; charset=UTF-8");
         IoUtil.write(response.getOutputStream(), false, data);

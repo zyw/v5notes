@@ -5,7 +5,6 @@ import org.apache.velocity.VelocityContext;
 import org.dromara.generator.constant.GenConstants;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
-import org.dromara.generator.util.VelocityUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
