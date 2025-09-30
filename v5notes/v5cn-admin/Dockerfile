@@ -5,11 +5,11 @@ FROM bellsoft/liberica-openjdk-debian:17.0.11-cds
 
 LABEL maintainer="Lion Li"
 
-RUN mkdir -p /v5cn/server/logs \
-    /v5cn/server/temp \
-    /v5cn/skywalking/agent
+RUN mkdir -p /v5notes/server/logs \
+    /v5notes/server/temp \
+    /v5notes/skywalking/agent
 
-WORKDIR /v5cn/server
+WORKDIR /v5notes/server
 
 ENV SERVER_PORT=8080 LANG=C.UTF-8 LC_ALL=C.UTF-8 JAVA_OPTS=""
 
@@ -20,10 +20,15 @@ EXPOSE ${SERVER_PORT}
 
 ADD ./target/v5cn-admin.jar ./app.jar
 
-ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${SERVER_PORT} \
-           # 应用名称 如果想区分集群节点监控 改成不同的名称即可
-           #-Dskywalking.agent.service_name=ruoyi-server \
-           #-javaagent:/ruoyi/skywalking/agent/skywalking-agent.jar \
-           -XX:+HeapDumpOnOutOfMemoryError -XX:+UseZGC ${JAVA_OPTS} \
-           -jar app.jar $ARGS
-
+# 应用配置说明：
+# - 如果想区分集群节点监控，把服务名改成不同的名称即可
+# - 取消下面两行的注释来启用 SkyWalking
+#   -Dskywalking.agent.service_name=ruoyi-server
+#   -javaagent:/ruoyi/skywalking/agent/skywalking-agent.jar
+ENTRYPOINT ["java", \
+           "-Djava.security.egd=file:/dev/./urandom", \
+           "-Dserver.port=${SERVER_PORT}", \
+           "-XX:+HeapDumpOnOutOfMemoryError", \
+           "-XX:+UseZGC", \
+           "${JAVA_OPTS}", \
+           "-jar", "app.jar", "${ARGS}"]

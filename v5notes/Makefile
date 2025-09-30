@@ -10,8 +10,9 @@ ENV_DOCKER_IMAGE_TAG 	?= latest
 BUILDER=$(PROJECT_NAME)-builder
 
 # 后台管理模块
-ENV_ADMIN_NAME 			?= v5cn-admin
-ENV_ADMIN_CTX 			?= ./$(ENV_ADMIN_NAME)/
+ENV_ADMIN_NAME 			?= v5notes-admin
+ENV_V5CN_NAME 			?= v5cn-admin
+ENV_ADMIN_CTX 			?= ./$(ENV_V5CN_NAME)/
 ENV_ADMIN_FULL_NAME 	?= $(ENV_DOCKER_REGISTRY)$(ENV_ADMIN_NAME):$(ENV_DOCKER_IMAGE_TAG)
 
 # 构建镜像平台架构

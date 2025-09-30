@@ -1,5 +1,5 @@
 --- # 临时文件存储位置 避免临时文件被系统清理报错
-spring.servlet.multipart.location: /ruoyi/server/temp
+spring.servlet.multipart.location: /v5notes/server/temp
 
 --- # 监控中心配置
 spring.boot.admin.client:
