@@ -5,6 +5,8 @@ services:
       - 8080:8080
     volumes:
       - /mnt/v5notes/config/:/v5notes/server/config/
+      - /mnt/v5notes/logs/:/v5notes/server/logs/
+      - /mnt/uploadfile/:/mnt/uploadfile/
     image: onedev.v5ai.xin/v5notes/v5notes-admin:latest
     networks:
       - v5notes-net
