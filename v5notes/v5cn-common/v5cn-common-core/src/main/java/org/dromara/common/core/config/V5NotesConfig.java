@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 
 @Data
 @Component
-@ConfigurationProperties(prefix = "ruoyi")
-public class RuoYiConfig {
+@ConfigurationProperties(prefix = "v5notes")
+public class V5NotesConfig {
 
     /**
      * 项目名称
