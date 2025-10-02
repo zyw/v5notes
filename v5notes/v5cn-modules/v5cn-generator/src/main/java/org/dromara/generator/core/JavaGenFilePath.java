@@ -1,10 +1,13 @@
 package org.dromara.generator.core;
 
+import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.util.StrUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.generator.domain.GenTable;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component("javaGenFilePath")
 public class JavaGenFilePath implements GenFilePath {
 
@@ -34,18 +37,14 @@ public class JavaGenFilePath implements GenFilePath {
 
         String javaPath = PROJECT_PATH + "/" + StringUtils.replace(packageName, ".", "/");
         String mybatisPath = MYBATIS_PATH + "/" + moduleName;
-        String soybeanPath = "soy";
         String soybeanModuleName = StrUtil.toSymbolCase(moduleName, '-');
         if (template.contains("domain.java.vm")) {
             fileName = StringUtils.format("{}/domain/{}.java", javaPath, className);
-        }
-        if (template.contains("vo.java.vm")) {
+        } else if (template.contains("vo.java.vm")) {
             fileName = StringUtils.format("{}/domain/vo/{}Vo.java", javaPath, className);
-        }
-        if (template.contains("bo.java.vm")) {
+        } else if (template.contains("bo.java.vm")) {
             fileName = StringUtils.format("{}/domain/bo/{}Bo.java", javaPath, className);
-        }
-        if (template.contains("mapper.java.vm")) {
+        } else if (template.contains("mapper.java.vm")) {
             fileName = StringUtils.format("{}/mapper/{}Mapper.java", javaPath, className);
         } else if (template.contains("service.java.vm")) {
             fileName = StringUtils.format("{}/service/I{}Service.java", javaPath, className);
@@ -56,24 +55,27 @@ public class JavaGenFilePath implements GenFilePath {
         } else if (template.contains("mapper.xml.vm")) {
             fileName = StringUtils.format("{}/{}Mapper.xml", mybatisPath, className);
         } else if (template.contains("sql.sql.vm")) {
-            fileName = businessName + "menu.sql";
+            fileName = businessName + "-menu.sql";
         } else if (template.contains("index.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("views/{}/{}/index.vue", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("index-tree.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/index.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("views/{}/{}/index.vue", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("api.d.ts.vm")) {
-            fileName = StringUtils.format("{}/typings/api/{}.{}.api.d.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("typings/api/{}.{}.api.d.ts", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("api.ts.vm")) {
-            fileName = StringUtils.format("{}/service/api/{}/{}.ts", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("service/api/{}/{}.ts", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("search.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-search.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("views/{}/{}/modules/{}-search.vue", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         } else if (template.contains("operate-drawer.vue.vm")) {
-            fileName = StringUtils.format("{}/views/{}/{}/modules/{}-operate-drawer.vue", soybeanPath, soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
+            fileName = StringUtils.format("views/{}/{}/modules/{}-operate-drawer.vue", soybeanModuleName, StrUtil.toSymbolCase(businessName, '-'), StrUtil.toSymbolCase(businessName, '-'));
         }
         // 其他文件,使用模版名称去掉.vm后缀命名
         else {
-            fileName = StringUtils.format("",template.replace(".vm", ""));
+            String baseFileName = FileNameUtil.getName(template);
+            log.info("基本文件名称===>>：{}", baseFileName);
+            fileName = StringUtils.format("{}",baseFileName.replace(".vm", ""));
         }
+        log.info("生成文件：{}，<==>模板名称：{}，<==>表名称：{}", fileName, template, genTable.getTableName());
         return fileName;
     }
 }

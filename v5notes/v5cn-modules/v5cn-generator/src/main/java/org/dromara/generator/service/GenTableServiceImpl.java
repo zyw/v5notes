@@ -511,7 +511,7 @@ public class GenTableServiceImpl implements IGenTableService {
                 zip.flush();
                 zip.closeEntry();
             } catch (IOException e) {
-                log.error("渲染模板失败，表名：" + table.getTableName(), e);
+                log.error("渲染模板失败，表名：{}", table.getTableName(), e);
             }
         }
     }

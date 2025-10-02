@@ -1,10 +1,13 @@
 package org.dromara.generator.core;
 
+import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.util.StrUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.generator.domain.GenTable;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component("golangGenFilePath")
 public class GolangGenFilePath implements GenFilePath {
     /**
@@ -75,12 +78,15 @@ public class GolangGenFilePath implements GenFilePath {
         }
         // sql 文件
         else if (template.contains("sql.sql.vm")) {
-            filePath = StringUtils.format(businessName + "menu.sql");
+            filePath = StringUtils.format(businessName + "-menu.sql");
         }
         // 其他文件,使用模版名称去掉.vm后缀命名
         else {
-            filePath = StringUtils.format("",template.replace(".vm", ""));
+            String baseFileName = FileNameUtil.getName(template);
+            log.info("基本文件名称===>>：{}", baseFileName);
+            filePath = StringUtils.format("{}",baseFileName.replace(".vm", ""));
         }
+        log.info("生成文件：{}，<==>模板名称：{}，<==>表名称：{}", filePath, template, genTable.getTableName());
         return filePath;
     }
 }
