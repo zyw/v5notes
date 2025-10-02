@@ -21,9 +21,11 @@ import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -109,7 +111,6 @@ public class VelocityUtils {
             feTemplateList.remove(feUri + "/index.vue.vm");
             feTemplateList.add(feUri + "/index-tree.vue.vm");
         }
-        log.info("前端模板列表:{}", feTemplateList);
         // 模板列表合并
         List<String> templates = new ArrayList<>(beTemplateList);
         templates.addAll(feTemplateList);
@@ -126,6 +127,8 @@ public class VelocityUtils {
         } else {
             templates.add(sqlTemplatePath + "/sql.sql.vm");
         }
+
+        log.info("全部模版列表==>>:{}", templates);
 
         return templates;
     }
@@ -312,12 +315,17 @@ public class VelocityUtils {
         Set<String> templates = Sets.newHashSet();
         ApplicationContext resolver = SpringUtils.getApplicationContext();
         try {
-            Resource[] resources = resolver.getResources(ResourcePatternResolver.CLASSPATH_URL_PREFIX + path + "/**/*.vm");
+            // 使用PathMatchingResourcePatternResolver
+            ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver(resolver);
+            Resource[] resources = resourcePatternResolver.getResources(
+                ResourcePatternResolver.CLASSPATH_URL_PREFIX + path + "/**/*.vm");
 
             for (Resource resource : resources) {
-                String pathUrl = resource.getURL().getPath();
-                // 提取vm目录之后的路径
-                String relativePath = extractVmRelativePath(pathUrl);
+                if (!resource.exists()) {
+                    continue;
+                }
+                String resourcePath = getResourcePath(resource);
+                String relativePath = extractVmRelativePath(resourcePath);
                 if (relativePath != null) {
                     templates.add(relativePath);
                 }
@@ -331,16 +339,42 @@ public class VelocityUtils {
     }
 
     /**
+     * 获取资源的路径（兼容JAR包和文件系统）
+     */
+    private static String getResourcePath(Resource resource) throws IOException {
+        URL url = resource.getURL();
+        String urlString = url.toString();
+
+        // 处理JAR包中的资源
+        if (urlString.contains("!/")) {
+            // 提取JAR包内的路径
+            return urlString.substring(urlString.indexOf("!/") + 2);
+        } else {
+            // 文件系统中的资源
+            return resource.getFile().getAbsolutePath();
+        }
+    }
+
+    /**
      * 提取vm目录之后的路径
      * @param fullPath 全路径
      * @return 提取后的路径
      */
     private static String extractVmRelativePath(String fullPath) {
+        // 统一路径分隔符
+        String normalizedPath = fullPath.replace('\\', '/');
+
         // 查找"vm/"在路径中的位置
-        int vmIndex = fullPath.indexOf("vm/");
+        int vmIndex = normalizedPath.indexOf("vm/");
         if (vmIndex != -1) {
-            return fullPath.substring(vmIndex);
+            return normalizedPath.substring(vmIndex);
         }
+
+        // 如果直接以vm开头（没有斜杠）
+        if (normalizedPath.startsWith("vm/")) {
+            return normalizedPath;
+        }
+
         return null;
     }
 }
