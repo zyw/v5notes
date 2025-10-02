@@ -10,7 +10,7 @@
 
 ```bash
 # 克隆项目
-git clone https://gitee.com/JavaLionLi/plus-ui.git
+git clone https://github.com/zyw/v5notes.git
 
 # 安装依赖
 npm install --registry=https://registry.npmmirror.com

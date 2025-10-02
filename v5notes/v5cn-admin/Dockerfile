@@ -46,8 +46,8 @@ USER appuser
 EXPOSE ${SERVER_PORT}
 
 # 健康检查（增加更长的启动等待时间）
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-    CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
+#HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+#    CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
 # 使用exec形式启动，确保信号正确传递
 ENTRYPOINT ["sh", "-c", "java -Djava.security.egd=$JAVA_SECURITY_EGD \
