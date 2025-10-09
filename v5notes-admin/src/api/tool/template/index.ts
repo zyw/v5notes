@@ -1,0 +1,63 @@
+import request from '@/utils/request';
+import { AxiosPromise } from 'axios';
+import { TemplateVO, TemplateForm, TemplateQuery } from '@/api/tool/template/types';
+
+/**
+ * 查询gen_template;代码模版列表
+ * @param query
+ * @returns {*}
+ */
+
+export const listTemplate = (query?: TemplateQuery): AxiosPromise<TemplateVO[]> => {
+  return request({
+    url: '/tool/gen/template/list',
+    method: 'get',
+    params: query
+  });
+};
+
+/**
+ * 查询gen_template;代码模版详细
+ * @param id
+ */
+export const getTemplate = (id: string | number): AxiosPromise<TemplateVO> => {
+  return request({
+    url: '/tool/gen/template/' + id,
+    method: 'get'
+  });
+};
+
+/**
+ * 新增gen_template;代码模版
+ * @param data
+ */
+export const addTemplate = (data: TemplateForm) => {
+  return request({
+    url: '/tool/gen/template',
+    method: 'post',
+    data: data
+  });
+};
+
+/**
+ * 修改gen_template;代码模版
+ * @param data
+ */
+export const updateTemplate = (data: TemplateForm) => {
+  return request({
+    url: '/tool/gen/template',
+    method: 'put',
+    data: data
+  });
+};
+
+/**
+ * 删除gen_template;代码模版
+ * @param id
+ */
+export const delTemplate = (id: string | number | Array<string | number>) => {
+  return request({
+    url: '/tool/gen/template/' + id,
+    method: 'delete'
+  });
+};
