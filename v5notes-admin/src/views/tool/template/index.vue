@@ -134,7 +134,7 @@
 </template>
 
 <script setup name="Template" lang="ts">
-import { listTemplate, getTemplate, delTemplate, addTemplate, updateTemplate } from '@/api/tool/template';
+import { listTemplate, getTemplate, delTemplate, addTemplate, updateTemplate, editTemplate } from '@/api/tool/template';
 import { TemplateVO, TemplateQuery, TemplateForm } from '@/api/tool/template/types';
 import { getDicts } from '@/api/system/dict/data';
 import { DictDataVO } from '@/api/system/dict/data/types';
@@ -315,7 +315,7 @@ const submitTemplateForm = async () => {
     return;
   }
   buttonLoading.value = true;
-  await updateTemplate({ id: code.id, content: code.content }).finally(() => (buttonLoading.value = false));
+  await editTemplate({ id: code.id, content: code.content }).finally(() => (buttonLoading.value = false));
   proxy?.$modal.msgSuccess('操作成功');
   contentDialog.value = false;
 };

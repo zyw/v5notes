@@ -45,12 +45,6 @@ public class GenTemplateBo extends BaseEntity {
     private String name;
 
     /**
-     * 模版内容
-     */
-    @NotBlank(message = "模版内容不能为空", groups = { AddGroup.class, EditGroup.class })
-    private String content;
-
-    /**
      * 模版名称，需要包含生成文件的扩展名
      */
     @NotBlank(message = "模版名称，需要包含生成文件的扩展名不能为空", groups = { AddGroup.class, EditGroup.class })

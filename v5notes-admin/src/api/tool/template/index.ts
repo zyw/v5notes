@@ -3,7 +3,7 @@ import { AxiosPromise } from 'axios';
 import { TemplateVO, TemplateForm, TemplateQuery } from '@/api/tool/template/types';
 
 /**
- * 查询gen_template;代码模版列表
+ * 查询代码模版列表
  * @param query
  * @returns {*}
  */
@@ -17,7 +17,7 @@ export const listTemplate = (query?: TemplateQuery): AxiosPromise<TemplateVO[]> 
 };
 
 /**
- * 查询gen_template;代码模版详细
+ * 查询代码模版详细
  * @param id
  */
 export const getTemplate = (id: string | number): AxiosPromise<TemplateVO> => {
@@ -28,7 +28,7 @@ export const getTemplate = (id: string | number): AxiosPromise<TemplateVO> => {
 };
 
 /**
- * 新增gen_template;代码模版
+ * 新增代码模版
  * @param data
  */
 export const addTemplate = (data: TemplateForm) => {
@@ -40,7 +40,7 @@ export const addTemplate = (data: TemplateForm) => {
 };
 
 /**
- * 修改gen_template;代码模版
+ * 修改代码模版
  * @param data
  */
 export const updateTemplate = (data: TemplateForm) => {
@@ -52,7 +52,19 @@ export const updateTemplate = (data: TemplateForm) => {
 };
 
 /**
- * 删除gen_template;代码模版
+ * 修改代码模版
+ * @param data
+ */
+export const editTemplate = (data: TemplateForm) => {
+  return request({
+    url: '/tool/gen/template/edit/template',
+    method: 'put',
+    data: data
+  });
+};
+
+/**
+ * 删除代码模版
  * @param id
  */
 export const delTemplate = (id: string | number | Array<string | number>) => {

@@ -5,7 +5,7 @@ CREATE TABLE gen_template(
      `be_type` VARCHAR(20) NOT NULL COMMENT '后端模版类型',
      `fe_type` VARCHAR(20) NOT NULL COMMENT '前端模版类型',
      `name` VARCHAR(50) NOT NULL COMMENT '模版名称',
-     `content` LONGTEXT NOT NULL DEFAULT '' COMMENT '模版内容',
+     `content` LONGTEXT COMMENT '模版内容',
      `file_name` VARCHAR(100) NOT NULL COMMENT '模版名称，需要包含生成文件的扩展名',
      `file_path` VARCHAR(200) COMMENT '生成文件路径，如果为空生成文件在压缩包的跟目录下',
      `status` CHAR(1) NOT NULL DEFAULT 0 COMMENT '状态:0正常,1停用',

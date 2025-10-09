@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.generator.domain.GenTemplate;
+import org.dromara.generator.domain.bo.GenEditTemplateBo;
 import org.dromara.generator.domain.bo.GenTemplateBo;
 import org.dromara.generator.mapper.GenTemplateMapper;
 import org.springframework.stereotype.Service;
@@ -74,7 +75,6 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
         lqw.eq(bo.getBeType() != null, GenTemplate::getBeType, bo.getBeType());
         lqw.eq(bo.getFeType() != null, GenTemplate::getFeType, bo.getFeType());
         lqw.like(bo.getName() != null, GenTemplate::getName, bo.getName());
-        lqw.eq(bo.getContent() != null, GenTemplate::getContent, bo.getContent());
         lqw.like(bo.getFileName() != null, GenTemplate::getFileName, bo.getFileName());
         lqw.eq(bo.getFilePath() != null, GenTemplate::getFilePath, bo.getFilePath());
         lqw.eq(bo.getStatus() != null, GenTemplate::getStatus, bo.getStatus());
@@ -108,6 +108,12 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
     public Boolean updateByBo(GenTemplateBo bo) {
         GenTemplate update = MapstructUtils.convert(bo, GenTemplate.class);
         validEntityBeforeSave(update);
+        return baseMapper.updateById(update) > 0;
+    }
+
+    @Override
+    public Boolean updateTemplateByBo(GenEditTemplateBo bo) {
+        GenTemplate update = MapstructUtils.convert(bo, GenTemplate.class);
         return baseMapper.updateById(update) > 0;
     }
 

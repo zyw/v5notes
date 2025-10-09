@@ -5,7 +5,7 @@ CREATE TABLE gen_template(
      be_type VARCHAR(20) NOT NULL,
      fe_type VARCHAR(20) NOT NULL,
      name VARCHAR(50) NOT NULL,
-     content TEXT NOT NULL DEFAULT '',
+     content TEXT,
      file_name VARCHAR(100) NOT NULL,
      file_path VARCHAR(200),
      status CHAR(1) NOT NULL DEFAULT 0,
@@ -30,6 +30,4 @@ COMMENT ON COLUMN gen_template.create_by IS '创建者';
 COMMENT ON COLUMN gen_template.create_time IS '创建时间';
 COMMENT ON COLUMN gen_template.update_by IS '更新者';
 COMMENT ON COLUMN gen_template.update_time IS '更新时间';
-COMMENT ON TABLE gen_template IS '代码模版表';
-
-
+COMMENT ON TABLE gen_template IS 'gen_template;代码模版表';

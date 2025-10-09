@@ -14,6 +14,7 @@ import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.dromara.generator.domain.GenTemplate;
+import org.dromara.generator.domain.bo.GenEditTemplateBo;
 import org.dromara.generator.domain.bo.GenTemplateBo;
 import org.dromara.generator.service.IGenTemplateService;
 import org.springframework.validation.annotation.Validated;
@@ -76,6 +77,17 @@ public class GenTemplateController extends BaseController {
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody GenTemplateBo bo) {
         return toAjax(genTemplateService.updateByBo(bo));
+    }
+
+    /**
+     * 修改代码模版
+     */
+    @SaCheckPermission("generator:template:edit")
+    @Log(title = "代码模版", businessType = BusinessType.UPDATE)
+    @RepeatSubmit()
+    @PutMapping("/edit/template")
+    public R<Void> editTemplate(@Validated(EditGroup.class) @RequestBody GenEditTemplateBo bo) {
+        return toAjax(genTemplateService.updateTemplateByBo(bo));
     }
 
     /**
