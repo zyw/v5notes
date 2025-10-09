@@ -1,20 +1,20 @@
 DROP TABLE IF EXISTS gen_template;
 CREATE TABLE gen_template(
-     `id` BIGINT NOT NULL COMMENT 'ID',
-     `tenant_id` VARCHAR(20) NOT NULL COMMENT '租户ID',
-     `be_type` VARCHAR(20) NOT NULL COMMENT '后端模版类型',
-     `fe_type` VARCHAR(20) NOT NULL COMMENT '前端模版类型',
-     `name` VARCHAR(50) NOT NULL COMMENT '模版名称',
-     `content` LONGTEXT COMMENT '模版内容',
-     `file_name` VARCHAR(100) NOT NULL COMMENT '模版名称，需要包含生成文件的扩展名',
-     `file_path` VARCHAR(200) COMMENT '生成文件路径，如果为空生成文件在压缩包的跟目录下',
-     `status` CHAR(1) NOT NULL DEFAULT 0 COMMENT '状态:0正常,1停用',
-     `del_flag` CHAR(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0代表存在 2代表删除）',
-     `create_by` VARCHAR(64) COMMENT '创建者',
-     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-     `update_by` VARCHAR(64) COMMENT '更新者',
-     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-     PRIMARY KEY (`id`)
+    `id` BIGINT NOT NULL COMMENT 'ID',
+    `tenant_id` VARCHAR(20) NOT NULL DEFAULT '000000' COMMENT '租户ID',
+    `tp_type` VARCHAR(20) NOT NULL COMMENT '模版类型(可以是前端也可以是后端)',
+    `name` VARCHAR(50) NOT NULL COMMENT '模版名称',
+    `content` LONGTEXT COMMENT '模版内容',
+    `file_name` VARCHAR(100) NOT NULL COMMENT '模版名称，需要包含生成文件的扩展名',
+    `file_path` VARCHAR(200) COMMENT '生成文件路径，如果为空生成文件在压缩包的跟目录下',
+    `status` CHAR(1) NOT NULL DEFAULT 0 COMMENT '状态:0正常,1停用',
+    `del_flag` CHAR(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0代表存在 2代表删除）',
+    `create_dept` BIGINT COMMENT '创建部门',
+    `create_by` VARCHAR(64) COMMENT '创建者',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by` VARCHAR(64) COMMENT '更新者',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB COMMENT '代码模版表';
 
 

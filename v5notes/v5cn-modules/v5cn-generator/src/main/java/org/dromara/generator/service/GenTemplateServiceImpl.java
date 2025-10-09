@@ -39,7 +39,7 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
      */
     @Override
     public GenTemplate queryById(Long id){
-        return baseMapper.selectVoById(id);
+        return baseMapper.selectById(id);
     }
 
     /**
@@ -72,11 +72,9 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
         Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<GenTemplate> lqw = Wrappers.lambdaQuery();
         lqw.orderByAsc(GenTemplate::getId);
-        lqw.eq(bo.getBeType() != null, GenTemplate::getBeType, bo.getBeType());
-        lqw.eq(bo.getFeType() != null, GenTemplate::getFeType, bo.getFeType());
+        lqw.eq(bo.getTpType() != null, GenTemplate::getTpType, bo.getTpType());
         lqw.like(bo.getName() != null, GenTemplate::getName, bo.getName());
         lqw.like(bo.getFileName() != null, GenTemplate::getFileName, bo.getFileName());
-        lqw.eq(bo.getFilePath() != null, GenTemplate::getFilePath, bo.getFilePath());
         lqw.eq(bo.getStatus() != null, GenTemplate::getStatus, bo.getStatus());
         return lqw;
     }

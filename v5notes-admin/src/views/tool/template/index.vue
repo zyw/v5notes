@@ -10,14 +10,9 @@
             <el-form-item label="文件名称" prop="fileName">
               <el-input v-model="queryParams.fileName" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="后端类型" prop="beType">
-              <el-select v-model="queryParams.beType" filterable placeholder="请选择后端模版类型">
-                <el-option v-for="item in beTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item label="前端类型" prop="feType">
-              <el-select v-model="queryParams.feType" filterable placeholder="请选择前端模版类型">
-                <el-option v-for="item in feTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
+            <el-form-item label="模板类型" prop="tpType">
+              <el-select v-model="queryParams.tpType" filterable placeholder="请选择模版类型">
+                <el-option v-for="item in tpTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -45,9 +40,6 @@
               删除
             </el-button>
           </el-col>
-          <el-col :span="1.5">
-            <el-button v-hasPermi="['generator:template:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
-          </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
@@ -55,12 +47,16 @@
       <el-table v-loading="loading" border :data="templateList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column v-if="true" label="ID" align="center" prop="id" />
-        <el-table-column label="后端类型" align="center" prop="beType" />
-        <el-table-column label="前端类型" align="center" prop="feType" />
+        <el-table-column label="模版类型" align="center" prop="tpType" />
         <el-table-column label="模版名称" align="center" prop="name" />
         <el-table-column label="文件名称" align="center" prop="fileName" />
         <el-table-column label="文件路径" align="center" prop="filePath" />
-        <el-table-column label="状态" align="center" prop="status" />
+        <el-table-column label="状态" align="center" prop="status">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === '0' ? 'danger' : 'success'">{{ scope.row.status === '0' ? '禁用' : '启用' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" prop="createTime" />
         <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="编辑模版" placement="top">
@@ -68,7 +64,7 @@
                 v-hasPermi="['generator:template:edit-template']"
                 link
                 type="primary"
-                icon="Edit"
+                icon="Memo"
                 @click="handleEditTemplate(scope.row)"
               ></el-button>
             </el-tooltip>
@@ -90,14 +86,9 @@
         <el-form-item label="模版名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入模版名称" />
         </el-form-item>
-        <el-form-item label="后端类型" prop="beType">
-          <el-select v-model="form.beType" filterable placeholder="请选择后端模版类型">
-            <el-option v-for="item in beTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="前端类型" prop="feType">
-          <el-select v-model="form.feType" filterable placeholder="请选择前端模版类型">
-            <el-option v-for="item in feTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
+        <el-form-item label="模板类型" prop="tpType">
+          <el-select v-model="form.tpType" filterable placeholder="请选择模版类型">
+            <el-option v-for="item in tpTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="文件名称" prop="fileName">
@@ -122,7 +113,7 @@
     </el-dialog>
 
     <el-dialog v-model="contentDialog" title="模版编辑" width="80%" append-to-body>
-      <monaco-editor v-model="code.content" :language="form.feType === 'vue' ? 'html' : form.feType" :height="400" />
+      <monaco-editor v-model="code.content" :height="400" />
       <template #footer>
         <div class="dialog-footer">
           <el-button :loading="buttonLoading" type="primary" @click="submitTemplateForm">确 定</el-button>
@@ -153,8 +144,7 @@ const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const templateFormRef = ref<ElFormInstance>();
 
-const beTypeDicts = ref<DictDataVO[]>([]);
-const feTypeDicts = ref<DictDataVO[]>([]);
+const tpTypeDicts = ref<DictDataVO[]>([]);
 
 const contentDialog = ref(false);
 
@@ -167,8 +157,7 @@ const dialog = reactive<DialogOption>({
 
 const initFormData: TemplateForm = {
   id: undefined,
-  beType: undefined,
-  feType: undefined,
+  tpType: undefined,
   name: undefined,
   fileName: undefined,
   filePath: undefined,
@@ -180,8 +169,7 @@ const data = reactive<PageData<TemplateForm, TemplateQuery>>({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    beType: undefined,
-    feType: undefined,
+    tpType: undefined,
     name: undefined,
     fileName: undefined,
     filePath: undefined,
@@ -190,8 +178,7 @@ const data = reactive<PageData<TemplateForm, TemplateQuery>>({
   },
   rules: {
     id: [{ required: true, message: 'ID不能为空', trigger: 'blur' }],
-    beType: [{ required: true, message: '后端模版类型不能为空', trigger: 'change' }],
-    feType: [{ required: true, message: '前端模版类型不能为空', trigger: 'change' }],
+    tpType: [{ required: true, message: '后端模版类型不能为空', trigger: 'change' }],
     name: [{ required: true, message: '模版名称不能为空', trigger: 'blur' }],
     fileName: [{ required: true, message: '模版名称，需要包含生成文件的扩展名不能为空', trigger: 'blur' }],
     status: [{ required: true, message: '状态:0正常,1停用不能为空', trigger: 'change' }]
@@ -289,18 +276,6 @@ const handleDelete = async (row?: TemplateVO) => {
   await getList();
 };
 
-/** 导出按钮操作 */
-const handleExport = () => {
-  // proxy?.download(
-  //   'generator/template/export',
-  //   {
-  //     ...queryParams.value
-  //   },
-  //   `template_${new Date().getTime()}.xlsx`
-  // );
-  contentDialog.value = true;
-};
-
 const handleEditTemplate = async (row: TemplateVO) => {
   const res = await getTemplate(row.id);
   code.id = res.data.id as number;
@@ -321,19 +296,14 @@ const submitTemplateForm = async () => {
 };
 
 /** 获取字典数据 */
-const getBeTypeDictData = async () => {
-  const res = await getDicts('gen_be_type');
-  beTypeDicts.value = res.data;
-};
-/** 获取前端模版类型字典数据 */
-const getFeTypeDictData = async () => {
-  const res = await getDicts('gen_fe_type');
-  feTypeDicts.value = res.data;
+const getTpTypeDictData = async () => {
+  const beRes = await getDicts('gen_be_type');
+  const feRes = await getDicts('gen_fe_type');
+  tpTypeDicts.value = beRes.data.concat(feRes.data);
 };
 
 onMounted(() => {
   getList();
-  getBeTypeDictData();
-  getFeTypeDictData();
+  getTpTypeDictData();
 });
 </script>

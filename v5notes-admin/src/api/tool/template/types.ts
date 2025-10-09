@@ -5,14 +5,9 @@ export interface TemplateVO {
   id: string | number;
 
   /**
-   * 后端模版类型
+   * 模版类型
    */
-  beType: string;
-
-  /**
-   * 前端模版类型
-   */
-  feType: string;
+  tpType: string;
 
   /**
    * 模版名称
@@ -47,14 +42,9 @@ export interface TemplateForm extends BaseEntity {
   id?: string | number;
 
   /**
-   * 后端模版类型
+   * 模版类型
    */
-  beType?: string;
-
-  /**
-   * 前端模版类型
-   */
-  feType?: string;
+  tpType?: string;
 
   /**
    * 模版名称
@@ -84,14 +74,9 @@ export interface TemplateForm extends BaseEntity {
 
 export interface TemplateQuery extends PageQuery {
   /**
-   * 后端模版类型
+   * 模版类型
    */
-  beType?: string;
-
-  /**
-   * 前端模版类型
-   */
-  feType?: string;
+  tpType?: string;
 
   /**
    * 模版名称

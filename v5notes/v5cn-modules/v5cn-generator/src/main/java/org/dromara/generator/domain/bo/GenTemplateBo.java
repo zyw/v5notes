@@ -27,16 +27,10 @@ public class GenTemplateBo extends BaseEntity {
     private Long id;
 
     /**
-     * 后端模版类型
+     * 模版类型
      */
-    @NotBlank(message = "后端模版类型不能为空", groups = { AddGroup.class, EditGroup.class })
-    private String beType;
-
-    /**
-     * 前端模版类型
-     */
-    @NotBlank(message = "前端模版类型不能为空", groups = { AddGroup.class, EditGroup.class })
-    private String feType;
+    @NotBlank(message = "模版类型不能为空", groups = { AddGroup.class, EditGroup.class })
+    private String tpType;
 
     /**
      * 模版名称

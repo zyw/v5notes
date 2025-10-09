@@ -28,14 +28,9 @@ public class GenTemplate extends TenantEntity {
     private Long id;
 
     /**
-     * 后端模版类型
+     * 模版类型(可以是前端也可以是后端)
      */
-    private String beType;
-
-    /**
-     * 前端模版类型
-     */
-    private String feType;
+    private String tpType;
 
     /**
      * 模版名称
