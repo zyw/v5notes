@@ -28,9 +28,9 @@ export function fetchUpdate${BusinessName} (data: Api.${ModuleName}.${BusinessNa
 }
 
 /** 批量删除${functionName} */
-export function fetchBatchDelete${BusinessName} (${pkColumn.javaField}s: CommonType.IdType[]) {
+export function fetchBatchDelete${BusinessName} (${pkColumn.fieldName}s: CommonType.IdType[]) {
     return request<boolean>({
-        url: `/${moduleName}/${businessName}/${${pkColumn.javaField}s.join(',')}`,
+        url: `/${moduleName}/${businessName}/${${pkColumn.fieldName}s.join(',')}`,
         method: 'delete'
     });
 }

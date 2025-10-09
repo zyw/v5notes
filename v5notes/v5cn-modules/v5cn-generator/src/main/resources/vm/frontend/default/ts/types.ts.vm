@@ -4,16 +4,16 @@ export interface ${BusinessName}VO {
   /**
    * $column.columnComment
    */
-  $column.javaField:#if($column.javaField.indexOf("id") != -1 || $column.javaField.indexOf("Id") != -1) string | number;
-                        #elseif($column.javaType == 'Long' || $column.javaType == 'Integer' || $column.javaType == 'Double' || $column.javaType == 'Float' || $column.javaType == 'BigDecimal') number;
-                        #elseif($column.javaType == 'Boolean') boolean;
+  $column.fieldName:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
                         #else string;
                     #end
 #if($column.htmlType == "imageUpload")
   /**
    * ${column.columnComment}Url
    */
-  ${column.javaField}Url: string;
+  ${column.fieldName}Url: string;
 #end
 #end
 #end
@@ -31,9 +31,9 @@ export interface ${BusinessName}Form extends BaseEntity {
   /**
    * $column.columnComment
    */
-  $column.javaField?:#if($column.javaField.indexOf("id") != -1 || $column.javaField.indexOf("Id") != -1) string | number;
-                        #elseif($column.javaType == 'Long' || $column.javaType == 'Integer' || $column.javaType == 'Double' || $column.javaType == 'Float' || $column.javaType == 'BigDecimal') number;
-                        #elseif($column.javaType == 'Boolean') boolean;
+  $column.fieldName?:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
                         #else string;
                     #end
 #end
@@ -47,9 +47,9 @@ export interface ${BusinessName}Query #if(!${treeCode})extends PageQuery #end{
   /**
    * $column.columnComment
    */
-  $column.javaField?:#if($column.javaField.indexOf("id") != -1 || $column.javaField.indexOf("Id") != -1) string | number;
-                        #elseif($column.javaType == 'Long' || $column.javaType == 'Integer' || $column.javaType == 'Double' || $column.javaType == 'Float' || $column.javaType == 'BigDecimal') number;
-                        #elseif($column.javaType == 'Boolean') boolean;
+  $column.fieldName?:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
                         #else string;
                     #end
 #end

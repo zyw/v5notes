@@ -51,14 +51,14 @@ public class ${ClassName}Vo implements Serializable {
 #else
     @ExcelProperty(value = "${comment}")
 #end
-    private $column.javaType $column.javaField;
+    private $column.fieldType $column.fieldName;
 
 #if($column.htmlType == "imageUpload")
     /**
      * ${column.columnComment}Url
      */
-    @Translation(type = TransConstant.OSS_ID_TO_URL, mapper = "${column.javaField}")
-    private String ${column.javaField}Url;
+    @Translation(type = TransConstant.OSS_ID_TO_URL, mapper = "${column.fieldName}")
+    private String ${column.fieldName}Url;
 #end
 #end
 #end

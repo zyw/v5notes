@@ -38,12 +38,12 @@ public class ${ClassName}ServiceImpl implements I${ClassName}Service {
     /**
      * 查询${functionName}
      *
-     * @param ${pkColumn.javaField} 主键
+     * @param ${pkColumn.fieldName} 主键
      * @return ${functionName}
      */
     @Override
-    public ${ClassName}Vo queryById(${pkColumn.javaType} ${pkColumn.javaField}){
-        return baseMapper.selectVoById(${pkColumn.javaField});
+    public ${ClassName}Vo queryById(${pkColumn.fieldType} ${pkColumn.fieldName}){
+        return baseMapper.selectVoById(${pkColumn.fieldName});
     }
 
 #if($table.crud)
@@ -80,10 +80,10 @@ public class ${ClassName}ServiceImpl implements I${ClassName}Service {
 #foreach($column in $columns)
 #if($column.query)
 #set($queryType=$column.queryType)
-#set($javaField=$column.javaField)
-#set($javaType=$column.javaType)
+#set($fieldName=$column.fieldName)
+#set($fieldType=$column.fieldType)
 #set($columnName=$column.columnName)
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
 #set($mpMethod=$column.queryType.toLowerCase())
 #if($queryType != 'BETWEEN')
 #if($javaType == 'String')
@@ -97,7 +97,7 @@ public class ${ClassName}ServiceImpl implements I${ClassName}Service {
             ${ClassName}::get$AttrName ,params.get("begin$AttrName"), params.get("end$AttrName"));
 #end
 #end
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
 #if($column.isPk==1)
         lqw.orderByAsc(${ClassName}::get$AttrName);
 #end
@@ -116,7 +116,7 @@ public class ${ClassName}ServiceImpl implements I${ClassName}Service {
         ${ClassName} add = MapstructUtils.convert(bo, ${ClassName}.class);
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
-#set($pk=$pkColumn.javaField.substring(0,1).toUpperCase() + ${pkColumn.javaField.substring(1)})
+#set($pk=$pkColumn.fieldName.substring(0,1).toUpperCase() + ${pkColumn.fieldName.substring(1)})
         if (flag) {
             bo.set$pk(add.get$pk());
         }
@@ -151,7 +151,7 @@ public class ${ClassName}ServiceImpl implements I${ClassName}Service {
      * @return 是否删除成功
      */
     @Override
-    public Boolean deleteWithValidByIds(Collection<${pkColumn.javaType}> ids, Boolean isValid) {
+    public Boolean deleteWithValidByIds(Collection<${pkColumn.fieldType}> ids, Boolean isValid) {
         if(isValid){
             //TODO 做一些业务上的校验,判断是否需要校验
         }

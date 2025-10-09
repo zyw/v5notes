@@ -37,6 +37,7 @@
     "image-conversion": "^2.1.1",
     "js-cookie": "3.0.5",
     "jsencrypt": "3.3.2",
+    "monaco-editor": "^0.54.0",
     "nprogress": "0.2.0",
     "pinia": "2.1.7",
     "ruoyi-vue-plus": "file:",

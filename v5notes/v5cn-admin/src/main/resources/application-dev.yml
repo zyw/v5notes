@@ -52,8 +52,9 @@ spring:
           driverClassName: com.mysql.cj.jdbc.Driver
           # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
           # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://mysql.v5ai.xin:3306/v5notes_local?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: v5notes
+#          url: jdbc:mysql://localhost:3306/v5notes_local?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+          url: "ENC(86iQqr+avo8jGLUogXFHuPYRhJDMg+Vm908jv0vsjr2MD8C4okMQrgSNgoK9dQU9oKGwAsEqXzwXXArCzFcfmvWe3dLlF3vKVPIjdkgqixoY/WLtW//TXB6PV5ep5F9hoNzcTM6SgytzRgZqJ7R3rXwOXxol0ZavFzg2N5AL5b0tWwzbh6LO8gCIKS6nqCe/IpmaeGwP6U/djR4iv4FSiOk9n4iz7azad++AVTRfg4IbHP7586I0tiLtMHqEd9XhQMbQkU++EX6IuOb6g12PJVrNfQuHDI3Z3QIxT711eStNqkv6qd5fj2DeRD91mCMRFu6dXc29MXxzZJDp7P3j9bjj4MGQrPla/Qas3Mosc4Q=)"
+          username: "ENC(DjGwpDuFUc/PK2VSrKHCYA==)"
           password: "ENC(7M9mD4Qd3si0ej2LOvtUmLam4L0qIIg68rVEVS2Pl3AvBcJd2kHuJAgqzKUspmmK)"
         # 从库数据源
 #        slave:
@@ -72,8 +73,9 @@ spring:
         postgres:
           type: ${spring.datasource.type}
           driverClassName: org.postgresql.Driver
-          url: jdbc:postgresql://pgsql.v5ai.xin:15432/perm-auth?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
-          username: mypgsql
+#          url: jdbc:postgresql://localhost:5432/perm-auth?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
+          url: "ENC(zJ5e+Nz7JEmxFYUwy6RoO9ZSsmw8DBLVaPLad82q9w1G/fqmF8FmIEAk3hBAj6izP6YMmYZoiNTJhv3u9J2pqIkBO70cdJSi408oTBV+IQfHDmSgImWTLFrlg+mztcPMwQPS+A2jVZiYN19eAaaisU26dYdsD6YlDJJ0vCPRumUsjDFqsUWphtL4h0a0nAsnCkwcUQbKfnFq0eBlmG9Nww==)"
+          username: "ENC(5UK0W1M/PidNiwsAAueyhA==)"
           password: "ENC(xzHt7EKI9qpbQX5h0XkQHV80YEiaCVnRm1KWtQ6Wg6PbSOCTj8JzQQ==)"
 #        sqlserver:
 #          type: ${spring.datasource.type}
@@ -101,14 +103,14 @@ spring:
 spring.data:
   redis:
     # 地址
-    host: 192.168.1.103
-#    host: 192.168.10.13
+#    host: 192.168.1.103
+    host: "ENC(7iEmYpptEs1uLqP2/bEI5NttOwOW+vQz)"
     # 端口，默认为6379
-    port: 6379
+    port: 16379
     # 数据库索引
     database: 5
     # redis 密码必须配置
-    password: admin123#
+    password: "ENC(5BtpkV+fMQWR+RHZWYzf9Cw4sEaIjKV/KXJSmQrCvehLB7G58EdGbXksZnffw3wY1alFzCFGEP0M28mQ6MpargvlLnDqVd84)"
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl

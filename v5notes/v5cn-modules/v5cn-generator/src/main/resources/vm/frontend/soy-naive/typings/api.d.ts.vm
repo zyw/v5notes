@@ -14,9 +14,9 @@ declare namespace Api {
     namespace ${ModuleName} {
         /** ${businessname} */
         type ${BusinessName} = Common.CommonRecord<{
-            #foreach($column in $columns)#if(!$BaseEntity.contains($column.javaField))
+            #foreach($column in $columns)#if(!$BaseEntity.contains($column.fieldName))
             /** $column.columnComment */
-                $column.javaField:#if($column.javaField.indexOf("id") != -1 || $column.javaField.indexOf("Id") != -1) CommonType.IdType; #elseif($column.javaType == 'Long' || $column.javaType == 'Integer' || $column.javaType == 'Double' || $column.javaType == 'Float' || $column.javaType == 'BigDecimal') number; #elseif($column.javaType == 'Boolean') boolean; #else string; #end
+                $column.fieldName:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) CommonType.IdType; #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number; #elseif($column.fieldType == 'Boolean') boolean; #else string; #end
             #end#end
         }>;
 
@@ -26,7 +26,7 @@ declare namespace Api {
                 Api.${ModuleName}.${BusinessName},
                 #foreach($column in $columns)
                     #if($column.query && $column.queryType != 'BETWEEN')
-                        | '${column.javaField}'
+                        | '${column.fieldName}'
                     #end
                 #end
             > &
@@ -39,7 +39,7 @@ declare namespace Api {
                 Api.${ModuleName}.${BusinessName},
                 #foreach($column in $columns)
                     #if($column.insert || $column.edit)
-                        | '${column.javaField}'
+                        | '${column.fieldName}'
                     #end
                 #end
             >

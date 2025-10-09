@@ -7,7 +7,7 @@
 #foreach($column in $columns)
 #if($column.query)
 #set($dictType=$column.dictType)
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
 #set($parentheseIndex=$column.columnComment.indexOf("（"))
 #if($parentheseIndex != -1)
 #set($comment=$column.columnComment.substring(0, $parentheseIndex))
@@ -15,25 +15,25 @@
 #set($comment=$column.columnComment)
 #end
 #if($column.htmlType == "input" || $column.htmlType == "textarea")
-            <el-form-item label="${comment}" prop="${column.javaField}">
-              <el-input v-model="queryParams.${column.javaField}" placeholder="请输入${comment}" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="${comment}" prop="${column.fieldName}">
+              <el-input v-model="queryParams.${column.fieldName}" placeholder="请输入${comment}" clearable @keyup.enter="handleQuery" />
             </el-form-item>
 #elseif(($column.htmlType == "select" || $column.htmlType == "radio") && "" != $dictType)
-            <el-form-item label="${comment}" prop="${column.javaField}">
-              <el-select v-model="queryParams.${column.javaField}" placeholder="请选择${comment}" clearable >
+            <el-form-item label="${comment}" prop="${column.fieldName}">
+              <el-select v-model="queryParams.${column.fieldName}" placeholder="请选择${comment}" clearable >
                 <el-option v-for="dict in ${dictType}" :key="dict.value" :label="dict.label" :value="dict.value"/>
               </el-select>
             </el-form-item>
 #elseif(($column.htmlType == "select" || $column.htmlType == "radio") && $dictType)
-            <el-form-item label="${comment}" prop="${column.javaField}">
-              <el-select v-model="queryParams.${column.javaField}" placeholder="请选择${comment}" clearable >
+            <el-form-item label="${comment}" prop="${column.fieldName}">
+              <el-select v-model="queryParams.${column.fieldName}" placeholder="请选择${comment}" clearable >
                 <el-option label="请选择字典生成" value="" />
               </el-select>
             </el-form-item>
 #elseif($column.htmlType == "datetime" && $column.queryType != "BETWEEN")
-            <el-form-item label="${comment}" prop="${column.javaField}">
+            <el-form-item label="${comment}" prop="${column.fieldName}">
               <el-date-picker clearable
-                v-model="queryParams.${column.javaField}"
+                v-model="queryParams.${column.fieldName}"
                 type="date"
                 value-format="YYYY-MM-DD"
                 placeholder="请选择${comment}"
@@ -85,7 +85,7 @@
       <el-table v-loading="loading" border :data="${businessName}List" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
 #foreach($column in $columns)
-#set($javaField=$column.javaField)
+#set($fieldName=$column.fieldName)
 #set($parentheseIndex=$column.columnComment.indexOf("（"))
 #if($parentheseIndex != -1)
 #set($comment=$column.columnComment.substring(0, $parentheseIndex))
@@ -93,31 +93,31 @@
 #set($comment=$column.columnComment)
 #end
 #if($column.pk)
-        <el-table-column label="${comment}" align="center" prop="${javaField}" v-if="${column.list}" />
+        <el-table-column label="${comment}" align="center" prop="${fieldName}" v-if="${column.list}" />
 #elseif($column.list && $column.htmlType == "datetime")
-        <el-table-column label="${comment}" align="center" prop="${javaField}" width="180">
+        <el-table-column label="${comment}" align="center" prop="${fieldName}" width="180">
           <template #default="scope">
-            <span>{{ parseTime(scope.row.${javaField}, '{y}-{m}-{d}') }}</span>
+            <span>{{ parseTime(scope.row.${fieldName}, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
 #elseif($column.list && $column.htmlType == "imageUpload")
-        <el-table-column label="${comment}" align="center" prop="${javaField}Url" width="100">
+        <el-table-column label="${comment}" align="center" prop="${fieldName}Url" width="100">
           <template #default="scope">
-            <image-preview :src="scope.row.${javaField}Url" :width="50" :height="50"/>
+            <image-preview :src="scope.row.${fieldName}Url" :width="50" :height="50"/>
           </template>
         </el-table-column>
 #elseif($column.list && $column.dictType && "" != $column.dictType)
-        <el-table-column label="${comment}" align="center" prop="${javaField}">
+        <el-table-column label="${comment}" align="center" prop="${fieldName}">
           <template #default="scope">
 #if($column.htmlType == "checkbox")
-            <dict-tag :options="${column.dictType}" :value="scope.row.${javaField} ? scope.row.${javaField}.split(',') : []"/>
+            <dict-tag :options="${column.dictType}" :value="scope.row.${fieldName} ? scope.row.${fieldName}.split(',') : []"/>
 #else
-            <dict-tag :options="${column.dictType}" :value="scope.row.${javaField}"/>
+            <dict-tag :options="${column.dictType}" :value="scope.row.${fieldName}"/>
 #end
           </template>
         </el-table-column>
-#elseif($column.list && "" != $javaField)
-        <el-table-column label="${comment}" align="center" prop="${javaField}" />
+#elseif($column.list && "" != $fieldName)
+        <el-table-column label="${comment}" align="center" prop="${fieldName}" />
 #end
 #end
         <el-table-column label="操作" align="center" fixed="right"  class-name="small-padding fixed-width">
@@ -138,7 +138,7 @@
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="${businessName}FormRef" :model="form" :rules="rules" label-width="80px">
 #foreach($column in $columns)
-#set($field=$column.javaField)
+#set($field=$column.fieldName)
 #if(($column.insert || $column.edit) && !$column.pk)
 #set($parentheseIndex=$column.columnComment.indexOf("（"))
 #if($parentheseIndex != -1)
@@ -170,7 +170,7 @@
                 v-for="dict in ${dictType}"
                 :key="dict.value"
                 :label="dict.label"
-#if($column.javaType == "Integer" || $column.javaType == "Long")
+#if($column.fieldType == "Integer" || $column.fieldType == "Long")
                 :value="parseInt(dict.value)"
 #else
                 :value="dict.value"
@@ -207,7 +207,7 @@
             <el-radio
               v-for="dict in ${dictType}"
               :key="dict.value"
-#if($column.javaType == "Integer" || $column.javaType == "Long")
+#if($column.fieldType == "Integer" || $column.fieldType == "Long")
               :value="parseInt(dict.value)"
 #else
               :value="dict.value"
@@ -268,7 +268,7 @@ const multiple = ref(true);
 const total = ref(0);
 #foreach ($column in $columns)
 #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
 const dateRange${AttrName} = ref<[DateModelType, DateModelType]>(['', '']);
 #end
 #end
@@ -285,9 +285,9 @@ const initFormData: ${BusinessName}Form = {
 #foreach ($column in $columns)
 #if($column.insert || $column.edit)
 #if($column.htmlType == "checkbox")
-  $column.javaField: []#if($foreach.count != $columns.size()),#end
+  $column.fieldName: []#if($foreach.count != $columns.size()),#end
 #else
-  $column.javaField: undefined#if($foreach.count != $columns.size()),#end
+  $column.fieldName: undefined#if($foreach.count != $columns.size()),#end
 #end
 #end
 #end
@@ -300,7 +300,7 @@ const data = reactive<PageData<${BusinessName}Form, ${BusinessName}Query>>({
 #foreach ($column in $columns)
 #if($column.query)
 #if($column.htmlType != "datetime" || $column.queryType != "BETWEEN")
-    $column.javaField: undefined,
+    $column.fieldName: undefined,
 #end
 #end
 #end
@@ -308,7 +308,7 @@ const data = reactive<PageData<${BusinessName}Form, ${BusinessName}Query>>({
 #foreach ($column in $columns)
 #if($column.query)
 #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-      $column.javaField: undefined#if($foreach.count != $columns.size()),#end
+      $column.fieldName: undefined#if($foreach.count != $columns.size()),#end
 #end
 #end
 #end
@@ -324,7 +324,7 @@ const data = reactive<PageData<${BusinessName}Form, ${BusinessName}Query>>({
 #else
 #set($comment=$column.columnComment)
 #end
-    $column.javaField: [
+    $column.fieldName: [
       { required: true, message: "$comment不能为空", trigger: #if($column.htmlType == "select" || $column.htmlType == "radio")"change"#else"blur"#end }
     ]#if($foreach.count != $columns.size()),#end
 #end
@@ -346,7 +346,7 @@ const getList = async () => {
 #end
 #foreach ($column in $columns)
 #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
   proxy?.addDateRange(queryParams.value, dateRange${AttrName}.value, '${AttrName}');
 #end
 #end
@@ -378,7 +378,7 @@ const handleQuery = () => {
 const resetQuery = () => {
 #foreach ($column in $columns)
 #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-#set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+#set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
   dateRange${AttrName}.value = ['', ''];
 #end
 #end
@@ -388,7 +388,7 @@ const resetQuery = () => {
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: ${BusinessName}VO[]) => {
-  ids.value = selection.map(item => item.${pkColumn.javaField});
+  ids.value = selection.map(item => item.${pkColumn.fieldName});
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 }
@@ -403,12 +403,12 @@ const handleAdd = () => {
 /** 修改按钮操作 */
 const handleUpdate = async (row?: ${BusinessName}VO) => {
   reset();
-  const _${pkColumn.javaField} = row?.${pkColumn.javaField} || ids.value[0]
-  const res = await get${BusinessName}(_${pkColumn.javaField});
+  const _${pkColumn.fieldName} = row?.${pkColumn.fieldName} || ids.value[0]
+  const res = await get${BusinessName}(_${pkColumn.fieldName});
   Object.assign(form.value, res.data);
 #foreach ($column in $columns)
   #if($column.htmlType == "checkbox")
-  form.value.$column.javaField = form.value.${column.javaField}.split(",");
+  form.value.$column.fieldName = form.value.${column.fieldName}.split(",");
   #end
 #end
   dialog.visible = true;
@@ -422,10 +422,10 @@ const submitForm = () => {
       buttonLoading.value = true;
       #foreach ($column in $columns)
         #if($column.htmlType == "checkbox")
-        form.value.$column.javaField = form.value.${column.javaField}.join(",");
+        form.value.$column.fieldName = form.value.${column.fieldName}.join(",");
         #end
       #end
-      if (form.value.${pkColumn.javaField}) {
+      if (form.value.${pkColumn.fieldName}) {
         await update${BusinessName}(form.value).finally(() =>  buttonLoading.value = false);
       } else {
         await add${BusinessName}(form.value).finally(() =>  buttonLoading.value = false);
@@ -439,9 +439,9 @@ const submitForm = () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: ${BusinessName}VO) => {
-  const _${pkColumn.javaField}s = row?.${pkColumn.javaField} || ids.value;
-  await proxy?.#[[$modal]]#.confirm('是否确认删除${functionName}编号为"' + _${pkColumn.javaField}s + '"的数据项？').finally(() => loading.value = false);
-  await del${BusinessName}(_${pkColumn.javaField}s);
+  const _${pkColumn.fieldName}s = row?.${pkColumn.fieldName} || ids.value;
+  await proxy?.#[[$modal]]#.confirm('是否确认删除${functionName}编号为"' + _${pkColumn.fieldName}s + '"的数据项？').finally(() => loading.value = false);
+  await del${BusinessName}(_${pkColumn.fieldName}s);
   proxy?.#[[$modal]]#.msgSuccess("删除成功");
   await getList();
 }

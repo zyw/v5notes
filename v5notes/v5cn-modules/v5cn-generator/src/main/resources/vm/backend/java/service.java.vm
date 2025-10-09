@@ -24,7 +24,7 @@ public interface I${ClassName}Service {
      * @param ${pkColumn.javaField} 主键
      * @return ${functionName}
      */
-    ${ClassName}Vo queryById(${pkColumn.javaType} ${pkColumn.javaField});
+    ${ClassName}Vo queryById(${pkColumn.fieldType} ${pkColumn.fieldName});
 
 #if($table.crud)
     /**
@@ -68,5 +68,5 @@ public interface I${ClassName}Service {
      * @param isValid 是否进行有效性校验
      * @return 是否删除成功
      */
-    Boolean deleteWithValidByIds(Collection<${pkColumn.javaType}> ids, Boolean isValid);
+    Boolean deleteWithValidByIds(Collection<${pkColumn.fieldType}> ids, Boolean isValid);
 }

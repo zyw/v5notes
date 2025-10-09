@@ -41,12 +41,12 @@ const {
     // the value can not be undefined, otherwise the property in Form will not be reactive
 #foreach ($column in $columns)
   #if($column.query)
-    $column.javaField: null#if($foreach.hasNext),#end
+    $column.fieldName: null#if($foreach.hasNext),#end
   #end
 #end
     params: {}
   },
-  idField: '#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end',
+  idField: '#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end',
 #if(${treeParentCode} && ${treeParentCode} != 'parentId')
   parentIdField: '${treeParentCode}',
 #end
@@ -59,7 +59,7 @@ const {
 #foreach ($column in $columns)
   #if($column.list)
     {
-      key: '$column.javaField',
+      key: '$column.fieldName',
       title: '$column.columnComment',
       align: 'center',
       minWidth: 120
@@ -104,7 +104,7 @@ const {
               icon="material-symbols:delete-outline"
               tooltipContent={$t('common.delete')}
               popconfirmContent={$t('common.confirmDelete')}
-              onPositiveClick={() => handleDelete(row.#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end!)}
+              onPositiveClick={() => handleDelete(row.#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end!)}
             />
           );
         };
@@ -139,9 +139,9 @@ async function handleBatchDelete() {
   onBatchDeleted();
 }
 
-async function handleDelete(#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end: CommonType.IdType) {
+async function handleDelete(#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end: CommonType.IdType) {
   // request
-  const { error } = await fetchBatchDelete${BusinessName}([#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end]);
+  const { error } = await fetchBatchDelete${BusinessName}([#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end]);
   if (error) return;
   onDeleted();
 }
@@ -204,7 +204,7 @@ function handleExport() {
         :scroll-x="962"
         :loading="loading"
         remote
-        :row-key="row => row.#foreach($column in $columns)#if($column.isPk == '1')$column.javaField#end#end"
+        :row-key="row => row.#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end"
         class="sm:h-full"
       />
       <${BusinessName}OperateDrawer

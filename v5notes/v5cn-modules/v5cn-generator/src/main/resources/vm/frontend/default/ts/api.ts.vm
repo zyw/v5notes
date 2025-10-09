@@ -18,11 +18,11 @@ export const list${BusinessName} = (query?: ${BusinessName}Query): AxiosPromise<
 
 /**
  * 查询${functionName}详细
- * @param ${pkColumn.javaField}
+ * @param ${pkColumn.fieldName}
  */
-export const get${BusinessName} = (${pkColumn.javaField}: string | number): AxiosPromise<${BusinessName}VO> => {
+export const get${BusinessName} = (${pkColumn.fieldName}: string | number): AxiosPromise<${BusinessName}VO> => {
   return request({
-    url: '/${moduleName}/${businessName}/' + ${pkColumn.javaField},
+    url: '/${moduleName}/${businessName}/' + ${pkColumn.fieldName},
     method: 'get'
   });
 };
@@ -53,11 +53,11 @@ export const update${BusinessName} = (data: ${BusinessName}Form) => {
 
 /**
  * 删除${functionName}
- * @param ${pkColumn.javaField}
+ * @param ${pkColumn.fieldName}
  */
-export const del${BusinessName} = (${pkColumn.javaField}: string | number | Array<string | number>) => {
+export const del${BusinessName} = (${pkColumn.fieldName}: string | number | Array<string | number>) => {
   return request({
-    url: '/${moduleName}/${businessName}/' + ${pkColumn.javaField},
+    url: '/${moduleName}/${businessName}/' + ${pkColumn.fieldName},
     method: 'delete'
   });
 };

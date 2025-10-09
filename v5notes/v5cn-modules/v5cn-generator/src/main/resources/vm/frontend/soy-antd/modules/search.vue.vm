@@ -21,7 +21,7 @@
 
         #foreach ($column in $columns)
             #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                #set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
             const dateRange${AttrName} = ref<[string, string] | null>(null);
             #end#end
 
@@ -35,7 +35,7 @@
     async function reset() {
         #foreach ($column in $columns)
             #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                #set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
                 dateRange${AttrName}.value = null;
             #end
         #end
@@ -49,7 +49,7 @@
             await formRef.value?.validate();
             #foreach ($column in $columns)
                 #if($column.htmlType == "datetime" && $column.queryType == "BETWEEN")
-                    #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                    #set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
                     if (dateRange${AttrName}.value?.length) {
                         model.value.params!.begin${AttrName} = dateRange${AttrName}.value[0];
                         model.value.params!.end${AttrName} = dateRange${AttrName}.value[1];
@@ -72,7 +72,7 @@
                         #foreach($column in $columns)
                             #if($column.query)
                                 #set($dictType=$!StrUtil.toCamelCase($column.dictType))
-                                #set($AttrName=$column.javaField.substring(0,1).toUpperCase() + ${column.javaField.substring(1)})
+                                #set($AttrName=$column.fieldName.substring(0,1).toUpperCase() + ${column.fieldName.substring(1)})
                                 #set($parentheseIndex=$column.columnComment.indexOf("（"))
                                 #if($parentheseIndex != -1)
                                     #set($comment=$column.columnComment.substring(0, $parentheseIndex))
@@ -80,10 +80,10 @@
                                     #set($comment=$column.columnComment)
                                 #end
                                 <Grid.Item :xs="24" :sm="12" :md="8" :lg="6">
-                                    <Form.Item label="$column.columnComment" name="$column.javaField">
+                                    <Form.Item label="$column.columnComment" name="$column.fieldName">
                                         #if($!StrUtil.contains("select, radio, checkbox", $column.htmlType) && $dictType && "" != $dictType)
                                             <Select
-                                                v-model:value="model.$column.javaField"
+                                                v-model:value="model.$column.fieldName"
                                                 placeholder="请选择$column.columnComment"
                                                 :options="${dictType}Options"
                                                 allowClear
@@ -91,7 +91,7 @@
                                             />
                                         #elseif($!StrUtil.contains("select, radio, checkbox", $column.htmlType))
                                             <Select
-                                                v-model:value="model.$column.javaField"
+                                                v-model:value="model.$column.fieldName"
                                                 placeholder="请选择$column.columnComment"
                                                 :options="[]"
                                                 allowClear
@@ -99,7 +99,7 @@
                                             />
                                         #elseif($column.htmlType == 'datetime' && $column.queryType != "BETWEEN")
                                             <DatePicker
-                                                v-model:value="model.$column.javaField"
+                                                v-model:value="model.$column.fieldName"
                                                 show-time
                                                 format="YYYY-MM-DD HH:mm:ss"
                                                 value-format="YYYY-MM-DD HH:mm:ss"
@@ -115,7 +115,7 @@
                                                 allowClear
                                                 style="width: 100%"
                                             />
-                                        #else                <Input v-model:value="model.$column.javaField" placeholder="请输入$column.columnComment" />
+                                        #else                <Input v-model:value="model.$column.fieldName" placeholder="请输入$column.columnComment" />
                                         #end
                                     </Form.Item>
                                 </Grid.Item>
