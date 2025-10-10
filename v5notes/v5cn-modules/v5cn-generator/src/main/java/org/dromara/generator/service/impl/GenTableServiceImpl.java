@@ -1,10 +1,11 @@
-package org.dromara.generator.service;
+package org.dromara.generator.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.extra.template.engine.velocity.VelocityTemplate;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.dynamic.datasource.annotation.DSTransactional;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -33,9 +34,11 @@ import org.dromara.generator.config.GenConfig;
 import org.dromara.generator.constant.GenConstants;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.GenTemplate;
 import org.dromara.generator.domain.bo.ImportTableBo;
 import org.dromara.generator.mapper.GenTableColumnMapper;
 import org.dromara.generator.mapper.GenTableMapper;
+import org.dromara.generator.service.IGenTableService;
 import org.dromara.generator.util.GenUtils;
 import org.dromara.generator.util.VelocityInitializer;
 import org.dromara.generator.util.VelocityUtils;
@@ -349,13 +352,14 @@ public class GenTableServiceImpl implements IGenTableService {
         VelocityContext context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
-        List<String> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
-        for (String template : templates) {
+        List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
+        for (GenTemplate template : templates) {
             // 渲染模板
             StringWriter sw = new StringWriter();
-            Template tpl = Velocity.getTemplate(template, Constants.UTF8);
-            tpl.merge(context, sw);
-            dataMap.put(template, sw.toString());
+//            Template tpl = Velocity.getTemplate(template.getContent(), Constants.UTF8);
+//            tpl.merge(context, sw);
+            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+            dataMap.put(template.getFileName(), sw.toString());
         }
         return dataMap;
     }
@@ -392,15 +396,16 @@ public class GenTableServiceImpl implements IGenTableService {
         VelocityContext context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
-        List<String> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
-        for (String template : templates) {
-            if (!StringUtils.containsAny(template, "sql.sql.vm", "api.ts.vm", "types.ts.vm", "index.vue.vm", "index-tree.vue.vm")) {
+        List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
+        for (GenTemplate template : templates) {
+            if (!StringUtils.containsAny(template.getFileName(), "sql.sql.vm", "api.ts.vm", "types.ts.vm", "index.vue.vm", "index-tree.vue.vm")) {
                 // 渲染模板
                 StringWriter sw = new StringWriter();
-                Template tpl = Velocity.getTemplate(template, Constants.UTF8);
-                tpl.merge(context, sw);
+//                Template tpl = Velocity.getTemplate(template, Constants.UTF8);
+//                tpl.merge(context, sw);
+                Velocity.evaluate(context, sw, "LogTag", template.getContent());
                 try {
-                    String path = getGenPath(table, template);
+                    String path = getGenPath(table, template.getFileName());
                     FileUtils.writeUtf8String(sw.toString(), path);
                 } catch (Exception e) {
                     throw new ServiceException("渲染模板失败，表名：" + table.getTableName());
@@ -497,15 +502,16 @@ public class GenTableServiceImpl implements IGenTableService {
         VelocityContext context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
-        List<String> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
-        for (String template : templates) {
+        List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
+        for (GenTemplate template : templates) {
             // 渲染模板
             StringWriter sw = new StringWriter();
-            Template tpl = Velocity.getTemplate(template, Constants.UTF8);
-            tpl.merge(context, sw);
+//            Template tpl = Velocity.getTemplate(template, Constants.UTF8);
+//            tpl.merge(context, sw);
+            Velocity.evaluate(context, sw, "LogTag", template.getContent());
             try {
                 // 添加到zip
-                zip.putNextEntry(new ZipEntry(VelocityUtils.getFileName(template, table)));
+                zip.putNextEntry(new ZipEntry(VelocityUtils.getFileName(template.getFileName(), table)));
                 IoUtil.write(zip, StandardCharsets.UTF_8, false, sw.toString());
                 IoUtil.close(sw);
                 zip.flush();

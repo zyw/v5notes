@@ -31,6 +31,10 @@ public class GenTemplate extends TenantEntity {
      * 模版类型(可以是前端也可以是后端)
      */
     private String tpType;
+    /**
+     * 模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)
+     */
+    private String tpCategory;
 
     /**
      * 模版名称

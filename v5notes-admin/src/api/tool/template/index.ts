@@ -79,7 +79,6 @@ export const delTemplate = (id: string | number | Array<string | number>) => {
  * @param id
  */
 export const getAllFilePaths = (filePath: string): AxiosPromise<string[]> => {
-  console.log(filePath, '<===========filePath==============>');
   return request({
     url: '/tool/gen/template/query-file-paths',
     method: 'get',

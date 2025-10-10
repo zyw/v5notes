@@ -1,15 +1,16 @@
-package org.dromara.generator.core;
+package org.dromara.generator.core.impl;
 
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.utils.StringUtils;
+import org.dromara.generator.core.GenFilePath;
 import org.dromara.generator.domain.GenTable;
 import org.springframework.stereotype.Component;
 
 @Slf4j
-@Component("javaGenFilePath")
-public class JavaGenFilePath implements GenFilePath {
+@Component("javaRuoYiGenFilePath")
+public class JavaRuoYiGenFilePath implements GenFilePath {
 
     /**
      * 项目空间路径

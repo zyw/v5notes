@@ -1,15 +1,16 @@
-package org.dromara.generator.core;
+package org.dromara.generator.core.impl;
 
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.utils.StringUtils;
+import org.dromara.generator.core.GenFilePath;
 import org.dromara.generator.domain.GenTable;
 import org.springframework.stereotype.Component;
 
 @Slf4j
-@Component("golangGenFilePath")
-public class GolangGenFilePath implements GenFilePath {
+@Component("goPermAuthGenFilePath")
+public class GoPermAuthGenFilePath implements GenFilePath {
     /**
      * 项目空间路径
      */

@@ -115,6 +115,11 @@
             </template>
           </el-autocomplete>
         </el-form-item>
+        <el-form-item label="模板类别" prop="tpCategory">
+          <el-select v-model="form.tpCategory" filterable placeholder="请选择模板类别">
+            <el-option v-for="item in tpCategoryDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio value="1">正常</el-radio>
@@ -168,6 +173,7 @@ const queryFormRef = ref<ElFormInstance>();
 const templateFormRef = ref<ElFormInstance>();
 
 const tpTypeDicts = ref<DictDataVO[]>([]);
+const tpCategoryDicts = ref<DictDataVO[]>([]);
 
 const contentDialog = ref(false);
 
@@ -181,6 +187,7 @@ const dialog = reactive<DialogOption>({
 const initFormData: TemplateForm = {
   id: undefined,
   tpType: undefined,
+  tpCategory: undefined,
   name: undefined,
   fileName: undefined,
   filePath: undefined,
@@ -195,7 +202,6 @@ const data = reactive<PageData<TemplateForm, TemplateQuery>>({
     tpType: undefined,
     name: undefined,
     fileName: undefined,
-    filePath: undefined,
     status: '1',
     params: {}
   },
@@ -220,7 +226,6 @@ const getList = async () => {
 };
 
 const querySearchAsync = async (queryString: string, cb: (arg: any) => void) => {
-  console.log('queryString', queryString);
   const results = await findAllFilePaths(queryString);
   cb(results.map((item) => ({ value: item })));
 };
@@ -335,9 +340,15 @@ const getTpTypeDictData = async () => {
   const feRes = await getDicts('gen_fe_type');
   tpTypeDicts.value = beRes.data.concat(feRes.data);
 };
+/** 获取模版类别字典数据 */
+const getTpCategoryDictData = async () => {
+  const res = await getDicts('gen_tp_category');
+  tpCategoryDicts.value = res.data;
+};
 
 onMounted(() => {
   getList();
   getTpTypeDictData();
+  getTpCategoryDictData();
 });
 </script>

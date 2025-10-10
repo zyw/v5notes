@@ -3,6 +3,7 @@ CREATE TABLE gen_template(
     `id` BIGINT NOT NULL COMMENT 'ID',
     `tenant_id` VARCHAR(20) NOT NULL DEFAULT '000000' COMMENT '租户ID',
     `tp_type` VARCHAR(20) NOT NULL COMMENT '模版类型(可以是前端也可以是后端)',
+    `tp_category` VARCHAR(10) COMMENT '模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)',
     `name` VARCHAR(50) NOT NULL COMMENT '模版名称',
     `content` LONGTEXT COMMENT '模版内容',
     `file_name` VARCHAR(100) NOT NULL COMMENT '模版名称，需要包含生成文件的扩展名',

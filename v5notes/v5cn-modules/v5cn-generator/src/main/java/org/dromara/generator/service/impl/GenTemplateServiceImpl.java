@@ -1,5 +1,6 @@
-package org.dromara.generator.service;
+package org.dromara.generator.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -13,6 +14,7 @@ import org.dromara.generator.domain.GenTemplate;
 import org.dromara.generator.domain.bo.GenEditTemplateBo;
 import org.dromara.generator.domain.bo.GenTemplateBo;
 import org.dromara.generator.mapper.GenTemplateMapper;
+import org.dromara.generator.service.IGenTemplateService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -145,5 +147,12 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
         List<GenTemplate> list = baseMapper.selectList(new LambdaQueryWrapper<GenTemplate>()
                 .like(StrUtil.isNotBlank(filePath), GenTemplate::getFilePath, filePath));
         return list.stream().map(GenTemplate::getFilePath).collect(Collectors.toSet());
+    }
+
+    @Override
+    public List<GenTemplate> getTemplateList(List<String> tpTypes) {
+        return baseMapper.selectList(new LambdaQueryWrapper<GenTemplate>()
+                .in(CollUtil.isNotEmpty(tpTypes), GenTemplate::getTpType, tpTypes));
+
     }
 }

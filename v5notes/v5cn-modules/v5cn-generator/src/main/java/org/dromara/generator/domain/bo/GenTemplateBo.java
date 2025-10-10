@@ -33,6 +33,11 @@ public class GenTemplateBo extends BaseEntity {
     private String tpType;
 
     /**
+     * 模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)
+     */
+    private String tpCategory;
+
+    /**
      * 模版名称
      */
     @NotBlank(message = "模版名称不能为空", groups = { AddGroup.class, EditGroup.class })

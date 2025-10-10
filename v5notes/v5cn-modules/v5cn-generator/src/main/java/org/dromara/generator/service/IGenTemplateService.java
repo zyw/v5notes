@@ -82,4 +82,11 @@ public interface IGenTemplateService {
      * @return
      */
     Set<String> getAllFilePath(String filePath);
+
+    /**
+     * 获取模版列表
+     * @param tpTypes 模版类型数组
+     * @return 模版列表
+     */
+    List<GenTemplate> getTemplateList(List<String> tpTypes);
 }

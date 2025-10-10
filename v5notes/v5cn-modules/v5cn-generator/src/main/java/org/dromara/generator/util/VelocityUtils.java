@@ -3,6 +3,7 @@ package org.dromara.generator.util;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
+import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -19,6 +20,8 @@ import org.dromara.generator.core.GenFilePath;
 import org.dromara.generator.core.PrepareContext;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.GenTemplate;
+import org.dromara.generator.service.IGenTemplateService;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -27,6 +30,7 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 模板处理工具类
@@ -95,9 +99,35 @@ public class VelocityUtils {
      *
      * @return 模板列表
      */
-    public static List<String> getTemplateList(String tplCategory,String beType,String feType) {
+    public static List<GenTemplate> getTemplateList(String tplCategory,String beType,String feType) {
 
-        // 后端模板列表
+        IGenTemplateService genTemplateService = SpringUtils.getBean(IGenTemplateService.class);
+
+        List<GenTemplate> genTemplateList = genTemplateService.getTemplateList(List.of(beType,feType));
+
+        if (CollUtil.isEmpty(genTemplateList)) {
+            log.error("未找到模版信息，后端类型：{}，前端类型：{}", beType, feType);
+            throw new ServiceException("未找到模版信息，后端类型：" + beType + "，前端类型：" + feType);
+        }
+        // 添加SQL模板
+        DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
+        genTemplateList = genTemplateList.stream().filter((template) -> {
+            if(StrUtil.isBlank(template.getTpCategory())){
+                return true;
+            }
+            if(StrUtil.equalsAny(template.getTpCategory(), GenConstants.TPL_CATEGORY.TPL_CRUD, GenConstants.TPL_CATEGORY.TPL_TREE)) {
+                if (GenConstants.TPL_CATEGORY.TPL_CRUD.equals(tplCategory)){
+                    return !template.getTpCategory().equals(GenConstants.TPL_CATEGORY.TPL_TREE);
+                } else if (GenConstants.TPL_CATEGORY.TPL_TREE.equals(tplCategory)){
+                    return !template.getTpCategory().equals(GenConstants.TPL_CATEGORY.TPL_CRUD);
+                }
+            }
+
+            return template.getTpCategory().equals(dataBaseType.getCategory());
+        }).collect(Collectors.toList());
+
+        return genTemplateList;
+        /*// 后端模板列表
         String beUri = "vm/backend/" + beType;
         Set<String> beTemplateList = getResourcesTemplateList(beUri);
         // 前端模板列表
@@ -116,7 +146,7 @@ public class VelocityUtils {
         templates.addAll(feTemplateList);
 
         // 添加SQL模板
-        DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
+//        DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
         String sqlTemplatePath = "vm/sql/" + beType;
         if (dataBaseType.isOracle()) {
             templates.add(sqlTemplatePath + "/oracle/sql.sql.vm");
@@ -130,7 +160,7 @@ public class VelocityUtils {
 
         log.info("全部模版列表==>>:{}", templates);
 
-        return templates;
+        return templates;*/
     }
 
     /**

@@ -1,17 +1,18 @@
-package org.dromara.generator.core;
+package org.dromara.generator.core.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.generator.config.GenConfig;
 import org.dromara.generator.constant.GenConstants;
+import org.dromara.generator.core.TableColumnHandle;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
 import org.dromara.generator.util.GenUtils;
 import org.springframework.stereotype.Component;
 
 @Slf4j
-@Component("javaTableColumnHandle")
-public class JavaTableColumnHandle implements TableColumnHandle {
+@Component("goPermAuthTableColumnHandle")
+public class GoPermAuthTableColumnHandle implements TableColumnHandle {
     @Override
     public void handleTable(GenTable genTable) {
         genTable.setClassName(GenUtils.convertClassName(genTable.getTableName()));
@@ -20,9 +21,7 @@ public class JavaTableColumnHandle implements TableColumnHandle {
         if(StringUtils.isBlank(genTable.getModuleName())) {
             genTable.setModuleName(GenUtils.getModuleName(GenConfig.getPackageName()));
         }
-        // 设置页面名称，使用表名称，如果表名称有多个单词使用_分隔，那么就使用第一次出现_后面的单词，转换为驼峰格式
         genTable.setBusinessName(GenUtils.getBusinessName(genTable.getTableName()));
-        // 设置功能名称，使用表注释
         genTable.setFunctionName(GenUtils.replaceText(genTable.getTableComment()));
         genTable.setFunctionAuthor(GenConfig.getAuthor());
         genTable.setCreateTime(null);
@@ -30,36 +29,40 @@ public class JavaTableColumnHandle implements TableColumnHandle {
     }
 
     @Override
-    public void handleColumn(GenTableColumn column,GenTable table) {
+    public void handleColumn(GenTableColumn column, GenTable table) {
         String dataType = GenUtils.getDbType(column.getColumnType());
         // 统一转小写 避免有些数据库默认大写问题 如果需要特别书写方式 请在实体类增加注解标注别名
         String columnName = column.getColumnName().toLowerCase();
         column.setTableId(table.getTableId());
         column.setCreateTime(null);
         column.setUpdateTime(null);
-        // 设置java字段名
-        column.setFieldName(StringUtils.toCamelCase(columnName));
+        // 设置golang字段名, 例如：user_name->UserName
+        column.setFieldName(StringUtils.convertToCamelCase(columnName));
         // 设置默认类型
-        column.setFieldType(GenConstants.JAVA_TYPE.STRING);
+        column.setFieldType(GenConstants.GO_TYPE.STRING);
         column.setQueryType(GenConstants.SELECT_EXP.QUERY_EQ);
         //处理默认值
         column.setDefaultVal(GenUtils.getDefaultValue(column.getDefaultVal()));
 
-        if (GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_STR, dataType) || GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_TEXT, dataType)) {
+        if (GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_STR, dataType)
+            || GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_TEXT, dataType)) {
             // 字符串长度超过500设置为文本域
             Integer columnLength = GenUtils.getColumnLength(column.getColumnType());
-            String htmlType = columnLength >= 500 ||
-                GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_TEXT, dataType)
+            String htmlType = columnLength >= 500
+                || GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_TEXT, dataType)
                 ? GenConstants.HTML_TYPE.HTML_TEXTAREA : GenConstants.HTML_TYPE.HTML_INPUT;
             column.setHtmlType(htmlType);
         } else if (GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_TIME, dataType)) {
-            column.setFieldType(GenConstants.JAVA_TYPE.DATE);
+            column.setFieldType(GenConstants.GO_TYPE.DATE);
             column.setHtmlType(GenConstants.HTML_TYPE.HTML_DATETIME);
         } else if (GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_NUMBER, dataType)) {
             column.setHtmlType(GenConstants.HTML_TYPE.HTML_INPUT);
             // 数据库的数字字段与java不匹配 且很多数据库的数字字段很模糊 例如oracle只有number没有细分
             // 所以默认数字类型全为Long可在界面上自行编辑想要的类型 有什么特殊需求也可以在这里特殊处理
-            column.setFieldType(GenConstants.JAVA_TYPE.LONG);
+            column.setFieldType(GenConstants.GO_TYPE.LONG);
+        } else if (GenUtils.arraysContains(GenConstants.DATA_BAST_TYPE.COLUMNTYPE_JSON, dataType)) {
+            column.setHtmlType(GenConstants.HTML_TYPE.HTML_TEXTAREA);
+            column.setFieldType(GenConstants.GO_TYPE.JSON);
         }
 
         // BO对象 默认插入勾选
@@ -74,7 +77,7 @@ public class JavaTableColumnHandle implements TableColumnHandle {
         if (!GenUtils.arraysContains(GenConstants.OPERATE_BO.COLUMNNAME_NOT_LIST, columnName)) {
             column.setIsList(GenConstants.REQUIRE);
         }
-        // BO对象 默认查询勾选
+        // BO对象 默认查询勾选, 生成request实体时需要
         if (!GenUtils.arraysContains(GenConstants.OPERATE_BO.COLUMNNAME_NOT_QUERY, columnName) && !column.isPk()) {
             column.setIsQuery(GenConstants.REQUIRE);
         }

@@ -16,27 +16,31 @@ public enum DataBaseType {
     /**
      * MySQL
      */
-    MY_SQL("MySQL"),
+    MY_SQL("MySQL", "mysql"),
 
     /**
      * Oracle
      */
-    ORACLE("Oracle"),
+    ORACLE("Oracle", "oracle"),
 
     /**
      * PostgreSQL
      */
-    POSTGRE_SQL("PostgreSQL"),
+    POSTGRE_SQL("PostgreSQL","postgresql"),
 
     /**
      * SQL Server
      */
-    SQL_SERVER("Microsoft SQL Server");
+    SQL_SERVER("Microsoft SQL Server", "sqlserver");
 
     /**
      * 数据库类型
      */
     private final String type;
+    /**
+     * 数据库类别
+     */
+    private final String category;
 
     /**
      * 根据数据库产品名称查找对应的数据库类型

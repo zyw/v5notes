@@ -10,6 +10,10 @@ export interface TemplateVO {
   tpType: string;
 
   /**
+   * 模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)
+   */
+  tpCategory: string;
+  /**
    * 模版名称
    */
   name: string;
@@ -47,6 +51,11 @@ export interface TemplateForm extends BaseEntity {
   tpType?: string;
 
   /**
+   * 模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)
+   */
+  tpCategory?: string;
+
+  /**
    * 模版名称
    */
   name?: string;
@@ -82,11 +91,6 @@ export interface TemplateQuery extends PageQuery {
    * 模版名称
    */
   name?: string;
-
-  /**
-   * 模版内容
-   */
-  content?: string;
 
   /**
    * 模版名称，需要包含生成文件的扩展名
