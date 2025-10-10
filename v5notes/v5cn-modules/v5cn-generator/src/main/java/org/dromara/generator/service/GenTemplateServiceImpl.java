@@ -1,5 +1,6 @@
 package org.dromara.generator.service;
 
+import cn.hutool.core.util.StrUtil;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.mybatis.core.page.PageQuery;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * gen_template;代码模版Service业务层处理
@@ -135,5 +138,12 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
             //TODO 做一些业务上的校验,判断是否需要校验
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    @Override
+    public Set<String> getAllFilePath(String filePath) {
+        List<GenTemplate> list = baseMapper.selectList(new LambdaQueryWrapper<GenTemplate>()
+                .like(StrUtil.isNotBlank(filePath), GenTemplate::getFilePath, filePath));
+        return list.stream().map(GenTemplate::getFilePath).collect(Collectors.toSet());
     }
 }

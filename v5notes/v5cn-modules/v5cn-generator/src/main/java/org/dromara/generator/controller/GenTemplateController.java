@@ -21,6 +21,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 代码模版
@@ -101,5 +102,16 @@ public class GenTemplateController extends BaseController {
     public R<Void> remove(@NotEmpty(message = "主键不能为空")
                           @PathVariable Long[] ids) {
         return toAjax(genTemplateService.deleteWithValidByIds(List.of(ids), true));
+    }
+
+    /**
+     * 获取所有文件路径
+     * @param filePath
+     * @return
+     */
+    @SaCheckPermission("generator:template:query-file-paths")
+    @GetMapping("/query-file-paths")
+    public R<Set<String>> getAllFilePath(@RequestParam(required = false) String filePath) {
+        return R.ok(genTemplateService.getAllFilePath(filePath));
     }
 }

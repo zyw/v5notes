@@ -8,6 +8,7 @@ import org.dromara.generator.domain.bo.GenTemplateBo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 代码模版Service接口
@@ -74,4 +75,11 @@ public interface IGenTemplateService {
      * @return 是否删除成功
      */
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
+
+    /**
+     * 获取所有文件路径
+     * @param filePath
+     * @return
+     */
+    Set<String> getAllFilePath(String filePath);
 }

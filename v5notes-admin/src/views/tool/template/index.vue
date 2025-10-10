@@ -47,8 +47,12 @@
       <el-table v-loading="loading" border :data="templateList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column v-if="true" label="ID" align="center" prop="id" />
-        <el-table-column label="模版类型" align="center" prop="tpType" />
         <el-table-column label="模版名称" align="center" prop="name" />
+        <el-table-column label="模版类型" align="center">
+          <template #default="scope">
+            <dict-tag :options="tp_types" :value="scope.row.tpType" />
+          </template>
+        </el-table-column>
         <el-table-column label="文件名称" align="center" prop="fileName" />
         <el-table-column label="文件路径" align="center" prop="filePath" />
         <el-table-column label="状态" align="center" prop="status">
@@ -95,7 +99,21 @@
           <el-input v-model="form.fileName" placeholder="请输入文件名称" />
         </el-form-item>
         <el-form-item label="文件路径" prop="filePath">
-          <el-input v-model="form.filePath" placeholder="请输入生成文件路径" />
+          <!-- <el-input v-model="form.filePath" placeholder="请输入生成文件路径" /> -->
+          <el-autocomplete v-model="form.filePath" :fetch-suggestions="querySearchAsync" class="w-50" placeholder="请输入生成文件路径">
+            <template #loading>
+              <el-icon class="is-loading">
+                <svg class="circular" viewBox="0 0 20 20">
+                  <g class="path2 loading-path" stroke-width="0" style="animation: none; stroke: none">
+                    <circle r="3.375" class="dot1" rx="0" ry="0" />
+                    <circle r="3.375" class="dot2" rx="0" ry="0" />
+                    <circle r="3.375" class="dot4" rx="0" ry="0" />
+                    <circle r="3.375" class="dot3" rx="0" ry="0" />
+                  </g>
+                </svg>
+              </el-icon>
+            </template>
+          </el-autocomplete>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -125,12 +143,17 @@
 </template>
 
 <script setup name="Template" lang="ts">
-import { listTemplate, getTemplate, delTemplate, addTemplate, updateTemplate, editTemplate } from '@/api/tool/template';
+import { listTemplate, getTemplate, delTemplate, addTemplate, updateTemplate, editTemplate, getAllFilePaths } from '@/api/tool/template';
 import { TemplateVO, TemplateQuery, TemplateForm } from '@/api/tool/template/types';
 import { getDicts } from '@/api/system/dict/data';
 import { DictDataVO } from '@/api/system/dict/data/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { gen_be_type, gen_fe_type } = toRefs<any>(proxy?.useDict('gen_be_type', 'gen_fe_type'));
+// 使用 computed 创建响应式依赖
+const tp_types = computed(() => {
+  return [...gen_be_type.value, ...gen_fe_type.value];
+});
 
 const templateList = ref<TemplateVO[]>([]);
 const buttonLoading = ref(false);
@@ -194,6 +217,17 @@ const getList = async () => {
   templateList.value = res.rows;
   total.value = res.total;
   loading.value = false;
+};
+
+const querySearchAsync = async (queryString: string, cb: (arg: any) => void) => {
+  console.log('queryString', queryString);
+  const results = await findAllFilePaths(queryString);
+  cb(results.map((item) => ({ value: item })));
+};
+
+const findAllFilePaths = async (filePath: string) => {
+  const res = await getAllFilePaths(filePath);
+  return res.data || [];
 };
 
 /** 取消按钮 */

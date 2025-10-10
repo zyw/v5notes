@@ -73,3 +73,16 @@ export const delTemplate = (id: string | number | Array<string | number>) => {
     method: 'delete'
   });
 };
+
+/**
+ * 查询所有模版路径
+ * @param id
+ */
+export const getAllFilePaths = (filePath: string): AxiosPromise<string[]> => {
+  console.log(filePath, '<===========filePath==============>');
+  return request({
+    url: '/tool/gen/template/query-file-paths',
+    method: 'get',
+    params: { filePath }
+  });
+};
