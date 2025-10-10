@@ -5,7 +5,8 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.extra.template.engine.velocity.VelocityTemplate;
+import cn.hutool.extra.template.Template;
+import cn.hutool.extra.template.TemplateEngine;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.dynamic.datasource.annotation.DSTransactional;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -18,10 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.anyline.metadata.Column;
 import org.anyline.metadata.Table;
 import org.anyline.proxy.ServiceProxy;
-import org.apache.velocity.Template;
-import org.apache.velocity.VelocityContext;
-import org.apache.velocity.app.Velocity;
-import org.dromara.common.core.constant.Constants;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StreamUtils;
@@ -40,7 +37,6 @@ import org.dromara.generator.mapper.GenTableColumnMapper;
 import org.dromara.generator.mapper.GenTableMapper;
 import org.dromara.generator.service.IGenTableService;
 import org.dromara.generator.util.GenUtils;
-import org.dromara.generator.util.VelocityInitializer;
 import org.dromara.generator.util.VelocityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +63,7 @@ public class GenTableServiceImpl implements IGenTableService {
     private final GenTableMapper baseMapper;
     private final GenTableColumnMapper genTableColumnMapper;
     private final IdentifierGenerator identifierGenerator;
+    private final TemplateEngine templateEngine;
 
     private static final String[] TABLE_IGNORE = new String[]{"sj_", "flow_", "gen_"};
 
@@ -347,9 +344,9 @@ public class GenTableServiceImpl implements IGenTableService {
         table.setMenuIds(menuIds);
         // 设置主键列信息
         setPkColumn(table);
-        VelocityInitializer.initVelocity();
+//        VelocityInitializer.initVelocity();
 
-        VelocityContext context = VelocityUtils.prepareContext(table);
+        Map<String, Object> context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
         List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
@@ -358,8 +355,11 @@ public class GenTableServiceImpl implements IGenTableService {
             StringWriter sw = new StringWriter();
 //            Template tpl = Velocity.getTemplate(template.getContent(), Constants.UTF8);
 //            tpl.merge(context, sw);
-            Velocity.evaluate(context, sw, "LogTag", template.getContent());
-            dataMap.put(template.getFileName(), sw.toString());
+//            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+            Template tpl = templateEngine.getTemplate(template.getContent());
+            tpl.render(context, sw);
+            String filePath = VelocityUtils.getFileName(template, table);
+            dataMap.put(filePath, sw.toString());
         }
         return dataMap;
     }
@@ -391,26 +391,43 @@ public class GenTableServiceImpl implements IGenTableService {
         // 设置主键列信息
         setPkColumn(table);
 
-        VelocityInitializer.initVelocity();
+//        VelocityInitializer.initVelocity();
 
-        VelocityContext context = VelocityUtils.prepareContext(table);
+        Map<String, Object> context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
         List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
         for (GenTemplate template : templates) {
-            if (!StringUtils.containsAny(template.getFileName(), "sql.sql.vm", "api.ts.vm", "types.ts.vm", "index.vue.vm", "index-tree.vue.vm")) {
+            if(StringUtils.isBlank(template.getTpCategory())) {
                 // 渲染模板
                 StringWriter sw = new StringWriter();
 //                Template tpl = Velocity.getTemplate(template, Constants.UTF8);
 //                tpl.merge(context, sw);
-                Velocity.evaluate(context, sw, "LogTag", template.getContent());
+//                Velocity.evaluate(context, sw, "LogTag", template.getContent());
+                Template tpl = templateEngine.getTemplate(template.getContent());
+                tpl.render(context, sw);
                 try {
-                    String path = getGenPath(table, template.getFileName());
+                    String path = getGenPath(table, template);
                     FileUtils.writeUtf8String(sw.toString(), path);
                 } catch (Exception e) {
                     throw new ServiceException("渲染模板失败，表名：" + table.getTableName());
                 }
             }
+//            if (!StringUtils.containsAny(template.getFileName(), "sql.sql.vm", "api.ts.vm", "types.ts.vm", "index.vue.vm", "index-tree.vue.vm")) {
+//                // 渲染模板
+//                StringWriter sw = new StringWriter();
+////                Template tpl = Velocity.getTemplate(template, Constants.UTF8);
+////                tpl.merge(context, sw);
+////                Velocity.evaluate(context, sw, "LogTag", template.getContent());
+//                Template tpl = templateEngine.getTemplate(template.getContent());
+//                tpl.render(context, sw);
+//                try {
+//                    String path = getGenPath(table, template);
+//                    FileUtils.writeUtf8String(sw.toString(), path);
+//                } catch (Exception e) {
+//                    throw new ServiceException("渲染模板失败，表名：" + table.getTableName());
+//                }
+//            }
         }
     }
 
@@ -497,9 +514,9 @@ public class GenTableServiceImpl implements IGenTableService {
         // 设置主键列信息
         setPkColumn(table);
 
-        VelocityInitializer.initVelocity();
+//        VelocityInitializer.initVelocity();
 
-        VelocityContext context = VelocityUtils.prepareContext(table);
+        Map<String, Object> context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
         List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
@@ -508,10 +525,12 @@ public class GenTableServiceImpl implements IGenTableService {
             StringWriter sw = new StringWriter();
 //            Template tpl = Velocity.getTemplate(template, Constants.UTF8);
 //            tpl.merge(context, sw);
-            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+//            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+            Template tpl = templateEngine.getTemplate(template.getContent());
+            tpl.render(context, sw);
             try {
                 // 添加到zip
-                zip.putNextEntry(new ZipEntry(VelocityUtils.getFileName(template.getFileName(), table)));
+                zip.putNextEntry(new ZipEntry(VelocityUtils.getFileName(template, table)));
                 IoUtil.write(zip, StandardCharsets.UTF_8, false, sw.toString());
                 IoUtil.close(sw);
                 zip.flush();
@@ -589,7 +608,7 @@ public class GenTableServiceImpl implements IGenTableService {
      * @param template 模板文件路径
      * @return 生成地址
      */
-    public static String getGenPath(GenTable table, String template) {
+    public static String getGenPath(GenTable table, GenTemplate template) {
         String genPath = table.getGenPath();
         if (StringUtils.equals(genPath, "/")) {
             return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);

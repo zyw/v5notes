@@ -7,9 +7,6 @@
             <el-form-item label="模版名称" prop="name">
               <el-input v-model="queryParams.name" placeholder="请输入模版名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="文件名称" prop="fileName">
-              <el-input v-model="queryParams.fileName" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="模板类型" prop="tpType">
               <el-select v-model="queryParams.tpType" filterable placeholder="请选择模版类型">
                 <el-option v-for="item in tpTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
@@ -53,7 +50,6 @@
             <dict-tag :options="tp_types" :value="scope.row.tpType" />
           </template>
         </el-table-column>
-        <el-table-column label="文件名称" align="center" prop="fileName" />
         <el-table-column label="文件路径" align="center" prop="filePath" />
         <el-table-column label="状态" align="center" prop="status">
           <template #default="scope">
@@ -85,8 +81,8 @@
       <pagination v-show="total > 0" v-model:limit="queryParams.pageSize" v-model:page="queryParams.pageNum" :total="total" @pagination="getList" />
     </el-card>
     <!-- 添加或修改代码模版对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
-      <el-form ref="templateFormRef" :model="form" :rules="rules" label-width="80px">
+    <el-dialog v-model="dialog.visible" :title="dialog.title" width="700px" append-to-body>
+      <el-form ref="templateFormRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="模版名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入模版名称" />
         </el-form-item>
@@ -95,10 +91,29 @@
             <el-option v-for="item in tpTypeDicts" :key="item.dictCode" :label="item.dictLabel" :value="item.dictValue"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="文件名称" prop="fileName">
-          <el-input v-model="form.fileName" placeholder="请输入文件名称" />
-        </el-form-item>
-        <el-form-item label="文件路径" prop="filePath">
+        <el-form-item prop="filePath">
+          <template #label>
+            <span>
+              文件路径
+              <el-popover width="450px" title="提示" placement="top">
+                <template #reference>
+                  <el-icon style="font-size: 15px"><Warning /></el-icon>
+                </template>
+                <div class="line-height-3">
+                  <p>文件路径是支持模板语法和变量的，支持的变量包括：</p>
+                  <p>${packageName}：包路径，例如：com.v5notes.generator</p>
+                  <p>${moduleName}：类名，例如：system-tool</p>
+                  <p>${className}：类名，例如：userMapper</p>
+                  <p>${ClassName}：类名驼峰命名格式，例如：UserMapper</p>
+                  <p>${tableName}：表名，例如：user</p>
+                  <p>${BusinessName}：业务名, 例如：SysUser</p>
+                  <p>${businessName}：业务名驼峰命名格式，例如：sysUser</p>
+                  <p>${business_name}：业务名下划线命名格式，例如：sys_user</p>
+                  <p>例如：/src/main/java/${packageName}/${ClassName}.java</p>
+                </div>
+              </el-popover>
+            </span>
+          </template>
           <!-- <el-input v-model="form.filePath" placeholder="请输入生成文件路径" /> -->
           <el-autocomplete v-model="form.filePath" :fetch-suggestions="querySearchAsync" class="w-50" placeholder="请输入生成文件路径">
             <template #loading>
@@ -189,7 +204,6 @@ const initFormData: TemplateForm = {
   tpType: undefined,
   tpCategory: undefined,
   name: undefined,
-  fileName: undefined,
   filePath: undefined,
   status: '1'
 };
@@ -201,7 +215,6 @@ const data = reactive<PageData<TemplateForm, TemplateQuery>>({
     pageSize: 10,
     tpType: undefined,
     name: undefined,
-    fileName: undefined,
     status: '1',
     params: {}
   },
@@ -209,7 +222,7 @@ const data = reactive<PageData<TemplateForm, TemplateQuery>>({
     id: [{ required: true, message: 'ID不能为空', trigger: 'blur' }],
     tpType: [{ required: true, message: '后端模版类型不能为空', trigger: 'change' }],
     name: [{ required: true, message: '模版名称不能为空', trigger: 'blur' }],
-    fileName: [{ required: true, message: '模版名称，需要包含生成文件的扩展名不能为空', trigger: 'blur' }],
+    filePath: [{ required: true, message: '生成文件路径不能为空', trigger: 'blur' }],
     status: [{ required: true, message: '状态:0正常,1停用不能为空', trigger: 'change' }]
   }
 });

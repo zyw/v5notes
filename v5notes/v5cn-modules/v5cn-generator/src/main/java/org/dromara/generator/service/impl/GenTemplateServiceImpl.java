@@ -2,14 +2,14 @@ package org.dromara.generator.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import org.dromara.common.core.utils.MapstructUtils;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
-import org.dromara.common.mybatis.core.page.PageQuery;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.common.core.utils.MapstructUtils;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.generator.domain.GenTemplate;
 import org.dromara.generator.domain.bo.GenEditTemplateBo;
 import org.dromara.generator.domain.bo.GenTemplateBo;
@@ -17,9 +17,9 @@ import org.dromara.generator.mapper.GenTemplateMapper;
 import org.dromara.generator.service.IGenTemplateService;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -79,7 +79,6 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
         lqw.orderByAsc(GenTemplate::getId);
         lqw.eq(bo.getTpType() != null, GenTemplate::getTpType, bo.getTpType());
         lqw.like(bo.getName() != null, GenTemplate::getName, bo.getName());
-        lqw.like(bo.getFileName() != null, GenTemplate::getFileName, bo.getFileName());
         lqw.eq(bo.getStatus() != null, GenTemplate::getStatus, bo.getStatus());
         return lqw;
     }

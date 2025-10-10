@@ -6,8 +6,7 @@ CREATE TABLE gen_template(
     tp_category VARCHAR(10),
     name VARCHAR(50) NOT NULL,
     content TEXT,
-    file_name VARCHAR(100) NOT NULL,
-    file_path VARCHAR(200),
+    file_path VARCHAR(300) NOT NULL,
     status CHAR(1) NOT NULL DEFAULT 0,
     del_flag CHAR(1) NOT NULL DEFAULT 0,
     create_dept INT8,
@@ -23,8 +22,7 @@ COMMENT ON COLUMN gen_template.tp_type IS '模版类型(可以是前端也可以
 COMMENT ON COLUMN gen_template.tp_category IS '模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)';
 COMMENT ON COLUMN gen_template.name IS '模版名称';
 COMMENT ON COLUMN gen_template.content IS '模版内容';
-COMMENT ON COLUMN gen_template.file_name IS '模版名称，需要包含生成文件的扩展名';
-COMMENT ON COLUMN gen_template.file_path IS '生成文件路径，如果为空生成文件在压缩包的跟目录下';
+COMMENT ON COLUMN gen_template.file_path IS '生成文件路径（包括名称文件后缀），支持模板语法';
 COMMENT ON COLUMN gen_template.status IS '状态:0正常,1停用';
 COMMENT ON COLUMN gen_template.del_flag IS '删除标志（0代表存在 2代表删除）';
 COMMENT ON COLUMN gen_template.create_dept IS '创建部门';

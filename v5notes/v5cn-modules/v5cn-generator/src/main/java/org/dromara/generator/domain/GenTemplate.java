@@ -1,6 +1,8 @@
 package org.dromara.generator.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.tenant.core.TenantEntity;
@@ -45,11 +47,6 @@ public class GenTemplate extends TenantEntity {
      * 模版内容
      */
     private String content;
-
-    /**
-     * 模版名称，需要包含生成文件的扩展名
-     */
-    private String fileName;
 
     /**
      * 生成文件路径，如果为空生成文件在压缩包的跟目录下

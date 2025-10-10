@@ -8,7 +8,6 @@ import org.anyline.data.runtime.DataRuntime;
 import org.anyline.util.ConfigTable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
-import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -22,7 +21,6 @@ import java.util.Map;
  * @author Lion Li
  */
 @Slf4j
-@Component
 public class MyBatisDataSourceMonitor implements DataSourceMonitor {
 
     public MyBatisDataSourceMonitor() {

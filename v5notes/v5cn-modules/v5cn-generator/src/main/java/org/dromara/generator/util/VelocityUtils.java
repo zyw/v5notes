@@ -4,11 +4,11 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.velocity.VelocityContext;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StringUtils;
@@ -50,44 +50,45 @@ public class VelocityUtils {
      *
      * @return 模板列表
      */
-    public static VelocityContext prepareContext(GenTable genTable) {
+    public static Map<String,Object> prepareContext(GenTable genTable) {
         // 处理模板变量，为不同后端类型添加不同的变量
         PrepareContext prepareContext = SpringUtils.getBean(genTable.getBeType() + "PrepareContext");
-        VelocityContext velocityContext = new VelocityContext();
+        Map<String,Object> contextMap = Maps.newHashMap();
 
         if (prepareContext == null) {
             log.error("未找到{}的PrepareContext", genTable.getBeType());
             throw new ServiceException("未找到" + genTable.getBeType() + "的PrepareContext");
         }
 
-        prepareContext.addPrepareContextItems(velocityContext, genTable);
+        prepareContext.addPrepareContextItems(contextMap, genTable);
 
-        return velocityContext;
+        return contextMap;
     }
 
-    public static void setMenuVelocityContext(VelocityContext context, GenTable genTable) {
+    public static void setMenuVelocityContext(Map<String,Object> contextMap, GenTable genTable) {
         String options = genTable.getOptions();
         Dict paramsObj = JsonUtils.parseMap(options);
         String parentMenuId = getParentMenuId(paramsObj);
-        context.put("parentMenuId", parentMenuId);
+        contextMap.put("parentMenuId", parentMenuId);
     }
 
-    public static void setTreeVelocityContext(VelocityContext context, GenTable genTable) {
+    public static void setTreeVelocityContext(Map<String,Object> contextMap, GenTable genTable) {
         String options = genTable.getOptions();
         Dict paramsObj = JsonUtils.parseMap(options);
         String treeCode = getTreecode(paramsObj);
         String treeParentCode = getTreeParentCode(paramsObj);
         String treeName = getTreeName(paramsObj);
 
-        context.put("treeCode", treeCode);
-        context.put("treeParentCode", treeParentCode);
-        context.put("treeName", treeName);
-        context.put("expandColumn", getExpandColumn(genTable));
+        contextMap.put("treeCode", treeCode);
+        contextMap.put("treeParentCode", treeParentCode);
+        contextMap.put("treeName", treeName);
+        contextMap.put("expandColumn", getExpandColumn(genTable));
+        assert paramsObj != null;
         if (paramsObj.containsKey(GenConstants.TREE_PARENT_CODE)) {
-            context.put("tree_parent_code", paramsObj.get(GenConstants.TREE_PARENT_CODE));
+            contextMap.put("tree_parent_code", paramsObj.get(GenConstants.TREE_PARENT_CODE));
         }
         if (paramsObj.containsKey(GenConstants.TREE_NAME)) {
-            context.put("tree_name", paramsObj.get(GenConstants.TREE_NAME));
+            contextMap.put("tree_name", paramsObj.get(GenConstants.TREE_NAME));
         }
     }
 
@@ -166,7 +167,7 @@ public class VelocityUtils {
     /**
      * 获取文件名
      */
-    public static String getFileName(String template, GenTable genTable) {
+    public static String getFileName(GenTemplate template, GenTable genTable) {
         GenFilePath genFilePath = SpringUtils.getBean(genTable.getBeType() + "GenFilePath");
         return genFilePath.filePath(template, genTable);
     }

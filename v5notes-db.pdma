@@ -3902,8 +3902,64 @@
             "fixed": "L"
           },
           "defName": {
-            "width": 230,
+            "width": 376,
             "fixed": "L"
+          },
+          "primaryKey": {
+            "width": 70,
+            "fixed": ""
+          },
+          "notNull": {
+            "width": 80,
+            "fixed": ""
+          },
+          "autoIncrement": {
+            "width": 70,
+            "fixed": ""
+          },
+          "bizDomainType": {
+            "width": 180,
+            "fixed": ""
+          },
+          "dbDataType": {
+            "width": 150,
+            "fixed": ""
+          },
+          "dataLen": {
+            "width": 70,
+            "fixed": ""
+          },
+          "numScale": {
+            "width": 80,
+            "fixed": ""
+          },
+          "defaultValue": {
+            "width": 200,
+            "fixed": ""
+          },
+          "intro": {
+            "width": 300,
+            "fixed": ""
+          },
+          "stndDictId": {
+            "width": 400,
+            "fixed": ""
+          },
+          "stndFieldId": {
+            "width": 230,
+            "fixed": ""
+          },
+          "stndComplianceType": {
+            "width": 120,
+            "fixed": ""
+          },
+          "stndComplianceLevel": {
+            "width": 100,
+            "fixed": ""
+          },
+          "fieldTier": {
+            "width": 100,
+            "fixed": ""
           }
         }
       }
@@ -4228,63 +4284,17 @@
             "origin": "UI"
           },
           {
-            "id": "813B3459-E2F5-4FA3-A757-A12728F8E9A9",
-            "defKey": "file_name",
-            "defName": "模版名称，需要包含生成文件的扩展名",
+            "id": "970C276D-3703-4E7A-8D0E-328C20C662C3",
+            "defKey": "file_path",
+            "defName": "生成文件路径（包括名称文件后缀），支持模板语法",
             "intro": "",
             "baseDataType": "VARCHAR",
             "bizDomainType": "",
             "dbDataType": "VARCHAR",
-            "dataLen": 100,
+            "dataLen": 300,
             "numScale": "",
             "primaryKey": 0,
             "notNull": 1,
-            "autoIncrement": 0,
-            "defaultValue": "",
-            "stndDictId": "",
-            "stndFieldId": "",
-            "stndDictKey": "",
-            "stndFieldKey": "",
-            "stndComplianceLevel": "",
-            "stndComplianceType": "",
-            "dictFrom": "",
-            "dictItems": null,
-            "fieldTier": "",
-            "mark": null,
-            "attr1": "",
-            "attr2": "",
-            "attr3": "",
-            "attr4": "",
-            "attr5": "",
-            "attr6": "",
-            "attr7": "",
-            "attr8": "",
-            "attr9": "",
-            "attr10": "",
-            "attr11": "",
-            "attr12": "",
-            "attr13": "",
-            "attr14": "",
-            "attr15": "",
-            "attr16": "",
-            "attr17": "",
-            "attr18": "",
-            "attr19": "",
-            "attr20": "",
-            "origin": "UI"
-          },
-          {
-            "id": "970C276D-3703-4E7A-8D0E-328C20C662C3",
-            "defKey": "file_path",
-            "defName": "生成文件路径，如果为空生成文件在压缩包的跟目录下",
-            "intro": "",
-            "baseDataType": "VARCHAR",
-            "bizDomainType": "",
-            "dbDataType": "VARCHAR",
-            "dataLen": 200,
-            "numScale": "",
-            "primaryKey": 0,
-            "notNull": 0,
             "autoIncrement": 0,
             "defaultValue": "",
             "stndDictId": "",
@@ -4649,7 +4659,7 @@
     "readonly": false,
     "allowWs": false
   },
-  "updateTime": 1760076969292,
-  "signature": "e1a5023a361d693bba1ac946af62ef98",
+  "updateTime": 1760105527103,
+  "signature": "62306493845f9b42ded7f1fd699c1e60",
   "branchId": "1111"
 }

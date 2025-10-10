@@ -1,7 +1,6 @@
 package org.dromara.generator.core.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.velocity.VelocityContext;
 import org.dromara.generator.constant.GenConstants;
 import org.dromara.generator.core.PrepareContext;
 import org.dromara.generator.domain.GenTable;
@@ -10,13 +9,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component("goPermAuthPrepareContext")
 public class GoPermAuthPrepareContext implements PrepareContext {
     @Override
-    public void addContextItems(VelocityContext velocityContext, GenTable table) {
-        velocityContext.put("importList", getImportList(table));
+    public void addContextItems(Map<String,Object> contextMap, GenTable table) {
+        contextMap.put("importList", getImportList(table));
     }
 
     /**
