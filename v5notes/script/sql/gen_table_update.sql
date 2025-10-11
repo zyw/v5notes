@@ -31,3 +31,7 @@ INSERT INTO `sys_dict_data` (`dict_code`, `tenant_id`, `dict_sort`, `dict_label`
                      VALUES (148, '000000', 1, 'Soybean Antd', 'soy-antd', 'gen_fe_type', '', 'default', 'N', 100, 1, '2025-09-28 15:25:06', 1, '2025-09-28 15:25:06', 'Soybean Ant Design Vue');
 
 
+-- 修改字段 gen_table.be_type 类型为 varchar(50)
+ALTER TABLE gen_table MODIFY COLUMN be_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '后端模版类型';
+-- 修改字段 gen_table.fe_type 类型为 varchar(50)
+ALTER TABLE gen_table MODIFY COLUMN fe_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '前端模版类型';

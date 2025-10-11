@@ -76,7 +76,7 @@ public class GenTemplateServiceImpl implements IGenTemplateService {
     private LambdaQueryWrapper<GenTemplate> buildQueryWrapper(GenTemplateBo bo) {
         Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<GenTemplate> lqw = Wrappers.lambdaQuery();
-        lqw.orderByAsc(GenTemplate::getId);
+        lqw.orderByDesc(GenTemplate::getId);
         lqw.eq(bo.getTpType() != null, GenTemplate::getTpType, bo.getTpType());
         lqw.like(bo.getName() != null, GenTemplate::getName, bo.getName());
         lqw.eq(bo.getStatus() != null, GenTemplate::getStatus, bo.getStatus());

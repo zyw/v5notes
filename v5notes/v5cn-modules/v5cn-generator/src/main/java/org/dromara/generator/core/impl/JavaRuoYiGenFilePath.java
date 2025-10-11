@@ -4,7 +4,6 @@ import cn.hutool.extra.template.Template;
 import cn.hutool.extra.template.TemplateEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.common.core.utils.StringUtils;
 import org.dromara.generator.core.GenFilePath;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTemplate;
@@ -20,29 +19,26 @@ public class JavaRuoYiGenFilePath implements GenFilePath {
 
     private final TemplateEngine templateEngine;
 
-    /**
-     * 项目空间路径
-     */
-    private static final String PROJECT_PATH = "main/java";
-
-    /**
-     * mybatis空间路径
-     */
-    private static final String MYBATIS_PATH = "main/resources/mapper";
+//    /**
+//     * 项目空间路径
+//     */
+//    private static final String PROJECT_PATH = "main/java";
+//
+//    /**
+//     * mybatis空间路径
+//     */
+//    private static final String MYBATIS_PATH = "main/resources/mapper";
 
 
     @Override
     public String filePath(GenTemplate template, GenTable genTable) {
-
-        if(StringUtils.isBlank(template.getFilePath())){
-            return "";
-        }
 
         Map<String, Object> contextMap = getContextMap(genTable);
 
         Template tpl = templateEngine.getTemplate(template.getFilePath());
         StringWriter sw = new StringWriter();
         tpl.render(contextMap, sw);
+        log.info("生成文件：{}，<==>生成文件模版：{}，<==>表名称：{}", sw, template.getFilePath(), genTable.getTableName());
         return sw.toString();
         // 文件名称
 //        String fileName = "";

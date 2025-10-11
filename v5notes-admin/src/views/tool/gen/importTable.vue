@@ -76,8 +76,8 @@ const queryFormRef = ref<ElFormInstance>();
 const tableFormRef = ref<ElFormInstance>();
 
 const tableParams = reactive<ImportTableForm>({
-  beType: 'java',
-  feType: 'default',
+  beType: '',
+  feType: '',
   packageName: '',
   moduleName: ''
 });
@@ -100,8 +100,8 @@ const dataNameList = ref<Array<string>>([]);
 const emit = defineEmits(['ok']);
 
 const clearTableParams = () => {
-  tableParams.beType = 'java';
-  tableParams.feType = 'default';
+  tableParams.beType = '';
+  tableParams.feType = '';
   tableParams.packageName = '';
   tableParams.moduleName = '';
 };

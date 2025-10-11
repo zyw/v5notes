@@ -43,21 +43,21 @@
 
       <el-table v-loading="loading" border :data="templateList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="true" label="ID" align="center" prop="id" />
-        <el-table-column label="模版名称" align="center" prop="name" />
-        <el-table-column label="模版类型" align="center">
+        <el-table-column v-if="true" label="ID" align="center" prop="id" width="174" />
+        <el-table-column label="模版名称" align="center" prop="name" width="200" />
+        <el-table-column label="模版类型" align="center" width="210">
           <template #default="scope">
             <dict-tag :options="tp_types" :value="scope.row.tpType" />
           </template>
         </el-table-column>
-        <el-table-column label="文件路径" align="center" prop="filePath" />
-        <el-table-column label="状态" align="center" prop="status">
+        <el-table-column label="文件路径" align="center" prop="filePath" width="auto" />
+        <el-table-column label="状态" align="center" prop="status" width="80">
           <template #default="scope">
             <el-tag :type="scope.row.status === '0' ? 'danger' : 'success'">{{ scope.row.status === '0' ? '禁用' : '启用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" />
-        <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width">
+        <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
+        <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width" width="120">
           <template #default="scope">
             <el-tooltip content="编辑模版" placement="top">
               <el-button
@@ -109,6 +109,7 @@
                   <p>${BusinessName}：业务名, 例如：SysUser</p>
                   <p>${businessName}：业务名驼峰命名格式，例如：sysUser</p>
                   <p>${business_name}：业务名下划线命名格式，例如：sys_user</p>
+                  <p>${business__name}：业务名中横线命名格式，例如：sys-user</p>
                   <p>例如：/src/main/java/${packageName}/${ClassName}.java</p>
                 </div>
               </el-popover>
@@ -150,7 +151,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="contentDialog" title="模版编辑" width="80%" append-to-body>
+    <el-dialog v-model="contentDialog" :title="code.title" width="80%" append-to-body>
       <monaco-editor v-model="code.content" :height="400" />
       <template #footer>
         <div class="dialog-footer">
@@ -192,7 +193,7 @@ const tpCategoryDicts = ref<DictDataVO[]>([]);
 
 const contentDialog = ref(false);
 
-const code = reactive<{ id: number; content: string }>({ id: 0, content: '' });
+const code = reactive<{ id: number; title: string; content: string }>({ id: 0, title: '', content: '' });
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -331,7 +332,9 @@ const handleDelete = async (row?: TemplateVO) => {
 const handleEditTemplate = async (row: TemplateVO) => {
   const res = await getTemplate(row.id);
   code.id = res.data.id as number;
-  code.content = res.data.content as string;
+  const content = res.data.content || '';
+  code.content = content;
+  code.title = '模版编辑' + (res.data.name || '');
   contentDialog.value = true;
 };
 

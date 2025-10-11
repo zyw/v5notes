@@ -95,12 +95,7 @@
     <!-- 预览界面 -->
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="80%" top="5vh" append-to-body class="scrollbar">
       <el-tabs v-model="preview.activeName">
-        <el-tab-pane
-          v-for="(value, key) in preview.data"
-          :key="value"
-          :label="key.substring(key.lastIndexOf('/') + 1, key.indexOf('.vm'))"
-          :name="key.substring(key.lastIndexOf('/') + 1, key.indexOf('.vm'))"
-        >
+        <el-tab-pane v-for="(value, key) in preview.data" :key="value" :label="handleTabTitle(key)" :name="handleTabTitle(key)">
           <el-link v-copyText="value" v-copyText:callback="copyTextSuccess" :underline="false" icon="DocumentCopy" style="float: right">
             &nbsp;复制
           </el-link>
@@ -222,7 +217,16 @@ const handlePreview = async (row: TableVO) => {
   preview.value.data = res.data;
   dialog.visible = true;
   const pathUri = Object.keys(res.data)[0];
-  preview.value.activeName = pathUri.substring(pathUri.lastIndexOf('/') + 1, pathUri.indexOf('.vm'));
+  preview.value.activeName = handleTabTitle(pathUri);
+};
+/** 处理tab标题 */
+const handleTabTitle = (title: string) => {
+  const titles = title.split('/');
+  if (titles.length === 1) {
+    return titles[0];
+  }
+  const len = titles.length;
+  return titles[len - 2] + '-' + titles[len - 1];
 };
 /** 复制代码成功 */
 const copyTextSuccess = () => {

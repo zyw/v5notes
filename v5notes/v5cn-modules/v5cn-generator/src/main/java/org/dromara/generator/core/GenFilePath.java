@@ -46,13 +46,15 @@ public interface GenFilePath {
         contextMap.put("className", className);
         contextMap.put("tableName", tableName);
         // 模块名, 例如：system, 多个单词使用-连接，例如：system-tool
-        contextMap.put("moduleName", StrUtil.toSymbolCase(genTable.getModuleName(), '-'));
+        contextMap.put("moduleName", StrUtil.toSymbolCase(moduleName, '-'));
         // 业务名, 例如：SysUser
-        contextMap.put("BusinessName", StringUtils.capitalize(genTable.getBusinessName()));
+        contextMap.put("BusinessName", StringUtils.capitalize(businessName));
         // 业务名驼峰命名格式，例如：sysUser
-        contextMap.put("businessName", genTable.getBusinessName());
+        contextMap.put("businessName", businessName);
         // 业务名下划线命名格式，例如：sys_user
-        contextMap.put("business_name", StrUtil.toUnderlineCase(genTable.getBusinessName()));
+        contextMap.put("business_name", StrUtil.toUnderlineCase(businessName));
+        // 业务名中横线命名格式，例如：sys-user
+        contextMap.put("business__name", StrUtil.toSymbolCase(businessName, '-'));
         return contextMap;
     }
 }

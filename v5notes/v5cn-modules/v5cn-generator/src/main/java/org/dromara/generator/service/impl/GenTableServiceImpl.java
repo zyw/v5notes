@@ -38,6 +38,7 @@ import org.dromara.generator.mapper.GenTableMapper;
 import org.dromara.generator.service.IGenTableService;
 import org.dromara.generator.util.GenUtils;
 import org.dromara.generator.util.VelocityUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -336,29 +337,20 @@ public class GenTableServiceImpl implements IGenTableService {
     public Map<String, String> previewCode(Long tableId) {
         Map<String, String> dataMap = new LinkedHashMap<>();
         // 查询表信息
-        GenTable table = baseMapper.selectGenTableById(tableId);
-        List<Long> menuIds = new ArrayList<>();
-        for (int i = 0; i < 6; i++) {
-            menuIds.add(identifierGenerator.nextId(null).longValue());
-        }
-        table.setMenuIds(menuIds);
-        // 设置主键列信息
-        setPkColumn(table);
-//        VelocityInitializer.initVelocity();
+        GenTable table = getGenTable(tableId);
 
         Map<String, Object> context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
         List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
+        StringWriter sw;
         for (GenTemplate template : templates) {
             // 渲染模板
-            StringWriter sw = new StringWriter();
-//            Template tpl = Velocity.getTemplate(template.getContent(), Constants.UTF8);
-//            tpl.merge(context, sw);
-//            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+            sw = new StringWriter();
             Template tpl = templateEngine.getTemplate(template.getContent());
             tpl.render(context, sw);
             String filePath = VelocityUtils.getFileName(template, table);
+            log.info("生成文件模版路径：{}", filePath);
             dataMap.put(filePath, sw.toString());
         }
         return dataMap;
@@ -504,28 +496,16 @@ public class GenTableServiceImpl implements IGenTableService {
      */
     private void generatorCode(Long tableId, ZipOutputStream zip) {
         // 查询表信息
-        GenTable table = baseMapper.selectGenTableById(tableId);
-        List<Long> menuIds = new ArrayList<>();
-        for (int i = 0; i < 6; i++) {
-            menuIds.add(identifierGenerator.nextId(null).longValue());
-        }
-        // 设置菜单ID
-        table.setMenuIds(menuIds);
-        // 设置主键列信息
-        setPkColumn(table);
-
-//        VelocityInitializer.initVelocity();
+        GenTable table = getGenTable(tableId);
 
         Map<String, Object> context = VelocityUtils.prepareContext(table);
 
         // 获取模板列表
         List<GenTemplate> templates = VelocityUtils.getTemplateList(table.getTplCategory(),table.getBeType(),table.getFeType());
+        StringWriter sw;
         for (GenTemplate template : templates) {
             // 渲染模板
-            StringWriter sw = new StringWriter();
-//            Template tpl = Velocity.getTemplate(template, Constants.UTF8);
-//            tpl.merge(context, sw);
-//            Velocity.evaluate(context, sw, "LogTag", template.getContent());
+            sw = new StringWriter();
             Template tpl = templateEngine.getTemplate(template.getContent());
             tpl.render(context, sw);
             try {
@@ -614,6 +594,25 @@ public class GenTableServiceImpl implements IGenTableService {
             return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);
         }
         return genPath + File.separator + VelocityUtils.getFileName(template, table);
+    }
+
+    /**
+     * 获取数据库类型字段
+     *
+     * @param tableId 表ID
+     * @return 业务表信息
+     */
+    private GenTable getGenTable(Long tableId) {
+        GenTable table = baseMapper.selectGenTableById(tableId);
+        List<Long> menuIds = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            menuIds.add(identifierGenerator.nextId(null).longValue());
+        }
+        // 设置菜单ID
+        table.setMenuIds(menuIds);
+        // 设置主键列信息
+        setPkColumn(table);
+        return table;
     }
 }
 

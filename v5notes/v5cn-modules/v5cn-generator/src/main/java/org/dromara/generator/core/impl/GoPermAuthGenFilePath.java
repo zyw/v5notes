@@ -19,26 +19,25 @@ public class GoPermAuthGenFilePath implements GenFilePath {
 
     private final TemplateEngine templateEngine;
 
-    /**
-     * 项目空间路径
-     */
-    private static final String BACKEND_PATH = "server";
-    /**
-     * golang空间路径
-     */
-    private static final String GOLANG_PATH = "web";
+//    /**
+//     * 项目空间路径
+//     */
+//    private static final String BACKEND_PATH = "server";
+//    /**
+//     * golang空间路径
+//     */
+//    private static final String GOLANG_PATH = "web";
 
 
     @Override
     public String filePath(GenTemplate template, GenTable genTable) {
-        // 文件名称
-//        String filePath = "";
         // 包路径
         Map<String, Object> contextMap = getContextMap(genTable);
 
         Template tpl = templateEngine.getTemplate(template.getFilePath());
         StringWriter sw = new StringWriter();
         tpl.render(contextMap, sw);
+        log.info("生成文件：{}，<==>生成文件模版：{}，<==>表名称：{}", sw, template.getFilePath(), genTable.getTableName());
         return sw.toString();
 
 //        String soybeanModuleName = StrUtil.toSymbolCase(moduleName, '-');

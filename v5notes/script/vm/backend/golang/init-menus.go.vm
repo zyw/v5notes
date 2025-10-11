@@ -9,12 +9,12 @@
     RouterComp:  "view.${businessName}",
     RouterParam: "",
     RouterMeta:  models.JSONMap{"title": ""${businessName}", "icon": "mdi:monitor-dashboard"},
-    IsFrame:     0,
-    IsCache:     0,
+    IsFrame:     2,                                                                             // 是否为外链（1是 2否）
+    IsCache:     2,                                                                             // 是否缓存（1缓存 2不缓存）
     MenuType:    "C",
     MenuGroup:   "L",
-    Visible:     1,
-    State:       1,
+    Visible:     1,                                                                             // 显示状态（1显示 2隐藏）
+    State:       1,                                                                             // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/get${BusinessName}List:GET",
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",
@@ -26,20 +26,20 @@
 // 按钮数据
 {
     BaseModel:   global.BaseModel{Id: $menuIds[1]},
-    MenuName:    "${functionName}",                                                             // 菜单名称
-    ParentId:    ${table.menuIds[0]},                                                                // 父菜单ID
-    OrderNum:    1,                                                                // 显示顺序
-    RouterName:  "query-${businessName}",                                                           //  路由名称
-    RouterPath:  "",                                                          // 路由地址
-    RouterComp:  "",                                          // 组件路径
-    RouterParam: "",                                                               // 路由参数
+    MenuName:    "${functionName}",                                                                     // 菜单名称
+    ParentId:    ${table.menuIds[0]},                                                                   // 父菜单ID
+    OrderNum:    1,                                                                                     // 显示顺序
+    RouterName:  "query-${businessName}",                                                               //  路由名称
+    RouterPath:  "",                                                                                    // 路由地址
+    RouterComp:  "",                                                                                    // 组件路径
+    RouterParam: "",                                                                                    // 路由参数
     RouterMeta:  models.JSONMap{"title": "${businessName}查询", "icon": "mdi:monitor-dashboard"}, // 路由元数据
-    IsFrame:     0,                                                                // 是否为外链（1是 0否）
-    IsCache:     0,                                                                // 是否缓存（1缓存 0不缓存）
+    IsFrame:     2,                                                                // 是否为外链（1是 2否）
+    IsCache:     2,                                                                // 是否缓存（1缓存 2不缓存）
     MenuType:    "F",                                                              // 菜单类型（M目录 C菜单 F按钮 O其他）
     MenuGroup:   "L",                                                              // 菜单分组：当前先分为：L-左侧菜单 P-个人中心 O-其他
-    Visible:     1,                                                                // 显示状态（1显示 0隐藏）
-    State:       1,                                                                // 菜单状态（1正常 0停用）
+    Visible:     1,                                                                // 显示状态（1显示 2隐藏）
+    State:       1,                                                                // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/find${BusinessName}ById:GET",                         // 权限标识（请求URI字符串）格式URI:METHOD,例如：/init/forceInitDBData:GET
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",                                          // 菜单图标
@@ -57,12 +57,12 @@
     RouterComp:  "",                                          // 组件路径
     RouterParam: "",                                                               // 路由参数
     RouterMeta:  models.JSONMap{"title": "${businessName}新增", "icon": "mdi:monitor-dashboard"}, // 路由元数据
-    IsFrame:     0,                                                                // 是否为外链（1是 0否）
-    IsCache:     0,                                                                // 是否缓存（1缓存 0不缓存）
+    IsFrame:     2,                                                                // 是否为外链（1是 2否）
+    IsCache:     2,                                                                // 是否缓存（1缓存 2不缓存）
     MenuType:    "F",                                                              // 菜单类型（M目录 C菜单 F按钮 O其他）
     MenuGroup:   "L",                                                              // 菜单分组：当前先分为：L-左侧菜单 P-个人中心 O-其他
-    Visible:     1,                                                                // 显示状态（1显示 0隐藏）
-    State:       1,                                                                // 菜单状态（1正常 0停用）
+    Visible:     1,                                                                // 显示状态（1显示 2隐藏）
+    State:       1,                                                                // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/create${BusinessName}:POST",                         // 权限标识（请求URI字符串）格式URI:METHOD,例如：/init/forceInitDBData:GET
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",                                          // 菜单图标
@@ -81,12 +81,12 @@
     RouterComp:  "",                                          // 组件路径
     RouterParam: "",                                                               // 路由参数
     RouterMeta:  models.JSONMap{"title": "${businessName}修改", "icon": "mdi:monitor-dashboard"}, // 路由元数据
-    IsFrame:     0,                                                                // 是否为外链（1是 0否）
-    IsCache:     0,                                                                // 是否缓存（1缓存 0不缓存）
+    IsFrame:     2,                                                                // 是否为外链（1是 2否）
+    IsCache:     2,                                                                // 是否缓存（1缓存 2不缓存）
     MenuType:    "F",                                                              // 菜单类型（M目录 C菜单 F按钮 O其他）
     MenuGroup:   "L",                                                              // 菜单分组：当前先分为：L-左侧菜单 P-个人中心 O-其他
-    Visible:     1,                                                                // 显示状态（1显示 0隐藏）
-    State:       1,                                                                // 菜单状态（1正常 0停用）
+    Visible:     1,                                                                // 显示状态（1显示 2隐藏）
+    State:       1,                                                                // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/update${BusinessName}:PUT",                         // 权限标识（请求URI字符串）格式URI:METHOD,例如：/init/forceInitDBData:GET
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",                                          // 菜单图标
@@ -105,12 +105,12 @@
     RouterComp:  "",                                          // 组件路径
     RouterParam: "",                                                               // 路由参数
     RouterMeta:  models.JSONMap{"title": "${businessName}删除", "icon": "mdi:monitor-dashboard"}, // 路由元数据
-    IsFrame:     0,                                                                // 是否为外链（1是 0否）
-    IsCache:     0,                                                                // 是否缓存（1缓存 0不缓存）
+    IsFrame:     2,                                                                // 是否为外链（1是 2否）
+    IsCache:     2,                                                                // 是否缓存（1缓存 2不缓存）
     MenuType:    "F",                                                              // 菜单类型（M目录 C菜单 F按钮 O其他）
     MenuGroup:   "L",                                                              // 菜单分组：当前先分为：L-左侧菜单 P-个人中心 O-其他
-    Visible:     1,                                                                // 显示状态（1显示 0隐藏）
-    State:       1,                                                                // 菜单状态（1正常 0停用）
+    Visible:     1,                                                                // 显示状态（1显示 2隐藏）
+    State:       1,                                                                // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/delete${BusinessName}:DELETE",                         // 权限标识（请求URI字符串）格式URI:METHOD,例如：/init/forceInitDBData:GET
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",                                          // 菜单图标
@@ -128,12 +128,12 @@
     RouterComp:  "",                                          // 组件路径
     RouterParam: "",                                                               // 路由参数
     RouterMeta:  models.JSONMap{"title": "${businessName}批量删除", "icon": "mdi:monitor-dashboard"}, // 路由元数据
-    IsFrame:     0,                                                                // 是否为外链（1是 0否）
-    IsCache:     0,                                                                // 是否缓存（1缓存 0不缓存）
+    IsFrame:     2,                                                                // 是否为外链（1是 2否）
+    IsCache:     2,                                                                // 是否缓存（1缓存 2不缓存）
     MenuType:    "F",                                                              // 菜单类型（M目录 C菜单 F按钮 O其他）
     MenuGroup:   "L",                                                              // 菜单分组：当前先分为：L-左侧菜单 P-个人中心 O-其他
-    Visible:     1,                                                                // 显示状态（1显示 0隐藏）
-    State:       1,                                                                // 菜单状态（1正常 0停用）
+    Visible:     1,                                                                // 显示状态（1显示 2隐藏）
+    State:       1,                                                                // 菜单状态（1正常 2停用）
     Permission:  "/${businessName}/delete${BusinessName}:DELETE",                         // 权限标识（请求URI字符串）格式URI:METHOD,例如：/init/forceInitDBData:GET
     SysType:     "MGR",                                                            // 所属系统： MGR-运营平台, MCH-商户中心, AGENT-代理商中心
     Icon:        "mdi:monitor-dashboard",                                          // 菜单图标

@@ -110,6 +110,14 @@ public class VelocityUtils {
             log.error("未找到模版信息，后端类型：{}，前端类型：{}", beType, feType);
             throw new ServiceException("未找到模版信息，后端类型：" + beType + "，前端类型：" + feType);
         }
+
+        List<String> genTemplateNameList =genTemplateList.stream().filter(template -> StringUtils.isBlank(template.getContent())).map(GenTemplate::getName).toList();
+        if (CollUtil.isNotEmpty(genTemplateNameList)) {
+            String namesStr = genTemplateNameList.stream().collect(Collectors.joining(","));
+            log.error("模版名称为：{}，的模版内容为空。", namesStr);
+            throw new ServiceException("模版名称为：" + namesStr + "，的模版内容为空。");
+        }
+
         // 添加SQL模板
         DataBaseType dataBaseType = DataBaseHelper.getDataBaseType();
         genTemplateList = genTemplateList.stream().filter((template) -> {
@@ -124,7 +132,8 @@ public class VelocityUtils {
                 }
             }
 
-            return template.getTpCategory().equals(dataBaseType.getCategory());
+            log.info("模版名称为：{}，的模版类别为：{}，数据库类型为：{}", template.getName(), template.getTpCategory(), dataBaseType.getCategory());
+            return StringUtils.equalsIgnoreCase(template.getTpCategory(), dataBaseType.getCategory());
         }).collect(Collectors.toList());
 
         return genTemplateList;
@@ -323,6 +332,7 @@ public class VelocityUtils {
     public static int getExpandColumn(GenTable genTable) {
         String options = genTable.getOptions();
         Dict paramsObj = JsonUtils.parseMap(options);
+        assert paramsObj != null;
         String treeName = paramsObj.getStr(GenConstants.TREE_NAME);
         int num = 0;
         for (GenTableColumn column : genTable.getColumns()) {
@@ -342,6 +352,7 @@ public class VelocityUtils {
      * @param path 模板路径
      * @return 模板列表
      */
+    @Deprecated
     private static Set<String> getResourcesTemplateList(String path) {
         Set<String> templates = Sets.newHashSet();
         ApplicationContext resolver = SpringUtils.getApplicationContext();
@@ -372,6 +383,7 @@ public class VelocityUtils {
     /**
      * 获取资源的路径（兼容JAR包和文件系统）
      */
+    @Deprecated
     private static String getResourcePath(Resource resource) throws IOException {
         URL url = resource.getURL();
         String urlString = url.toString();
@@ -391,6 +403,7 @@ public class VelocityUtils {
      * @param fullPath 全路径
      * @return 提取后的路径
      */
+    @Deprecated
     private static String extractVmRelativePath(String fullPath) {
         // 统一路径分隔符
         String normalizedPath = fullPath.replace('\\', '/');
