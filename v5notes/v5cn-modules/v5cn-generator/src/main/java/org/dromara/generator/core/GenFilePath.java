@@ -42,6 +42,8 @@ public interface GenFilePath {
 
         Map<String, Object> contextMap = Maps.newHashMap();
         contextMap.put("packageName", packageName);
+        // 包路径, 例如：org/dromara/system
+        contextMap.put("pkPath", StringUtils.replace(packageName, ".", "/"));
         contextMap.put("ClassName", ClassName);
         contextMap.put("className", className);
         contextMap.put("tableName", tableName);

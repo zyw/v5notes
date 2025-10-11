@@ -102,6 +102,7 @@
                 <div class="line-height-3">
                   <p>文件路径是支持模板语法和变量的，支持的变量包括：</p>
                   <p>${packageName}：包路径，例如：com.v5notes.generator</p>
+                  <p>${pkPath}：包路径下划线命名格式，例如：com/v5notes/generator</p>
                   <p>${moduleName}：类名，例如：system-tool</p>
                   <p>${className}：类名，例如：userMapper</p>
                   <p>${ClassName}：类名驼峰命名格式，例如：UserMapper</p>
