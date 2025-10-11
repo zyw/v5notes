@@ -3,21 +3,26 @@ package org.dromara.generator.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
+import com.baomidou.lock.annotation.Lock4j;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.domain.R;
-import org.dromara.common.mybatis.helper.DataBaseHelper;
-import org.dromara.common.web.core.BaseController;
-import org.dromara.common.mybatis.core.page.PageQuery;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.idempotent.annotation.RepeatSubmit;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.mybatis.helper.DataBaseHelper;
+import org.dromara.common.web.core.BaseController;
 import org.dromara.generator.domain.GenTable;
 import org.dromara.generator.domain.GenTableColumn;
+import org.dromara.generator.domain.bo.ImportTableBo;
 import org.dromara.generator.service.IGenTableService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +33,7 @@ import java.util.Map;
  *
  * @author Lion Li
  */
+@Slf4j
 @Validated
 @RequiredArgsConstructor
 @RestController
@@ -50,6 +56,7 @@ public class GenController extends BaseController {
      *
      * @param tableId 表ID
      */
+    @RepeatSubmit()
     @SaCheckPermission("tool:gen:query")
     @GetMapping(value = "/{tableId}")
     public R<Map<String, Object>> getInfo(@PathVariable Long tableId) {
@@ -80,26 +87,23 @@ public class GenController extends BaseController {
     @SaCheckPermission("tool:gen:list")
     @GetMapping(value = "/column/{tableId}")
     public TableDataInfo<GenTableColumn> columnList(@PathVariable("tableId") Long tableId) {
-        TableDataInfo<GenTableColumn> dataInfo = new TableDataInfo<>();
         List<GenTableColumn> list = genTableService.selectGenTableColumnListByTableId(tableId);
-        dataInfo.setRows(list);
-        dataInfo.setTotal(list.size());
-        return dataInfo;
+        return TableDataInfo.build(list);
     }
 
     /**
      * 导入表结构（保存）
      *
-     * @param tables 表名串
+     * @param bo 导入表信息
      */
     @SaCheckPermission("tool:gen:import")
     @Log(title = "代码生成", businessType = BusinessType.IMPORT)
+    @RepeatSubmit()
     @PostMapping("/importTable")
-    public R<Void> importTableSave(String tables, String dataName) {
-        String[] tableNames = Convert.toStrArray(tables);
+    public R<Void> importTableSave(@Validated @RequestBody ImportTableBo bo) {
         // 查询表信息
-        List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames, dataName);
-        genTableService.importGenTable(tableList, dataName);
+        List<GenTable> tableList = genTableService.selectDbTableListByNames(bo);
+        genTableService.importGenTable(tableList, bo.getDataName());
         return R.ok();
     }
 
@@ -108,6 +112,7 @@ public class GenController extends BaseController {
      */
     @SaCheckPermission("tool:gen:edit")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
+    @RepeatSubmit()
     @PutMapping
     public R<Void> editSave(@Validated @RequestBody GenTable genTable) {
         genTableService.validateEdit(genTable);
@@ -173,6 +178,7 @@ public class GenController extends BaseController {
      */
     @SaCheckPermission("tool:gen:edit")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
+    @Lock4j
     @GetMapping("/synchDb/{tableId}")
     public R<Void> synchDb(@PathVariable("tableId") Long tableId) {
         genTableService.synchDb(tableId);
@@ -187,10 +193,15 @@ public class GenController extends BaseController {
     @SaCheckPermission("tool:gen:code")
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/batchGenCode")
-    public void batchGenCode(HttpServletResponse response, String tableIdStr) throws IOException {
-        String[] tableIds = Convert.toStrArray(tableIdStr);
-        byte[] data = genTableService.downloadCode(tableIds);
-        genCode(response, data);
+    public void batchGenCode(HttpServletResponse response, String tableIdStr) {
+        try {
+            String[] tableIds = Convert.toStrArray(tableIdStr);
+            byte[] data = genTableService.downloadCode(tableIds);
+            genCode(response, data);
+        } catch (Exception e) {
+            log.error("批量生成代码失败", e);
+            throw new ServiceException("批量生成代码失败");
+        }
     }
 
     /**
@@ -200,7 +211,7 @@ public class GenController extends BaseController {
         response.reset();
         response.addHeader("Access-Control-Allow-Origin", "*");
         response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
-        response.setHeader("Content-Disposition", "attachment; filename=\"ruoyi.zip\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"code.zip\"");
         response.addHeader("Content-Length", "" + data.length);
         response.setContentType("application/octet-stream; charset=UTF-8");
         IoUtil.write(response.getOutputStream(), false, data);

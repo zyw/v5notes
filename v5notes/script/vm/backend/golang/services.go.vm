@@ -1,0 +1,69 @@
+package services
+
+import (
+    "context"
+
+    "${packageName}/global"
+    "${packageName}/models"
+    "${packageName}/models/request"
+)
+
+type ${ClassName}Service struct{}
+
+// Create${ClassName} 创建mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *${ClassName}Service) Create${ClassName}(ctx context.Context, ${className} *models.${ClassName}) (err error) {
+    err = global.DB.Create(${className}).Error
+    return err
+}
+
+// Delete${ClassName} 删除mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *${ClassName}Service) Delete${ClassName}(ctx context.Context, id string) (err error) {
+    err = global.DB.Delete(&models.${ClassName}{}, "id = ?", id).Error
+    return err
+}
+
+// Delete${ClassName}ByIds 批量删除mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *Mch${ClassName}) Delete${ClassName}ByIds(ctx context.Context, ids []string) (err error) {
+    err = global.DB.Delete(&[]models.${ClassName}{}, "id in ?", ids).Error
+    return err
+}
+
+// Update${ClassName} 更新mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *${ClassName}Service) Update${ClassName}(ctx context.Context,  ${className} models.${ClassName}) (err error) {
+    err = global.DB.Model(&models.${ClassName}{}).Where("id = ?",  ${className}.ID).Updates(& ${className}).Error
+    return err
+}
+
+// Get${ClassName} 根据id获取mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *MchAppService) Get${ClassName}(ctx context.Context, id string) ( ${className} models.${ClassName}, err error) {
+    err = global.DB.Where("id = ?", id).First(& ${className}).Error
+    return
+}
+
+// Get${ClassName}InfoList 分页获取mchApp表记录
+// Author [${author}](https://github.com/${author})
+func (s *${ClassName}Service) Get${ClassName}InfoList(ctx context.Context, info request.${ClassName}Search) (list []models.${ClassName}, total int64, err error) {
+    limit := info.PageSize
+    offset := info.PageSize * (info.Page - 1)
+    // 创建db
+    db := global.DB.Model(&models.${ClassName}{})
+    var  ${className} []mch.${ClassName}
+    // 如果有条件搜索 下方会自动创建搜索语句
+
+    err = db.Count(&total).Error
+    if err != nil {
+        return
+    }
+
+    if limit != 0 {
+        db = db.Limit(limit).Offset(offset)
+    }
+
+    err = db.Find(& ${className}).Error
+    return mchApps, total, err
+}

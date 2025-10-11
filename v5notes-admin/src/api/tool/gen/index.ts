@@ -1,5 +1,5 @@
 import request from '@/utils/request';
-import { DbTableQuery, DbTableVO, TableQuery, TableVO, GenTableVO, DbTableForm } from './types';
+import { DbTableQuery, DbTableVO, TableQuery, TableVO, GenTableVO, DbTableForm, ImportTableForm } from './types';
 import { AxiosPromise } from 'axios';
 
 // 查询生成表数据
@@ -37,11 +37,11 @@ export const updateGenTable = (data: DbTableForm): AxiosPromise<GenTableVO> => {
 };
 
 // 导入表
-export const importTable = (data: { tables: string; dataName: string }): AxiosPromise<GenTableVO> => {
+export const importTable = (data: ImportTableForm): AxiosPromise<GenTableVO> => {
   return request({
     url: '/tool/gen/importTable',
     method: 'post',
-    params: data
+    data
   });
 };
 

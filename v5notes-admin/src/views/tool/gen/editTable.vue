@@ -14,9 +14,9 @@
             </template>
           </el-table-column>
           <el-table-column label="物理类型" prop="columnType" min-width="10%" :show-overflow-tooltip="true" />
-          <el-table-column label="Java类型" min-width="11%">
+          <el-table-column label="字段类型" min-width="11%">
             <template #default="scope">
-              <el-select v-model="scope.row.javaType">
+              <el-select v-model="scope.row.fieldType">
                 <el-option label="Long" value="Long" />
                 <el-option label="String" value="String" />
                 <el-option label="Integer" value="Integer" />
@@ -27,9 +27,9 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="java属性" min-width="10%">
+          <el-table-column label="字段名称" min-width="10%">
             <template #default="scope">
-              <el-input v-model="scope.row.javaField"></el-input>
+              <el-input v-model="scope.row.fieldName"></el-input>
             </template>
           </el-table-column>
 

@@ -26,6 +26,6 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "src/types/**/*.d.ts", "vite.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/types/**/*.d.ts", "vite.config.ts", "src/utils/common.js"],
   "exclude": ["node_modules", "dist", "**/*.js", "**/*.md", "src/**/*.md"]
 }

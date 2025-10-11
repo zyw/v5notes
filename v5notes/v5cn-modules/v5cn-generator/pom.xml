@@ -41,6 +41,14 @@
             <groupId>org.dromara</groupId>
             <artifactId>v5cn-common-log</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>v5cn-common-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>v5cn-common-idempotent</artifactId>
+        </dependency>
 
         <!--velocity代码生成使用模板 -->
         <dependency>
@@ -67,11 +75,11 @@
 <!--        <version>${anyline.version}</version>-->
 <!--        </dependency>-->
 
-<!--        <dependency>-->
-<!--            <groupId>org.anyline</groupId>-->
-<!--            <artifactId>anyline-data-jdbc-postgresql</artifactId>-->
-<!--        <version>${anyline.version}</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.anyline</groupId>
+            <artifactId>anyline-data-jdbc-postgresql</artifactId>
+            <version>${anyline.version}</version>
+        </dependency>
 
 <!--        <dependency>-->
 <!--            <groupId>org.anyline</groupId>-->

@@ -4,13 +4,12 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import org.dromara.common.core.utils.StringUtils;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.ibatis.type.JdbcType;
-
-import jakarta.validation.constraints.NotBlank;
+import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 /**
  * 代码生成业务字段表 gen_table_column
@@ -50,15 +49,25 @@ public class GenTableColumn extends BaseEntity {
     private String columnType;
 
     /**
-     * JAVA类型
+     * 字段类型（可以是Java类型，可以是Golang类型）
      */
-    private String javaType;
+    private String fieldType;
 
     /**
-     * JAVA字段名
+     * 字段名称
      */
-    @NotBlank(message = "Java属性不能为空")
-    private String javaField;
+    @NotBlank(message = "字段名称不能为空")
+    private String fieldName;
+
+     /**
+     * 默认值
+     */
+    private String defaultVal;
+
+    /**
+     * 字段长度
+     */
+    private String size;
 
     /**
      * 是否主键（1是）
@@ -122,8 +131,8 @@ public class GenTableColumn extends BaseEntity {
      */
     private Integer sort;
 
-    public String getCapJavaField() {
-        return StringUtils.capitalize(javaField);
+    public String getCapFieldName() {
+        return StringUtils.capitalize(fieldName);
     }
 
     public boolean isPk() {
@@ -159,7 +168,7 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isEdit() {
-        return isInsert(this.isEdit);
+        return isEdit(this.isEdit);
     }
 
     public boolean isEdit(String isEdit) {
@@ -183,7 +192,7 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isSuperColumn() {
-        return isSuperColumn(this.javaField);
+        return isSuperColumn(this.fieldName);
     }
 
     public static boolean isSuperColumn(String javaField) {
@@ -195,7 +204,7 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isUsableColumn() {
-        return isUsableColumn(javaField);
+        return isUsableColumn(fieldName);
     }
 
     public static boolean isUsableColumn(String javaField) {

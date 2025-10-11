@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import org.dromara.common.core.utils.StringUtils;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-import org.dromara.generator.constant.GenConstants;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.mybatis.core.domain.BaseEntity;
+import org.dromara.generator.constant.GenConstants;
 
 import java.util.List;
 
@@ -125,6 +125,15 @@ public class GenTable extends BaseEntity {
     private List<GenTableColumn> columns;
 
     /**
+     * 后端模板类型（可以生产任何语言的后端代码）
+     */
+    private String beType;
+    /**
+     * 前端模板类型（可以生产任何语言的前端代码）
+     */
+    private String feType;
+
+    /**
      * 其它生成选项
      */
     private String options;
@@ -162,7 +171,7 @@ public class GenTable extends BaseEntity {
      * 上级菜单ID字段
      */
     @TableField(exist = false)
-    private String parentMenuId;
+    private Long parentMenuId;
 
     /**
      * 上级菜单名称字段
@@ -175,7 +184,7 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isTree(String tplCategory) {
-        return tplCategory != null && StringUtils.equals(GenConstants.TPL_TREE, tplCategory);
+        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CATEGORY.TPL_TREE, tplCategory);
     }
 
     public boolean isCrud() {
@@ -183,7 +192,7 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isCrud(String tplCategory) {
-        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CRUD, tplCategory);
+        return tplCategory != null && StringUtils.equals(GenConstants.TPL_CATEGORY.TPL_CRUD, tplCategory);
     }
 
     public boolean isSuperColumn(String javaField) {
@@ -191,6 +200,6 @@ public class GenTable extends BaseEntity {
     }
 
     public static boolean isSuperColumn(String tplCategory, String javaField) {
-        return StringUtils.equalsAnyIgnoreCase(javaField, GenConstants.BASE_ENTITY);
+        return StringUtils.equalsAnyIgnoreCase(javaField, GenConstants.OPERATE_BO.BASE_ENTITY);
     }
 }

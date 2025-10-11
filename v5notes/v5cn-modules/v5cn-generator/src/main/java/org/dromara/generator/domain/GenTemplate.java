@@ -1,0 +1,68 @@
+package org.dromara.generator.domain;
+
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.dromara.common.tenant.core.TenantEntity;
+
+import java.io.Serial;
+
+/**
+ * gen_template;代码模版对象 gen_template
+ *
+ * @author zyw
+ * @date 2025-10-09
+ */
+@Data
+@EqualsAndHashCode(callSuper = true)
+@TableName("gen_template")
+public class GenTemplate extends TenantEntity {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * ID
+     */
+    @TableId(value = "id")
+    private Long id;
+
+    /**
+     * 模版类型(可以是前端也可以是后端)
+     */
+    private String tpType;
+    /**
+     * 模版类别(前端用于区分页面是CRUD还是tree形布局，sql用于区分mysql,pgsql等)
+     */
+    private String tpCategory;
+
+    /**
+     * 模版名称
+     */
+    private String name;
+
+    /**
+     * 模版内容
+     */
+    private String content;
+
+    /**
+     * 生成文件路径，如果为空生成文件在压缩包的跟目录下
+     */
+    private String filePath;
+
+    /**
+     * 状态:0正常,1停用
+     */
+    private String status;
+
+    /**
+     * 删除标志（0代表存在 2代表删除）
+     */
+    @TableLogic
+    private String delFlag;
+
+
+}

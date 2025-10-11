@@ -1,7 +1,7 @@
 {
-  "name": "ruoyi-vue-plus",
+  "name": "v5notes-admin",
   "version": "5.2.2",
-  "description": "RuoYi-Vue-Plus多租户管理系统",
+  "description": "V5Notes云笔记",
   "author": "LionLi",
   "license": "MIT",
   "type": "module",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitee.com/JavaLionLi/plus-ui.git"
+    "url": "https://gihub.com/zyw/v5notes.git"
   },
   "dependencies": {
     "@element-plus/icons-vue": "2.3.1",
@@ -37,6 +37,7 @@
     "image-conversion": "^2.1.1",
     "js-cookie": "3.0.5",
     "jsencrypt": "3.3.2",
+    "monaco-editor": "^0.54.0",
     "nprogress": "0.2.0",
     "pinia": "2.1.7",
     "ruoyi-vue-plus": "file:",

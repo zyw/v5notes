@@ -1,0 +1,7 @@
+package controller
+
+import "${packageName}/services"
+
+var (
+    ${className}Service            = services.ServiceGroupApp.${ClassName}Service
+)

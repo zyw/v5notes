@@ -1,0 +1,7 @@
+package router
+
+var RouterGroupApp = new(RouterGroup)
+
+type RouterGroup struct {
+    ${ClassName}Router
+}

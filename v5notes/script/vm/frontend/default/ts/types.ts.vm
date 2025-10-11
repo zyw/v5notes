@@ -1,0 +1,61 @@
+export interface ${BusinessName}VO {
+#foreach ($column in $columns)
+#if($column.list)
+  /**
+   * $column.columnComment
+   */
+  $column.fieldName:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
+                        #else string;
+                    #end
+#if($column.htmlType == "imageUpload")
+  /**
+   * ${column.columnComment}Url
+   */
+  ${column.fieldName}Url: string;
+#end
+#end
+#end
+#if ($table.tree)
+    /**
+     * 子对象
+     */
+    children: ${BusinessName}VO[];
+#end
+}
+
+export interface ${BusinessName}Form extends BaseEntity {
+#foreach ($column in $columns)
+#if($column.insert || $column.edit)
+  /**
+   * $column.columnComment
+   */
+  $column.fieldName?:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
+                        #else string;
+                    #end
+#end
+#end
+}
+
+export interface ${BusinessName}Query #if(!${treeCode})extends PageQuery #end{
+
+#foreach ($column in $columns)
+#if($column.query)
+  /**
+   * $column.columnComment
+   */
+  $column.fieldName?:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) string | number;
+                        #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number;
+                        #elseif($column.fieldType == 'Boolean') boolean;
+                        #else string;
+                    #end
+#end
+#end
+  /**
+   * 日期范围参数
+   */
+  params?: any;
+}

@@ -1,5 +1,5 @@
 --- # 临时文件存储位置 避免临时文件被系统清理报错
-spring.servlet.multipart.location: /ruoyi/server/temp
+spring.servlet.multipart.location: /v5notes/server/temp
 
 --- # 监控中心配置
 spring.boot.admin.client:
@@ -120,7 +120,7 @@ redisson:
   # 单节点配置
   singleServerConfig:
     # 客户端名称
-    clientName: ${ruoyi.name}
+    clientName: ${v5notes.name}
     # 最小空闲连接数
     connectionMinimumIdleSize: 32
     # 连接池大小

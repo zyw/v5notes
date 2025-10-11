@@ -1,0 +1,23 @@
+package router
+
+import (
+    "github.com/gin-gonic/gin"
+    "${packageName}/middleware"
+)
+
+type ${ClassName}Router struct{}
+
+func (s *${ClassName}Router) Init${ClassName}Router(Router *gin.RouterGroup, PublicRouter *gin.RouterGroup) {
+    ${className}Router := Router.Group("${className}").Use(middleware.OperationRecord())
+    ${className}RouterWithoutRecord := Router.Group("${className}")
+    {
+        ${className}Router.POST("create${ClassName}", ${className}Ctr.Create${ClassName})             // 新建${ClassName}表
+        ${className}Router.DELETE("delete${ClassName}", ${className}Ctr.Delete${ClassName})           // 删除${ClassName}表
+        ${className}Router.DELETE("delete${ClassName}ByIds", ${className}Ctr.Delete${ClassName}ByIds) // 批量删除${ClassName}表
+        ${className}Router.PUT("update${ClassName}", ${className}Ctr.Update${ClassName})              // 更新${ClassName}表
+    }
+    {
+        ${className}RouterWithoutRecord.GET("find${ClassName}", ${className}Ctr.Find${ClassName})                   // 根据ID获取${ClassName}表
+        ${className}RouterWithoutRecord.GET("get${ClassName}List", ${className}Ctr.Get${ClassName}List)             // 获取${ClassName}表列表
+    }
+}
