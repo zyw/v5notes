@@ -1,6 +1,11 @@
 alter table `gen_table` add column `be_type` varchar(10) default "java" comment "后端模版类型" after `gen_path`;
 alter table `gen_table` add column `fe_type` varchar(10) default "default" comment "前端模版类型" after `be_type`;
 
+-- 修改字段 gen_table.be_type 类型为 varchar(50)
+ALTER TABLE gen_table MODIFY COLUMN be_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '后端模版类型';
+-- 修改字段 gen_table.fe_type 类型为 varchar(50)
+ALTER TABLE gen_table MODIFY COLUMN fe_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '前端模版类型';
+
 
 alter table `gen_table_column` rename column `java_type` to `field_type`;
 alter table `gen_table_column` rename column `java_field` to `field_name`;
@@ -29,9 +34,3 @@ INSERT INTO `sys_dict_data` (`dict_code`, `tenant_id`, `dict_sort`, `dict_label`
                      VALUES (147, '000000', 2, 'Soybean Naive UI', 'soy-naive', 'gen_fe_type', '', 'default', 'N', 100, 1, '2025-09-28 15:22:36', 1, '2025-09-28 15:22:36', 'Soybean Naive UI');
 INSERT INTO `sys_dict_data` (`dict_code`, `tenant_id`, `dict_sort`, `dict_label`, `dict_value`, `dict_type`, `css_class`, `list_class`, `is_default`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`)
                      VALUES (148, '000000', 1, 'Soybean Antd', 'soy-antd', 'gen_fe_type', '', 'default', 'N', 100, 1, '2025-09-28 15:25:06', 1, '2025-09-28 15:25:06', 'Soybean Ant Design Vue');
-
-
--- 修改字段 gen_table.be_type 类型为 varchar(50)
-ALTER TABLE gen_table MODIFY COLUMN be_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '后端模版类型';
--- 修改字段 gen_table.fe_type 类型为 varchar(50)
-ALTER TABLE gen_table MODIFY COLUMN fe_type varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_ci NULL COMMENT '前端模版类型';
