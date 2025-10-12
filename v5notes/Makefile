@@ -1,10 +1,12 @@
 # 定义变量
 PROJECT_NAME 			?= v5notes
+# make buildx-admin VERSION=输入版本号
+VERSION					?= latest
 ENV_DOCKER 				?= docker
 # 镜像仓库
 ENV_DOCKER_REGISTRY 	?= onedev.v5ai.xin/$(PROJECT_NAME)/
 # 镜像版本
-ENV_DOCKER_IMAGE_TAG 	?= latest
+ENV_DOCKER_IMAGE_TAG 	?= $(VERSION)
 
 # builder名称
 BUILDER=$(PROJECT_NAME)-builder
