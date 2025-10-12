@@ -96,10 +96,11 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="80%" top="5vh" append-to-body class="scrollbar">
       <el-tabs v-model="preview.activeName">
         <el-tab-pane v-for="(value, key) in preview.data" :key="value" :label="handleTabTitle(key)" :name="handleTabTitle(key)">
-          <el-link v-copyText="value" v-copyText:callback="copyTextSuccess" :underline="false" icon="DocumentCopy" style="float: right">
+          <el-link v-copyText="value" v-copyText:callback="copyTextSuccess" :underline="false" icon="DocumentCopy" class="line-height-6">
             &nbsp;复制
           </el-link>
-          <pre>{{ value }}</pre>
+          <!-- <pre>{{ value }}</pre> -->
+          <monaco-editor readonly :model-value="value" :height="400" :language="handleLanguage(key)" />
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -232,6 +233,25 @@ const handleTabTitle = (title: string) => {
 const copyTextSuccess = () => {
   proxy?.$modal.msgSuccess('复制成功');
 };
+/** 处理语言 */
+const handleLanguage = (key: string) => {
+  const idx = key.lastIndexOf('.');
+  if (idx === -1) {
+    return 'vue';
+  }
+  const lang = key.substring(idx + 1);
+  switch (lang) {
+    case 'ts':
+      return 'typescript';
+    case 'js':
+      return 'javascript';
+    case 'yml':
+      return 'yaml';
+    default:
+      return lang;
+  }
+};
+
 // 多选框选中数据
 const handleSelectionChange = (selection: TableVO[]) => {
   ids.value = selection.map((item) => item.tableId);
