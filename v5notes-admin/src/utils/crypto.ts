@@ -31,6 +31,14 @@ export const encryptBase64 = (str: CryptoJS.lib.WordArray) => {
 };
 
 /**
+ * 加密base64
+ * @returns {string}
+ */
+export const encryptBase64Str = (str: string) => {
+  return CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(str));
+};
+
+/**
  * 解密base64
  */
 export const decryptBase64 = (str: string) => {

@@ -1,6 +1,7 @@
 package org.dromara.generator.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.hutool.core.codec.Base64;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +18,11 @@ import org.dromara.generator.domain.GenTemplate;
 import org.dromara.generator.domain.bo.GenEditTemplateBo;
 import org.dromara.generator.domain.bo.GenTemplateBo;
 import org.dromara.generator.service.IGenTemplateService;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
@@ -86,8 +89,11 @@ public class GenTemplateController extends BaseController {
     @SaCheckPermission("generator:template:edit")
     @Log(title = "代码模版", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
-    @PutMapping("/edit/template")
+    @PutMapping(value = "/edit/template", produces = MediaType.APPLICATION_JSON_VALUE)
     public R<Void> editTemplate(@Validated(EditGroup.class) @RequestBody GenEditTemplateBo bo) {
+        if (Base64.isBase64(bo.getContent())) {
+            bo.setContent(Base64.decodeStr(bo.getContent(), StandardCharsets.UTF_8));
+        }
         return toAjax(genTemplateService.updateTemplateByBo(bo));
     }
 

@@ -120,3 +120,27 @@ export const formatJson = (jsonObj, callback) => {
   // 返回的数据需要去除两边的空格
   return formatted.trim();
 };
+
+export function isLikelyXMLOrHTML(text) {
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+
+  const trimmed = text.trim();
+
+  // 检查是否以XML声明或标签开头
+  const xmlDeclaration = /^\s*<\?xml\s+version/i;
+  const doctype = /^\s*<!DOCTYPE\s+html/i;
+  const openingTag = /^\s*<([a-z][a-z0-9]*)(\s[^>]*)?>/i;
+  const closingTag = /<\/([a-z][a-z0-9]*)\s*>$/i;
+  const selfClosingTag = /<([a-z][a-z0-9]*)(\s[^>]*)?\/>/i;
+
+  return (
+    xmlDeclaration.test(trimmed) ||
+    doctype.test(trimmed) ||
+    openingTag.test(trimmed) ||
+    closingTag.test(trimmed) ||
+    selfClosingTag.test(trimmed) ||
+    (trimmed.includes('<') && trimmed.includes('>') && trimmed.indexOf('<') < trimmed.indexOf('>'))
+  );
+}

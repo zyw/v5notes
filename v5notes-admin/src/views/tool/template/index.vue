@@ -169,6 +169,8 @@ import { listTemplate, getTemplate, delTemplate, addTemplate, updateTemplate, ed
 import { TemplateVO, TemplateQuery, TemplateForm } from '@/api/tool/template/types';
 import { getDicts } from '@/api/system/dict/data';
 import { DictDataVO } from '@/api/system/dict/data/types';
+import { encryptBase64Str } from '@/utils/crypto';
+import { isLikelyXMLOrHTML } from '@/utils/common';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { gen_be_type, gen_fe_type } = toRefs<any>(proxy?.useDict('gen_be_type', 'gen_fe_type'));
@@ -345,8 +347,13 @@ const submitTemplateForm = async () => {
     proxy?.$modal.msgWarning('模版内容不能为空');
     return;
   }
+
   buttonLoading.value = true;
-  await editTemplate({ id: code.id, content: code.content }).finally(() => (buttonLoading.value = false));
+  const params = {
+    id: code.id,
+    content: isLikelyXMLOrHTML(code.content) ? encryptBase64Str(code.content) : code.content
+  };
+  await editTemplate(params).finally(() => (buttonLoading.value = false));
   proxy?.$modal.msgSuccess('操作成功');
   contentDialog.value = false;
 };
