@@ -38,7 +38,6 @@ import org.dromara.generator.mapper.GenTableMapper;
 import org.dromara.generator.service.IGenTableService;
 import org.dromara.generator.util.GenUtils;
 import org.dromara.generator.util.VelocityUtils;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -180,7 +179,7 @@ public class GenTableServiceImpl implements IGenTableService {
      * @param bo 导入表信息
      * @return 数据库表集合
      */
-    @DS("#dataName")
+    @DS("#bo.dataName")
     @Override
     public List<GenTable> selectDbTableListByNames(ImportTableBo bo) {
         String[] tableNames = Convert.toStrArray(bo.getTableNames());
@@ -189,7 +188,8 @@ public class GenTableServiceImpl implements IGenTableService {
         LinkedHashMap<String, Table<?>> tablesMap = ServiceProxy.metadata().tables();
 
         if (CollUtil.isEmpty(tablesMap)) {
-            return new ArrayList<>();
+            log.error("1. tablesMap 未在数据源 {} 中找到表名: {}", bo.getDataName(), Arrays.stream(tableNames).spliterator());
+            throw new ServiceException(String.format("未在数据源 %s 中找到表名: %s", bo.getDataName(), String.join(",", tableNames)));
         }
 
         List<Table<?>> tableList = tablesMap.values().stream()
@@ -197,7 +197,8 @@ public class GenTableServiceImpl implements IGenTableService {
             .filter(x -> tableNameSet.contains(x.getName())).toList();
 
         if (CollUtil.isEmpty(tableList)) {
-            return new ArrayList<>();
+            log.error("2. tableList 未在数据源 {} 中找到表名: {}", bo.getDataName(), Arrays.stream(tableNames).spliterator());
+            throw new ServiceException(String.format("未在数据源 %s 中找到表名: %s", bo.getDataName(), String.join(",", tableNames)));
         }
         return tableList.stream().map(x -> {
             GenTable gen = new GenTable();
