@@ -110,7 +110,7 @@ spring.data:
     # 数据库索引
     database: 5
     # redis 密码必须配置
-    password: "ENC(5BtpkV+fMQWR+RHZWYzf9Cw4sEaIjKV/KXJSmQrCvehLB7G58EdGbXksZnffw3wY1alFzCFGEP0M28mQ6MpargvlLnDqVd84)"
+    password: "ENC(JYydfBnThGUzd7laox9Zqks0E8iX9d2PajflmrRl+xz3xwz6KMoAi7KeM756Bj1n)"
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl
