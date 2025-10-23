@@ -1,9 +1,9 @@
 <script setup lang="ts">
-    import { computed, reactive, watch } from 'vue';
-    import { Drawer, Form, Input, Select, Radio, Checkbox, DatePicker, Button, Space } from 'ant-design-vue';
-    import { fetchCreate${BusinessName}, fetchUpdate${BusinessName} } from '@/service/api/${moduleName}/${business__name}';
-        #if($dictList && $dictList.size() > 0)import { useDict } from '@/hooks/business/dict';#end
+    import { computed, ref, watch } from 'vue';
+    import { useAntdForm, useFormRules } from '@/hooks/common/form';
+    import { fetchCreate${BusinessName}, fetchUpdate${BusinessName} } from '@/service/api';
     import { $t } from '@/locales';
+    import { enableStatusOptions, userGenderOptions } from '@/constants/business';
 
     defineOptions({
         name: '${BusinessName}OperateDrawer'
@@ -11,7 +11,7 @@
 
     interface Props {
         /** the type of operation */
-        operateType: NaiveUI.TableOperateType;
+        operateType: AntDesign.TableOperateType;
         /** the edit row data */
         rowData?: Api.$ModuleName.${BusinessName} | null;
     }
@@ -28,26 +28,25 @@
         default: false
     });
 
-        #if($dictList && $dictList.size() > 0)
-            #foreach($dict in $dictList)
-            const { options: ${dict.name}Options } = useDict('${dict.type}'#if($dict.immediate), false#end);
-            #end#end
-
-    const formRef = ref();
+    const { formRef, validate, resetFields } = useAntdForm();
+    const { createRequiredRule, formRules, createConfirmPwdRule } = useFormRules();
 
     const title = computed(() => {
-        const titles: Record<NaiveUI.TableOperateType, string> = {
+        const titles: Record<AntDesign.TableOperateType, string> = {
             add: '新增${functionName}',
             edit: '编辑${functionName}'
         };
         return titles[props.operateType];
     });
 
-    type Model = Api.$ModuleName.${BusinessName}OperateParams;
+    // type Model = Pick<
+    //   Api.SysUser.FormUser,
+    //   'userName' | 'sex' | 'nickName' | 'realName' | 'telPhone' | 'email' | 'roles' | 'state' | 'password' | 'confirmPassword' | 'remark'
+    // >;
 
-    const model: Model = reactive(createDefaultModel());
+    const model = ref(createDefaultModel());
 
-    function createDefaultModel(): Model {
+    function createDefaultModel(): Api.$ModuleName.Form${BusinessName} {
         return {
             #foreach($column in $columns)
                 #if($column.insert)
@@ -57,22 +56,29 @@
         };
     }
 
-    const rules = {
+    type RuleKey = Exclude<keyof Api.$ModuleName.Form${BusinessName}, #foreach($column in $columns)
+        #if(!$column.required)
+            | '$column.fieldName'#if($foreach.hasNext)#end
+        #end#end>;
+
+    const rules: Record<RuleKey, App.Global.FormRule[]> = {
         #foreach($column in $columns)
             #if($column.required)
-                    ${column.fieldName}: [{ required: true, message: '${column.columnComment}不能为空', trigger: 'blur' }]#if($foreach.hasNext),#end
+                    $column.fieldName: [createRequiredRule('${column.columnComment}不能为空')]
+                #if($foreach.hasNext),#end
             #end
         #end
     };
 
-    function handleUpdateModelWhenEdit() {
-        if (props.operateType === 'add') {
-            Object.assign(model, createDefaultModel());
-            return;
-        }
+    const ${businessName}Id = computed(() => props.rowData?.id || -1);
 
-        if (props.operateType === 'edit' && props.rowData) {
-            Object.assign(model, props.rowData);
+    const isEdit = computed(() => props.operateType === 'edit');
+
+    function handleInitModel() {
+        model.value = createDefaultModel();
+
+        if (isEdit.value && props.rowData) {
+            Object.assign(model.value, props.rowData);
         }
     }
 
@@ -81,155 +87,85 @@
     }
 
     async function handleSubmit() {
-        try {
-            await formRef.value.validate();
+        await validate();
+        #set($operateColumns = [])
+        #foreach($column in $columns)#if($column.insert || $column.edit)#set($dummy = $operateColumns.add($column))#end#end
+        const { #foreach($column in $operateColumns)$column.fieldName#if($foreach.hasNext), #end#end } = model;
 
-            #set($operateColumns = [])
-            #foreach($column in $columns)#if($column.insert || $column.edit)#set($dummy = $operateColumns.add($column))#end#end
-            const { #foreach($column in $operateColumns)$column.fieldName#if($foreach.hasNext), #end#end } = model;
-
-            // request
-            if (props.operateType === 'add') {
-                #set($addFields = [])
-                #foreach($column in $columns)#if($column.insert)#set($dummy = $addFields.add($column.fieldName))#end#end
-            const { error } = await fetchCreate${BusinessName}({ #foreach($field in $addFields)$field#if($foreach.hasNext), #end#end });
-                if (error) return;
-            }
-
-            if (props.operateType === 'edit') {
-                #set($editFields = [])
-                #foreach($column in $columns)#if($column.edit)#set($dummy = $editFields.add($column.fieldName))#end#end
-            const { error } = await fetchUpdate${BusinessName}({ #foreach($field in $editFields)$field#if($foreach.hasNext), #end#end });
-                if (error) return;
-            }
-
-            window.$message?.success($t('common.updateSuccess'));
-            closeDrawer();
-            emit('submitted');
-        } catch (error) {
-            console.error('Validation failed', error);
+        // request
+        if (props.operateType === 'add') {
+            #set($addFields = [])
+            #foreach($column in $columns)#if($column.insert)#set($dummy = $addFields.add($column.fieldName))#end#end
+        const { error } = await fetchCreate${BusinessName}({ #foreach($field in $addFields)$field#if($foreach.hasNext), #end#end });
+            if (error) return;
         }
+
+        if (props.operateType === 'edit') {
+            #set($editFields = [])
+            #foreach($column in $columns)#if($column.edit)#set($dummy = $editFields.add($column.fieldName))#end#end
+        const { error } = await fetchUpdate${BusinessName}({ #foreach($field in $editFields)$field#if($foreach.hasNext), #end#end });
+            if (error) return;
+        }
+
+        closeDrawer();
+        emit('submitted');
     }
 
     watch(visible, () => {
         if (visible.value) {
-            handleUpdateModelWhenEdit();
-            formRef.value?.resetFields();
+            resetFields();
+            handleInitModel();
         }
     });
 </script>
 
 <template>
-    <Drawer
-        v-model:visible="visible"
-        :title="title"
-        :width="800"
-        :destroyOnClose="false"
-        class="max-w-90%"
-    >
-        <Form
-            ref="formRef"
-            :model="model"
-            :rules="rules"
-            layout="vertical"
-        >
-            #foreach($column in $columns)
-                #set($field=$column.fieldName)
-                #if(($column.insert || $column.edit) && !$column.pk)
-                    #set($parentheseIndex=$column.columnComment.indexOf("（"))
-                    #if($parentheseIndex != -1)
-                        #set($comment=$column.columnComment.substring(0, $parentheseIndex))
-                    #else
-                        #set($comment=$column.columnComment)
-                    #end
-                    #set($dictType=$!StrUtil.toCamelCase($column.dictType))
-                    <Form.Item label="$column.columnComment" name="$column.fieldName">
-                        #if($column.htmlType == "textarea" || $column.htmlType == "editor")
-                            <Input.TextArea
-                                v-model:value="model.$column.fieldName"
-                                :rows="3"
-                                placeholder="请输入$column.columnComment"
-                            />
-                        #elseif($column.htmlType == "select" && "" != $dictType)
-                            <Select
-                                v-model:value="model.$column.fieldName"
-                                placeholder="请选择$column.columnComment"
-                                :options="${dictType}Options"
-                                allowClear
-                                style="width: 100%"
-                            />
-                        #elseif($column.htmlType == "select" && $dictType)
-                            <Select
-                                v-model:value="model.$column.fieldName"
-                                placeholder="请选择$column.columnComment"
-                                :options="[]"
-                                allowClear
-                                style="width: 100%"
-                            />
-                        #elseif($column.htmlType == "radio" && "" != $dictType)
-                            <Radio.Group v-model:value="model.$column.fieldName">
-                                <Space>
-                                    <Radio
-                                        v-for="option in ${dictType}Options"
-                                        :key="option.value"
-                                        :value="option.value"
-                                    >
-                                        {{ option.label }}
-                                    </Radio>
-                                </Space>
-                            </Radio.Group>
-                        #elseif($column.htmlType == "radio" && $dictType)
-                            <Radio.Group v-model:value="model.$column.fieldName">
-                                <Space>
-                                    <Radio value="0">请选择字典生成</Radio>
-                                </Space>
-                            </Radio.Group>
-                        #elseif($column.htmlType == "checkbox" && "" != $dictType)
-                            <Checkbox.Group v-model:value="model.$column.fieldName">
-                                <Space>
-                                    <Checkbox
-                                        v-for="option in ${dictType}Options"
-                                        :key="option.value"
-                                        :value="option.value"
-                                    >
-                                        {{ option.label }}
-                                    </Checkbox>
-                                </Space>
-                            </Checkbox.Group>
-                        #elseif($column.htmlType == "checkbox" && $dictType)
-                            <Checkbox.Group v-model:value="model.$column.fieldName">
-                                <Space>
-                                    <Checkbox value="0">请选择字典生成</Checkbox>
-                                </Space>
-                            </Checkbox.Group>
-                        #elseif($column.htmlType == 'datetime')
-                            <DatePicker
-                                v-model:value="model.$column.fieldName"
-                                show-time
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                allowClear
-                                style="width: 100%"
-                            />
-                        #elseif($column.htmlType == "imageUpload")
-                            <OssUpload v-model:value="model.$column.fieldName" upload-type="image" />
-                        #elseif($column.htmlType == "fileUpload")
-                            <OssUpload v-model:value="model.$column.fieldName" upload-type="file" />
-                        #elseif($column.htmlType == "editor")
-                            <TinymceEditor v-model:value="model.$column.fieldName" />
-                        #else        <Input v-model:value="model.$column.fieldName" placeholder="请输入$column.columnComment" />
-                        #end
-                    </Form.Item>
+    <ADrawer v-model:open="visible" :title="title" width="45%">
+        <AForm ref="formRef" layout="vertical" :model="model" :rules="rules">
+        #foreach($column in $columns)
+            #set($field=$column.fieldName)
+            #if(($column.insert || $column.edit) && !$column.pk)
+                #set($parentheseIndex=$column.columnComment.indexOf("（"))
+                #if($parentheseIndex != -1)
+                    #set($comment=$column.columnComment.substring(0, $parentheseIndex))
+                #else
+                    #set($comment=$column.columnComment)
                 #end
+                #set($dictType=$!StrUtil.toCamelCase($column.dictType))
+                <AFormItem label="$comment" name="$field">
+                    <AInput v-model:value="model.nickName" :placeholder="$t('page.manage.user.form.nickName')" />
+                </AFormItem>
+                <AFormItem label="$comment" name="$field">
+                    #if($column.htmlType == "textarea" || $column.htmlType == "editor")
+                        <ATextarea v-model:value="model.$field" placeholder="请输入$comment" />
+                    #elseif($column.htmlType == "select")
+                        <ASelect
+                            v-model:value="model.$field"
+                            mode="multiple"
+                            :options="[]"
+                            placeholder="请选择$comment"
+                        />
+                    #elseif($column.htmlType == "radio")
+                        <ARadioGroup v-model:value="model.$field">
+                            <ARadio value="item.value">只填写</ARadio>
+                        </ARadioGroup>
+                    #elseif($column.htmlType == "checkbox" && "" != $dictType)
+                        <ACheckboxGroup v-model:value="model.$field" :options="[]" />
+                    #elseif($column.htmlType == 'datetime')
+                        <ADatePicker v-model:value="model.$field" placeholder="请选择$comment" />
+                    #end
+
+                </AFormItem>
             #end
-        </Form>
+        #end
+        </AForm>
         <template #footer>
-            <Space :size="16">
-                <Button @click="closeDrawer">{{ $t('common.cancel') }}</Button>
-                <Button type="primary" @click="handleSubmit">{{ $t('common.confirm') }}</Button>
-            </Space>
+            <ASpace :size="16">
+                <AButton @click="closeDrawer">{{ $t('common.cancel') }}</AButton>
+                <AButton type="primary" @click="handleSubmit">{{ $t('common.confirm') }}</AButton>
+            </ASpace>
         </template>
-    </Drawer>
+    </ADrawer>
 </template>
 
 <style scoped></style>

@@ -1,8 +1,12 @@
 <script setup lang="tsx">
-    import { Button, Popconfirm, Divider } from 'ant-design-vue';
-    import { fetchBatchDelete${BusinessName}, fetchGet${BusinessName}List } from '@/service/api/${moduleName}/${business__name}';
+    import { Button, Popconfirm, Tag, Tooltip } from 'ant-design-vue';
+    import { DeleteOutlined, EditOutlined, KeyOutlined } from '@ant-design/icons-vue';
+    import { fetchBatchDelete${BusinessName}, fetchGet${BusinessName}List } from '@/service/api';
     import { useTable, useTableOperate, useTableScroll } from '@/hooks/common/table';
     import { $t } from '@/locales';
+    import { jsonClone } from '@sa/utils';
+    import { useBoolean } from '@sa/hooks';
+    import { enableStatusRecord, userGenderRecord } from '@/constants/business';
     import { formatCreatedAt } from '@/utils/date';
     import ${BusinessName}OperateDrawer from './modules${business__name}-operate-drawer.vue';
     import ${BusinessName}Search from './modules${business__name}-search.vue';
@@ -12,7 +16,7 @@
     });
 
     const { tableWrapperRef, scrollConfig } = useTableScroll();
-    const { hasAuth } = useAuth();
+    const { bool: passwordVisible, setTrue: openPasswordDrawer } = useBoolean();
 
     const {
         columns,
@@ -29,32 +33,65 @@
         apiParams: {
             page: 1,
             pageSize: 10,
-            // if you want to use the searchParams in Form, you need to define the following properties, and the value is null
-            // the value can not be undefined, otherwise the property in Form will not be reactive
+
             #foreach ($column in $columns)
                 #if($column.query)
                         $column.fieldName: null#if($foreach.hasNext),#end
                 #end
             #end
-            params: {}
         },
         columns: () => [
             {
-                key: 'index',
+                key: 'id',
                 title: $t('common.index'),
-                dataIndex: 'index',
+                dataIndex: 'id',
                 align: 'center',
                 width: 64
             },
             #foreach ($column in $columns)
                 #if($column.list)
+                    #if($column.fieldName == 'state')
+                        {
+                            key: 'state',
+                            dataIndex: 'state',
+                            title: '$column.columnComment',
+                            align: 'center',
+                            width: 100,
+                            customRender: ({ record }) => {
+                                if (record.state === null) {
+                                    return null;
+                                }
+
+                                const tagMap: Record<Api.Common.EnableStatus, string> = {
+                                    '1': 'success',
+                                    '2': 'warning'
+                                };
+
+                                const label = $t(enableStatusRecord[record.state]);
+
+                                return <Tag color={tagMap[record.state]}>{label}</Tag>;
+                            }
+                        },
+                    #elseif($column.fieldName == 'createdAt')
+                        {
+                            key: 'createdAt',
+                            dataIndex: 'createdAt',
+                            title: '$column.columnComment',
+                            align: 'center',
+                            minWidth: 200,
+                            customRender: ({ record }) => {
+                                return formatCreatedAt(record);
+                            }
+                        },
+                    #else
                     {
                         key: '$column.fieldName',
-                        title: '$column.columnComment',
                         dataIndex: '$column.fieldName',
+                        title: '$column.columnComment',
                         align: 'center',
                         minWidth: 120
                     },
+                    #end
                 #end
             #end
             {
@@ -63,50 +100,19 @@
                 align: 'center',
                 width: 130,
                 customRender: ({ record }) => {
-                    const renderContent = () => {
-                        const editBtn = () => {
-                            if (!hasAuth('${moduleName}:${businessName}:edit')) {
-                                return null;
-                            }
-                            return (
-                                <Button type="primary" ghost size="small" onClick={() => edit(record.#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end)}>
-                                    {$t('common.edit')}
-                                </Button>
-                            );
-                        };
-
-                        const divider = () => {
-                            if (!hasAuth('${moduleName}:${businessName}:edit') || !hasAuth('${moduleName}:${businessName}:remove')) {
-                                return null;
-                            }
-                            return <Divider type="vertical" />;
-                        };
-
-                        const deleteBtn = () => {
-                            if (!hasAuth('${moduleName}:${businessName}:remove')) {
-                                return null;
-                            }
-                            return (
-                                <Popconfirm title={$t('common.confirmDelete')} onConfirm={() => handleDelete(record.#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end)}>
-                                    <Button danger size="small">
-                                        {$t('common.delete')}
-                                    </Button>
-                                </Popconfirm>
-                            );
-                        };
-
-                        return (
-                            <>
-                                {editBtn()}
-                                {divider()}
-                                {deleteBtn()}
-                            </>
-                        );
-                    };
-
                     return (
                         <div class="flex-center gap-8px">
-                            {renderContent()}
+                            <Tooltip placement="top" title={<span>{$t('common.edit')}</span>}>
+                                <Button type="primary" ghost size='small' class="operation-btn"
+                                        shape="circle" icon={<EditOutlined />} onClick={() => edit(record.id)}/>
+                            </Tooltip>
+
+                            <Tooltip placement="top" title={<span>{$t('common.delete')}</span>}>
+                                <Popconfirm title={$t('common.confirmDelete')} onConfirm={() => handleDelete(record.id)}>
+                                    <Button type="primary" danger ghost size='small' class="operation-btn"
+                                            shape="circle" icon={<DeleteOutlined />}/>
+                                </Popconfirm>
+                            </Tooltip>
                         </div>
                     );
                 }
@@ -124,28 +130,25 @@
         rowSelection,
         onBatchDeleted,
         onDeleted
+        // closeDrawer
     } = useTableOperate(data, getData);
 
     async function handleBatchDelete() {
         // request
-        const { error } = await fetchBatchDelete${BusinessName}(checkedRowKeys.value);
+        const { error } = await fetchBatchDelete${BusinessName}({ ids: checkedRowKeys.value });
         if (error) return;
         onBatchDeleted();
     }
 
-    async function handleDelete(#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end: CommonType.IdType) {
+    async function handleDelete(id: number) {
         // request
-        const { error } = await fetchBatchDelete${BusinessName}([#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end]);
+        const { error } = await fetchBatchDelete${BusinessName}({ ids: [id] });
         if (error) return;
         onDeleted();
     }
 
-    function edit(#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end: CommonType.IdType) {
-        handleEdit('#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end', #foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end);
-    }
-
-    function handleExport() {
-        download('/${moduleName}/${businessName}/export', searchParams, `${functionName}_#[[${new Date().getTime()}]]#.xlsx`);
+    function edit(id: number) {
+        handleEdit(id);
     }
 </script>
 
@@ -163,12 +166,8 @@
                     v-model:columns="columnChecks"
                     :disabled-delete="checkedRowKeys.length === 0"
                     :loading="loading"
-                    :show-add="hasAuth('${moduleName}:${businessName}:add')"
-                    :show-delete="hasAuth('${moduleName}:${businessName}:remove')"
-                    :show-export="hasAuth('${moduleName}:${businessName}:export')"
                     @add="handleAdd"
                     @delete="handleBatchDelete"
-                    @export="handleExport"
                     @refresh="getData"
                 />
             </template>
@@ -180,10 +179,12 @@
                 :row-selection="rowSelection"
                 :scroll="scrollConfig"
                 :loading="loading"
-                :row-key="row => row.#foreach($column in $columns)#if($column.isPk == '1')$column.fieldName#end#end"
+                row-key="id"
                 :pagination="mobilePagination"
                 class="h-full"
             />
+
+            <!-- User Operate add edit drawer -->
             <${BusinessName}OperateDrawer
                 v-model:visible="drawerVisible"
                 :operate-type="operateType"

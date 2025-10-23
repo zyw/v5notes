@@ -1,0 +1,51 @@
+#set($BaseEntity = ['createDept', 'createBy', 'createTime', 'updateBy', 'updateTime'])
+#set($ModuleName = $moduleName.substring(0, 1).toUpperCase() + $moduleName.substring(1))
+/**
+ * Namespace Api
+ *
+ * All backend api type
+ */
+declare namespace Api {
+    /**
+     * namespace ${ModuleName}
+     *
+     * backend api module: "${ModuleName}"
+     */
+    namespace ${ModuleName} {
+        /** ${businessname} */
+        type ${BusinessName} = Common.CommonRecord<{
+            #foreach($column in $columns)#if(!$BaseEntity.contains($column.fieldName))
+            /** $column.columnComment */
+                $column.fieldName:#if($column.fieldName.indexOf("id") != -1 || $column.fieldName.indexOf("Id") != -1) CommonType.IdType; #elseif($column.fieldType == 'Long' || $column.fieldType == 'Integer' || $column.fieldType == 'Double' || $column.fieldType == 'Float' || $column.fieldType == 'BigDecimal') number; #elseif($column.fieldType == 'Boolean') boolean; #else string; #end
+            #end#end
+        }>;
+
+        /** ${businessname} search params */
+        type ${BusinessName}SearchParams = CommonType.RecordNullable<
+            Pick<
+                Api.${ModuleName}.${BusinessName},
+                #foreach($column in $columns)
+                    #if($column.query && $column.queryType != 'BETWEEN')
+                        | '${column.fieldName}'
+                    #end
+                #end
+            > &
+            Api.Common.CommonSearchParams
+        >;
+
+        /** ${businessname} operate params */
+        type ${BusinessName}OperateParams = CommonType.RecordNullable<
+            Pick<
+                Api.${ModuleName}.${BusinessName},
+                #foreach($column in $columns)
+                    #if($column.insert || $column.edit)
+                        | '${column.fieldName}'
+                    #end
+                #end
+            >
+        >;
+
+        /** ${businessname} list */
+        type ${BusinessName}List = Api.Common.PaginatingQueryRecord<${BusinessName}>;
+    }
+}
