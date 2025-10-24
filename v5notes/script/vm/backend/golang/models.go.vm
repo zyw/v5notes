@@ -9,21 +9,29 @@ import (
 // 用户模型
 type ${ClassName} struct {
     global.BaseModel
-    #foreach ($column in $columns)
-        #set($gorm = "column:${column.columnName}")
-        #if($column.size && $column.size != "")
-            #set($gorm = "$gorm;size:${column.size}")
-        #end
-        #if($column.defaultVal && $column.defaultVal != "")
-            #set($gorm = "$gorm;default:${column.defaultVal}")
-        #end
-        #if($column.comment && $column.comment != "")
-            #set($gorm = "$gorm;comment:${column.comment}")
-        #end
-        #if(!$table.isSuperColumn($column.javaField))
-            $column.fieldName $column.fieldType  `gorm:"${gorm}" json:"$!StrUtil.lowerFirst($column.fieldName)"`
-        #end
+#foreach ($column in $columns)
+    #set($gormAttrs = [])
+    #set($discard = $gormAttrs.add("column:${column.columnName}"))
+    1--------------${column.size}-------------------1
+    #if($column.size && !$column.size.equals(""))
+        #set($discard = $gormAttrs.add("size:${column.size}"))
+        1--------------$column.size-------------------1
     #end
+    2--------------${column.defaultVal}-------------------2
+    #if($column.defaultVal && !$column.defaultVal.equals(""))
+        #set($discard = $gormAttrs.add("default:${column.defaultVal}"))
+        2--------------$column.defaultVal-------------------2
+    #end
+    #if($column.comment && !$column.comment.equals(""))
+        #set($escapedComment = $column.comment.replace('"', '\\"'))
+        #set($discard = $gormAttrs.add("comment:${escapedComment}"))
+        3--------------$column.comment-------------------3
+    #end
+    #set($gorm = $StrUtil.join(";",$gormAttrs))
+    #if(!$table.isSuperColumn($column.fieldName))
+        $column.fieldName $column.fieldType  `gorm:"$gorm" json:"$!StrUtil.lowerFirst($column.fieldName)"`
+    #end
+#end
 }
 
 func (${ClassName}) TableName() string {
