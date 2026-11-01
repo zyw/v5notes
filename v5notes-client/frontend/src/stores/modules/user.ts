@@ -13,7 +13,6 @@ const useUserStore = defineStore("user", () => {
   const token = ref(getToken());
   // const name = ref('');
   // const nickname = ref('');
-  // const userId = ref<string | number>('');
   // const tenantId = ref<string>('');
   const avatarUrl = ref('');
 

@@ -18,7 +18,7 @@
         <el-collapse v-model="activeNames" @change="handleChange">
             <el-collapse-item name="1" class="collapse-item-wrap">
                 <template #title >
-                    <div @click.stop="handleCollapseItem(1, '最新笔记')" class="w-full text-left">
+                    <div @click.stop="handleCollapseItem('1', '最新笔记')" class="w-full text-left">
                         <el-icon class="text-size-base fw-bold v-sub"><Calendar /></el-icon>
                         <span class="pl-1 text-size-sm fw-bold">最新笔记</span>
                     </div>
@@ -45,7 +45,7 @@
             </el-collapse-item>
             <el-collapse-item name="2">
                 <template #title>
-                    <div @click.stop="handleCollapseItem(0, '全部笔记')" class="w-full text-left">
+                    <div @click.stop="handleCollapseItem('0', '全部笔记')" class="w-full text-left">
                         <el-icon class="text-size-base fw-bold v-sub"><Memo /></el-icon>
                         <span class="pl-1 text-size-sm fw-bold">全部笔记</span>
                     </div>
@@ -141,7 +141,7 @@
         console.log(val)
     }
 
-    const newNodeClick = async (id: number, title: string) => {
+    const newNodeClick = async (id: string, title: string) => {
         leftMenuStore.setLeftMenu(id, title, MenuTypeEnum.MENU_EDITOR)
         await router.push("/md/editor/" + id)
     }
@@ -157,7 +157,7 @@
         }
     }
 
-    const handleCollapseItem = async (id: number, title: string) => {
+    const handleCollapseItem = async (id: string, title: string) => {
         leftMenuStore.setLeftMenu(id, title, MenuTypeEnum.MENU_LIST)
         await router.push("/");
     }
@@ -174,7 +174,7 @@
                 click: () => {
                     editNotes.value = {
                         id: data.id,
-                        dirId: data.dirId || data.pid || 0,
+                        dirId: data.dirId || data.pid || '0',
                         name: data.label || data.name
                     }
                     editNotesRef.value.open()
@@ -266,12 +266,12 @@
         if(item === '1') {
             editFolder.value = editInfo
             if(!editInfo.dirId) {
-                editFolder.value = {dirId: 0, type: EditTypeEnum.ADD_ROOT} as EditInfoVo
+                editFolder.value = {dirId: '0', type: EditTypeEnum.ADD_ROOT} as EditInfoVo
             }
             editFolderRef.value.open()
         } else if(item === '2') {
             editNotes.value = {
-                dirId: editInfo.dirId || 0
+                dirId: editInfo.dirId || '0'
             }
             editNotesRef.value.open()
         }

@@ -47,7 +47,7 @@
             }
             ).then(async () => {
                 await userStore.logout()
-                leftMenuStore.setLeftMenu(0, "全部笔记", MenuTypeEnum.MENU_LIST)
+                leftMenuStore.setLeftMenu('0', "全部笔记", MenuTypeEnum.MENU_LIST)
                 router.replace('/login');
             }).catch(() => {
 

@@ -2,12 +2,12 @@ export interface NotesVO {
     /**
      * 笔记ID编号
      */
-    id: number;
+    id: string;
   
     /**
      * 笔记所属用户
      */
-    userId: string | number;
+    userId: string;
   
     /**
      * 笔记名
@@ -17,7 +17,7 @@ export interface NotesVO {
     /**
      * 所属目录ID
      */
-    dirId: string | number;
+    dirId: string;
 
     /**
      * 修改时间
@@ -34,12 +34,11 @@ export interface NotesVO {
      */
     content: string;
   }
-  
   export interface NotesForm extends BaseEntity {
     /**
      * 笔记ID编号
      */
-    id?: string | number;
+    id?: string;
   
     /**
      * 笔记名
@@ -49,30 +48,28 @@ export interface NotesVO {
     /**
      * 所属目录ID
      */
-    dirId?: string | number;
+    dirId?: string;
   
     /**
      * 笔记内容
      */
     content?: string;
   }
-  
   export interface NotesQuery extends PageQuery {
   
     /**
      * 所属目录ID
      */
-    dirId?: string | number;
+    dirId?: string;
   }
 
   export interface NotesSearch {
     /**
      * 所属目录ID
      */
-    dirId?: string | number;
+    dirId?: string;
     /**
      * 查询内容
      */
     searchValue?: string;
   }
-  

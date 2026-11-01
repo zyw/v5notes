@@ -10,6 +10,7 @@ import { LoadingInstance } from 'element-plus/es/components/loading/src/loading'
 // import { getLanguage } from '@/lang';
 import { encryptBase64, encryptWithAes, generateAesKey, decryptWithAes, decryptBase64 } from '@/utils/crypto';
 import { encrypt, decrypt } from '@/utils/jsencrypt';
+import { normalizeIds } from '@/utils/normalizeIds';
 
 const encryptHeader = 'encrypt-key';
 let downloadLoadingInstance: LoadingInstance;
@@ -151,7 +152,7 @@ service.interceptors.response.use(
       ElNotification.error({ title: msg });
       return Promise.reject('error');
     } else {
-      return Promise.resolve(res.data);
+      return Promise.resolve(normalizeIds(res.data));
     }
   },
   (error: any) => {

@@ -52,7 +52,7 @@ export const updateDirectory = (data: DirectoryForm) => {
  * 删除目录
  * @param id
  */
-export const delDirectory = (id: string | number | Array<string | number>) => {
+export const delDirectory = (id: string | string[]) => {
   return request({
     url: getServerUrl() + '/client/notes/dir/' + id,
     method: 'delete'
@@ -63,7 +63,7 @@ export const delDirectory = (id: string | number | Array<string | number>) => {
  * 查询目录详细
  * @param id
  */
-export const getDirectory = (id: string | number): AxiosPromise<DirectoryVO> => {
+export const getDirectory = (id: string): AxiosPromise<DirectoryVO> => {
   return request({
     url: getServerUrl() + '/client/notes/dir/' + id,
     method: 'get'

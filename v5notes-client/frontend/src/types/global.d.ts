@@ -30,7 +30,7 @@ declare global {
 
   declare interface BaseEntity {
     createBy?: any;
-    createDept?: any;
+    createDept?: string;
     createTime?: string;
     updateBy?: any;
     updateTime?: any;

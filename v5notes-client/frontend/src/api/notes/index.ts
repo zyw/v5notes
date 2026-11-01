@@ -46,7 +46,7 @@ export const listNewNotes = (query?: PageQuery): AxiosPromise<NotesVO[]> => {
  * 查询笔记详细
  * @param id
  */
-export const getNotes = (id: string | number): AxiosPromise<NotesVO> => {
+export const getNotes = (id: string): AxiosPromise<NotesVO> => {
   return request({
     url: getServerUrl() + '/client/notes/' + id,
     method: 'get'
@@ -57,7 +57,7 @@ export const getNotes = (id: string | number): AxiosPromise<NotesVO> => {
  * 新增笔记
  * @param data
  */
-export const addNotes = (data: NotesForm): AxiosPromise<number> => {
+export const addNotes = (data: NotesForm): AxiosPromise<string> => {
   return request({
     url: getServerUrl() + '/client/notes',
     method: 'post',
@@ -81,7 +81,7 @@ export const updateNotes = (data: NotesForm) => {
  * 删除笔记
  * @param id
  */
-export const delNotes = (id: string | number | Array<string | number>) => {
+export const delNotes = (id: string | string[]) => {
   return request({
     url: getServerUrl() + '/client/notes/' + id,
     method: 'delete'

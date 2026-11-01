@@ -4,12 +4,12 @@ export interface NotesTreeVo {
   /**
    * ID
    */
-  id: number;
+  id: string;
 
   /**
    * 父节点ID
    */
-  pid: number;
+  pid: string;
 
   /**
    * 节点名称
@@ -28,7 +28,7 @@ export interface NotesTreeVo {
 }
 
 export interface EditInfoVo {
-  dirId: number,
+  dirId: string,
   type?: EditTypeEnum
 }
 
@@ -41,12 +41,12 @@ export interface DirectoryVO {
   /**
    * ID
    */
-  id: string | number;
+  id: string;
 
   /**
    * 目录所属用户ID
    */
-  userId: string | number;
+  userId: string;
 
   /**
    * 目录名称
@@ -56,7 +56,7 @@ export interface DirectoryVO {
   /**
    * 父目录ID
    */
-  pid: string | number;
+  pid: string;
 
   /**
    * 描述
@@ -68,7 +68,7 @@ export interface DirectoryForm extends BaseEntity {
   /**
    * ID
    */
-  id?: string | number;
+  id?: string;
 
   /**
    * 目录名称
@@ -78,7 +78,7 @@ export interface DirectoryForm extends BaseEntity {
   /**
    * 父目录ID
    */
-  pid?: string | number;
+  pid?: string;
 
   /**
    * 描述
@@ -90,7 +90,7 @@ export interface DirectoryQuery extends PageQuery {
   /**
    * 目录所属用户ID
    */
-  userId?: string | number;
+  userId?: string;
 
   /**
    * 目录名称
@@ -100,7 +100,7 @@ export interface DirectoryQuery extends PageQuery {
   /**
    * 父目录ID
    */
-  pid?: string | number;
+  pid?: string;
 
   /**
    * 描述

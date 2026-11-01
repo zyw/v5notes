@@ -58,7 +58,7 @@
         title: ''
     })
     const dirTreeData = ref<NotesTreeVo[]>([{
-        id: 0,
+        id: '0',
         label: '根节点',
         type: 1
     } as NotesTreeVo]);

@@ -1,5 +1,5 @@
 export interface FileVO {
-    id: string | number;
+    id: string;
     path: string;
     url: string;
   }

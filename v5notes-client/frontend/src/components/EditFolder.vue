@@ -44,7 +44,7 @@
     }
 
     const props = withDefaults(defineProps<PropType>(), {
-        editInfo: ()=> {return {dirId: 0, type: EditTypeEnum.ADD_ROOT} as EditInfoVo} 
+        editInfo: ()=> {return {dirId: '0', type: EditTypeEnum.ADD_ROOT} as EditInfoVo}
     });
 
     const emit = defineEmits(["addSuccess"])
@@ -56,7 +56,7 @@
         title: ''
     })
     const dirTreeData = ref<NotesTreeVo[]>([{
-        id: 0,
+        id: '0',
         label: '根节点',
         type: 1
     } as NotesTreeVo]);
@@ -115,7 +115,7 @@
         dirTreeList()
         const {dirId, type} = {...props.editInfo}
         if(type === EditTypeEnum.ADD_ROOT) {
-            form.value.pid = 0
+            form.value.pid = '0'
         } else if(type === EditTypeEnum.ADD_NOT_ROOT) {
             form.value.pid = dirId
         } else if(type === EditTypeEnum.UPDATED) {

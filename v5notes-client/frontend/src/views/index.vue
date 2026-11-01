@@ -36,7 +36,7 @@
       </el-table>
       <div class="pagination-wrap">
         <pagination
-          v-show="total > 0 && leftMenuStore.id !== 1" 
+          v-show="total > 0 && leftMenuStore.id !== '1'"
           :total="total" 
           v-model:page="queryParams.pageNum" 
           v-model:limit="queryParams.pageSize"
@@ -80,12 +80,12 @@
   const queryParams = reactive<NotesQuery>({
     dirId: leftMenuStore.id,
     pageNum: 1,
-    pageSize: leftMenuStore.id === 1 ? 10 : 30
+    pageSize: leftMenuStore.id === '1' ? 10 : 30
   })
 
   const notesListFun = async () => {
     loading.value = true;
-    queryParams.pageSize = leftMenuStore.id === 1 ? 10 : 20
+    queryParams.pageSize = leftMenuStore.id === '1' ? 10 : 20
     const res = await listNotes(queryParams)
     notesList.value = res.rows
     total.value = res.total
@@ -102,7 +102,7 @@
 
   watch(
       () => leftMenuStore.id,
-      (id: number) => {
+      (id: string) => {
         queryParams.dirId = id;
         notesListFun()
       }

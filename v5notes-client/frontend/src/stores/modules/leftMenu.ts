@@ -13,24 +13,24 @@ const useLeftMenuStore = defineStore("leftMenu", () => {
 
   const router = useRouter();
 
-  const id = ref<number>(0);
+  const id = ref<string>('0');
   const title = ref('全部笔记');
   const type = ref<MenuTypeEnum>(MenuTypeEnum.MENU_LIST);
 
   // 修改目录或者笔记名称时刷新列表页面
   const refreshList = ref<number>()
 
-  const setLeftMenu = (_id: number, _title: string, _menuType: MenuTypeEnum) => {
+  const setLeftMenu = (_id: string, _title: string, _menuType: MenuTypeEnum) => {
     id.value = _id
     title.value = _title
     type.value = _menuType
   }
 
-  const initRightMain = async (_id: number, menuType: string) => {
+  const initRightMain = async (_id: string, menuType: string) => {
     if(id.value === _id) {
-      setLeftMenu(0, "全部笔记", MenuTypeEnum.MENU_LIST)
+      setLeftMenu('0', "全部笔记", MenuTypeEnum.MENU_LIST)
       if(menuType === 'new') {
-        setLeftMenu(1, "最新笔记", MenuTypeEnum.MENU_LIST)
+        setLeftMenu('1', "最新笔记", MenuTypeEnum.MENU_LIST)
       }
       
       await router.push("/");

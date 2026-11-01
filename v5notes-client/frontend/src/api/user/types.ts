@@ -11,9 +11,9 @@ export interface UserInfo {
  * 用户返回对象
  */
 export interface UserVO extends BaseEntity {
-    userId: string | number;
+    userId: string;
     tenantId: string;
-    deptId: number;
+    deptId: string;
     userName: string;
     nickName: string;
     userType: string;
@@ -28,9 +28,9 @@ export interface UserVO extends BaseEntity {
     loginDate: string;
     remark: string;
     deptName: string;
-    roleIds: any;
-    postIds: any;
-    roleId: any;
+    roleIds: string[];
+    postIds: string[];
+    roleId: string;
     admin: boolean;
   }
 
