@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { TreeNode } from './api'
+import { computed, ref, watch } from 'vue'
+import type { TreeNode } from '../service/api'
 import TreeIcon from './TreeIcon.vue'
 
 const props = defineProps<{ node: TreeNode; selectedId: string; depth?: number }>()
+defineOptions({ name: 'TreeItem' })
 const emit = defineEmits<{
   select: [id: string]
   directory: [id: string]
@@ -16,20 +17,20 @@ const emit = defineEmits<{
   noteDelete: [id: string]
 }>()
 
-const isDirectory = props.node.type === 1
+const isDirectory = computed(() => props.node.type === 1)
 function containsSelectedNote(node: TreeNode): boolean {
   return node.id === props.selectedId || Boolean(node.children?.some(containsSelectedNote))
 }
 
-const expanded = ref(isDirectory && ((props.depth || 0) === 0 || Boolean(props.node.children?.some(containsSelectedNote))))
+const expanded = ref(isDirectory.value && ((props.depth || 0) === 0 || Boolean(props.node.children?.some(containsSelectedNote))))
 const menuOpen = ref(false)
 
 watch(() => props.selectedId, () => {
-  if (isDirectory && props.node.children?.some(containsSelectedNote)) expanded.value = true
+  if (isDirectory.value && props.node.children?.some(containsSelectedNote)) expanded.value = true
 })
 
 function activate(): void {
-  if (isDirectory) {
+  if (isDirectory.value) {
     expanded.value = !expanded.value
     emit('directory', props.node.id)
   } else {

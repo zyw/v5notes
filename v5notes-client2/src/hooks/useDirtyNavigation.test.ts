@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Draft } from './draft'
-import { resolveDirty } from './navigation'
+import { Draft } from '../models/draft'
+import { resolveDirty } from './useDirtyNavigation'
 
 const note = { id: '912345678901234567', dirId: '0', name: '原笔记', content: '原文' }
 

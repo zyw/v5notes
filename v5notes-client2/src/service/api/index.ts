@@ -1,5 +1,6 @@
-import { asId, normalizeIds } from './identity'
-import { encryptLogin } from './loginCrypto'
+import { asId } from '../../utils/identity'
+import { encryptLogin } from '../../utils/loginCrypto'
+import { createRequest } from '../request'
 
 const defaultLoginKey = 'MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKoR8mX0rGKLqzcWmOzbfj64K8ZIgOdHnzkXSOVOZbFu/TJhZ7rFAN+eaGkl3C4buccQd/EjEsj9ir7ijT7h96MCAwEAAQ=='
 
@@ -48,28 +49,8 @@ export interface Page<T> {
   total: number
 }
 
-interface Envelope<T> { code: number; msg?: string; data: T }
-
 export function createApi(config: () => Connection, onUnauthorized: () => void, transport: typeof fetch = fetch) {
-  async function call<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
-    const { server, clientId, token } = config()
-    const headers: Record<string, string> = {
-      'Content-Language': 'zh_CN',
-      clientid: clientId,
-      ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-    }
-    const response = await transport(`${server.replace(/\/+$/, '')}${path}`, {
-      ...init, headers: { ...headers, ...init.headers },
-    })
-    const result = normalizeIds(await response.json()) as Envelope<T> & Partial<Page<T>>
-    if (response.status === 401 || result.code === 401) {
-      onUnauthorized()
-      throw new Error(result.msg || '登录已过期，请重新登录')
-    }
-    if (!response.ok || result.code !== 200) throw new Error(result.msg || `请求失败 (${response.status})`)
-    return ('rows' in result ? result : result.data) as T
-  }
+  const call = createRequest(config, onUnauthorized, transport)
 
   return {
     ping: () => call<unknown>('/client/ping', {}, false),

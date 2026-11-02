@@ -1,4 +1,4 @@
-import type { Note } from './api'
+import type { Note } from '../service/api'
 
 export class Draft {
   note: Note | null = null

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createApi } from './api'
+import { createApi } from '.'
 
 describe('client API', () => {
   it('sends string snowflake IDs unchanged in reads and saves', async () => {

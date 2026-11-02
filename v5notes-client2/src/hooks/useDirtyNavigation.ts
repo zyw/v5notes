@@ -1,5 +1,5 @@
-import type { Note } from './api'
-import type { Draft } from './draft'
+import type { Note } from '../service/api'
+import type { Draft } from '../models/draft'
 
 export type DirtyChoice = 'save' | 'discard' | 'cancel'
 
