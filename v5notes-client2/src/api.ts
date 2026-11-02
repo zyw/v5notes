@@ -63,7 +63,7 @@ export function createApi(config: () => Connection, onUnauthorized: () => void, 
       return call<{ access_token: string }>(
         '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)
     },
-    tree: () => call<TreeNode[]>('/client/notes/dir/tree-dir'),
+    tree: () => call<TreeNode[]>('/client/notes/dir/tree'),
     list: (dirId: string, pageNum = 1) =>
       call<Page<Note>>(`/client/notes/list?${new URLSearchParams({ dirId, pageNum: String(pageNum), pageSize: '30' })}`),
     recent: () => call<Page<Note>>('/client/notes/new-notes?pageNum=1&pageSize=30'),
