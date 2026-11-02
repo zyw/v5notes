@@ -3,7 +3,7 @@ import { useWorkspaceContext } from '../hooks/workspaceContext'
 import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
 import brandIcon from '../assets/brand-icon.png'
-const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, addDirectory, newNote, selectedId, openNote, directories, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart } = useWorkspaceContext()
+const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, openSettings, addDirectory, newNote, selectedId, openNote, directories, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart } = useWorkspaceContext()
 </script>
 
 <template>
@@ -55,6 +55,7 @@ const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, sea
           <span class="profile-avatar"><img v-if="currentUser?.avatarUrl" :src="currentUser.avatarUrl" alt="" /><span v-else>{{ currentUser?.nickName?.slice(0, 1) || username.slice(0, 1) || 'U' }}</span></span>
           <span class="profile-trigger-name">{{ currentUser?.nickName || username }}</span>
         </button>
+        <button class="settings-trigger" type="button" aria-label="设置" title="设置" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4Z"/><path d="m19.3 13.8 1.1.9-1.5 2.6-1.4-.5a7.7 7.7 0 0 1-1.4.8l-.2 1.5h-3l-.3-1.5a7.7 7.7 0 0 1-1.5-.8l-1.3.5-1.5-2.6 1.1-.9a7.6 7.6 0 0 1 0-1.7l-1.1-.9 1.5-2.6 1.4.5a7.7 7.7 0 0 1 1.4-.8l.2-1.5h3l.3 1.5a7.7 7.7 0 0 1 1.5.8l1.3-.5 1.5 2.6-1.1.9a7.6 7.6 0 0 1 0 1.7Z"/></svg></button>
         <button class="logout-action" type="button" @click="logout">退出登录</button>
       </footer>
       <div class="sidebar-resize" role="separator" aria-label="调整侧栏宽度" aria-orientation="vertical" @pointerdown="resizeSidebarStart" />
@@ -63,6 +64,7 @@ const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, sea
         <button class="rail-brand" type="button" aria-label="展开笔记栏" title="展开笔记栏" @click="directoryVisible = true"><img class="brand-mark" :src="brandIcon" alt="V5Notes" /></button>
         <button class="rail-notes" type="button" aria-label="展开笔记栏" @click="directoryVisible = true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="5" cy="5" r=".7"/><circle cx="5" cy="10" r=".7"/><circle cx="5" cy="15" r=".7"/></svg><span>笔记</span></button>
         <div class="rail-spacer" />
+        <button class="rail-settings" type="button" aria-label="设置" title="设置" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4Z"/><path d="m19.3 13.8 1.1.9-1.5 2.6-1.4-.5a7.7 7.7 0 0 1-1.4.8l-.2 1.5h-3l-.3-1.5a7.7 7.7 0 0 1-1.5-.8l-1.3.5-1.5-2.6 1.1-.9a7.6 7.6 0 0 1 0-1.7l-1.1-.9 1.5-2.6 1.4.5a7.7 7.7 0 0 1 1.4-.8l.2-1.5h3l.3 1.5a7.7 7.7 0 0 1 1.5.8l1.3-.5 1.5 2.6-1.1.9a7.6 7.6 0 0 1 0 1.7Z"/></svg></button>
         <button class="rail-profile" type="button" :disabled="!currentUser" aria-label="个人信息" title="个人信息" @click="openProfile"><span class="profile-avatar"><img v-if="currentUser?.avatarUrl" :src="currentUser.avatarUrl" alt="" /><span v-else>{{ currentUser?.nickName?.slice(0, 1) || username.slice(0, 1) || 'U' }}</span></span></button>
       </div>
     </aside>

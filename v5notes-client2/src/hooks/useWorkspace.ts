@@ -30,6 +30,7 @@ const editorMode = ref<'preview' | 'edit'>('preview')
 const outlineVisible = ref(true)
 const sidebarSearchVisible = ref(false)
 const workspaceMenuOpen = ref(false)
+const settingsDialogOpen = ref(false)
 const activeActionMenu = ref<'note' | 'view' | null>(null)
 const sidebarWidth = ref(Number(localStorage.getItem('v5notes-sidebar-width')) || 286)
 const resizingSidebar = ref(false)
@@ -97,6 +98,10 @@ function toggleSidebar(): void {
     return
   }
   directoryVisible.value = !directoryVisible.value
+}
+
+function openSettings(): void {
+  settingsDialogOpen.value = true
 }
 
 function syncActionMenu(name: 'note' | 'view', event: Event): void {
@@ -219,10 +224,14 @@ function applyEditorMode(instance = editorInstance.value): void {
   if (!instance) return
   const editing = editorMode.value === 'edit'
   instance.setToolbarVisible(editing)
-  instance.setOutlineVisible(outlineVisible.value)
+  instance.setEditable(editing)
+  // The workspace has its own outline sidebar. Keep the editor's built-in
+  // outline disabled independently of that sidebar's visibility.
+  instance.setOutlineVisible(false)
+  // V5Editor applies both `.v5md-host` and `.v5md` to its editable root.
+  // The root reference must be available from EditorPane for this lookup.
   const element = editorHost.value?.querySelector<HTMLElement>('.v5md-host')
   if (!element) return
-  element.contentEditable = editing ? 'true' : 'false'
   element.classList.toggle('is-preview', !editing)
 }
 
@@ -468,7 +477,8 @@ function reauthenticate(): void {
 
 function keydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
-    if (dialog.value && !dialogBusy.value) closeDialog()
+    if (settingsDialogOpen.value) settingsDialogOpen.value = false
+    else if (dialog.value && !dialogBusy.value) closeDialog()
     else if (promptVisible.value) respond('cancel')
   }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
@@ -502,5 +512,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, focusMode, editorMode, outlineVisible, sidebarSearchVisible, workspaceMenuOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, focusMode, editorMode, outlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }
