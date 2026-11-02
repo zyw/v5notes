@@ -24,10 +24,12 @@ const busy = ref(false)
 const error = ref('')
 const query = ref('')
 const searching = ref(false)
-const directoryVisible = ref(true)
+const defaultDirectoryVisible = ref(localStorage.getItem('v5notes-default-directory-visible') !== 'false')
+const directoryVisible = ref(defaultDirectoryVisible.value)
 const focusMode = ref(false)
 const editorMode = ref<'preview' | 'edit'>('preview')
-const outlineVisible = ref(true)
+const defaultOutlineVisible = ref(localStorage.getItem('v5notes-default-outline-visible') !== 'false')
+const outlineVisible = ref(defaultOutlineVisible.value)
 const sidebarSearchVisible = ref(false)
 const workspaceMenuOpen = ref(false)
 const settingsDialogOpen = ref(false)
@@ -104,6 +106,18 @@ function openSettings(): void {
   settingsDialogOpen.value = true
 }
 
+function setDefaultOutlineVisible(visible: boolean): void {
+  defaultOutlineVisible.value = visible
+  outlineVisible.value = visible
+  localStorage.setItem('v5notes-default-outline-visible', String(visible))
+}
+
+function setDefaultDirectoryVisible(visible: boolean): void {
+  defaultDirectoryVisible.value = visible
+  directoryVisible.value = visible
+  localStorage.setItem('v5notes-default-directory-visible', String(visible))
+}
+
 function syncActionMenu(name: 'note' | 'view', event: Event): void {
   const opened = (event.currentTarget as HTMLDetailsElement).open
   activeActionMenu.value = opened ? name : activeActionMenu.value === name ? null : activeActionMenu.value
@@ -115,8 +129,8 @@ function syncActionMenu(name: 'note' | 'view', event: Event): void {
 function closePopovers(event: PointerEvent | KeyboardEvent | FocusEvent): void {
   if (event instanceof KeyboardEvent && event.key !== 'Escape') return
   const target = event.target as Element | null
-  const all = Array.from(document.querySelectorAll<HTMLDetailsElement>('.workspace-menu, .action-menu, .tree-menu'))
-  const focusedPopover = event instanceof KeyboardEvent ? null : target?.closest('details.workspace-menu, details.action-menu, details.tree-menu')
+  const all = Array.from(document.querySelectorAll<HTMLDetailsElement>('.workspace-menu, .action-menu, .tree-menu, .profile-menu'))
+  const focusedPopover = event instanceof KeyboardEvent ? null : target?.closest('details.workspace-menu, details.action-menu, details.tree-menu, details.profile-menu')
   for (const menu of all) {
     if (menu !== focusedPopover) menu.open = false
   }
@@ -464,7 +478,7 @@ async function logout(): Promise<void> {
   selectedDir.value = '0'
   draft.clear()
   notes.value = []
-  directoryVisible.value = true
+  directoryVisible.value = defaultDirectoryVisible.value
   focusMode.value = false
   })
 }
@@ -512,5 +526,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, focusMode, editorMode, outlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

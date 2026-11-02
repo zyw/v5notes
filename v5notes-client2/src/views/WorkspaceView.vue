@@ -8,7 +8,7 @@ import WorkspaceDialogs from '../components/WorkspaceDialogs.vue'
 import SettingsDialog from '../components/SettingsDialog.vue'
 const state = useWorkspace()
 provideWorkspace(state)
-const { server, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings } = state
+const { server, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultOutlineVisible, setDefaultOutlineVisible } = state
 </script>
 
 <template>
@@ -19,5 +19,5 @@ const { server, username, password, token, busy, error, login, focusMode, direct
     <EditorPane />
     <WorkspaceDialogs />
   </div>
-  <SettingsDialog v-if="settingsDialogOpen" @close="settingsDialogOpen = false" />
+  <SettingsDialog v-if="settingsDialogOpen" :default-directory-visible="defaultDirectoryVisible" :default-outline-visible="defaultOutlineVisible" @set-default-directory-visible="setDefaultDirectoryVisible" @set-default-outline-visible="setDefaultOutlineVisible" @close="settingsDialogOpen = false" />
 </template>
