@@ -26,6 +26,7 @@ const query = ref('')
 const searching = ref(false)
 const defaultDirectoryVisible = ref(localStorage.getItem('v5notes-default-directory-visible') !== 'false')
 const directoryVisible = ref(defaultDirectoryVisible.value)
+const defaultTreeExpanded = ref(localStorage.getItem('v5notes-default-tree-expanded') !== 'false')
 const focusMode = ref(false)
 const editorMode = ref<'preview' | 'edit'>('preview')
 const defaultOutlineVisible = ref(localStorage.getItem('v5notes-default-outline-visible') !== 'false')
@@ -116,6 +117,11 @@ function setDefaultDirectoryVisible(visible: boolean): void {
   defaultDirectoryVisible.value = visible
   directoryVisible.value = visible
   localStorage.setItem('v5notes-default-directory-visible', String(visible))
+}
+
+function setDefaultTreeExpanded(expanded: boolean): void {
+  defaultTreeExpanded.value = expanded
+  localStorage.setItem('v5notes-default-tree-expanded', String(expanded))
 }
 
 function syncActionMenu(name: 'note' | 'view', event: Event): void {
@@ -526,5 +532,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

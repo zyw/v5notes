@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "v5notes",
+        "title": "V5Notes云笔记",
         "width": 1200,
         "height": 800,
         "minWidth": 760,

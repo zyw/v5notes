@@ -3,7 +3,7 @@ import { useWorkspaceContext } from '../hooks/workspaceContext'
 import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
 import brandIcon from '../assets/brand-icon.png'
-const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, openSettings, addDirectory, newNote, selectedId, openNote, directories, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart } = useWorkspaceContext()
+const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart } = useWorkspaceContext()
 
 function closeProfileMenu(event: Event): void {
   const menu = (event.currentTarget as HTMLElement).closest('details.profile-menu')
@@ -50,7 +50,7 @@ function closeProfileMenu(event: Event): void {
       </div>
       <div v-else class="tree-scroll">
         <TreeItem
-          v-for="node in directories" :key="node.id" :node="node" :selected-id="selectedId"
+          v-for="node in directories" :key="node.id" :node="node" :selected-id="selectedId" :default-tree-expanded="defaultTreeExpanded"
           @select="openNote" @directory="chooseDirectory" @add="addDirectory" @rename="editDirectory" @remove="deleteDirectory"
           @add-note="addNoteInDirectory" @note-open="(id) => openNote(id)"
           @note-rename="(id) => openTreeNoteActions(id, 'rename')" @note-delete="(id) => openTreeNoteActions(id, 'delete')"

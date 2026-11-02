@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import type { TreeNode } from '../service/api'
 import TreeIcon from './TreeIcon.vue'
 
-const props = defineProps<{ node: TreeNode; selectedId: string; depth?: number }>()
+const props = defineProps<{ node: TreeNode; selectedId: string; defaultTreeExpanded: boolean; depth?: number }>()
 defineOptions({ name: 'TreeItem' })
 const emit = defineEmits<{
   select: [id: string]
@@ -22,8 +22,13 @@ function containsSelectedNote(node: TreeNode): boolean {
   return node.id === props.selectedId || Boolean(node.children?.some(containsSelectedNote))
 }
 
-const expanded = ref(isDirectory.value && ((props.depth || 0) === 0 || Boolean(props.node.children?.some(containsSelectedNote))))
+const expanded = ref(isDirectory.value && (props.defaultTreeExpanded || Boolean(props.node.children?.some(containsSelectedNote))))
 const menuOpen = ref(false)
+
+watch(() => props.defaultTreeExpanded, (shouldExpand) => {
+  if (!isDirectory.value) return
+  expanded.value = shouldExpand || Boolean(props.node.children?.some(containsSelectedNote))
+})
 
 watch(() => props.selectedId, () => {
   if (isDirectory.value && props.node.children?.some(containsSelectedNote)) expanded.value = true
@@ -50,7 +55,7 @@ function activate(): void {
         @click="activate"
       >
         <svg v-if="isDirectory" viewBox="0 0 16 16" aria-hidden="true">
-          <path :d="expanded ? 'm3.5 5.75 4.5 4.5 4.5-4.5' : 'm5.75 3.5 4.5 4.5-4.5 4.5'" />
+          <path d="m5.75 3.5 4.5 4.5-4.5 4.5" />
         </svg>
       </button>
       <button class="tree-label" type="button" :title="node.label" :aria-label="node.label" @click="activate">
@@ -76,14 +81,18 @@ function activate(): void {
         </details>
       </div>
     </div>
-    <div v-if="isDirectory && expanded && node.children?.length" class="tree-children">
-      <TreeItem
-        v-for="child in node.children" :key="child.id" :node="child" :selected-id="selectedId" :depth="(depth || 0) + 1"
-        @select="emit('select', $event)" @directory="emit('directory', $event)" @add="emit('add', $event)"
-        @rename="emit('rename', $event)" @remove="emit('remove', $event)"
-        @add-note="emit('addNote', $event)" @note-open="emit('noteOpen', $event)"
-        @note-rename="emit('noteRename', $event)" @note-delete="emit('noteDelete', $event)"
-      />
-    </div>
+    <Transition name="tree-expand">
+      <div v-if="isDirectory && expanded && node.children?.length" class="tree-children">
+        <div class="tree-children-inner">
+          <TreeItem
+            v-for="child in node.children" :key="child.id" :node="child" :selected-id="selectedId" :default-tree-expanded="defaultTreeExpanded" :depth="(depth || 0) + 1"
+            @select="emit('select', $event)" @directory="emit('directory', $event)" @add="emit('add', $event)"
+            @rename="emit('rename', $event)" @remove="emit('remove', $event)"
+            @add-note="emit('addNote', $event)" @note-open="emit('noteOpen', $event)"
+            @note-rename="emit('noteRename', $event)" @note-delete="emit('noteDelete', $event)"
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
