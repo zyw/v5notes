@@ -25,6 +25,24 @@ export interface TreeNode {
   children?: TreeNode[]
 }
 
+export interface UserProfile {
+  userId: string
+  deptId?: string
+  userType?: string
+  userName: string
+  nickName: string
+  phonenumber?: string
+  email?: string
+  sex?: string
+  remark?: string
+  avatarId?: string
+  avatarUrl?: string
+}
+
+export interface UserProfileUpdate extends Omit<UserProfile, 'avatarId' | 'avatarUrl'> {
+  avatar: string
+}
+
 export interface Page<T> {
   rows: T[]
   total: number
@@ -55,6 +73,9 @@ export function createApi(config: () => Connection, onUnauthorized: () => void, 
 
   return {
     ping: () => call<unknown>('/client/ping', {}, false),
+    userInfo: async () => (await call<{ user: UserProfile }>('/system/user/getInfo')).user,
+    updateUserProfile: (profile: UserProfileUpdate) =>
+      call<void>('/system/user', { method: 'PUT', body: JSON.stringify(profile) }),
     login: (username: string, password: string) => {
       const encrypted = encryptLogin(JSON.stringify({
         tenantId: '000000', username, password, clientId: config().clientId,
@@ -86,6 +107,11 @@ export function createApi(config: () => Connection, onUnauthorized: () => void, 
       body.append('file', file)
       const data = await call<{ url: string }>('/basics/base/file', { method: 'POST', body })
       return data.url
+    },
+    uploadProfileImage: async (file: File) => {
+      const body = new FormData()
+      body.append('file', file)
+      return call<{ id: string; path: string; url: string }>('/basics/base/file', { method: 'POST', body })
     },
   }
 }
