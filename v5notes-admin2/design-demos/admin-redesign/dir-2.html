@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>V5Notes2 · 成员管理 · 薄荷工作台</title>
+<style>
+:root{
+  --canvas:#f4f7f5;
+  --card:#ffffff;
+  --line:#e6ebe8;
+  --line-soft:#eef1ef;
+  --primary:#1c5a48;
+  --primary-d:#17493a;
+  --active:#e8f2ec;
+  --active-line:#cfe3d8;
+  --ink:#15241d;
+  --ink2:#3f5047;
+  --muted:#5f7067;
+  --faint:#7d8d84;
+  --amber:#946321;
+  --amber-bg:#fbf2dd;
+  --mono:'SF Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'PingFang SC','MiSans','HarmonyOS Sans SC','Microsoft YaHei',sans-serif;
+  background:var(--canvas);color:var(--ink);
+  font-size:14px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+svg{display:block}
+.app{position:fixed;inset:0;width:1440px;height:1024px;display:grid;grid-template-columns:236px 1fr;background:var(--canvas)}
+
+/* ---------- Sidebar ---------- */
+.side{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 14px 14px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 20px}
+.brand img{width:30px;height:30px;border-radius:8px}
+.brand .bw{display:flex;flex-direction:column;line-height:1.15}
+.brand .bn{font-size:15.5px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.brand .bs{font-size:10.5px;color:var(--muted);margin-top:2px;letter-spacing:.01em}
+.navlabel{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:#93a29a;text-transform:uppercase;padding:0 10px;margin:2px 0 8px}
+.nav{height:38px;border-radius:9px;display:flex;align-items:center;gap:11px;padding:0 11px;color:#55665d;font-size:13.5px;margin-bottom:2px;cursor:pointer;transition:background .12s,color .12s}
+.nav .ic{width:18px;height:18px;flex:none;color:#7c8d84}
+.nav:hover{background:#f5f8f6}
+.nav.active{background:var(--active);color:var(--primary);font-weight:600}
+.nav.active .ic{color:var(--primary)}
+.side .grow{flex:1}
+.sideft{border-top:1px solid var(--line-soft);padding-top:10px;margin-top:6px}
+.sideft .nav{font-size:13px}
+.sideft .nav.out{color:#8a5a55}
+.sideft .nav.out .ic{color:#a9756f}
+
+/* ---------- Main ---------- */
+.main{display:flex;flex-direction:column;min-width:0;background:var(--canvas)}
+.top{height:64px;flex:none;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 30px}
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);white-space:nowrap}
+.crumb .sep{color:#c2ccc6}
+.crumb b{color:var(--ink);font-weight:600}
+.gsearch{margin-left:6px;flex:0 0 372px;height:38px;background:#f5f8f6;border:1px solid var(--line);border-radius:9px;display:flex;align-items:center;gap:9px;padding:0 12px;color:#7d8d84;font-size:13px}
+.gsearch .kbd{margin-left:auto;font-family:var(--mono);font-size:11px;color:#93a29a;background:#fff;border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+.top .grow{flex:1}
+.tbtn{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#5f7067;background:#fff;border:1px solid transparent;cursor:pointer;position:relative}
+.tbtn:hover{background:#f4f7f5;border-color:var(--line)}
+.badge{position:absolute;top:3px;right:2px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:#c0504a;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;line-height:1}
+.me{display:flex;align-items:center;gap:10px;padding-left:14px;margin-left:2px;border-left:1px solid var(--line)}
+.me .av{width:34px;height:34px;border-radius:50%;background:var(--active);color:var(--primary);display:grid;place-items:center;font-weight:700;font-size:14px}
+.me .mt{display:flex;flex-direction:column;line-height:1.25}
+.me .mn{font-size:13px;font-weight:600;color:var(--ink)}
+.me .mr{font-size:11px;color:var(--muted)}
+
+.content{flex:1;min-height:0;padding:22px 28px 22px;display:flex;flex-direction:column}
+
+/* page header */
+.phead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--primary);text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:14px;height:2px;border-radius:2px;background:var(--primary);opacity:.55}
+.phead h1{font-size:26px;font-weight:700;letter-spacing:-.02em;color:var(--ink);margin:7px 0 5px;line-height:1.1}
+.phead .sub{font-size:14px;color:var(--muted);letter-spacing:.01em}
+.phead .meta{font-family:var(--mono);font-size:11px;color:#8a9a92;letter-spacing:.02em;display:flex;align-items:center;gap:7px;padding-bottom:4px}
+.phead .meta .live{width:7px;height:7px;border-radius:50%;background:#22a06b;box-shadow:0 0 0 3px rgba(34,160,107,.14)}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 16px 14px;display:flex;flex-direction:column;gap:7px;box-shadow:0 1px 2px rgba(16,40,32,.04)}
+.metric .lab{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.metric .lab i{width:7px;height:7px;border-radius:50%;flex:none}
+.metric .val{font-size:27px;font-weight:700;color:var(--ink);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.metric .val small{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px;letter-spacing:0}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.tsearch{height:38px;width:280px;display:flex;align-items:center;gap:9px;padding:0 12px;background:#fff;border:1px solid var(--line);border-radius:9px;font-size:13px;color:#7d8d84}
+.filter{height:38px;display:flex;align-items:center;gap:7px;padding:0 11px;background:#fff;border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink2);cursor:pointer}
+.filter .fk{color:#8a9a92;font-size:12px}
+.filter .fv{font-weight:500;color:var(--ink2)}
+.toolbar .grow{flex:1}
+.btn{height:38px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;cursor:pointer;border:1px solid transparent;white-space:nowrap;padding:0 14px}
+.btn.primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(28,90,72,.22)}
+.btn.primary:hover{background:var(--primary-d)}
+.btn.ghost{background:#fff;border-color:var(--line);color:var(--ink2)}
+.btn.ghost:hover{background:#f5f8f6}
+.btn.icononly{padding:0 10px}
+
+/* table card */
+.card{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,40,32,.05)}
+.cardtop{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line-soft)}
+.cardtop .ct{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;color:var(--ink)}
+.cardtop .ct .cnt{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--primary);background:var(--active);border-radius:6px;padding:2px 7px}
+.cardtop .sel{font-size:12px;color:var(--muted)}
+.cardtop .sel b{color:var(--primary);font-weight:600}
+
+.cols,.row{display:grid;grid-template-columns:30px minmax(0,2.5fr) minmax(0,1.05fr) minmax(0,1.55fr) minmax(0,1.02fr) minmax(0,1.05fr) minmax(0,1.1fr) minmax(0,.95fr);align-items:center;column-gap:6px;padding:0 18px}
+.cols{height:42px;flex:none;background:#fafcfb;border-bottom:1px solid var(--line-soft);font-size:12px;font-weight:600;color:#5f7067;letter-spacing:.03em}
+.cols .sh{display:inline-flex;align-items:center;gap:4px}
+.cols .sh svg{opacity:.5}
+.tbody{flex:1;min-height:0;display:flex;flex-direction:column}
+.row{flex:1;min-height:0;overflow:hidden;border-bottom:1px solid #f1f4f2;transition:background .1s}
+.row:last-child{border-bottom:0}
+.row:hover{background:#fafcfb}
+
+.cb{width:16px;height:16px;border-radius:5px;border:1.5px solid #cfd9d3;background:#fff;display:grid;place-items:center}
+.cb.on{background:var(--primary);border-color:var(--primary)}
+.member{display:flex;align-items:center;gap:11px;min-width:0}
+.mav{width:34px;height:34px;border-radius:10px;background:var(--active);color:var(--primary);display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
+.mav.alt{background:#eef4f0;color:#3f6155}
+.mtx{min-width:0;line-height:1.2}
+.mname{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.macct{font-family:var(--mono);font-size:12px;color:#62736a;margin-top:3px}
+.dept{font-size:14px;color:var(--ink2)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:600;background:#f3f8f5;color:#38584b;border:1px solid #dce9e1;white-space:nowrap}
+.tag.strong{background:var(--active);color:var(--primary);border-color:var(--active-line)}
+.st{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.st i{width:6px;height:6px;border-radius:50%;flex:none}
+.st.ok{background:#e7f2ec;color:#1c6b4f}.st.ok i{background:#22a06b}
+.st.off{background:#eef0ee;color:#56635d}.st.off i{background:#9aa8a1}
+.st.pending{background:var(--amber-bg);color:var(--amber)}.st.pending i{background:#d99a2b}
+.la{font-size:13px;color:var(--muted)}
+.la.dash{color:#a3b0a8}
+.jd{font-family:var(--mono);font-size:12.5px;color:#5f7067}
+.acts{display:flex;align-items:center;gap:3px;justify-content:flex-end}
+.iact{width:27px;height:27px;border-radius:7px;display:grid;place-items:center;color:#8b9a92;cursor:pointer}
+.iact:hover{background:#eef3f0;color:var(--primary)}
+.iact.danger:hover{background:#fbeeec;color:#b4544e}
+
+.pfoot{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-top:1px solid var(--line-soft);background:#fff}
+.pinfo{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.pinfo b{color:var(--ink2);font-weight:600}
+.psize{display:flex;align-items:center;gap:6px;height:30px;padding:0 9px;border:1px solid var(--line);border-radius:7px;font-size:12px;color:var(--ink2);background:#fff}
+.pager{display:flex;align-items:center;gap:5px}
+.pg{min-width:30px;height:30px;padding:0 8px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--ink2);font-size:12.5px;font-weight:500;display:grid;place-items:center;cursor:pointer}
+.pg:hover{background:#f5f8f6}
+.pg.active{background:var(--active);color:var(--primary);border-color:var(--active-line);font-weight:700}
+.pg.ell{border-color:transparent;background:transparent;cursor:default;color:#93a29a}
+.pg.nav{color:#5f7067}
+
+/* ---------- Drawer (approved DNA, deep green header) ---------- */
+.scrim{position:fixed;inset:0;background:rgba(18,34,28,.12);display:none;z-index:40}
+.drawer{position:fixed;top:0;right:0;height:100%;width:610px;background:#fff;box-shadow:-18px 0 54px rgba(15,23,42,.20);display:none;flex-direction:column;overflow:hidden;z-index:50}
+body.show-drawer .drawer{display:flex}
+body.show-drawer .scrim{display:block}
+.hero{position:relative;flex:none;background:linear-gradient(148deg,#0f3d33 0%,#1c5a48 70%,#256a55 100%);padding:24px 30px 26px;color:#fff;overflow:hidden}
+.hero::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-100px;top:-140px;background:rgba(255,255,255,.07)}
+.hero-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.wordmark{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;letter-spacing:.02em;color:#dff1e8}
+.wordmark img{width:22px;height:22px;border-radius:6px}
+.wordmark .wpill{margin-left:4px;font-size:10.5px;font-weight:600;color:#dff1e8;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:2px 8px;letter-spacing:.04em}
+.dclose{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;display:grid;place-items:center;cursor:pointer}
+.profile{display:flex;align-items:center;gap:16px;margin-top:26px;position:relative;z-index:1}
+.pavatar{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;font-size:24px;font-weight:700}
+.pname{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+.pmeta{display:flex;align-items:center;gap:9px;font-size:12px;color:#c9e4d7}
+.ptag{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;color:#eafff5}
+.dbody{flex:1;min-height:0;overflow:auto;padding:22px 30px 16px;background:#fbfcfb}
+.section{padding:0 0 18px;margin-bottom:2px;border-bottom:1px solid #edf0ef}
+.section:last-child{border-bottom:0;padding-bottom:2px}
+.section h4{font-size:12px;font-weight:800;letter-spacing:.06em;color:#6b7d74;margin:0 0 13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 18px}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label{font-size:12.5px;font-weight:600;color:#3f4a44}
+.req{color:#d9534f;margin-right:2px}
+.input,.select{height:42px;border:1px solid #dfe5e1;border-radius:10px;background:#fff;display:flex;align-items:center;padding:0 12px;font-size:14px;color:#1f2937}
+.select{justify-content:space-between}
+.muted{color:#8a9a92}
+.input.area{height:82px;align-items:flex-start;padding-top:11px;line-height:1.6}
+.chips{min-height:42px;border:1px solid #dfe5e1;border-radius:10px;background:#fff;display:flex;align-items:center;gap:8px;padding:5px 9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#edf5f0;color:#25594a;border-radius:7px;padding:4px 8px;font-size:12.5px;font-weight:700}
+.chip .x{color:#80a798;font-weight:600}
+.statusline{display:flex;align-items:center;gap:16px;height:42px;font-size:13.5px;color:#3f4a44}
+.rad{width:15px;height:15px;border-radius:50%;border:1.5px solid #d5ddd8;display:inline-block}
+.rad.on{border-color:#2f6b57;background:radial-gradient(circle at center,#2f6b57 0 45%,#fff 50%)}
+.dfoot{flex:none;display:flex;align-items:center;justify-content:space-between;padding:15px 30px 17px;border-top:1px solid #e9ecea;background:#fff}
+.hint{font-size:12px;color:#94a29a;display:flex;align-items:center;gap:6px}
+.hint::before{content:"";width:6px;height:6px;border-radius:50%;background:#e0a93b}
+.dactions{display:flex;gap:10px}
+.dbtn{height:41px;min-width:94px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid transparent;cursor:pointer}
+.dbtn.ghost{background:#fff;border-color:#dfe5e1;color:#4b5563}
+.dbtn.primary{background:#1c5a48;color:#fff;box-shadow:0 8px 20px rgba(28,90,72,.28)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <img src="logo.png" alt="V5Notes2">
+      <div class="bw"><span class="bn">V5Notes2</span><span class="bs">云笔记 · 管理控制台</span></div>
+    </div>
+    <div class="navlabel">Workspace</div>
+
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>工作台</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h7l4 4v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="M10 12h6M10 16h6"/></svg>笔记管理</div>
+    <div class="nav active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c.6-4 3.7-6 7.5-6s6.9 2 7.5 6"/></svg>成员管理</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.2c0 4.4 3.1 8.2 7.5 9.8 4.4-1.6 7.5-5.4 7.5-9.8V6L12 3Z"/><path d="m8.8 11.8 2.2 2.2 4.2-4.4"/></svg>角色权限</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="4.5" rx="1"/><rect x="3" y="16.5" width="6" height="4.5" rx="1"/><rect x="15" y="16.5" width="6" height="4.5" rx="1"/><path d="M12 7.5v4M6 16.5v-2.5h12v2.5"/></svg>部门组织</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>客户端账号</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.2h7a1.5 1.5 0 0 1 1.5 1.5v8.3a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5V7.5Z"/></svg>文件管理</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 13 2.5-7h5"/></svg>系统监控</div>
+    <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.8-3.1-2 .8a7.4 7.4 0 0 0-2.6-1.5L14.4 3h-4.8l-.3 2.4a7.4 7.4 0 0 0-2.6 1.5l-2-.8L2.9 9.2l1.7 1.3a7.6 7.6 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8a7.4 7.4 0 0 0 2.6 1.5l.3 2.4h4.8l.3-2.4a7.4 7.4 0 0 0 2.6-1.5l2 .8 1.8-3.1-1.7-1.3Z"/></svg>系统设置</div>
+
+    <div class="grow"></div>
+    <div class="sideft">
+      <div class="nav"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9"/><path d="M12 17h.01"/></svg>帮助中心</div>
+      <div class="nav out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/><path d="M10 8l-4 4 4 4M6 12h9"/></svg>退出登录</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="top">
+      <div class="crumb"><span>系统</span><span class="sep">/</span><b>成员管理</b></div>
+      <div class="gsearch">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a9a92" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/></svg>
+        <span>搜索成员、角色或操作…</span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="grow"></div>
+      <div class="tbtn" title="主题切换"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5Z"/></svg></div>
+      <div class="tbtn" title="通知"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></svg><span class="badge">3</span></div>
+      <div class="tbtn" title="帮助"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9"/><path d="M12 17h.01"/></svg></div>
+      <div class="tbtn" title="全屏"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg></div>
+      <div class="me">
+        <div class="av">林</div>
+        <div class="mt"><span class="mn">林知远</span><span class="mr">超级管理员</span></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- page header -->
+      <div class="phead">
+        <div>
+          <div class="eyebrow">Members &amp; Access</div>
+          <h1>成员管理</h1>
+          <div class="sub">统一管理工作空间成员、角色与访问范围，共 128 位成员，本周新增 6 位。</div>
+        </div>
+        <div class="meta"><span class="live"></span>数据同步 · 2 分钟前</div>
+      </div>
+
+      <!-- metrics -->
+      <div class="metrics">
+        <div class="metric"><div class="lab"><i style="background:#1c5a48"></i>全部成员</div><div class="val">128<small>位</small></div></div>
+        <div class="metric"><div class="lab"><i style="background:#22a06b"></i>在线</div><div class="val">42<small>人</small></div></div>
+        <div class="metric"><div class="lab"><i style="background:#d99a2b"></i>待审核</div><div class="val">5<small>项</small></div></div>
+        <div class="metric"><div class="lab"><i style="background:#9aa8a1"></i>已停用</div><div class="val">9<small>人</small></div></div>
+      </div>
+
+      <!-- toolbar -->
+      <div class="toolbar">
+        <div class="tsearch">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a9a92" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/></svg>
+          <span>搜索姓名、账号或部门</span>
+        </div>
+        <div class="filter"><span class="fk">部门</span><span class="fv">全部部门</span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#8a9a92" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div>
+        <div class="filter"><span class="fk">状态</span><span class="fv">全部状态</span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#8a9a92" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div>
+        <div class="filter"><span class="fk">角色</span><span class="fv">全部角色</span><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#8a9a92" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div>
+        <div class="grow"></div>
+        <button class="btn primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增成员</button>
+        <button class="btn ghost"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5f7067" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 7l4-4 4 4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg>批量导入</button>
+        <button class="btn ghost"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5f7067" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 11l4 4 4-4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg>导出</button>
+        <button class="btn ghost icononly" title="列设置"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5f7067" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="1.8" fill="#fff"/><circle cx="15" cy="12" r="1.8" fill="#fff"/><circle cx="9" cy="17" r="1.8" fill="#fff"/></svg></button>
+      </div>
+
+      <!-- table -->
+      <div class="card">
+        <div class="cardtop">
+          <div class="ct">成员列表 <span class="cnt">128</span></div>
+          <div class="sel">已选 <b>1</b> 项 · <span style="color:var(--primary)">清空</span></div>
+        </div>
+        <div class="cols">
+          <div><span class="cb on"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2 5 8.7 9.5 3.6"/></svg></span></div>
+          <div>成员 / 账号</div>
+          <div>部门</div>
+          <div>角色</div>
+          <div>状态</div>
+          <div>最后活跃</div>
+          <div class="sh">加入时间<svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l3-3 3 3M7 12l3 3 3-3"/></svg></div>
+          <div style="text-align:right">操作</div>
+        </div>
+        <div class="tbody">
+          <!-- 1 林知远 -->
+          <div class="row">
+            <div><span class="cb on"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2 5 8.7 9.5 3.6"/></svg></span></div>
+            <div class="member"><div class="mav">林</div><div class="mtx"><div class="mname">林知远</div><div class="macct">linzhiyuan</div></div></div>
+            <div class="dept">产品与设计</div>
+            <div class="tags"><span class="tag strong">超级管理员</span><span class="tag">管理员</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">2 分钟前</div>
+            <div class="jd">2023-04-12</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 2 沈亦清 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav">沈</div><div class="mtx"><div class="mname">沈亦清</div><div class="macct">shenyq</div></div></div>
+            <div class="dept">内容运营</div>
+            <div class="tags"><span class="tag">内容编辑</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">18 分钟前</div>
+            <div class="jd">2023-06-08</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 3 周砚 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav alt">周</div><div class="mtx"><div class="mname">周砚</div><div class="macct">zhouyan</div></div></div>
+            <div class="dept">工程研发</div>
+            <div class="tags"><span class="tag">开发者</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">1 小时前</div>
+            <div class="jd">2023-09-21</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 4 苏晚照 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav">苏</div><div class="mtx"><div class="mname">苏晚照</div><div class="macct">suwanzhao</div></div></div>
+            <div class="dept">市场增长</div>
+            <div class="tags"><span class="tag">运营</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">3 小时前</div>
+            <div class="jd">2024-01-05</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 5 陈默 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav alt">陈</div><div class="mtx"><div class="mname">陈默</div><div class="macct">chenmo</div></div></div>
+            <div class="dept">客户成功</div>
+            <div class="tags"><span class="tag">只读访客</span></div>
+            <div><span class="st off"><i></i>停用</span></div>
+            <div class="la">5 天前</div>
+            <div class="jd">2024-02-18</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 6 顾南枝 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav">顾</div><div class="mtx"><div class="mname">顾南枝</div><div class="macct">gunanzhi</div></div></div>
+            <div class="dept">财务</div>
+            <div class="tags"><span class="tag">财务审计</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">昨天</div>
+            <div class="jd">2024-03-02</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 7 江望 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav alt">江</div><div class="mtx"><div class="mname">江望</div><div class="macct">jiangwang</div></div></div>
+            <div class="dept">工程研发</div>
+            <div class="tags"><span class="tag">开发者</span></div>
+            <div><span class="st ok"><i></i>正常</span></div>
+            <div class="la">6 小时前</div>
+            <div class="jd">2024-04-11</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+          <!-- 8 白露 -->
+          <div class="row">
+            <div><span class="cb"></span></div>
+            <div class="member"><div class="mav">白</div><div class="mtx"><div class="mname">白露</div><div class="macct">bailu</div></div></div>
+            <div class="dept">内容运营</div>
+            <div class="tags"><span class="tag">内容编辑</span></div>
+            <div><span class="st pending"><i></i>待审核</span></div>
+            <div class="la dash">—</div>
+            <div class="jd">2024-05-06</div>
+            <div class="acts"><span class="iact" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 4.8l4 4M4 20l.9-3.9L16 5a1.8 1.8 0 0 1 2.5 0l.5.5a1.8 1.8 0 0 1 0 2.5L8 19.1 4 20Z"/></svg></span><span class="iact danger" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span class="iact" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span></div>
+          </div>
+        </div>
+        <!-- pagination -->
+        <div class="pfoot">
+          <div class="pinfo">共 <b>128</b> 条 · 每页 <b>10</b> 条
+            <span class="psize">10 条/页<svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#8a9a92" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></span>
+          </div>
+          <div class="pager">
+            <span class="pg nav"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 5-5 5 5 5"/></svg></span>
+            <span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg ell">…</span><span class="pg">13</span>
+            <span class="pg nav"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5 5 5-5 5"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="scrim"></div>
+<aside class="drawer" role="dialog" aria-modal="true" aria-label="编辑成员">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="wordmark"><img src="logo.png" alt="">V5Notes 成员<span class="wpill">编辑成员</span></div>
+      <div class="dclose"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+    </div>
+    <div class="profile">
+      <div class="pavatar">沈</div>
+      <div>
+        <div class="pname">沈亦清</div>
+        <div class="pmeta"><span class="ptag">内容编辑</span><span>内容运营 · 内容团队</span></div>
+      </div>
+    </div>
+  </header>
+  <div class="dbody">
+    <div class="section"><h4>基本信息</h4><div class="grid">
+      <div class="f"><label><span class="req">*</span>用户昵称</label><div class="input">沈亦清</div></div>
+      <div class="f"><label>用户性别</label><div class="select"><span>男</span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#8a94a6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div></div>
+      <div class="f"><label>手机号码</label><div class="input">13800001234</div></div>
+      <div class="f"><label>邮箱</label><div class="input">shenyq@v5notes.com</div></div>
+    </div></div>
+    <div class="section"><h4>组织与身份</h4><div class="grid">
+      <div class="f"><label><span class="req">*</span>归属部门</label><div class="select"><span>内容运营</span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#8a94a6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div></div>
+      <div class="f"><label><span class="req">*</span>用户类型</label><div class="select"><span>PC 管理端用户</span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#8a94a6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 8 4 4 4-4"/></svg></div></div>
+      <div class="f full"><label>账号状态</label><div class="statusline"><span class="rad on"></span><span>正常</span><span class="rad"></span><span class="muted">停用</span></div></div>
+    </div></div>
+    <div class="section"><h4>角色与岗位</h4><div class="grid">
+      <div class="f"><label>岗位</label><div class="chips"><span class="chip">内容编辑 <span class="x">×</span></span></div></div>
+      <div class="f"><label><span class="req">*</span>角色</label><div class="chips"><span class="chip">内容团队 <span class="x">×</span></span></div></div>
+    </div></div>
+    <div class="section"><h4>备注</h4><div class="f full"><div class="input area muted">请输入内容</div></div></div>
+  </div>
+  <footer class="dfoot">
+    <div class="hint">有未保存的修改</div>
+    <div class="dactions"><button class="dbtn ghost">取消</button><button class="dbtn primary">保存修改</button></div>
+  </footer>
+</aside>
+
+<script>
+if(location.hash==='#drawer')document.body.classList.add('show-drawer');
+</script>
+</body>
+</html>

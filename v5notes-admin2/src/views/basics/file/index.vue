@@ -82,6 +82,7 @@
               :width="100"
               :height="100"
               :src="scope.row.url"
+              :preview-src-list="[scope.row.url]"
             />
             <el-tooltip v-if="!checkFileSuffix(scope.row.suffix) || !previewListResource" :content="scope.row.url" placement="top">
               <svg-icon :icon-class="scope.row.suffix" style="width: 2.2em; height: 2.2em" />

@@ -66,6 +66,7 @@ export interface UserForm {
   phoneNumber?: string;
   email?: string;
   gender?: string;
+  userType?: string;
   status: string;
   remark?: string;
   avatar?: string | number;

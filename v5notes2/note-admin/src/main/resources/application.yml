@@ -123,9 +123,6 @@ security:
     - /error
     - /*/api-docs
     - /*/api-docs/**
-    - /warm-flow-ui/config
-    - /snail-chat/**
-    - /api/snail/chat/**
 
 # MyBatisPlus配置
 # https://baomidou.com/config/
@@ -167,10 +164,10 @@ api-decrypt:
   headerFlag: encrypt-key
   # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
   # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
-  publicKey: MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJnNwrj4hi/y3CCJu868ghCG5dUj8wZK++RNlTLcXoMmdZWEQ/u02RgD5LyLAXGjLOjbMtC+/J9qofpSGTKSx/MCAwEAAQ==
+  publicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu0QumTTAkPSiGQ75RZqpCvpJDWDspRoacrIHdWUbj5SGRcPfHh3QcGh7cQ1nm40sWwfb3jdO1g7yP/smEx4vXn4mjqpztrt5RbYoZlZ2AAAxI6Uxj522NUEWYVBpWqzqxnGw/w2wtfKTd/HSyZi/zXeRONF4G4aH4zCLxsFYKjeemz1y0eLKg8Cfx2dqUffU3yxNf4N7tilthgxw6XSKABjB488CpJMYelDWrtw6W+5c6HaBAYMQfJM2PJqjTnndGokJDS3mGp33Laba+lZeZtf8vt0bYW6rKuLtoqY0pQ0yLvmgty7JvhacInYUQzI7RleMXSGXhVKmK/MFA2dpvwIDAQAB
   # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
   # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
-  privateKey: MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAqhHyZfSsYourNxaY7Nt+PrgrxkiA50efORdI5U5lsW79MmFnusUA355oaSXcLhu5xxB38SMSyP2KvuKNPuH3owIDAQABAkAfoiLyL+Z4lf4Myxk6xUDgLaWGximj20CUf+5BKKnlrK+Ed8gAkM0HqoTt2UZwA5E2MzS4EI2gjfQhz5X28uqxAiEA3wNFxfrCZlSZHb0gn2zDpWowcSxQAgiCstxGUoOqlW8CIQDDOerGKH5OmCJ4Z21v+F25WaHYPxCFMvwxpcw99EcvDQIgIdhDTIqD2jfYjPTY8Jj3EDGPbH2HHuffvflECt3Ek60CIQCFRlCkHpi7hthhYhovyloRYsM+IS9h/0BzlEAuO0ktMQIgSPT3aFAgJYwKpqRYKlLDVcflZFCKY7u3UP8iWi1Qw0Y=
+  privateKey: MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7RC6ZNMCQ9KIZDvlFmqkK+kkNYOylGhpysgd1ZRuPlIZFw98eHdBwaHtxDWebjSxbB9veN07WDvI/+yYTHi9efiaOqnO2u3lFtihmVnYAADEjpTGPnbY1QRZhUGlarOrGcbD/DbC18pN38dLJmL/Nd5E40XgbhofjMIvGwVgqN56bPXLR4sqDwJ/HZ2pR99TfLE1/g3u2KW2GDHDpdIoAGMHjzwKkkxh6UNau3Dpb7lzodoEBgxB8kzY8mqNOed0aiQkNLeYanfctptr6Vl5m1/y+3Rthbqsq4u2ipjSlDTIu+aC3Lsm+FpwidhRDMjtGV4xdIZeFUqYr8wUDZ2m/AgMBAAECggEAQH3otmaOct1s/chEXI447Ujo46yfkvR8a0eYffuGFFqIK3qbWlnWMQAqkvKU3eMuhWMde1f81IdtMk+h+y+IDLjROozFMQc7aqCjJStdk/587dO0T8t2trxlorn4rnuilxkMZaonU2HpG4Oyni72zyIAZ1rsTD52ie1sFdT8Mf1CJ4eiOJltCTW7PJqkeBWCX4v9mJiCajqGik0UUAITxhruHwuBEUmumtBxXApygLWthYjdII7UYulhsU5LGam/YW4QL64DsKVnxWx5H48qyillkU1CP5itHArQ5bsC89lsJ78zU7Zl5IKWSZ+0YGUX+tLXf4qALnTSbRwxftaCMQKBgQDw9D1gC35kGWkwc3xT+sBJn7Zhn1Oahn/vGmV/xxyufQh+VAeZmh5/Ty17Pqt1RhlF3rTWSRjuhXegjYhVb3bw13EswVkWTqpMSSWBZOZFP/j6kL1++uDpoQ0B94UbcMdRCzI4VuXQsr5Un+Fc+ii7z5ioe36OcLr6a+VP2xmwjQKBgQDG9bg1zEWHqhPfumNCl0HFCYjIRr6f75D8PqZBIbntVx1fjiCPnndpl6yCM45FbHypTA9yN/kDwHZXKAFamRBizOkoESSaGAZa8PqviWlbWq53OgvhTtCT9MYB+/rGmTG2Y1Ot8MqfOWPRIzDPsXZKczKOpkr/irl2JXiXp79uewKBgQCY+uiQtxtq4DtJuLjB9NzqoY1A09BXtnc5TnAMvVT3b4jZ8+3TVudv+swsiHCBh5z6IFh+CHDc1z5JYDKj054XcSF4wdUW9aDnyDUYvv/4DZK9OvIk0ZHEoyzIB+epsWPKj6o13O4SH7n5rnx99JGyFC6fIbELLIV6AtDXb4sS7QKBgHq2+AWGlqQUjOmDZtGdxZ0oQkt1BwJSmtRaN+UYTjtLbfyQBxlOHkzsliRAdFHxlfo9xZEnYNmljdg3/o3ItsiZpn1mBXNduh3BYH2AfZExH0a+cLFpEVEQukhjCMwRlQ3vuZ8hU3hdx2kpEWQpCtLktpwxiTSQdc+fUQAJIROdAoGBAM7pskuAYFl6TC3+Je4BRvWeZu3rylpPv9rmOVDQKA5mF9vGFwFDJbtHmdpzlciSMrCjPdTdtX0c/BYAFqVQodPA/9UPuzlUwUqFIB8vwq8PswwAaHCaoDGu1+E4/c7hF3Isvnln1/PDxKKIwwOpj37xqxfuJs1hLGPEHZlnyy6m
 
 springdoc:
   api-docs:
@@ -190,16 +187,12 @@ springdoc:
       url: https://github.com/zyw/v5notes
   #这里定义了两个分组，可定义多个，也可以不定义
   group-configs:
-    - group: 1.演示模块
-      packages-to-scan: xin.v5ai.demo
-    - group: 2.通用模块
+    - group: 1.通用模块
       packages-to-scan: xin.v5ai.web
-    - group: 3.系统模块
+    - group: 2.系统模块
       packages-to-scan: xin.v5ai.system
-    - group: 4.代码生成模块
-      packages-to-scan: xin.v5ai.gen
-    - group: 5.工作流模块
-      packages-to-scan: xin.v5ai.workflow
+    - group: 3.云笔记
+      packages-to-scan: xin.v5ai.notes
 
 # 防止XSS攻击
 xss:
@@ -208,7 +201,6 @@ xss:
   # 排除链接
   excludeUrls:
     - /system/notice
-    - /warm-flow/save-json
 
 --- # 分布式锁 lock4j 全局配置
 lock4j:
@@ -246,159 +238,3 @@ message:
   web-socket-send-time-limit: 10000
   # WebSocket 发送缓冲区大小
   web-socket-buffer-size-limit: 64000
-
---- # warm-flow工作流配置
-warm-flow:
-  # 是否开启工作流，默认true
-  enabled: true
-  # 是否开启设计器ui
-  ui: true
-  # 是否显示流程图顶部文字
-  top-text-show: true
-  # 流程图状态颜色：未办理、待办理、已办理（RGB）
-  chart-status-color: ["107,114,128", "245,158,11", "64,158,255"]
-  # 是否渲染节点悬浮提示，默认true
-  node-tooltip: true
-  # 默认Authorization，如果有多个token，用逗号分隔
-  token-name: ${sa-token.token-name},clientid
-  # 是否开启定时/事件引擎线程（默认false）。开启后常驻扫描线程池，
-  # 已发布的「定时启动」流程定义会按配置自动发起实例
-  timer-enabled: true
-
---- # LiteFlow 业务规则编排
-liteflow:
-  # 跟随工作流模块开关，避免禁用工作流时仍加载任务办理链
-  enable: ${warm-flow.enabled:true}
-  metrics:
-    enabled: ${liteflow.enable:true}
-  # 工作流模块用于编排任务办理链路
-  rule-source: classpath:liteflow/*.el.xml
-  # 开启虚拟线程
-  enable-virtual-thread: true
-
---- # mqtt 配置
-# 具体配置还需查看文档
-# https://mica-mqtt.dreamlu.net/guide/spring/client.html
-mqtt.client:
-  # 是否开启客户端，默认：true
-  enabled: false
-  # 连接的服务端 ip ，默认：127.0.0.1
-  ip: 127.0.0.1
-  # 端口：默认：1883
-  port: 1883
-  # 客户端名称
-  name: Mqtt-Client
-  # 客户端Id（非常重要，一般为设备 sn，不可重复）
-  client-id: 000001
-  username: ruoyi
-  password: 123456
-  # 超时时间，单位：秒，默认：5秒
-  timeout: 5
-  # 重连时间，默认 5000 毫秒
-  re-interval: 5000
-  # mqtt 协议版本，可选 MQTT_3_1、mqtt_3_1_1、mqtt_5，默认：mqtt_5
-  version: mqtt_5
-  # 接收数据的 buffer size，默认：8k
-  read-buffer-size: 8KB
-  # 消息解析最大 bytes 长度，默认：10M
-  max-bytes-in-message: 10MB
-  # keep-alive 时间，单位：秒
-  keep-alive-secs: 60
-  # 开启保留 session 时，session 的有效期
-  session-expiry-interval-secs: 0
-  # 工作线程数，如果消息量比较大，例如做 emqx 的转发消息处理，可以调大此参数
-  mqtt-executor-size: 2
-  # 是否开启 ssl
-  ssl:
-    enabled: false
-    keystore-path:
-    keystore-pass:
-    truststore-path:
-    truststore-pass:
-
---- # elasticsearch 功能配置
-# 文档地址: https://www.easy-es.cn/
-# 更改包名需要去 EasyEsConfiguration 修改包扫描(后续版本支持配置文件读取)
-easy-es:
-  # 是否开启EE自动配置
-  enable: false
-  # 兼容模式
-  compatible: true
-  # es连接地址+端口 格式必须为ip:port,如果是集群则可用逗号隔开
-  address: localhost:9200
-  # 默认为http
-  schema: http
-  # 注意ES建议使用账号认证 不使用会报警告日志
-  # 如果无账号密码则可不配置此行
-  # username:
-  # 如果无账号密码则可不配置此行
-  # password:
-  # 心跳策略时间 单位:ms
-  keep-alive-millis: 18000
-  # 连接超时时间 单位:ms
-  connectTimeout: 5000
-  # 通信超时时间 单位:ms
-  socketTimeout: 5000
-  # 连接请求超时时间 单位:ms
-  connectionRequestTimeout: 5000
-  # 最大连接数 单位:个
-  maxConnTotal: 100
-  # 最大连接路由数 单位:个
-  maxConnPerRoute: 100
-  global-config:
-    # 开启控制台打印通过本框架生成的DSL语句,默认为开启,测试稳定后的生产环境建议关闭,以提升少量性能
-    print-dsl: true
-    # 异步处理索引是否阻塞主线程 默认阻塞 数据量过大时调整为非阻塞异步进行 项目启动更快
-    asyncProcessIndexBlocking: true
-    db-config:
-      # 是否开启下划线转驼峰 默认为false
-      map-underscore-to-camel-case: true
-      # id生成策略 customize为自定义,id值由用户生成,比如取MySQL中的数据id,如缺省此项配置,则id默认策略为es自动生成
-      id-type: customize
-      # 字段更新策略 默认为not_null
-      field-strategy: not_null
-      # 默认开启,查询若指定了size超过1w条时也会自动开启,开启后查询所有匹配数据,若不开启,会导致无法获取数据总条数,其它功能不受影响.
-      enable-track-total-hits: true
-      # 数据刷新策略,默认为不刷新
-      refresh-policy: immediate
-
---- # MCP 服务端配置
-spring.ai.mcp:
-  server:
-    # 与 ruoyi-admin 共用端口，默认端点为 /mcp
-    enabled: true
-    protocol: STREAMABLE
-    name: ${spring.application.name}
-    version: ${project.version}
-    type: SYNC
-    annotation-scanner:
-      enabled: true
-    streamable-http:
-      mcp-endpoint: /mcp
-
---- # MCP 客户端配置
-spring.ai.mcp:
-  client:
-    # 需要接入外部 MCP Server 时再打开，并配置 streamable-http/stdio connections
-    enabled: false
-    name: ${spring.application.name}-mcp-client
-    version: ${project.version}
-    type: SYNC
-    toolcallback:
-      enabled: false
-    # Streamable HTTP 多服务端示例
-    streamable-http:
-      connections:
-        knowledge:
-          url: http://localhost:9001
-        crm:
-          url: http://localhost:9002
-    # STDIO 多服务端示例
-    stdio:
-      connections:
-        filesystem:
-          command: npx
-          args:
-            - -y
-            - '@modelcontextprotocol/server-filesystem'
-            - D:/data

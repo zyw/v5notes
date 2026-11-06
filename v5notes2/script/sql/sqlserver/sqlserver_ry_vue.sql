@@ -633,7 +633,6 @@ GO
 GO
 insert into sys_menu values(1761400000000000006, N'AI会话',  0, 8, N'aichat', N'ai/chat/index', N'', N'N', N'Y', N'C', N'0', N'0', N'', N'checkbox', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'AI聊天菜单');
 GO
-insert into sys_menu values(1761400000000000004, N'PLUS官网', 0, 9, N'https://gitee.com/dromara/RuoYi-Vue-Plus', null, N'', N'Y', N'Y', N'M', N'0', N'0', N'', N'guide', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), null, null, N'RuoYi-Vue-Plus官网地址');
 GO
 insert into sys_menu values(1761400000000000100, N'用户管理', 1761400000000000001, 1, N'user', N'system/user/index', N'', N'N', N'Y', N'C', N'0', N'0', N'system:user:list', N'user', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'用户管理菜单');
 GO
@@ -665,10 +664,8 @@ insert into sys_menu values(1761400000000000130, N'分配用户', 17614000000000
 GO
 insert into sys_menu values(1761400000000000131, N'分配角色', 1761400000000000001, 1, N'user-auth/role/:userId', N'system/user/authRole', N'', N'N', N'N', N'C', N'1', N'0', N'system:user:edit', N'#', N'/system/user', N'', 1761000000000000103, 1761100000000000001, getdate(), null, null, N'');
 GO
-insert into sys_menu values(1761400000000000133, N'文件配置管理', 1761400000000000001, 10, N'oss-config/index', N'system/oss/config', N'', N'N', N'N', N'C', N'1', N'0', N'system:ossConfig:list', N'#', N'/system/oss', N'', 1761000000000000103, 1761100000000000001, getdate(), null, null, N'');
 GO
 GO
-insert into sys_menu values(1761400000000000118, N'文件管理', 1761400000000000001, 10, N'oss', N'system/oss/index', N'', N'N', N'Y', N'C', '0', N'0', N'system:oss:list', N'upload', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'文件管理菜单');
 GO
 insert into sys_menu values(1761400000000000120, N'任务调度中心', 1761400000000000002, 5, N'snailjob', N'monitor/snailjob/index', N'', N'N', N'Y', N'C', N'0', N'0', N'monitor:snailjob:list', N'job', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'SnailJob控制台菜单');
 GO
@@ -782,21 +779,13 @@ GO
 GO
 GO
 -- oss相关按钮
-insert into sys_menu values(1761400000000001600, N'文件查询', 1761400000000000118, 1, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:oss:query', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001601, N'文件上传', 1761400000000000118, 2, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:oss:upload', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001602, N'文件下载', 1761400000000000118, 3, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:oss:download', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001603, N'文件删除', 1761400000000000118, 4, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:oss:remove', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001620, N'配置列表', 1761400000000000118, 5, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:ossConfig:list', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001621, N'配置添加', 1761400000000000118, 6, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:ossConfig:add', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001622, N'配置编辑', 1761400000000000118, 6, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:ossConfig:edit', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
-insert into sys_menu values(1761400000000001623, N'配置删除', 1761400000000000118, 6, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:ossConfig:remove', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');
 GO
 -- 客户端管理按钮
 insert into sys_menu values(1761400000000001061, N'客户端管理查询', 1761400000000000123, 1, N'#', N'', N'', N'N', N'Y', N'F', N'0', N'0', N'system:client:query', N'#', N'', N'', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'');

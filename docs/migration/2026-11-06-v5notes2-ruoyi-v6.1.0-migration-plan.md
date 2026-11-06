@@ -521,3 +521,49 @@ CREATE DATABASE `v5notes2-dev` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
 DROP DATABASE IF EXISTS `v5notes2-dev`;
 CREATE DATABASE `v5notes2-dev` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
+
+
+## 二十四、管理端恢复“用户类型”设置（2026-11-06）
+
+迁移 plus-ui v6 时丢失了旧 v5notes-admin 用户表单里的“用户类型”下拉。已恢复：
+
+- `v5notes-admin2/src/views/system/user/index.vue`：新增/编辑表单增加「用户类型」下拉，绑定 `user_type` 字典（`sys_user` / `cli_user`），默认 `sys_user`，必填校验；通过 `useDict('user_type')` 加载。
+- `v5notes-admin2/src/api/system/user/types.ts`：`UserForm` 增加 `userType` 字段。
+- 后端无需改动：`SysUserBo.userType` 已在新增/修改接口链路中传递并落库。
+
+现在可以在管理端新建/编辑客户端用户（选择“客户端用户”即 `cli_user`）。验证：`pnpm build` → EXIT 0。
+
+
+## 二十五、用户新增/编辑改为侧滑抽屉（方向 C，2026-11-06）
+
+- 新增共享组件 [FormDrawer](v5notes-admin2/src/components/FormDrawer/index.vue)：680px 抽屉外壳，统一标题/关闭、滚动内容区、底部取消/保存与提示；支持 `#hero` 自定义身份头。
+- [用户管理页](v5notes-admin2/src/views/system/user/index.vue)：新增/编辑弹窗改为 `FormDrawer`；顶部深绿成员身份头（头像、昵称、用户类型、部门），表单改为标签在上、分「基本信息 / 组织与身份 / 角色与岗位 / 备注」，与 `user/view.vue` 详情抽屉同 680px。
+- 用户类型 `userType` 字段继续保留；导入、重置密码、确认等轻操作仍用弹窗，符合“复杂编辑走抽屉、轻操作走弹窗”的规则。
+- 验证：`pnpm build` EXIT 0；`oxlint` 0 warnings 0 errors。
+- 后续：按同一 FormDrawer 规范逐步迁移角色、菜单、部门、客户端等复杂编辑表单，短表单不迁移。
+
+
+## 二十六、文件管理/配置管理对齐 v5notes（2026-11-06）
+
+对比旧 v5notes 后修正了 v5notes2 与旧版不一致的实质问题：
+
+- **上传落库对齐**：`FileUpload`、`ImageUpload` 改回旧版逻辑——上传到 `/basics/admin/file/upload`，使用 `@/api/basics/file` 的 `listByIds/delFile`，不再走 `/resource/oss/upload` 和 `sys_oss`。这样上传文件会出现在「文件管理」列表并可通过其删除。
+- **配置管理路由**：补回旧版隐藏路由 `/basics/file-config`（`views/basics/file/config.vue`），「配置管理」按钮不再 404。
+- **图片预览**：恢复文件列表缩略图的 `preview-src-list`，可点击预览。
+- **重复菜单**：删除 RuoYi 6.1.0 模板自带的 OSS「文件管理 / 文件配置管理」菜单及按钮（V3 迁移 + 旧初始化脚本），侧边栏只保留 basics 文件管理。
+- **预览开关配置键**：对齐旧版 `sys.file.previewListResource`（原模板为 `sys.oss.previewListResource`），V3 同时做存量数据更新。
+- **清理模板页面**：删除 admin2 未使用的 `views/system/oss`、`api/system/ossConfig`；`api/system/oss` 仍保留给编辑器/头像等旧逻辑使用。
+- 说明：之前若已通过系统 OSS 上传过文件，它们不会出现在 basics 文件管理列表中；之后新上传会走 basics_file。
+
+
+## 二十七、修复本地上传目录不存在（2026-11-06）
+
+**现象**：上传报 `IOException: No such file or directory`，`LocalFileClient.upload` 写入 `/mnt/uploadfile` 失败（macOS 无 `/mnt`）。
+
+**修复**：
+- `LocalFileClient.upload` 写入前自动创建父目录。
+- `LocalFileClient.doInit` 支持 `__USER_HOME__` / `${user.home}` / `${user.dir}` 占位符。
+- 直接修改 V2（MySQL/PostgreSQL）与 `script/sql/notes2.sql` 的默认 `basePath` 为 `__USER_HOME__/v5notes/upload`，未新增 V4 迁移。
+- 已有数据库可执行：`UPDATE basics_file_config SET config = REPLACE(config, '/mnt/uploadfile', '__USER_HOME__/v5notes/upload') WHERE storage = 100 AND config LIKE '%/mnt/uploadfile%';`
+
+重启后默认文件会写入当前系统用户目录下的 `v5notes/upload`；生产环境如仍要 `/mnt/uploadfile`，在「配置管理」改回并确保目录存在即可。

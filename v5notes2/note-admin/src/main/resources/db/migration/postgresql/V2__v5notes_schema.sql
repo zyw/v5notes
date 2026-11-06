@@ -350,13 +350,13 @@ VALUES (1762000000000000001, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 
 -- -----------------------------------------------------------------------------
 -- 6、文件存储主配置（本地磁盘，storage=100）
 --    说明：config 的 @class 必须指向 xin.v5ai.basics.file.core.client.local.LocalFileClientConfig；
---          domain 需要替换为实际部署域名；basePath 与旧部署 /mnt/uploadfile 保持一致以便历史文件可访问。
+--          domain 需要替换为实际部署域名；basePath 使用 __USER_HOME__/v5notes/upload，由 LocalFileClient 解析为当前用户目录。
 -- -----------------------------------------------------------------------------
 DELETE FROM basics_file_config WHERE id = 1;
 INSERT INTO basics_file_config (id, name, storage, remark, master, config, del_flag, create_dept, create_by, create_time, update_by, update_time)
 VALUES (1, '本地磁盘', 100, '默认本地磁盘存储',
         true,
-        '{"@class":"xin.v5ai.basics.file.core.client.local.LocalFileClientConfig","basePath":"/mnt/uploadfile","domain":"http://127.0.0.1:8080"}',
+        '{"@class":"xin.v5ai.basics.file.core.client.local.LocalFileClientConfig","basePath":"__USER_HOME__/v5notes/upload","domain":"http://127.0.0.1:8080"}',
         '0', 1761000000000000103, 1761100000000000001, now(), NULL, now());
 
 -- -----------------------------------------------------------------------------

@@ -53,6 +53,20 @@ export const constantRoutes: RouteRecordRaw[] = [
     hidden: true
   },
   {
+    path: '/basics/file-config',
+    component: Layout,
+    hidden: true,
+    permissions: ['basics:fileConfig:list'],
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/basics/file/config.vue'),
+        name: 'OssConfig',
+        meta: { title: '配置管理', activeMenu: '/system/file', icon: '' }
+      }
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404.vue'),
     hidden: true

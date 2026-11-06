@@ -271,132 +271,172 @@
       </el-col>
     </el-row>
 
-    <!-- 添加或修改用户配置对话框 -->
-    <el-dialog
-      ref="formDialogRef"
+    <!-- 添加或修改用户配置抽屉 -->
+    <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      width="600px"
-      append-to-body
-      @close="closeDialog"
+      size="680px"
+      submit-text="保存修改"
+      hint="带 * 为必填项，保存后立即生效"
+      @submit="submitForm"
+      @closed="closeDialog"
     >
-      <el-form ref="userFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="用户昵称" prop="nickName">
-              <el-input v-model="form.nickName" placeholder="请输入用户昵称" maxlength="30" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
-            <el-form-item label="归属部门" prop="deptId">
-              <el-tree-select
-                v-model="form.deptId"
-                :data="enabledDeptOptions"
-                :props="{ value: 'id', label: 'label', children: 'children' } as any"
-                value-key="id"
-                placeholder="请选择归属部门"
-                check-strictly
-                @change="handleDeptChange"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="手机号码" prop="phoneNumber">
-              <el-input v-model="form.phoneNumber" placeholder="请输入手机号码" maxlength="11" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="form.email" placeholder="请输入邮箱" maxlength="50" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户名称" prop="userName">
-              <el-input v-model="form.userName" placeholder="请输入用户名称" maxlength="30" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户密码" prop="password">
-              <el-input
-                v-model="form.password"
-                placeholder="请输入用户密码"
-                type="password"
-                maxlength="20"
-                show-password
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="用户性别">
-              <el-select v-model="form.gender" placeholder="请选择">
-                <el-option
-                  v-for="dict in sys_user_gender"
-                  :key="dict.value"
-                  :label="dict.label"
-                  :value="dict.value"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态">
-              <el-radio-group v-model="form.status">
-                <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
-                  {{ dict.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
-            <el-form-item label="岗位">
-              <el-select v-model="form.postIds" multiple placeholder="请选择">
-                <el-option
-                  v-for="item in postOptions"
-                  :key="item.postId"
-                  :label="item.postName"
-                  :value="item.postId"
-                  :disabled="item.status == '1'"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
-            <el-form-item label="角色" prop="roleIds">
-              <el-select v-model="form.roleIds" filterable multiple placeholder="请选择">
-                <el-option
-                  v-for="item in roleOptions"
-                  :key="item.roleId"
-                  :label="item.roleName"
-                  :value="item.roleId"
-                  :disabled="item.status == '1'"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="24">
-            <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel()">取 消</el-button>
+      <template #hero>
+        <div class="user-hero">
+          <div class="user-hero__top">
+            <span class="user-hero__brand"><img :src="logoUrl" alt="" />V5Notes 成员</span>
+            <span class="user-hero__divider">·</span>
+            <span class="user-hero__action">{{ dialog.title }}</span>
+          </div>
+          <div class="user-hero__profile">
+            <div class="user-hero__avatar">{{ avatarText }}</div>
+            <div class="user-hero__info">
+              <div class="user-hero__name">{{ heroName }}</div>
+              <div class="user-hero__meta">
+                <span class="user-hero__tag">{{ userTypeLabel }}</span>
+                <span v-if="deptLabel">{{ deptLabel }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="userFormRef" :model="form" :rules="rules" label-position="top" class="user-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12" v-if="form.userId == undefined">
+              <el-form-item label="用户名称" prop="userName">
+                <el-input v-model="form.userName" placeholder="请输入用户名称" maxlength="30" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12" v-if="form.userId == undefined">
+              <el-form-item label="用户密码" prop="password">
+                <el-input
+                  v-model="form.password"
+                  placeholder="请输入用户密码"
+                  type="password"
+                  maxlength="20"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="用户昵称" prop="nickName">
+                <el-input v-model="form.nickName" placeholder="请输入用户昵称" maxlength="30" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="用户性别">
+                <el-select v-model="form.gender" placeholder="请选择">
+                  <el-option
+                    v-for="dict in sys_user_gender"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="手机号码" prop="phoneNumber">
+                <el-input v-model="form.phoneNumber" placeholder="请输入手机号码" maxlength="11" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="form.email" placeholder="请输入邮箱" maxlength="50" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>组织与岗位</h4>
+          <el-row :gutter="18">
+            <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
+              <el-form-item label="归属部门" prop="deptId">
+                <el-tree-select
+                  v-model="form.deptId"
+                  :data="enabledDeptOptions"
+                  :props="{ value: 'id', label: 'label', children: 'children' } as any"
+                  value-key="id"
+                  placeholder="请选择归属部门"
+                  check-strictly
+                  @change="handleDeptChange"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
+              <el-form-item label="岗位">
+                <el-select v-model="form.postIds" multiple placeholder="请选择">
+                  <el-option
+                    v-for="item in postOptions"
+                    :key="item.postId"
+                    :label="item.postName"
+                    :value="item.postId"
+                    :disabled="item.status == '1'"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item label="账号状态">
+                <el-radio-group v-model="form.status">
+                  <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>角色与用户类型</h4>
+          <el-row :gutter="18">
+            <el-col :span="12" v-if="form.userId == null || form.userId != useUserStore().userId">
+              <el-form-item label="角色" prop="roleIds">
+                <el-select v-model="form.roleIds" filterable multiple placeholder="请选择">
+                  <el-option
+                    v-for="item in roleOptions"
+                    :key="item.roleId"
+                    :label="item.roleName"
+                    :value="item.roleId"
+                    :disabled="item.status == '1'"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="用户类型" prop="userType">
+                <el-select v-model="form.userType" placeholder="请选择用户类型">
+                  <el-option
+                    v-for="dict in user_type"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>备注</h4>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item>
+                <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入内容"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+      </el-form>
+    </FormDrawer>
 
     <!-- 用户导入对话框 -->
     <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body>
@@ -475,9 +515,14 @@ import { checkPermi } from '@/utils/permission';
 import { globalHeaders } from '@/utils/request';
 import { download as requestDownload } from '@/utils/request';
 import UserViewDrawer from './view.vue';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
+import { selectDictLabel } from '@/utils/ruoyi';
 
 const router = useRouter();
-const { sys_normal_disable, sys_user_gender } = toRefs<any>(useDict('sys_normal_disable', 'sys_user_gender'));
+const { sys_normal_disable, sys_user_gender, user_type } = toRefs<any>(
+  useDict('sys_normal_disable', 'sys_user_gender', 'user_type')
+);
 const userList = ref<UserVO[]>();
 const { loading, withLoading } = useLoading(true);
 const { showSearch } = useSearchToggle();
@@ -519,7 +564,6 @@ const treePanelRef = ref<InstanceType<typeof TreePanel>>();
 const queryFormRef = ref<ElFormInstance>();
 const userFormRef = ref<ElFormInstance>();
 const uploadRef = ref<ElUploadInstance>();
-const formDialogRef = ref<ElDialogInstance>();
 const userViewRef = ref<InstanceType<typeof UserViewDrawer>>();
 
 const initFormData: UserForm = {
@@ -531,6 +575,7 @@ const initFormData: UserForm = {
   phoneNumber: undefined,
   email: undefined,
   gender: undefined,
+  userType: 'sys_user',
   status: '0',
   remark: '',
   postIds: [],
@@ -587,6 +632,7 @@ const initData: PageData<UserForm, UserQuery> = {
         trigger: 'blur'
       }
     ],
+    userType: [{ required: true, message: '用户类型不能为空', trigger: 'change' }],
     roleIds: [{ required: true, message: '用户角色不能为空', trigger: 'blur' }]
   }
 };
@@ -595,6 +641,19 @@ const data = reactive<PageData<UserForm, UserQuery>>(initData);
 const { queryParams, form, rules } = toRefs<PageData<UserForm, UserQuery>>(data);
 const { ids, single, multiple, handleSelectionChange } = useTableSelection<UserVO>(item => item.userId);
 const { dialog, openDialog: openUserDialog, closeDialog: closeUserDialog, setTitle: setDialogTitle } = useDialogState();
+
+const findDeptLabel = (nodes: any[]): string => {
+  for (const node of nodes || []) {
+    if (String(node.id) === String(form.value.deptId)) return node.label;
+    const child = node.children?.length ? findDeptLabel(node.children) : '';
+    if (child) return child;
+  }
+  return '';
+};
+const heroName = computed(() => form.value.nickName || (form.value.userId ? '未命名成员' : '新增成员'));
+const avatarText = computed(() => (form.value.nickName || (form.value.userId ? '用' : '新')).trim().slice(0, 1));
+const userTypeLabel = computed(() => selectDictLabel(user_type.value || [], form.value.userType) || '未选择用户类型');
+const deptLabel = computed(() => (form.value.deptId ? findDeptLabel(enabledDeptOptions.value) : ''));
 
 /** 查询用户列表 */
 const getList = async () => {
@@ -870,5 +929,130 @@ async function handleDeptChange(value: number | string) {
   padding: 10px 20px 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.user-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.user-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.user-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.user-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.user-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.user-hero__action {
+  color: #c9e4d7;
+}
+.user-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 24px;
+}
+.user-hero__avatar {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 24px;
+  font-weight: 700;
+}
+.user-hero__name {
+  margin-bottom: 7px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.user-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.user-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.user-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.user-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.user-form :deep(.el-input__wrapper),
+.user-form :deep(.el-select__wrapper),
+.user-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #dfe5e1 inset;
+}
+.user-form :deep(.el-input__wrapper:hover),
+.user-form :deep(.el-select__wrapper:hover) {
+  box-shadow: 0 0 0 1px #b9c9c1 inset;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
 }
 </style>
