@@ -8,6 +8,7 @@ export interface Connection {
   server: string
   clientId: string
   token: string
+  refreshToken?: string
 }
 
 export interface Note {
@@ -49,8 +50,37 @@ export interface Page<T> {
   total: number
 }
 
-export function createApi(config: () => Connection, onUnauthorized: () => void, transport: typeof fetch = fetch) {
-  const call = createRequest(config, onUnauthorized, transport)
+export function createApi(
+  config: () => Connection,
+  onUnauthorized: () => void,
+  transport: typeof fetch = fetch,
+  onTokensRefreshed?: (accessToken: string, refreshToken: string) => void,
+) {
+  // 不带刷新逻辑的底层调用，供刷新令牌接口使用，避免递归
+  const rawCall = createRequest(config, onUnauthorized, transport)
+
+  const performRefresh = async (): Promise<boolean> => {
+    const refreshToken = config().refreshToken
+    if (!refreshToken) return false
+    try {
+      const encrypted = encryptLogin(
+        JSON.stringify({ refreshToken }),
+        import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey,
+      )
+      const pair = await rawCall<{ access_token: string; refresh_token?: string }>(
+        '/auth/refresh',
+        { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } },
+        false,
+      )
+      if (!pair?.access_token || !pair.refresh_token) return false
+      onTokensRefreshed?.(pair.access_token, pair.refresh_token)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const call = createRequest(config, onUnauthorized, transport, performRefresh)
 
   return {
     ping: () => call<unknown>('/client/ping', {}, false),
@@ -62,7 +92,7 @@ export function createApi(config: () => Connection, onUnauthorized: () => void, 
         tenantId: '000000', username, password, clientId: config().clientId,
         grantType: 'clientPassword', deviceType: 'pc_client',
       }), import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey)
-      return call<{ access_token: string }>(
+      return call<{ access_token: string; refresh_token?: string; expire_in?: number }>(
         '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)
     },
     tree: () => call<TreeNode[]>('/client/notes/dir/tree'),

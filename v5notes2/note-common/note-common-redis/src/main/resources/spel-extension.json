@@ -1,0 +1,7 @@
+{
+  "xin.v5ai.common.ratelimiter.annotation.RateLimiter@key": {
+    "method": {
+      "parameters": true
+    }
+  }
+}

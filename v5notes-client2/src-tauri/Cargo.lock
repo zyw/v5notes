@@ -3774,7 +3774,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "v5notes-client2"
+name = "v5notes"
 version = "0.1.0"
 dependencies = [
  "tauri",

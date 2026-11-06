@@ -19,6 +19,7 @@ const server = ref(localStorage.getItem('v5notes-server') || '')
 const username = ref(localStorage.getItem('v5notes-username') || '')
 const password = ref('')
 const token = ref(localStorage.getItem('v5notes-token') || '')
+const refreshToken = ref(localStorage.getItem('v5notes-refresh-token') || '')
 const sessionExpired = ref(false)
 const busy = ref(false)
 const error = ref('')
@@ -56,10 +57,19 @@ let unwatchClose: (() => void) | undefined
 let unlistenTrayExit: (() => void) | undefined
 
 const api = createApi(
-  () => ({ server: server.value, clientId, token: token.value }),
+  () => ({ server: server.value, clientId, token: token.value, refreshToken: refreshToken.value }),
   () => {
     sessionExpired.value = true
+    refreshToken.value = ''
     localStorage.removeItem('v5notes-token')
+    localStorage.removeItem('v5notes-refresh-token')
+  },
+  fetch,
+  (accessToken: string, newRefreshToken: string) => {
+    token.value = accessToken
+    refreshToken.value = newRefreshToken
+    localStorage.setItem('v5notes-token', accessToken)
+    localStorage.setItem('v5notes-refresh-token', newRefreshToken)
   },
 )
 const {
@@ -294,11 +304,14 @@ async function login(): Promise<void> {
       selectedDir.value = '0'
     }
     token.value = result.access_token
+    refreshToken.value = result.refresh_token || ''
     password.value = ''
     sessionExpired.value = false
     localStorage.setItem('v5notes-server', server.value)
     localStorage.setItem('v5notes-username', username.value)
     localStorage.setItem('v5notes-token', result.access_token)
+    if (result.refresh_token) localStorage.setItem('v5notes-refresh-token', result.refresh_token)
+    else localStorage.removeItem('v5notes-refresh-token')
     await Promise.all([refreshDirectories(), refreshNotes(), refreshProfile()])
     const lastNoteId = localStorage.getItem('v5notes-last-note')
     if (lastNoteId) await openNote(lastNoteId, true)
@@ -475,8 +488,10 @@ async function logout(): Promise<void> {
   if (!(await mayLeave())) return
   requestDelete('退出登录', '确定退出当前账号吗？退出后需要重新登录。', '退出登录', async () => {
   token.value = ''
+  refreshToken.value = ''
   currentUser.value = null
   localStorage.removeItem('v5notes-token')
+  localStorage.removeItem('v5notes-refresh-token')
   localStorage.removeItem('v5notes-last-note')
   localStorage.removeItem('v5notes-last-dir')
   selectedId.value = ''
@@ -491,7 +506,9 @@ async function logout(): Promise<void> {
 
 function reauthenticate(): void {
   localStorage.removeItem('v5notes-token')
+  localStorage.removeItem('v5notes-refresh-token')
   token.value = ''
+  refreshToken.value = ''
   sessionExpired.value = false
 }
 
@@ -532,5 +549,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

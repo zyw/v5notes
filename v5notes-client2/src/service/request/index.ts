@@ -4,6 +4,7 @@ export interface RequestConnection {
   server: string
   clientId: string
   token: string
+  refreshToken?: string
 }
 
 interface Envelope<T> {
@@ -17,8 +18,14 @@ export function createRequest(
   config: () => RequestConnection,
   onUnauthorized: () => void,
   transport: typeof fetch = fetch,
+  refresh?: () => Promise<boolean>,
 ) {
-  return async function request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
+  return async function request<T>(
+    path: string,
+    init: RequestInit = {},
+    authenticated = true,
+    retried = false,
+  ): Promise<T> {
     const { server, clientId, token } = config()
     const headers: Record<string, string> = {
       'Content-Language': 'zh_CN',
@@ -32,6 +39,13 @@ export function createRequest(
     })
     const result = normalizeIds(await response.json()) as Envelope<T> & Partial<{ rows: unknown[] }>
     if (response.status === 401 || result.code === 401) {
+      // 已认证请求在首次 401 时尝试用刷新令牌续期，成功后重放一次原请求
+      if (authenticated && !retried && refresh) {
+        const refreshed = await refresh()
+        if (refreshed) {
+          return request<T>(path, init, authenticated, true)
+        }
+      }
       onUnauthorized()
       throw new Error(result.msg || '登录已过期，请重新登录')
     }

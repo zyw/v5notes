@@ -1,0 +1,284 @@
+package xin.v5ai.common.push.core;
+
+import cn.hutool.core.map.MapUtil;
+import lombok.extern.slf4j.Slf4j;
+import xin.v5ai.common.core.utils.ThreadUtils;
+import xin.v5ai.common.json.utils.JsonUtils;
+import xin.v5ai.common.push.constant.MessageConstants;
+import xin.v5ai.common.push.dto.PushDTO;
+import xin.v5ai.common.push.properties.MessageProperties;
+import xin.v5ai.common.redis.utils.RedisUtils;
+import xin.v5ai.system.api.domain.PushPayloadDTO;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
+/**
+ * 管理 Server-Sent Events (SSE) 连接
+ *
+ * @author Lion Li
+ */
+@Slf4j
+public class SseEmitterSessionManager implements PushSessionManager {
+
+    private final static Map<Long, Map<String, SseEmitter>> USER_TOKEN_EMITTERS = new ConcurrentHashMap<>();
+
+    private final MessageProperties messageProperties;
+
+    /**
+     * 构造 SSE 会话管理器并启动心跳检测。
+     *
+     * @param scheduledExecutorService 定时任务线程池
+     * @param messageProperties        消息推送配置
+     */
+    public SseEmitterSessionManager(ScheduledExecutorService scheduledExecutorService, MessageProperties messageProperties) {
+        this.messageProperties = messageProperties;
+        // 定时执行 SSE 心跳检测
+        scheduledExecutorService.scheduleWithFixedDelay(
+            this::sseMonitor,
+            messageProperties.getHeartbeatInterval(),
+            messageProperties.getHeartbeatInterval(),
+            TimeUnit.SECONDS
+        );
+    }
+
+    /**
+     * 建立与指定用户的 SSE 连接
+     *
+     * @param userId 用户的唯一标识符，用于区分不同用户的连接
+     * @param token  用户的唯一令牌，用于识别具体的连接
+     * @return 返回一个 SseEmitter 实例，客户端可以通过该实例接收 SSE 事件
+     */
+    public SseEmitter connect(Long userId, String token) {
+        SseEmitter emitter = new SseEmitter(messageProperties.getSseTimeout());
+        emitter.onCompletion(() -> removeEmitter(userId, token, emitter));
+        emitter.onTimeout(() -> removeEmitter(userId, token, emitter));
+        emitter.onError(e -> removeEmitter(userId, token, emitter));
+
+        AtomicReference<SseEmitter> oldEmitter = new AtomicReference<>();
+        USER_TOKEN_EMITTERS.compute(userId, (id, emitters) -> {
+            if (emitters == null) {
+                emitters = new ConcurrentHashMap<>();
+            }
+            oldEmitter.set(emitters.put(token, emitter));
+            return emitters;
+        });
+        if (oldEmitter.get() != null) {
+            sendKickedMessage(oldEmitter.get());
+            oldEmitter.get().complete();
+        }
+
+        try {
+            // 向客户端发送一条连接成功的事件
+            emitter.send(SseEmitter.event().comment("connected"));
+        } catch (IOException e) {
+            removeEmitter(userId, token, emitter);
+            emitter.complete();
+        }
+        return emitter;
+    }
+
+    private void removeEmitter(Long userId, String token, SseEmitter emitter) {
+        USER_TOKEN_EMITTERS.computeIfPresent(userId, (id, emitters) -> {
+            emitters.remove(token, emitter);
+            return emitters.isEmpty() ? null : emitters;
+        });
+    }
+
+    /**
+     * 通知旧连接已被同 token 新连接替换。
+     *
+     * @param emitter 旧 SSE 连接
+     */
+    private void sendKickedMessage(SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event()
+                .name("message")
+                .data(MessageConstants.KICKED));
+        } catch (Exception ignore) {
+            // 旧连接可能已断开，忽略通知失败
+        }
+    }
+
+    /**
+     * 断开指定用户的 SSE 连接
+     *
+     * @param userId 用户的唯一标识符，用于区分不同用户的连接
+     * @param token  用户的唯一令牌，用于识别具体的连接
+     */
+    public void disconnect(Long userId, String token) {
+        if (userId == null || token == null) {
+            return;
+        }
+        AtomicReference<SseEmitter> removed = new AtomicReference<>();
+        USER_TOKEN_EMITTERS.computeIfPresent(userId, (id, emitters) -> {
+            removed.set(emitters.remove(token));
+            return emitters.isEmpty() ? null : emitters;
+        });
+        SseEmitter sseEmitter = removed.get();
+        if (sseEmitter != null) {
+            try {
+                sseEmitter.send(SseEmitter.event().comment("disconnected"));
+            } catch (Exception ignore) {
+            }
+            sseEmitter.complete();
+        }
+    }
+
+    /**
+     * 执行 SSE 心跳检测并清理失效连接。
+     */
+    public void sseMonitor() {
+        final SseEmitter.SseEventBuilder heartbeat = SseEmitter.event().comment("heartbeat");
+        USER_TOKEN_EMITTERS.forEach((userId, emitterMap) -> {
+            emitterMap.entrySet().removeIf(entry -> {
+                try {
+                    entry.getValue().send(heartbeat);
+                    return false;
+                } catch (Exception ex) {
+                    try {
+                        entry.getValue().complete();
+                    } catch (Exception ignore) {
+                        // 忽略重复关闭异常
+                    }
+                    return true; // 发送失败 → 移除该连接
+                }
+            });
+
+            USER_TOKEN_EMITTERS.computeIfPresent(userId, (id, current) -> current.isEmpty() ? null : current);
+        });
+    }
+
+    /**
+     * 订阅 SSE 广播主题消息。
+     *
+     * @param consumer 处理SSE消息的消费者函数
+     */
+    @Override
+    public void subscribeMessage(Consumer<PushDTO> consumer) {
+        RedisUtils.subscribe(MessageConstants.MESSAGE_TOPIC, PushDTO.class, consumer);
+    }
+
+    /**
+     * 向指定用户的全部本地 SSE 会话发送消息。
+     *
+     * @param userId  要发送消息的用户id
+     * @param message 要发送的消息内容
+     */
+    public void sendMessage(Long userId, String message) {
+        Map<String, SseEmitter> emitters = USER_TOKEN_EMITTERS.get(userId);
+        if (MapUtil.isNotEmpty(emitters)) {
+            for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {
+                try {
+                    entry.getValue().send(SseEmitter.event()
+                        .name("message")
+                        .data(message));
+                } catch (Exception e) {
+                    if (emitters.remove(entry.getKey(), entry.getValue())) {
+                        entry.getValue().complete();
+                    }
+                }
+            }
+        } else {
+            USER_TOKEN_EMITTERS.computeIfPresent(userId, (id, current) -> current.isEmpty() ? null : current);
+        }
+    }
+
+    /**
+     * 向指定用户的全部本地 SSE 会话发送统一 JSON 消息。
+     *
+     * @param userId  要发送消息的用户id
+     * @param payload 要发送的消息体
+     */
+    @Override
+    public void sendMessage(Long userId, PushPayloadDTO payload) {
+        if (payload == null) {
+            return;
+        }
+        sendMessage(userId, JsonUtils.toJsonString(payload));
+    }
+
+    /**
+     * 向指定用户的全部本地 SSE 会话发送统一 JSON 消息。
+     *
+     * @param userId  要发送消息的用户id
+     * @param pushDTO 要发送的消息内容
+     */
+    public void sendMessage(Long userId, PushDTO pushDTO) {
+        if (pushDTO == null) {
+            return;
+        }
+        sendMessage(userId, pushDTO.getPayload());
+    }
+
+    /**
+     * 向当前节点所有 SSE 会话发送消息。
+     *
+     * @param message 要发送的消息内容
+     */
+    public void sendMessage(String message) {
+        List<Long> userIds = new ArrayList<>(USER_TOKEN_EMITTERS.keySet());
+        Runnable[] sendTasks = userIds.stream()
+            .map(userId -> (Runnable) () -> sendMessage(userId, message))
+            .toArray(Runnable[]::new);
+        ThreadUtils.virtualInvokeAll(sendTasks);
+    }
+
+    /**
+     * 向当前节点所有 SSE 会话发送统一 JSON 消息。
+     *
+     * @param payload 要发送的消息体
+     */
+    @Override
+    public void sendMessage(PushPayloadDTO payload) {
+        if (payload == null) {
+            return;
+        }
+        sendMessage(JsonUtils.toJsonString(payload));
+    }
+
+    /**
+     * 发布 SSE 订阅消息。
+     *
+     * @param pushDTO 要发布的SSE消息对象
+     */
+    @Override
+    public void publishMessage(PushDTO pushDTO) {
+        if (pushDTO == null || pushDTO.getPayload() == null) {
+            return;
+        }
+        RedisUtils.publish(MessageConstants.MESSAGE_TOPIC, pushDTO, consumer -> log.info(
+            "发送主题订阅消息topic:{} userIds:{} message:{}",
+            MessageConstants.MESSAGE_TOPIC,
+            pushDTO.getUserIds(),
+            pushDTO.getPayload() == null ? null : pushDTO.getPayload().getMessage()
+        ));
+    }
+
+    /**
+     * 发布 SSE 广播消息。
+     *
+     * @param message 要发布的消息内容
+     */
+    public void publishAll(String message) {
+        publishAll(PushPayloadDTO.of("message", "backend", message, null));
+    }
+
+    /**
+     * 发布 SSE 广播 JSON 消息。
+     *
+     * @param payload 要发布的消息体
+     */
+    @Override
+    public void publishAll(PushPayloadDTO payload) {
+        publishMessage(PushDTO.broadcast(payload));
+    }
+}

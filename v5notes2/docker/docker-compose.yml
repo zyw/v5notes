@@ -1,0 +1,63 @@
+services:
+  mysql:
+    container_name: v5notes2-mysql
+    image: mysql:8.4.0
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123#}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-v5notes2}
+    volumes:
+      - ./mysql/data/:/var/lib/mysql/
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ../script/sql/ry_vue.sql:/mnt/sql/ry_vue.sql:ro
+      - ../script/sql/notes2.sql:/mnt/sql/notes2.sql:ro
+    ports:
+      - "3306:3306"
+    restart: on-failure:5
+    privileged: true
+
+  redis:
+    container_name: v5notes2-redis
+    image: redis:7.4.1
+    ports:
+      - "6379:6379"
+    restart: on-failure:5
+    privileged: true
+
+  v5notes2-api:
+    container_name: v5notes2-server
+    build:
+      context: ..
+      dockerfile: docker/server/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploadfile:/mnt/uploadfile
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: prod
+      ARGS: >
+        --spring.datasource.dynamic.datasource.master.url=${MASTER_DATASOURCE_URL:-jdbc:mysql://v5notes2-mysql:3306/v5notes2?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+        --spring.datasource.dynamic.datasource.master.username=${MASTER_DATASOURCE_USERNAME:-root}
+        --spring.datasource.dynamic.datasource.master.password=${MASTER_DATASOURCE_PASSWORD:-root123#}
+        --spring.datasource.dynamic.datasource.slave.url=${SLAVE_DATASOURCE_URL:-jdbc:mysql://v5notes2-mysql:3306/v5notes2?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+        --spring.datasource.dynamic.datasource.slave.username=${SLAVE_DATASOURCE_USERNAME:-root}
+        --spring.datasource.dynamic.datasource.slave.password=${SLAVE_DATASOURCE_PASSWORD:-root123#}
+        --spring.data.redis.host=${REDIS_HOST:-v5notes2-redis}
+    depends_on:
+      - mysql
+      - redis
+
+  v5notes2-admin:
+    container_name: v5notes2-admin
+    build:
+      context: ../../v5notes-admin2
+      dockerfile: Dockerfile
+    ports:
+      - "8988:8988"
+    environment:
+      - V5NOTES_SERVER_HOST=v5notes2-server
+      - V5NOTES_SERVER_PORT=8080
+    restart: on-failure:5
+    depends_on:
+      - v5notes2-api

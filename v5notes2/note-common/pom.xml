@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>v5notes2</artifactId>
+        <groupId>xin.v5ai</groupId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>note-common</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        common 通用模块
+    </description>
+
+    <modules>
+        <module>note-common-bom</module>
+        <module>note-common-social</module>
+        <module>note-common-core</module>
+        <module>note-common-doc</module>
+        <module>note-common-excel</module>
+        <module>note-common-job</module>
+        <module>note-common-log</module>
+        <module>note-common-mail</module>
+        <module>note-common-mybatis</module>
+        <module>note-common-oss</module>
+        <module>note-common-redis</module>
+        <module>note-common-satoken</module>
+        <module>note-common-security</module>
+        <module>note-common-sms</module>
+        <module>note-common-web</module>
+        <module>note-common-translation</module>
+        <module>note-common-sensitive</module>
+        <module>note-common-json</module>
+        <module>note-common-encrypt</module>
+        <module>note-common-push</module>
+    </modules>
+
+</project>

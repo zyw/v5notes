@@ -1,0 +1,6 @@
+xin.v5ai.common.translation.config.TranslationConfig
+xin.v5ai.common.translation.core.impl.DeptNameTranslationImpl
+xin.v5ai.common.translation.core.impl.DictTypeTranslationImpl
+xin.v5ai.common.translation.core.impl.OssUrlTranslationImpl
+xin.v5ai.common.translation.core.impl.UserNameTranslationImpl
+xin.v5ai.common.translation.core.impl.NicknameTranslationImpl
