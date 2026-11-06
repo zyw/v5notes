@@ -456,3 +456,68 @@ public class ClientFileCompatController {
 **验证**
 - 管理端 `pnpm build` → EXIT 0（产出 `docs-*.js` chunk）。
 - 后端 `mvn -o -DskipTests -Dmaven.test.skip=true package` → BUILD SUCCESS（130 MB）。
+
+
+## 二十、修复 Flyway V2 首次启动失败（2026-11-06）
+
+**现象**：首次启动 Flyway V1 成功，V2 报 `Column 'update_time' cannot be null`（`basics_file_config`）。
+
+**原因**：V2 种子数据 `INSERT INTO basics_file_config ... VALUES (..., sysdate(), NULL, NULL)` 把 `update_time` 显式写成 NULL，而该列是 `NOT NULL DEFAULT CURRENT_TIMESTAMP`。
+
+**修复**：MySQL 脚本改为 `sysdate(), NULL, sysdate()`，PostgreSQL 改为 `now(), NULL, now()`；已同步 `script/sql/notes2.sql`、`db/migration/mysql/V2__v5notes_schema.sql`、`db/migration/postgresql/V2__v5notes_schema.sql`，并重新打包。
+
+**恢复方式（V2 失败后数据库已有部分 DDL/数据）**：开发库建议直接重建后重启：
+```sql
+DROP DATABASE IF EXISTS \`v5notes2-dev\`;
+CREATE DATABASE \`v5notes2-dev\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+```
+重启应用即可重新执行 V1+V2。不要对已失败的 V2 直接 repair 重跑（V2 无完整回滚，dict/client 等插入可能主键冲突）。
+
+**说明**：日志中的 `Integer display width is deprecated` 是 MySQL 8 对 `int(11)` 写法的告警，不影响迁移。
+
+
+## 二十一、移除 gen_table / gen_table_column（2026-11-06）
+
+- 已在 [V1__base_schema.sql(mysql)](v5notes2/note-admin/src/main/resources/db/migration/mysql/V1__base_schema.sql) 与 [V1__base_schema.sql(postgresql)](v5notes2/note-admin/src/main/resources/db/migration/postgresql/V1__base_schema.sql) 中删除 `gen_table`、`gen_table_column` 的建表、约束/注释/索引与数据。
+- 同步清理源脚本 `script/sql/ry_vue.sql`、`postgres/postgres_ry_vue.sql`、`oracle/oracle_ry_vue.sql`、`sqlserver/sqlserver_ry_vue.sql`。
+- 代码生成模块（note-gen）此前已移除，后端无相关 Java 引用。
+- 已重新打包，jar 内 V1 的 `gen_table` 计数为 0。
+
+注意：若某环境已执行过旧版 V1，修改 V1 会改变 Flyway 校验和，需要重建库（或 flyway repair 后重新 baseline），否则启动会报 checksum 不一致。
+
+
+## 二十二、修复删除 gen_table 时误删 sys_oss 建表（2026-11-06）
+
+**现象**：V1 迁移报 `Table 'v5notes2-dev.sys_oss_config' doesn't exist`（V1 第 686 行）。
+
+**原因**：先前用正则删除 `gen_table`/`gen_table_column` 建表块时，终止符写成了 `);`；但 MySQL 建表实际以 `) engine=innodb ...;` 结尾（括号后不是分号），导致正则从 gen_table 一直匹配到后方第一个 `);`，**误删了 `sys_oss` 与 `sys_oss_config` 的建表**。
+
+**修复**：从原始 6.1.0 备份恢复 MySQL V1，重新只删除 `test_demo/test_tree/gen_table/gen_table_column` 建表块（终止符按 `^) ENGINE = InnoDB ...;` 匹配）与已删模块菜单，保留 `sys_oss`、`sys_oss_config`。已同步 `script/sql/ry_vue.sql`，并重新打包。
+
+**验证**：MySQL V1 建表数 24→20（仅少 test_demo/test_tree/gen_table/gen_table_column），`sys_oss`/`sys_oss_config` 各 1；jar 内 V1 test/gen 计数 0。PostgreSQL 及其它方言此前未受影响。
+
+**恢复**：重建开发库后重启（同前）：
+```sql
+DROP DATABASE IF EXISTS `v5notes2-dev`;
+CREATE DATABASE `v5notes2-dev` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+```
+
+
+## 二十三、RSA 密钥升级到 2048 位（2026-11-06）
+
+**现象**：启动报 `RSA公钥格式错误或密钥长度低于1024位` / `RSA密钥长度不能低于1024位，当前为512位`。
+
+**原因**：6.1.0 的 `EncryptUtils` 强制 RSA ≥ 1024 位；之前为兼容 client2 复用了旧 v5notes 的 **512 位**密钥。
+
+**修复**：生成 2048 位 RSA 密钥对（X.509 公钥 / PKCS#8 私钥，Base64 DER），并统一替换：
+- 后端 `application.yml` 的 `api-decrypt.publicKey/privateKey`
+- `v5notes-admin2/.env.development`、`.env.production` 的 `VITE_APP_RSA_PUBLIC_KEY/PRIVATE_KEY`
+- `v5notes-client2` 的 `defaultLoginKey`（登录/刷新请求加密公钥）
+
+三处必须使用同一对密钥。已重新打包后端与两个客户端（均构建成功）。
+
+**恢复**：因上次 V1 仍然失败，需再次重建开发库后重启（同前）：
+```sql
+DROP DATABASE IF EXISTS `v5notes2-dev`;
+CREATE DATABASE `v5notes2-dev` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+```

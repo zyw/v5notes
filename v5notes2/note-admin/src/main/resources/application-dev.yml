@@ -1,16 +1,3 @@
---- # 监控中心配置
-spring.boot.admin.client:
-  # 增加客户端开关
-  enabled: false
-  url: http://localhost:9090/admin
-  instance:
-    service-host-type: IP
-    metadata:
-      username: ${spring.boot.admin.client.username}
-      userpassword: ${spring.boot.admin.client.password}
-  username: @monitor.username@
-  password: @monitor.password@
-
 --- # snail-job 配置
 snail-job:
   enabled: false
@@ -27,53 +14,6 @@ snail-job:
   port: 2${server.port}
   # 客户端ip指定
   host:
-
---- # snail-ai 配置
-snail-ai:
-  # 启用客户端模式
-  enabled: false
-  # ==================== Server 连接 ====================
-  # Server 端 gRPC 地址（即 snail-ai-starter 的 snail-ai.server.grpc-port）
-  server:
-    host: 127.0.0.1
-    port: 18888
-  # ==================== 客户端配置 ====================
-  # 本客户端 gRPC 端口（Server 通过此端口分发 Chat 请求）
-  # 应用 ID（在 Server「应用管理」页面创建后获取）
-  app-id: 1
-  # 认证令牌（在 Server「应用管理」页面创建时自动生成）
-  token: SAI_566a6bfbc26e4998b4841cc927d50c5d
-  port: 3${server.port}
-  # Skill 文件临时目录
-  skill-temp-dir: /tmp/snail-ai-agent/skills
-  # ==================== Chat 嵌入模式配置 ====================
-  chat.ui.embed:
-    # 启用嵌入模式
-    enabled: true
-    # 嵌入模式下隐藏顶部栏
-    show-header: false
-    # 嵌入模式下隐藏侧边栏用户信息
-    show-sidebar-user: false
-    # 嵌入模式下隐藏智能体市场入口
-    show-agent-market: true
-    # 嵌入模式下使用紧凑输入框
-    compact-input: true
-    # 是否锁定当前智能体
-    lock-agent: false
-  # ==================== OpenAPI Client 配置 ====================
-  open-api:
-    # 启用 OpenAPI Client
-    enabled: true
-    # Server HTTP 端口
-    web-port: 8900
-    # 是否使用 HTTPS
-    https: false
-    # API 路径前缀
-    prefix: snail-ai
-    # 超时配置（毫秒）
-    connect-timeout-ms: 5000
-    read-timeout-ms: 60000
-    chat-timeout-ms: 300000
 
 --- # MyBatis Plus 配置
 mybatis-plus:
@@ -102,9 +42,9 @@ spring:
           driverClassName: com.mysql.cj.jdbc.Driver
           # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
           # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://localhost:3306/v5notes2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+          url: jdbc:mysql://192.168.10.12:3306/v5notes2-dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
           username: root
-          password: root
+          password: admin123#
 #        # 从库数据源
 #        slave:
 #          lazy: true
@@ -151,13 +91,13 @@ spring:
 spring.data:
   redis:
     # 地址
-    host: localhost
+    host: 192.168.10.13
     # 端口，默认为6379
     port: 6379
     # 数据库索引
     database: 0
     # redis 密码必须配置
-    password: ruoyi123
+    password: 9LqZSbo6JL3sfzT3jeTOrjp1cc4D1uU3
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl

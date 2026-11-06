@@ -297,7 +297,7 @@ INSERT INTO basics_file_config (id, name, storage, remark, master, config, del_f
 VALUES (1, '本地磁盘', 100, '默认本地磁盘存储',
         b'1',
         '{"@class":"xin.v5ai.basics.file.core.client.local.LocalFileClientConfig","basePath":"/mnt/uploadfile","domain":"http://127.0.0.1:8080"}',
-        '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
+        '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, sysdate());
 
 -- -----------------------------------------------------------------------------
 -- 7、校验（人工核对）
