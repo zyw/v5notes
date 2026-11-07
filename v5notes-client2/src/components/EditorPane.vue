@@ -3,7 +3,7 @@ import { listMatches, type FindOptions } from '@v5md/core'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
-const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
+const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -206,7 +206,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
               <button class="mode-switch" type="button" aria-label="切换到编辑模式" title="切换到编辑模式" @click="switchEditorMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</button>
             </template>
             <template v-else>
-              <span class="mode-label" aria-label="当前模式：编辑"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</span>
+              <button class="mode-label" type="button" :aria-pressed="sourceMode" :aria-label="sourceMode ? '切换到编辑模式' : '切换到源码模式'" :title="sourceMode ? '切换到编辑模式' : '切换到源码模式'" @click="toggleSourceMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg><span class="mode-label-text">{{ sourceMode ? '源码' : '编辑' }}</span></button>
               <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>
               <button class="mode-switch" type="button" aria-label="切换到预览模式" title="切换到预览模式" @click="switchEditorMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览</button>
               <button class="focus-toggle" type="button" :aria-pressed="focusMode" @click="focusMode = !focusMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>{{ focusMode ? '退出专注' : '专注写作' }}</button>

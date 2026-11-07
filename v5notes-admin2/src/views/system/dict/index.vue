@@ -254,7 +254,7 @@
 
           <div class="dict-table-wrap">
             <el-table
-              v-loading="dataLoading"
+              v-loading="dataLoading && dataList.length > 0"
               border
               class="data-table"
               data-full-height-table="false"
@@ -323,6 +323,10 @@
                   </el-tooltip>
                 </template>
               </el-table-column>
+            <template #empty>
+              <table-skeleton v-if="dataLoading" :rows="6" />
+              <div v-else class="empty-hint">暂无数据</div>
+            </template>
             </el-table>
           </div>
 

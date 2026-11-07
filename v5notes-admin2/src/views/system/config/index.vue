@@ -35,7 +35,7 @@
       </el-card>
     </div>
 
-    <el-card v-loading="loading" shadow="hover" class="table-panel config-panel">
+    <el-card shadow="hover" class="table-panel config-panel">
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
@@ -72,7 +72,7 @@
         </el-tabs>
 
         <div class="config-content">
-          <el-table :data="configList" :border="false" class="data-table">
+          <el-table v-loading="loading && configList.length > 0" :data="configList" :border="false" class="data-table">
             <el-table-column label="参数名称" prop="configName" min-width="160" />
             <el-table-column label="参数键名" prop="configKey" min-width="160" />
             <el-table-column label="参数键值" min-width="160">
@@ -112,7 +112,11 @@
                 </el-tooltip>
               </template>
             </el-table-column>
-          </el-table>
+          <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
+        </el-table>
           <pagination
             v-show="total > 0"
             v-model:page="queryParams.pageNum"
@@ -201,6 +205,7 @@
 </template>
 
 <script setup name="Config" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { listConfig, getConfig, delConfig, addConfig, updateConfig, updateConfigByKey, refreshCache } from '@/api/system/config';
 import { ConfigForm, ConfigQuery, ConfigVO } from '@/api/system/config/types';
 import { useLoading } from '@/hooks/async/useLoading';

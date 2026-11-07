@@ -292,7 +292,12 @@
           if (el > 3.6) slowEl.classList.add('is-on');
         }
         function setStage(n) {
-          if (isDone || isFail) return;
+          if (isDone) return;
+          // 超时只是“暂时没等到”，后续阶段真实到达说明在继续加载，回到正常流程
+          if (isFail) {
+            isFail = false;
+            root.classList.remove('is-fail');
+          }
           if (n + 1 <= completed) return;
           var now = (performance.now() - t0) / 1000;
           completed = Math.min(TOTAL, n + 1);
@@ -303,7 +308,12 @@
           setTarget((completed / TOTAL) * 100);
         }
         function done() {
-          if (isDone || isFail) return;
+          if (isDone) return;
+          // 若此前 8s 超时把页面切到了失败面，但应用随后其实加载成功了，这里要撤销失败面并正常收口
+          if (isFail) {
+            isFail = false;
+            root.classList.remove('is-fail');
+          }
           isDone = true;
           clearInterval(elapsedTimer);
           clearTimeout(watchdog);
@@ -343,7 +353,7 @@
           '502': { code: '502 · BAD GATEWAY', title: '服务暂时不可用（502）', body: '网关没能连上笔记服务（v5notes-api）。稍后重试即可。', foot: '已保留：页面骨架' }
         };
         function fail(kind) {
-          if (isDone || isFail) return;
+          if (isDone) return;
           isFail = true;
           clearInterval(elapsedTimer);
           clearTimeout(watchdog);

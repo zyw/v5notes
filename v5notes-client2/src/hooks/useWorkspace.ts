@@ -30,6 +30,7 @@ const directoryVisible = ref(defaultDirectoryVisible.value)
 const defaultTreeExpanded = ref(localStorage.getItem('v5notes-default-tree-expanded') !== 'false')
 const focusMode = ref(false)
 const editorMode = ref<'preview' | 'edit'>('preview')
+const sourceMode = ref(false)
 const defaultOutlineVisible = ref(localStorage.getItem('v5notes-default-outline-visible') !== 'false')
 const outlineVisible = ref(defaultOutlineVisible.value)
 const sidebarSearchVisible = ref(false)
@@ -252,11 +253,21 @@ function collectDirectoryIds(node: TreeNode): Set<string> {
 function applyEditorMode(instance = editorInstance.value): void {
   if (!instance) return
   const editing = editorMode.value === 'edit'
-  instance.setToolbarVisible(editing)
+  if (!editing) sourceMode.value = false
+  const source = editing && sourceMode.value
+  instance.setSourceMode(source)
+  instance.setToolbarVisible(editing && !source)
   // The workspace has its own outline sidebar. Keep the editor's built-in
   // outline disabled independently of that sidebar's visibility.
   instance.setOutlineVisible(false)
   instance.setEditable(editing)
+}
+
+function toggleSourceMode(): void {
+  if (editorMode.value !== 'edit') return
+  sourceMode.value = !sourceMode.value
+  applyEditorMode()
+  editorInstance.value?.focus()
 }
 
 function editorReady(instance: Editor): void {
@@ -367,6 +378,7 @@ async function openNote(id: string, skipGuard = false, initialMode: 'preview' | 
     if (current !== loadSequence) return
     editorInstance.value = null
     draft.load(note)
+    sourceMode.value = false
     selectedId.value = note.id
     selectedDir.value = note.dirId
     localStorage.setItem('v5notes-last-dir', note.dirId)
@@ -543,5 +555,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

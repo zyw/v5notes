@@ -91,7 +91,7 @@ html.dark .sk-block {
   text-align: center;
 }
 
-/* ---------- L3 · 局部取数：v-loading 收敛 ---------- */
+/* ---------- L3 · 局部取数：v-loading 收敛为「只遮表体 + 2px 不定长条 + 刷新提示」 ---------- */
 /* 遮罩只压在表体上：让表头浮于遮罩之上，表头始终可读；分页在表格之外，本就不受影响 */
 .el-table {
   position: relative;
@@ -103,27 +103,68 @@ html.dark .sk-block {
   }
 }
 
+/* 遮罩：更轻，且隐藏 Element 默认的圆形转圈 */
 .el-table > .el-loading-mask {
   z-index: 4;
   background: color-mix(in srgb, var(--app-surface-bg, #ffffff) 70%, transparent) !important;
   backdrop-filter: blur(2px);
 
   .el-loading-spinner {
-    margin-top: -18px;
-
-    .path {
-      stroke: var(--app-accent-strong, #1c5a48);
-    }
+    display: none;
   }
+}
+
+/* 顶部 2px 不定长进度条（Element 加载时会给目标元素加 el-loading-parent--relative） */
+/* 注意：border 表格 Element 自带 .el-table--border::after{width:1px;right:0}，
+   这里必须用 !important 覆盖宽高与定位，否则进度条会塌成 1px 竖线看不见。 */
+.el-table.el-loading-parent--relative::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: 2px !important;
+  z-index: 6 !important;
+  pointer-events: none !important;
+  background: linear-gradient(90deg, transparent 0%, var(--app-accent-strong, #1c5a48) 50%, transparent 100%) !important;
+  background-size: 40% 100% !important;
+  background-repeat: no-repeat !important;
+  animation: tbl-sweep 1.25s cubic-bezier(0.65, 0.05, 0.36, 1) infinite !important;
+}
+
+@keyframes tbl-sweep {
+  0% { background-position: -40% 0; }
+  100% { background-position: 140% 0; }
+}
+
+/* 居中的「正在刷新…」提示，替代圆环 */
+.el-table > .el-loading-mask::after {
+  content: '正在刷新…';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 36px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  background: var(--app-surface-bg, #ffffff);
+  border: 1px solid var(--app-surface-border, #e6ebe7);
+  box-shadow: 0 10px 24px rgba(20, 40, 30, 0.08);
+  font-size: 13px;
+  color: var(--app-text-title, #15241e);
+  white-space: nowrap;
 }
 
 html.dark .el-table > .el-loading-mask {
   background: color-mix(in srgb, var(--app-surface-bg, #111a16) 66%, transparent) !important;
 }
-
-/* ---------- 无障碍 ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .sk-block::after { animation: none; }
+html.dark .el-table > .el-loading-mask::after {
+  background: var(--app-surface-bg, #111a16);
+  border-color: var(--app-surface-border, rgba(255, 255, 255, 0.12));
 }
 
 /* ---------- L4 · 提交按钮：加载时宽度锁定 + 图标位转圈 ---------- */
