@@ -28,9 +28,9 @@ export function useProfile(api: NotesApi) {
       email: currentUser.value.email || '',
       sex: currentUser.value.sex || '0',
       remark: currentUser.value.remark || '',
-      avatar: currentUser.value.avatarId || '',
+      avatar: currentUser.value.avatar || '',
     })
-    profileAvatarUrl.value = currentUser.value.avatarUrl || ''
+    profileAvatarUrl.value = currentUser.value.avatar || ''
     profileError.value = ''
     profileDialogOpen.value = true
   }
@@ -52,7 +52,7 @@ export function useProfile(api: NotesApi) {
     avatarBusy.value = true
     try {
       const uploaded = await api.uploadProfileImage(file)
-      profileForm.avatar = uploaded.id
+      profileForm.avatar = uploaded.url
       profileAvatarUrl.value = uploaded.url
     } catch (cause) {
       profileError.value = cause instanceof Error ? cause.message : '头像上传失败，请重试'

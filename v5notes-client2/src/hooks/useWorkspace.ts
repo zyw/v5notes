@@ -254,7 +254,6 @@ function applyEditorMode(instance = editorInstance.value): void {
   if (!instance) return
   const editing = editorMode.value === 'edit'
   instance.setToolbarVisible(editing)
-  instance.setEditable(editing)
   // The workspace has its own outline sidebar. Keep the editor's built-in
   // outline disabled independently of that sidebar's visibility.
   instance.setOutlineVisible(false)
@@ -263,6 +262,13 @@ function applyEditorMode(instance = editorInstance.value): void {
   const element = editorHost.value?.querySelector<HTMLElement>('.v5md-host')
   if (!element) return
   element.classList.toggle('is-preview', !editing)
+  if (!editing) {
+    element.querySelectorAll('.v5-block-handle, .v5-block-menu, .v5-slash-menu, .v5-drop-line').forEach((node) => node.remove())
+  }
+  // The editor re-enables `.v5-doc` whenever it renders. Preview input is
+  // also blocked by the capture guards on `.editor-mount`.
+  const surface = element.querySelector<HTMLElement>('.v5-doc')
+  if (surface) surface.contentEditable = editing ? 'true' : 'false'
 }
 
 function editorReady(instance: Editor): void {

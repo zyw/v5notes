@@ -215,6 +215,8 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .v5md.is-preview { cursor: default; }
 .v5md.is-preview .v5-doc { user-select: text; }
 .v5md.is-preview .v5-doc :is(input, button) { pointer-events: none; }
+.v5md.is-preview :is(.v5-block-handle, .v5-block-menu, .v5-slash-menu, .v5-drop-line) { display: none; }
+.v5md :is(.v5-block-menu, .v5-slash-menu) { font-family: 'DM Sans', 'PingFang SC', sans-serif; font-size: 13px; font-weight: 400; line-height: normal; }
 .v5md .v5-toolbar { position: sticky; top: 0; z-index: 5; border-radius: 0; }
 .v5md .v5-doc { order: 2; flex: 1 1 0; min-width: 0; }
 .v5md .v5-outline { order: 3; }

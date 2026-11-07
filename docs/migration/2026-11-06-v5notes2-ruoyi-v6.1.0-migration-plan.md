@@ -567,3 +567,36 @@ CREATE DATABASE `v5notes2-dev` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
 - 已有数据库可执行：`UPDATE basics_file_config SET config = REPLACE(config, '/mnt/uploadfile', '__USER_HOME__/v5notes/upload') WHERE storage = 100 AND config LIKE '%/mnt/uploadfile%';`
 
 重启后默认文件会写入当前系统用户目录下的 `v5notes/upload`；生产环境如仍要 `/mnt/uploadfile`，在「配置管理」改回并确保目录存在即可。
+
+## 二十八、移除旧 OSS 对象存储（sys_oss / sys_oss_config）（2026-11-07）
+
+**背景**：文件存储早已迁到 `basics_file` / `basics_file_config`（`note-base-file`），但 RuoYi 6.1.0 自带的
+OSS 两张表及其整套 CRUD 仍留在库里和代码里，属于死代码。
+
+**数据库**
+- 新增 `db/migration/mysql/V5__remove_oss_tables.sql` 与 `postgresql/V5__remove_oss_tables.sql`：
+  1. `sys_user.avatar` 由 `bigint`（存 oss_id）改为 `varchar(500)`；
+  2. 删表前把老数据的 oss_id 回填成 `sys_oss.url`（只处理纯数字，避免误伤 URL）；
+  3. 清理残留的 `system:oss:*` 菜单与角色关联；
+  4. `DROP TABLE sys_oss / sys_oss_config`。
+- `script/sql/ry_vue.sql`（手工建库路径）移除两张表的建表语句与 5 条 `sys_oss_config` 种子数据。
+- 注意：删表不可逆，执行前请确认已有数据库备份；历史 OSS 文件本身仍在存储后端，只是元数据没了。
+
+**后端**
+- 删除 `SysOssController` / `SysOssConfigController` / 两个 Service 及实现 / 两个 Mapper 及 XML /
+  `SysOss`、`SysOssConfig`、`SysOssExt` / 4 个 BO-VO / `OssConfigChangeEvent`、`OssConfigChangeListener`；
+- 删除 `note-api` 的 `OssService`、`OssDTO`、`note-common-translation` 的 `OssUrlTranslationImpl` 与 `OSS_ID_TO_URL`；
+- 删除已无人引用的 `note-common-oss/factory/OssFactory` 与相关缓存常量；
+- **保留** `note-common-oss` 模块：`note-base-file` 的 `S3FileClient` 仍在使用其 `OssClient` / `OssClientConfig`。
+
+**头像语义变更**
+- `sys_user.avatar` 现在直接存 **URL 字符串**（不再存 oss_id），`SysUserVo` / `ProfileUserVo` 只保留 `avatar` 字段，
+  删除 `avatarUrl` 与 `@Translation(OSS_ID_TO_URL)`。
+
+**前端**
+- 头像上传、富文本编辑器上传改走 `POST /basics/admin/file/upload`；
+- `oss://` 内容标记的解析改查 `basics_file`（`src/utils/ossContent.ts`）；
+- 删除 `src/api/system/oss/`，`user.avatarUrl` 统一改为 `user.avatar`。
+
+**验证**：后端 `sh ./mvnw -DskipTests clean compile` BUILD SUCCESS；前端 `pnpm build` exit 0、`oxlint` 0 error；
+全仓无 `SysOss*` / `system:oss` / `/resource/oss` / `uploadOss` / `avatarUrl` 残留。

@@ -37,11 +37,11 @@ export interface UserProfile {
   email?: string
   sex?: string
   remark?: string
-  avatarId?: string
-  avatarUrl?: string
+  /** 头像地址（后端直接存 URL 字符串） */
+  avatar?: string
 }
 
-export interface UserProfileUpdate extends Omit<UserProfile, 'avatarId' | 'avatarUrl'> {
+export interface UserProfileUpdate extends Omit<UserProfile, 'avatar'> {
   avatar: string
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
-const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, editorHost, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
+const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, editorHost, selectedId, content, api, editorReady, applyEditorMode, newNote } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const outlineEntries = computed(() => {
@@ -25,7 +25,7 @@ function closeActionMenu(event: MouseEvent): void {
   activeActionMenu.value = null
 }
 
-function guardPreviewInput(event: InputEvent): void {
+function blockPreviewMutation(event: Event): void {
   if (editorMode.value !== 'preview') return
   event.preventDefault()
   event.stopPropagation()
@@ -33,6 +33,15 @@ function guardPreviewInput(event: InputEvent): void {
 
 function guardPreviewKeydown(event: KeyboardEvent): void {
   if (editorMode.value === 'preview') event.stopPropagation()
+}
+
+function guardPreviewMouseDown(event: MouseEvent): void {
+  if (editorMode.value === 'preview') event.stopPropagation()
+}
+
+function focusOutline(start: number): void {
+  editorInstance.value?.focusAt(start)
+  applyEditorMode()
 }
 
 function resizeOutline(event: PointerEvent): void {
@@ -101,7 +110,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
         <div class="editor-body">
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
-              <div ref="editorHost" class="editor-mount" @beforeinput.capture="guardPreviewInput" @keydown.capture="guardPreviewKeydown">
+              <div ref="editorHost" class="editor-mount" @beforeinput.capture="blockPreviewMutation" @paste.capture="blockPreviewMutation" @cut.capture="blockPreviewMutation" @drop.capture="blockPreviewMutation" @dragstart.capture="blockPreviewMutation" @compositionstart.capture="blockPreviewMutation" @compositionend.capture="blockPreviewMutation" @mousedown.capture="guardPreviewMouseDown" @keydown.capture="guardPreviewKeydown">
                 <V5Editor :key="selectedId" v-model="content" placeholder="开始编写…" :on-upload-image="api.upload" :on-ready="onEditorReady" />
               </div>
             </div>
@@ -111,7 +120,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
           <header class="outline-header"><h2>大纲</h2></header>
           <div class="outline-body">
             <nav class="outline-list" aria-label="大纲">
-              <button v-for="entry in outlineEntries" :key="`${entry.start}-${entry.text}`" type="button" :style="{ paddingLeft: `${(entry.depth - 1) * 12 + 8}px` }" @click="editorInstance?.focusAt(entry.start)">{{ entry.text }}</button>
+              <button v-for="entry in outlineEntries" :key="`${entry.start}-${entry.text}`" type="button" :style="{ paddingLeft: `${(entry.depth - 1) * 12 + 8}px` }" @click="focusOutline(entry.start)">{{ entry.text }}</button>
             </nav>
           </div>
           <div v-show="outlineVisible" class="outline-resize" role="separator" aria-label="调整大纲栏宽度" aria-orientation="vertical" aria-valuemin="190" aria-valuemax="520" :aria-valuenow="outlineWidth" tabindex="0" @pointerdown="startOutlineResize" @keydown="keyboardResizeOutline" />
