@@ -192,7 +192,7 @@ const emit = defineEmits(['update:modelValue', 'confirmCallBack']);
 
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
 
-const userList = ref<UserVO[]>();
+const userList = ref<UserVO[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
@@ -271,7 +271,7 @@ const getList = async () => {
   queryParams.value.userIds = prop.userIds;
   const res = await api.listUser(applyDateRange(queryParams.value));
   loading.value = false;
-  userList.value = res.data?.rows;
+  userList.value = res.data?.rows ?? [];
   total.value = res.data?.total;
 };
 

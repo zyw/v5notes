@@ -1,0 +1,230 @@
+// =============================================================================
+// 加载态统一样式：L2 表格骨架 + L3 局部取数（v-loading 收敛为「只遮表体、保留表头」）
+// 与已批准方向 2 · 薄荷工作台令牌一致；深浅两态都成立。
+// =============================================================================
+
+/* ---------- 骨架基元 ---------- */
+.sk-block {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  background: #e6efe9;
+  border-radius: 6px;
+  vertical-align: middle;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.85) 50%, transparent 82%);
+    transform: translateX(-100%);
+    animation: sk-sweep 1.6s ease-in-out infinite;
+  }
+}
+
+html.dark .sk-block {
+  background: rgba(233, 255, 246, 0.08);
+
+  &::after {
+    background: linear-gradient(100deg, transparent 18%, rgba(233, 255, 246, 0.12) 50%, transparent 82%);
+  }
+}
+
+@keyframes sk-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- L2 · 表格骨架（渲染在 el-table 的 #empty 槽内） ---------- */
+.table-skeleton {
+  width: 100%;
+  padding: 4px 0;
+}
+
+.ts-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 54px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--app-surface-border, #eef1ef);
+
+  &:last-child { border-bottom: 0; }
+}
+
+.ts-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.ts-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex: none;
+}
+
+.ts-bar {
+  display: block;
+  border-radius: 6px;
+}
+
+.el-table__empty-block {
+  width: 100% !important;
+  min-height: 300px;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.el-table__empty-text {
+  display: block;
+  width: 100%;
+  line-height: 1.5;
+}
+
+.empty-hint {
+  padding: 56px 0;
+  color: var(--app-text-muted, #5f7067);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------- L3 · 局部取数：v-loading 收敛 ---------- */
+/* 遮罩只压在表体上：让表头浮于遮罩之上，表头始终可读；分页在表格之外，本就不受影响 */
+.el-table {
+  position: relative;
+
+  /* 表头永远在 loading 遮罩之上 */
+  .el-table__header-wrapper {
+    position: relative;
+    z-index: 5; // 高于固定列的 calc(--el-table-index + 1) 与内部边框，确保整条表头浮于遮罩之上
+  }
+}
+
+.el-table > .el-loading-mask {
+  z-index: 4;
+  background: color-mix(in srgb, var(--app-surface-bg, #ffffff) 70%, transparent) !important;
+  backdrop-filter: blur(2px);
+
+  .el-loading-spinner {
+    margin-top: -18px;
+
+    .path {
+      stroke: var(--app-accent-strong, #1c5a48);
+    }
+  }
+}
+
+html.dark .el-table > .el-loading-mask {
+  background: color-mix(in srgb, var(--app-surface-bg, #111a16) 66%, transparent) !important;
+}
+
+/* ---------- 无障碍 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sk-block::after { animation: none; }
+}
+
+/* ---------- L4 · 提交按钮：加载时宽度锁定 + 图标位转圈 ---------- */
+.sb-btn .sb-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sb-btn.is-sb-loading {
+  pointer-events: none;
+  cursor: default;
+}
+/* 文案保留占位（visibility 而非 display），宽度不变；转圈绝对居中覆盖 */
+.sb-btn.is-sb-loading .sb-text {
+  visibility: hidden;
+}
+.sb-btn .sb-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.9;
+  animation: sb-spin 0.7s linear infinite;
+}
+@keyframes sb-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- L5 · 通用失败态 ---------- */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--app-text-title, #15241e);
+}
+.error-state .es-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #fbf2e0;
+  color: #8a6410;
+  margin-bottom: 14px;
+}
+.error-state .es-icon[data-kind='server'],
+.error-state .es-icon[data-kind='session'] {
+  background: #fbeeec;
+  color: #9e443c;
+}
+.error-state .es-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.error-state .es-eyebrow {
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--app-text-muted, #5f7067);
+  text-transform: uppercase;
+}
+.error-state .es-title {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.error-state .es-body {
+  margin: 8px 0 0;
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--app-text-muted, #5f7067);
+}
+.error-state .es-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+html.dark .error-state .es-icon {
+  background: rgba(217, 163, 59, 0.14);
+  color: #e6be6d;
+}
+html.dark .error-state .es-icon[data-kind='server'],
+html.dark .error-state .es-icon[data-kind='session'] {
+  background: rgba(180, 83, 75, 0.16);
+  color: #e79a92;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-btn .sb-spinner { animation: none; }
+}

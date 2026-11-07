@@ -50,7 +50,14 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" class="data-table" :data="notesList" @selection-change="handleSelectionChange">
+      <error-state
+        v-if="errorInfo"
+        :kind="errorInfo.kind"
+        :title="errorInfo.title"
+        :message="errorInfo.message"
+        @retry="getList"
+      />
+      <el-table v-else v-loading="loading && (notesList).length > 0" class="data-table" :data="notesList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="笔记名" align="left" prop="name" min-width="300" width="auto" />
         <el-table-column label="文件大小" align="center" prop="fileSize" width="150" />
@@ -71,9 +78,13 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <pagination v-show="total > 0 && !errorInfo" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <!-- 添加或修改笔记对话框 -->
@@ -117,7 +128,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="cancel">取消</el-button>
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确定</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确定</submit-button>
         </div>
       </template>
     </el-dialog>
@@ -125,6 +136,11 @@
 </template>
 
 <script setup name="NotesList" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
+import SubmitButton from '@/components/Loading/SubmitButton.vue';
+import ErrorState from '@/components/ErrorState/ErrorState.vue';
+import { classifyRequestError } from '@/utils/errorKind';
+import type { ErrorInfo } from '@/utils/errorKind';
 import { addNotes, delNotes, getNotes, listNotes, updateNotes } from '@/api/notes/notes';
 import type { NotesForm, NotesQuery, NotesVO } from '@/api/notes/notes/types';
 import { dirTree } from '@/api/notes/directory';
@@ -139,6 +155,7 @@ const dateRange = ref<any>(['', '']);
 const notesList = ref<NotesVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
+const errorInfo = ref<ErrorInfo | null>(null);
 const showSearch = ref(true);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
@@ -189,10 +206,16 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询笔记列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listNotes(addDateRange(queryParams.value, dateRange.value));
-  notesList.value = res.data?.rows ?? [];
-  total.value = res.data?.total ?? 0;
-  loading.value = false;
+  errorInfo.value = null;
+  try {
+    const res = await listNotes(addDateRange(queryParams.value, dateRange.value));
+    notesList.value = res.data?.rows ?? [];
+    total.value = res.data?.total ?? 0;
+  } catch (e) {
+    errorInfo.value = classifyRequestError(e);
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** 取消按钮 */

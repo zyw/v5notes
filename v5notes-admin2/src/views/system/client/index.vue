@@ -77,7 +77,7 @@
       </template>
 
       <el-table
-        v-loading="loading"
+        v-loading="loading && (clientList).length > 0"
         :data="clientList"
         border
         class="data-table"
@@ -167,6 +167,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -345,6 +349,7 @@
 </template>
 
 <script setup name="Client" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { listClient, getClient, delClient, addClient, updateClient, changeStatus } from '@/api/system/client';
 import { ClientVO, ClientQuery, ClientForm } from '@/api/system/client/types';
 import { useLoading } from '@/hooks/async/useLoading';
@@ -459,7 +464,7 @@ const getRuleList = (ruleList?: string[], ruleValue?: string) => {
 const getList = async () => {
   await withLoading(async () => {
     const res = await listClient(queryParams.value);
-    clientList.value = res.data?.rows;
+    clientList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

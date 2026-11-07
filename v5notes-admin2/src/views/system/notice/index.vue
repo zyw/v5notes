@@ -78,7 +78,7 @@
       </template>
 
       <el-table
-        v-loading="loading"
+        v-loading="loading && (noticeList).length > 0"
         border
         class="data-table"
         :data="noticeList"
@@ -139,6 +139,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -266,6 +270,7 @@
 </template>
 
 <script setup name="Notice" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listNotice, getNotice, delNotice, addNotice, updateNotice } from '@/api/system/notice';
 import { NoticeForm, NoticeQuery, NoticeVO } from '@/api/system/notice/types';
@@ -351,7 +356,7 @@ const {
 const getList = async () => {
   await withLoading(async () => {
     const res = await listNotice(queryParams.value);
-    noticeList.value = res.data?.rows;
+    noticeList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

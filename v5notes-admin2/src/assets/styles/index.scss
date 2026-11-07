@@ -23,4 +23,5 @@
 @use './components/search-panel';
 
 @use './vendors/element-plus/index' as element-custom;
+@use './components/loading-states';
 @use 'animate.css';

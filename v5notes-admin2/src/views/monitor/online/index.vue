@@ -40,7 +40,7 @@
         </div>
       </template>
       <el-table
-        v-loading="loading"
+        v-loading="loading && (onlineList.slice((queryParams.pageNum - 1) * queryParams.pageSize, queryParams.pageNum * queryParams.pageSize)).length > 0"
         border
         class="data-table"
         :data="
@@ -84,6 +84,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" avatar />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -97,6 +101,7 @@
 </template>
 
 <script setup name="Online" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { to } from 'await-to-js';
 import { forceLogout, list as initData } from '@/api/monitor/online';
 import { OnlineQuery, OnlineVO } from '@/api/monitor/online/types';
@@ -123,7 +128,7 @@ const queryParams = ref<OnlineQuery>({
 const getList = async () => {
   loading.value = true;
   const res = await initData(queryParams.value);
-  onlineList.value = res.data?.rows;
+  onlineList.value = res.data?.rows ?? [];
   total.value = res.data?.total;
   loading.value = false;
 };

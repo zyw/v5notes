@@ -197,7 +197,29 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .outline-sidebar { position: absolute; z-index: 10; inset: 0 0 0 auto; width: var(--outline-width, 270px); min-width: 0; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid #e4e6df; background: #f5f6f1; transition: width .2s ease, opacity .18s ease; }
 .outline-sidebar.is-hidden { width: 0; border-left: 0; opacity: 0; pointer-events: none; }
 .outline-header { min-height: var(--panel-header-height); flex: 0 0 var(--panel-header-height); display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #e4e6df; background: #f5f6f1; }
-.outline-header h2 { margin: 0; color: #6b756d; font: 600 12px/1.4 'DM Sans', 'PingFang SC', sans-serif; letter-spacing: .08em; }
+.outline-tabs { display: flex; gap: 2px; min-width: 0; }
+.outline-tabs button { padding: 4px 8px; border-radius: 6px; color: #6b756d; font: 600 12px/1.4 'DM Sans', 'PingFang SC', sans-serif; letter-spacing: .08em; }
+.outline-tabs button[aria-selected="true"] { color: #315b4a; background: #e7eee8; }
+.outline-body.is-find { display: flex; flex-direction: column; overflow: hidden; }
+.find-panel { display: flex; flex: 1; flex-direction: column; gap: 6px; min-height: 0; padding: 10px 10px 0; color: #34453a; font-family: 'DM Sans', 'PingFang SC', sans-serif; font-size: 13px; font-weight: 400; line-height: normal; }
+.find-fields { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 4px; align-items: start; }
+.find-field-stack { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; align-items: center; min-width: 0; }
+.find-panel input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #d5ddd4; border-radius: 6px; background: #fff; color: #27342d; font: inherit; }
+.find-panel input:focus { border-color: #7fa18a; box-shadow: 0 0 0 3px #789b8424; }
+.find-panel input:disabled { color: #89958b; background: #f3f4f0; }
+.find-options, .replace-actions { display: flex; flex: 0 0 auto; gap: 2px; }
+.find-toggle, .find-step, .find-expand { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; color: #5d6b61; font: 600 11px/1 'DM Sans', 'PingFang SC', sans-serif; }
+.find-expand { height: 28px; }
+.find-step svg, .find-expand svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.find-toggle.is-on, .find-toggle:hover, .find-step:hover, .find-expand:hover, .replace-actions button:hover:not(:disabled), .find-hits button:hover { background: #e1ece4; color: #315b4a; }
+.find-status { min-height: 16px; margin: 0 2px; color: #7d8b80; font-size: 12px; text-align: right; }
+.replace-actions button { flex: 0 0 auto; padding: 4px 6px; border-radius: 5px; color: #315b4a; font: inherit; font-size: 12px; }
+.find-hits { flex: 1; min-height: 0; margin: 0 -4px; padding: 0 4px 8px; overflow: auto; list-style: none; }
+.find-hits button { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 4px 6px; border-radius: 5px; color: #34453a; text-align: left; font: inherit; font-size: 12px; }
+.find-hits button.is-current { background: #e7eee8; }
+.find-hit-index { flex: 0 0 1.5em; color: #8b978e; font-variant-numeric: tabular-nums; }
+.find-hit-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-hit-line mark { padding: 0 1px; border-radius: 2px; background: #f3e3a2; color: inherit; }
 .outline-body { flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .outline-list { width: 100%; min-height: 100%; padding: 12px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
 .outline-list button { display: block; width: 100%; margin: 0; padding: 4px 8px; border: 0; border-radius: 5px; background: transparent; color: #34453a; text-align: left; cursor: pointer; font: inherit; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -212,10 +234,6 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .v5md { min-height: 100%; background: #fffefa; color: #29352e; font-family: 'Noto Serif SC', 'Songti SC', serif; }
 .v5md .v5-doc { min-height: calc(100vh - 92px); padding: 24px clamp(8px, 1.2vw, 20px) 90px; }
 .edit-scroll .v5md .v5-doc { min-height: 0; }
-.v5md.is-preview { cursor: default; }
-.v5md.is-preview .v5-doc { user-select: text; }
-.v5md.is-preview .v5-doc :is(input, button) { pointer-events: none; }
-.v5md.is-preview :is(.v5-block-handle, .v5-block-menu, .v5-slash-menu, .v5-drop-line) { display: none; }
 .v5md :is(.v5-block-menu, .v5-slash-menu) { font-family: 'DM Sans', 'PingFang SC', sans-serif; font-size: 13px; font-weight: 400; line-height: normal; }
 .v5md .v5-toolbar { position: sticky; top: 0; z-index: 5; border-radius: 0; }
 .v5md .v5-doc { order: 2; flex: 1 1 0; min-width: 0; }

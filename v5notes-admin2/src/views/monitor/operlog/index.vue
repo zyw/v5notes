@@ -112,7 +112,7 @@
 
       <el-table
         ref="operLogTableRef"
-        v-loading="loading"
+        v-loading="loading && (operlogList).length > 0"
         :data="operlogList"
         class="data-table"
         border
@@ -190,6 +190,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -206,6 +210,7 @@
 </template>
 
 <script setup name="Operlog" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { list, delOperlog, cleanOperlog } from '@/api/monitor/operlog';
 import { OperLogForm, OperLogQuery, OperLogVO } from '@/api/monitor/operlog/types';
 import { useLoading } from '@/hooks/async/useLoading';
@@ -292,7 +297,7 @@ const {
 const getList = async () => {
   await withLoading(async () => {
     const res = await list(applyDateRange(queryParams.value));
-    operlogList.value = res.data?.rows;
+    operlogList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

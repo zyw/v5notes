@@ -94,7 +94,7 @@
 
       <el-table
         ref="loginInfoTableRef"
-        v-loading="loading"
+        v-loading="loading && (loginInfoList).length > 0"
         :data="loginInfoList"
         class="data-table"
         :default-sort="defaultSort"
@@ -140,6 +140,10 @@
             <span>{{ parseTime(scope.row.loginTime) }}</span>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -154,6 +158,7 @@
 </template>
 
 <script setup name="LoginInfo" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { list, delLoginInfo, cleanLoginInfo, unlockLoginInfo } from '@/api/monitor/logininfo';
 import { LoginInfoQuery, LoginInfoVO } from '@/api/monitor/logininfo/types';
 import { useLoading } from '@/hooks/async/useLoading';
@@ -201,7 +206,7 @@ const selectName = computed(() => selectedRows.value.map(item => item.userName))
 const getList = async () => {
   await withLoading(async () => {
     const res = await list(applyDateRange(queryParams.value));
-    loginInfoList.value = res.data?.rows;
+    loginInfoList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

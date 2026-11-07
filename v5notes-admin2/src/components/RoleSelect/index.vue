@@ -127,7 +127,7 @@ const emit = defineEmits(['update:modelValue', 'confirmCallBack']);
 
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
 
-const roleList = ref<RoleVO[]>();
+const roleList = ref<RoleVO[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
@@ -174,7 +174,7 @@ const computedIds = data => {
 const getList = () => {
   loading.value = true;
   api.listRole(applyDateRange(queryParams.value)).then(res => {
-    roleList.value = res.data?.rows;
+    roleList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
     loading.value = false;
   });

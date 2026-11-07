@@ -37,7 +37,7 @@
               <template #reference>
                 <el-badge :value="noticeStore.unreadCount.value > 0 ? noticeStore.unreadCount.value : ''" :max="99">
                   <div class="right-menu-item hover-effect message-trigger">
-                    <svg-icon icon-class="message" />
+                    <svg-icon icon-class="bell" />
                   </div>
                 </el-badge>
               </template>
@@ -218,13 +218,19 @@ const handleCommand = (command: string) => {
 }
 
 :deep(.el-badge__content.is-fixed) {
-  top: 8px;
-  right: 6px;
+  top: 6px;
+  right: 14px;
+  border: none;
+  font-weight: 600;
 }
 
 :deep(.el-badge) {
   display: inline-flex;
   align-items: center;
+  --el-badge-size: 14px;
+  --el-badge-font-size: 9px;
+  --el-badge-padding: 3px;
+  --el-badge-radius: 7px;
 }
 
 :deep(.el-dropdown) {
@@ -271,7 +277,7 @@ const handleCommand = (command: string) => {
     background: transparent;
     color: var(--app-accent-strong);
     flex-shrink: 0;
-    border: 1px solid var(--app-surface-border);
+    border: none;
   }
 
   .hamburger-container {
@@ -350,9 +356,9 @@ const handleCommand = (command: string) => {
       :deep(.svg-icon),
       :deep(svg),
       :deep(.el-icon) {
-        width: 16px;
-        height: 16px;
-        font-size: 16px;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
         display: block;
       }
 

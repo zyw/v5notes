@@ -61,7 +61,14 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" class="data-table" :data="directoryList" @selection-change="handleSelectionChange">
+      <error-state
+        v-if="errorInfo"
+        :kind="errorInfo.kind"
+        :title="errorInfo.title"
+        :message="errorInfo.message"
+        @retry="getList"
+      />
+      <el-table v-else v-loading="loading && (directoryList).length > 0" class="data-table" :data="directoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="ID" align="center" prop="id" v-if="true" />
         <el-table-column label="目录名称" align="center" prop="name" />
@@ -81,9 +88,13 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <pagination v-show="total > 0 && !errorInfo" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <!-- 添加或修改目录对话框 -->
@@ -133,7 +144,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="cancel">取消</el-button>
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确定</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确定</submit-button>
         </div>
       </template>
     </el-dialog>
@@ -141,6 +152,11 @@
 </template>
 
 <script setup name="Directory" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
+import SubmitButton from '@/components/Loading/SubmitButton.vue';
+import ErrorState from '@/components/ErrorState/ErrorState.vue';
+import { classifyRequestError } from '@/utils/errorKind';
+import type { ErrorInfo } from '@/utils/errorKind';
 import { addDirectory, delDirectory, dirTree, getDirectory, listDirectory, updateDirectory } from '@/api/notes/directory';
 import type { DirectoryForm, DirectoryQuery, DirectoryVO, NotesTreeVo } from '@/api/notes/directory/types';
 import animateConfig from '@/animate';
@@ -153,6 +169,7 @@ const dateRange = ref<any>(['', '']);
 const directoryList = ref<DirectoryVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
+const errorInfo = ref<ErrorInfo | null>(null);
 const showSearch = ref(true);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
@@ -202,10 +219,16 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询目录列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listDirectory(addDateRange(queryParams.value, dateRange.value));
-  directoryList.value = res.data?.rows ?? [];
-  total.value = res.data?.total ?? 0;
-  loading.value = false;
+  errorInfo.value = null;
+  try {
+    const res = await listDirectory(addDateRange(queryParams.value, dateRange.value));
+    directoryList.value = res.data?.rows ?? [];
+    total.value = res.data?.total ?? 0;
+  } catch (e) {
+    errorInfo.value = classifyRequestError(e);
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** 取消按钮 */

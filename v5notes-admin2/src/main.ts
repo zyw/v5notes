@@ -20,6 +20,9 @@ import './permission';
 import router from './router';
 import store from './store';
 
+// L0 启动舱：应用脚本已开始执行 = 「载入应用脚本」阶段完成
+(window as any).v5Boot?.scriptLoaded?.();
+
 VxeUI.setConfig({
   zIndex: 999999
 });

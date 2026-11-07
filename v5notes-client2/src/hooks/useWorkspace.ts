@@ -45,7 +45,6 @@ const directories = ref<TreeNode[]>([])
 const notes = ref<Note[]>([])
 const draft = reactive(new Draft())
 const editorInstance = shallowRef<Editor | null>(null)
-const editorHost = ref<HTMLElement | null>(null)
 const promptVisible = ref(false)
 const dialog = ref<DialogState | null>(null)
 const dialogValue = ref('')
@@ -257,18 +256,7 @@ function applyEditorMode(instance = editorInstance.value): void {
   // The workspace has its own outline sidebar. Keep the editor's built-in
   // outline disabled independently of that sidebar's visibility.
   instance.setOutlineVisible(false)
-  // V5Editor applies both `.v5md-host` and `.v5md` to its editable root.
-  // The root reference must be available from EditorPane for this lookup.
-  const element = editorHost.value?.querySelector<HTMLElement>('.v5md-host')
-  if (!element) return
-  element.classList.toggle('is-preview', !editing)
-  if (!editing) {
-    element.querySelectorAll('.v5-block-handle, .v5-block-menu, .v5-slash-menu, .v5-drop-line').forEach((node) => node.remove())
-  }
-  // The editor re-enables `.v5-doc` whenever it renders. Preview input is
-  // also blocked by the capture guards on `.editor-mount`.
-  const surface = element.querySelector<HTMLElement>('.v5-doc')
-  if (surface) surface.contentEditable = editing ? 'true' : 'false'
+  instance.setEditable(editing)
 }
 
 function editorReady(instance: Editor): void {
@@ -555,5 +543,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, editorHost, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

@@ -64,7 +64,7 @@
           </el-card>
         </el-col>
         <el-col :span="20" :xs="24">
-          <el-table v-loading="loading" class="data-table" :data="fileList" @selection-change="handleSelectionChange">
+          <el-table v-loading="loading && (fileList).length > 0" class="data-table" :data="fileList" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column label="文件名称" align="left" prop="name" show-overflow-tooltip>
               <template #default="{ row }">
@@ -95,6 +95,10 @@
                 </div>
               </template>
             </el-table-column>
+            <template #empty>
+              <table-skeleton v-if="loading" :rows="8" />
+              <div v-else class="empty-hint">暂无数据</div>
+            </template>
           </el-table>
           <pagination
             v-show="total > 0"
@@ -140,6 +144,7 @@
 </template>
 
 <script setup name="Docs" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Document, Files, Folder, Memo, More, Picture, UploadFilled } from '@element-plus/icons-vue';

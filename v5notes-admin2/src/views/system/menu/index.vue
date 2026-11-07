@@ -61,7 +61,7 @@
 
       <el-table
         ref="menuTableRef"
-        v-loading="loading"
+        v-loading="loading && (menuList).length > 0"
         class="data-table"
         :data="menuList"
         row-key="menuId"
@@ -126,6 +126,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
     </el-card>
 
@@ -384,7 +388,7 @@
       />
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitDeleteForm" :loading="deleteLoading">确 定</el-button>
+          <submit-button type="primary" @click="submitDeleteForm" :loading="deleteLoading">确 定</submit-button>
           <el-button @click="cancelCascade">取 消</el-button>
         </div>
       </template>
@@ -393,6 +397,8 @@
 </template>
 
 <script setup name="Menu" lang="ts">
+import SubmitButton from '@/components/Loading/SubmitButton.vue';
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { addMenu, cascadeDelMenu, delMenu, getMenu, listMenu, updateMenu } from '@/api/system/menu';
 import { MenuForm, MenuQuery, MenuVO } from '@/api/system/menu/types';
 import { MenuTypeEnum } from '@/enums/MenuTypeEnum';

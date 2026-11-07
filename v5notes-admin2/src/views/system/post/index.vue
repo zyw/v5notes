@@ -126,7 +126,7 @@
             </div>
           </template>
           <el-table
-            v-loading="loading"
+            v-loading="loading && (postList).length > 0"
             border
             class="data-table"
             :data="postList"
@@ -171,6 +171,10 @@
                 </el-tooltip>
               </template>
             </el-table-column>
+            <template #empty>
+              <table-skeleton v-if="loading" :rows="8" />
+              <div v-else class="empty-hint">暂无数据</div>
+            </template>
           </el-table>
 
           <pagination
@@ -287,6 +291,7 @@
 </template>
 
 <script setup name="Post" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { DeptTreeVO, DeptVO } from '@/api/system/dept/types';
 import { listPost, addPost, delPost, getPost, updatePost, deptTreeSelect } from '@/api/system/post';
 import { PostForm, PostQuery, PostVO } from '@/api/system/post/types';
@@ -390,7 +395,7 @@ const handleNodeClick = (data: DeptVO) => {
 const getList = async () => {
   await withLoading(async () => {
     const res = await listPost(queryParams.value);
-    postList.value = res.data?.rows;
+    postList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

@@ -127,7 +127,7 @@
 
           <el-table
             ref="userTableRef"
-            v-loading="loading"
+            v-loading="loading && userList.length > 0"
             class="data-table"
             :data="userList"
             @selection-change="handleSelectionChange"
@@ -238,6 +238,10 @@
                 </el-tooltip>
               </template>
             </el-table-column>
+            <template #empty>
+              <table-skeleton v-if="loading" :rows="8" avatar />
+              <div v-else class="empty-hint">暂无数据</div>
+            </template>
           </el-table>
 
           <pagination
@@ -610,6 +614,7 @@
 </template>
 
 <script setup name="User" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { to } from 'await-to-js';
 import { getConfigKey } from '@/api/system/config';
 import { DeptTreeVO, DeptVO } from '@/api/system/dept/types';
@@ -640,7 +645,7 @@ import { parseTime, selectDictLabel } from '@/utils/ruoyi';
 const { sys_normal_disable, sys_user_gender, user_type } = toRefs<any>(
   useDict('sys_normal_disable', 'sys_user_gender', 'user_type')
 );
-const userList = ref<UserVO[]>();
+const userList = ref<UserVO[]>([]);
 const { loading, withLoading } = useLoading(true);
 const { showSearch } = useSearchToggle();
 const total = ref(0);
@@ -782,7 +787,7 @@ const statSelected = computed(() => ids.value.length);
 const getList = async () => {
   await withLoading(async () => {
     const res = await api.listUser(applyDateRange(queryParams.value));
-    userList.value = res.data?.rows;
+    userList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

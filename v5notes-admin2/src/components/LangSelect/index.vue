@@ -40,8 +40,8 @@ const handleLanguageChange = (lang: any) => {
   height: 100%;
 
   :deep(.svg-icon) {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 }
 </style>

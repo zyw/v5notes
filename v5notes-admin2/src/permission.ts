@@ -2,6 +2,7 @@ import { to as tos } from 'await-to-js';
 import { ElMessage } from 'element-plus/es';
 import * as NProgressModule from 'nprogress';
 import 'nprogress/nprogress.css';
+import '@/assets/styles/vendors/_nprogress-mint.scss';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
 import { useUserStore } from '@/store/modules/user';
@@ -43,8 +44,12 @@ router.beforeEach(async (to, from) => {
           }
           return { path: '/' };
         } else {
+          // L0 启动舱：「校验会话」完成
+          (window as any).v5Boot?.setStage?.(2);
           isRelogin.show = false;
           const accessRoutes = await usePermissionStore().generateRoutes();
+          // L0 启动舱：「生成菜单与路由」完成
+          (window as any).v5Boot?.setStage?.(3);
           // 根据roles权限生成可访问的路由表
           accessRoutes.forEach(route => {
             if (!isHttp(route.path)) {
@@ -80,4 +85,9 @@ router.beforeEach(async (to, from) => {
 
 router.afterEach(() => {
   NProgress.done();
+  // L0 启动舱：首屏导航完成后收口；等两帧确保内容已 paint 再淡出
+  const boot = (window as any).v5Boot;
+  if (boot?.done) {
+    requestAnimationFrame(() => requestAnimationFrame(() => boot.done()));
+  }
 });

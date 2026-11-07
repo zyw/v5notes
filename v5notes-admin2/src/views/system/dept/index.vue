@@ -61,7 +61,7 @@
 
       <el-table
         ref="deptTableRef"
-        v-loading="loading"
+        v-loading="loading && (deptList).length > 0"
         class="data-table"
         :data="deptList"
         row-key="deptId"
@@ -113,6 +113,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
     </el-card>
 
@@ -230,6 +234,7 @@
 </template>
 
 <script setup name="Dept" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { listDept, getDept, delDept, addDept, updateDept, listDeptExcludeChild } from '@/api/system/dept';
 import { DeptForm, DeptQuery, DeptVO } from '@/api/system/dept/types';
 import { listUserByDeptId } from '@/api/system/user';

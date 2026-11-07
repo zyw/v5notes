@@ -143,7 +143,7 @@ const { ids: userIds, multiple, handleSelectionChange } = useTableSelection<User
 const getList = async () => {
   await withLoading(async () => {
     const res = await allocatedUserList(queryParams);
-    userList.value = res.data?.rows;
+    userList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

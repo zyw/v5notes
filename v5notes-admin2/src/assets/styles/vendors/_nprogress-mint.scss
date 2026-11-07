@@ -1,0 +1,17 @@
+/* NProgress 品牌化：替代默认 #29d 亮蓝条（方向 2 · 薄荷墨绿） */
+#nprogress .bar {
+  background: #1c5a48 !important;
+  height: 2px !important;
+}
+#nprogress .peg {
+  box-shadow: 0 0 10px #1c5a48, 0 0 5px #1c5a48 !important;
+}
+#nprogress .spinner {
+  display: none !important;
+}
+html.dark #nprogress .bar {
+  background: #4fbf94 !important;
+}
+html.dark #nprogress .peg {
+  box-shadow: 0 0 10px #4fbf94, 0 0 5px #4fbf94 !important;
+}

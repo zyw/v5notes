@@ -90,7 +90,7 @@
       <el-table
         border
         class="data-table"
-        v-loading="loading"
+        v-loading="loading && roleList.length > 0"
         :data="roleList"
         @selection-change="handleSelectionChange"
       >
@@ -160,6 +160,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination
@@ -506,6 +510,7 @@
 </template>
 
 <script setup name="Role" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { useRouter } from 'vue-router';
 import { roleMenuTreeselect } from '@/api/system/menu';
 import { MenuTreeOption, RoleMenuButtonOption, RoleMenuTree } from '@/api/system/menu/types';
@@ -554,7 +559,7 @@ interface RoleMenuPermissionMeta {
   menuButtonIdsMap: Map<string, Array<string | number>>;
 }
 
-const roleList = ref<RoleVO[]>();
+const roleList = ref<RoleVO[]>([]);
 const { loading, withLoading } = useLoading(true);
 const { showSearch } = useSearchToggle();
 const total = ref(0);
@@ -992,7 +997,7 @@ const { dialog, openDialog, closeDialog, setTitle } = useDialogState();
 const getList = () => {
   withLoading(async () => {
     const res = await listRole(applyDateRange(queryParams.value));
-    roleList.value = res.data?.rows;
+    roleList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };

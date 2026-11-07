@@ -96,7 +96,7 @@
           <div class="dict-table-wrap">
             <el-table
               ref="typeTableRef"
-              v-loading="typeLoading"
+              v-loading="typeLoading && (typeList).length > 0"
               border
               class="data-table"
               data-full-height-table="false"
@@ -150,6 +150,10 @@
                   </el-tooltip>
                 </template>
               </el-table-column>
+              <template #empty>
+                <table-skeleton v-if="typeLoading" :rows="8" />
+                <div v-else class="empty-hint">暂无数据</div>
+              </template>
             </el-table>
           </div>
 
@@ -471,6 +475,7 @@
 </template>
 
 <script setup name="Dict" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { listData, getData, delData, addData, updateData } from '@/api/system/dict/data';
 import { DictDataForm, DictDataQuery, DictDataVO } from '@/api/system/dict/data/types';
 import { listType, getType, delType, addType, updateType, refreshCache } from '@/api/system/dict/type';
@@ -649,7 +654,7 @@ const listClassLabel = computed(
 const getTypeList = () => {
   typeLoading.value = true;
   listType(typeQueryParams.value).then(res => {
-    typeList.value = res.data?.rows;
+    typeList.value = res.data?.rows ?? [];
     typeTotal.value = res.data?.total;
     typeLoading.value = false;
     ensureCurrentType();
@@ -768,7 +773,7 @@ const getDataList = async () => {
   }
   dataLoading.value = true;
   const res = await listData(dataQueryParams.value);
-  dataList.value = res.data?.rows;
+  dataList.value = res.data?.rows ?? [];
   dataTotal.value = res.data?.total;
   dataLoading.value = false;
 };

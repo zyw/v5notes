@@ -64,7 +64,7 @@
 
       <el-table
         v-if="showTable"
-        v-loading="loading"
+        v-loading="loading && (fileList).length > 0"
         class="data-table"
         :data="fileList"
         :header-cell-class-name="handleHeaderClass"
@@ -109,6 +109,10 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <template #empty>
+          <table-skeleton v-if="loading" :rows="8" />
+          <div v-else class="empty-hint">暂无数据</div>
+        </template>
       </el-table>
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
@@ -140,7 +144,7 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</submit-button>
           <el-button @click="cancel">取 消</el-button>
         </div>
       </template>
@@ -149,6 +153,8 @@
 </template>
 
 <script setup name="BasicsFile" lang="ts">
+import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
+import SubmitButton from '@/components/Loading/SubmitButton.vue';
 import { useRouter } from 'vue-router';
 import { listFile, delFile } from '@/api/basics/file';
 import type { FileForm, FileQuery, FileVO } from '@/api/basics/file/types';

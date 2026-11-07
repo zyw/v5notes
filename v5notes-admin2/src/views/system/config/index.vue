@@ -271,7 +271,7 @@ const { resetQuery } = useSearchReset({
 const getList = async () => {
   await withLoading(async () => {
     const res = await listConfig({ ...queryParams.value });
-    configList.value = res.data?.rows;
+    configList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
   });
 };
