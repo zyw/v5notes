@@ -5,8 +5,23 @@
     width="700px"
     append-to-body
     close-on-click-modal
-    @closed="info = null"
-  >
+    @closed="info = null" class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 操作日志</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ heroName.slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ heroTitle }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ heroMeta }}</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
     <el-descriptions v-if="info" :column="1" border>
       <el-descriptions-item label="操作状态">
         <template #default>
@@ -72,6 +87,11 @@ import { parseTime, selectDictLabel } from '@/utils/ruoyi';
 
 const open = ref(false);
 const info = ref<OperLogForm | null>(null);
+
+// hero 头部展示字段（info 可能为 null，统一做空值兜底）
+const heroName = computed(() => info.value?.operName || '操作日志');
+const heroTitle = computed(() => info.value?.title || '操作日志详细');
+const heroMeta = computed(() => [info.value?.operName, info.value?.deptName].filter(Boolean).join(' · ') || '—');
 function openDialog(row: OperLogForm) {
   info.value = row;
   open.value = true;

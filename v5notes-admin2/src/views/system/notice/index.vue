@@ -100,7 +100,7 @@
           </template>
         </el-table-column>
         <el-table-column label="创建者" align="center" prop="createByName" width="100" />
-        <el-table-column label="创建时间" align="center" prop="createTime" width="100">
+        <el-table-column label="创建时间" align="center" prop="createTime" width="160">
           <template #default="scope">
             <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
           </template>
@@ -219,8 +219,23 @@
       title="公告详情"
       width="820px"
       append-to-body
-      @closed="handleDetailDialogClosed"
-    >
+      @closed="handleDetailDialogClosed" class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 通知公告</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (detailForm.noticeTitle || '公').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ detailForm.noticeTitle || '公告详情' }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ detailForm.status === '0' ? '已发送' : '未发送' }} · {{ detailForm.createByName || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <div class="notice-detail">
         <div class="notice-detail__header">
           <div class="notice-detail__title">{{ detailForm.noticeTitle || '-' }}</div>

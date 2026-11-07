@@ -60,7 +60,7 @@
         </el-tooltip>
       </template>
       <div class="avatar-container">
-        <el-dropdown class="avatar-dropdown" trigger="click" @command="handleCommand">
+        <el-dropdown class="avatar-dropdown" trigger="click" popper-class="avatar-dropdown-popper" @command="handleCommand">
           <div class="avatar-wrapper">
             <img :src="userStore.avatar" class="user-avatar" />
             <div class="avatar-meta">
@@ -72,12 +72,17 @@
           <template #dropdown>
             <el-dropdown-menu>
               <router-link to="/user/profile">
-                <el-dropdown-item>{{ $t('navbar.personalCenter') }}</el-dropdown-item>
+                <el-dropdown-item>
+                  <el-icon><User /></el-icon>
+                  <span>{{ $t('navbar.personalCenter') }}</span>
+                </el-dropdown-item>
               </router-link>
               <el-dropdown-item v-if="settingsStore.showSettings" command="setLayout">
+                <el-icon><Setting /></el-icon>
                 <span>{{ $t('navbar.layoutSetting') }}</span>
               </el-dropdown-item>
               <el-dropdown-item divided command="logout">
+                <el-icon><SwitchButton /></el-icon>
                 <span>{{ $t('navbar.logout') }}</span>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -90,7 +95,7 @@
 
 <script setup lang="ts">
 import type { ElMessageBoxOptions } from 'element-plus';
-import { CaretBottom } from '@element-plus/icons-vue';
+import { CaretBottom, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import appLogo from '@/assets/logo/logo.png';
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import tab from '@/plugins/tab';
@@ -469,5 +474,24 @@ html.dark {
     background: transparent;
     border-color: transparent;
   }
+}
+</style>
+
+<style lang="scss">
+/* 头像下拉：图标与文字对齐 */
+.avatar-dropdown-popper .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.avatar-dropdown-popper .el-dropdown-menu__item .el-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  color: var(--app-text-muted);
+}
+.avatar-dropdown-popper .el-dropdown-menu__item:hover .el-icon {
+  color: var(--app-accent-strong);
 }
 </style>

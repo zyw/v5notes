@@ -32,7 +32,11 @@
 
     <el-card shadow="hover" class="table-panel">
       <template #header>
-        <el-row :gutter="10" class="mb8">
+        <div class="table-heading file-table-heading">
+          <h3>文件列表</h3>
+          <p>共 {{ total }} 个文件，管理已上传的资源文件；可预览、下载或按类型清理。</p>
+        </div>
+        <el-row :gutter="10" class="mb8 file-table-toolbar">
           <el-col :span="1.5">
             <el-button v-hasPermi="['basics:file:upload']" type="primary" plain icon="Upload" @click="handleFile">上传文件</el-button>
           </el-col>
@@ -111,8 +115,24 @@
     </el-card>
 
     <!-- 添加或修改文件对象存储对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
-      <el-form ref="ossFormRef" :model="form" :rules="rules" label-width="80px">
+    <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 文件</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ type === 0 ? '文' : '图' }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ dialog.title }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ type === 0 ? '上传资源文件' : '上传图片资源' }}</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-form ref="ossFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
         <el-form-item label="文件名">
           <file-upload v-if="type === 0" v-model="form.file" />
           <image-upload v-if="type === 1" v-model="form.file" />
@@ -327,3 +347,28 @@ onMounted(() => {
   getList();
 });
 </script>
+
+<style lang="scss" scoped>
+/* 列表头部：标题 + 描述在左，操作按钮换行到下一行 */
+.file-table-heading {
+  margin-bottom: 10px;
+}
+.file-table-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #15241e;
+}
+.file-table-heading p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #5f7067;
+  line-height: 1.5;
+}
+.file-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+</style>

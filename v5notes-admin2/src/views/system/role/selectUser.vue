@@ -1,6 +1,22 @@
 <template>
   <el-row>
-    <el-dialog v-model="visible" title="选择用户" width="800px" top="5vh" append-to-body class="select-user-dialog">
+    <el-dialog v-model="visible" title="选择用户" width="800px" top="5vh" append-to-body class="select-user-dialog app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 角色</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">选</div>
+            <div>
+              <div class="app-dialog-hero__name">选择用户</div>
+              <div class="app-dialog-hero__meta"><span>为该角色分配成员</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <div class="p-2 select-user-shell">
         <el-card shadow="hover" class="search-panel select-user-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">

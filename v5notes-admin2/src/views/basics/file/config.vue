@@ -34,7 +34,11 @@
 
     <el-card shadow="hover" class="table-panel">
       <template #header>
-        <el-row :gutter="10" class="mb8">
+        <div class="table-heading file-table-heading">
+          <h3>存储配置列表</h3>
+          <p>共 {{ total }} 个存储配置，管理本地 / FTP / SFTP / S3 等存储的连接参数。</p>
+        </div>
+        <el-row :gutter="10" class="mb8 file-table-toolbar">
           <el-col :span="1.5">
             <el-button v-hasPermi="['basics:fileConfig:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
           </el-col>
@@ -68,7 +72,7 @@
             <el-tag round :type="scope.row.master ? 'success' : 'info'" disable-transitions>{{ scope.row.master ? '是' : '否' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" />
+        <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="设为主配置" placement="top">
@@ -566,5 +570,30 @@ onMounted(() => {
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #6b7d74;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 列表头部：标题 + 描述在左，操作按钮换行到下一行 */
+.file-table-heading {
+  margin-bottom: 10px;
+}
+.file-table-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #15241e;
+}
+.file-table-heading p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #5f7067;
+  line-height: 1.5;
+}
+.file-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 </style>

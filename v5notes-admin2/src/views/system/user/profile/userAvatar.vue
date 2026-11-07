@@ -1,7 +1,23 @@
 <template>
   <div class="user-info-head" @click="editCropper()">
     <img :src="options.img" title="点击上传头像" class="img-circle img-lg" />
-    <el-dialog v-model="open" :title="title" width="800px" append-to-body @opened="modalOpened" @close="closeDialog">
+    <el-dialog v-model="open" :title="title" width="800px" append-to-body @opened="modalOpened" @close="closeDialog" class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 个人中心</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">头</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ title }}</div>
+              <div class="app-dialog-hero__meta"><span>裁剪并上传新的头像</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <el-row>
         <el-col :xs="24" :md="12" :style="{ height: '350px' }">
           <vue-cropper

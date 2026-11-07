@@ -1,13 +1,13 @@
 <template>
-  <div class="p-2">
-    <el-row :gutter="20">
+  <div class="p-2 notes-page">
+    <el-row :gutter="20" class="notes-layout">
       <!-- 笔记目录和笔记树 -->
-      <el-col :lg="4" :xs="24">
-        <el-card shadow="hover">
+      <el-col :lg="4" :xs="24" class="notes-tree-col">
+        <el-card shadow="hover" class="tree-panel-shell notes-tree-card">
           <el-input v-model="dirAndNotesName" placeholder="请输入目录或笔记名称" prefix-icon="Search" clearable />
           <el-tree
             ref="notesTreeRef"
-            class="mt-2"
+            class="mt-2 notes-tree"
             node-key="id"
             :data="notesTreeList"
             :props="{ label: 'label', children: 'children' }"
@@ -30,7 +30,7 @@
           </el-tree>
         </el-card>
       </el-col>
-      <el-col :lg="20" :xs="24">
+      <el-col :lg="20" :xs="24" class="notes-main-col">
         <notes-list v-show="pageState === 'list'" ref="notesListRef" @clear-query="handleClearQuery" @view-or-edtor="handleViewOrEditor" />
         <editor-md v-show="pageState === 'editor'" ref="notesEditorRef" />
         <preview-md v-show="pageState === 'preview'" ref="notesPreviewRef" @edit-notes="handleEditNotes" />
@@ -121,5 +121,83 @@ onMounted(() => {
 }
 .va-1 {
   vertical-align: -1px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 笔记管理：左右两栏各自撑满视口，内部滚动 */
+.notes-tree-col,
+.notes-main-col {
+  min-height: 0;
+}
+.notes-tree-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.notes-tree-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.notes-tree-card :deep(.el-input) {
+  flex: none;
+}
+.notes-tree-card .notes-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+.notes-tree-card .notes-tree::-webkit-scrollbar {
+  width: 6px;
+}
+.notes-tree-card .notes-tree::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--el-text-color-placeholder);
+}
+.notes-main-col {
+  display: flex;
+  flex-direction: column;
+}
+.notes-main-col > * {
+  flex: 1;
+  min-height: 0;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 页面整体限定在视口内，左右两栏等高撑满 */
+.notes-page {
+  /* 76px 固定头部 + 24px .app-main 上下内边距 + 8px 余量 */
+  height: calc(100vh - 76px - 24px - 8px);
+  overflow: hidden;
+}
+.app-main.with-tags-view .notes-page {
+  height: calc(100vh - 111px - 24px - 8px);
+}
+.notes-page .notes-layout {
+  height: 100%;
+  margin-bottom: 0;
+}
+.notes-page .notes-layout > .el-col {
+  height: 100%;
+  min-height: 0;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 防止左右两栏把页面撑出滚动条 */
+.notes-page .notes-layout {
+  max-height: 100%;
+  overflow: hidden;
+}
+.notes-page .notes-layout > .el-col > * {
+  max-height: 100%;
 }
 </style>

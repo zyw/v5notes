@@ -42,6 +42,7 @@
         <div class="toolbar-shell">
           <div class="table-heading">
             <h3>客户端列表</h3>
+            <p>共 {{ total }} 个客户端，维护 OAuth 客户端标识、授权类型、白名单与 Token 超时策略。</p>
           </div>
           <div class="toolbar-actions">
             <el-button v-hasPermi="['system:client:add']" type="primary" plain icon="Plus" @click="handleAdd">

@@ -354,7 +354,23 @@
       </el-form>
     </FormDrawer>
 
-    <el-dialog v-model="deleteDialog.visible" :title="deleteDialog.title" destroy-on-close append-to-bod width="750px">
+    <el-dialog v-model="deleteDialog.visible" :title="deleteDialog.title" destroy-on-close append-to-bod width="750px" class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 菜单</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">删</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ deleteDialog.title }}</div>
+              <div class="app-dialog-hero__meta"><span>勾选要级联删除的菜单节点</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <el-tree
         ref="menuTreeRef"
         class="tree-border"

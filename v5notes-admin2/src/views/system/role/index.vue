@@ -96,9 +96,14 @@
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column v-if="false" label="角色编号" prop="roleId" width="120" />
-        <el-table-column label="角色名称" prop="roleName" :show-overflow-tooltip="true" width="150" />
-        <el-table-column label="权限字符" prop="roleKey" :show-overflow-tooltip="true" width="200" />
-        <el-table-column label="显示顺序" prop="roleSort" width="100" />
+        <el-table-column label="角色名称" prop="roleName" min-width="150" :show-overflow-tooltip="true" />
+        <el-table-column label="权限字符" prop="roleKey" min-width="160" :show-overflow-tooltip="true" />
+        <el-table-column label="描述" prop="remark" min-width="240" :show-overflow-tooltip="true">
+          <template #default="scope">
+            <span :class="{ 'cell-placeholder': !scope.row.remark }">{{ scope.row.remark || '—' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="显示顺序" prop="roleSort" width="100" align="center" />
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
             <el-switch
@@ -109,9 +114,9 @@
             ></el-switch>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime">
+        <el-table-column label="创建时间" align="center" prop="createTime" width="170">
           <template #default="scope">
-            <span>{{ parseTime(scope.row.createTime) }}</span>
+            <span class="cell-nowrap">{{ parseTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
 
@@ -166,58 +171,230 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="720px" append-to-body>
-      <el-form ref="roleFormRef" :model="form" :rules="rules" label-width="100px" class="dialog-grid-form">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="角色名称" prop="roleName">
-              <el-input v-model="form.roleName" placeholder="请输入角色名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item prop="roleKey">
-              <template #label>
-                <span>
-                  <el-tooltip content="控制器中定义的权限字符，如：@SaCheckRole('admin')" placement="top">
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  权限字符
-                </span>
-              </template>
-              <el-input v-model="form.roleKey" placeholder="请输入权限字符" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="角色顺序" prop="roleSort">
-              <el-input-number v-model="form.roleSort" controls-position="right" :min="0" class="w-full" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态">
-              <el-radio-group v-model="form.status">
-                <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
-                  {{ dict.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入内容"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
+    <!-- 添加或修改角色对话框 -->
+    <el-dialog
+      v-model="dialog.visible"
+      :title="dialog.title"
+      width="720px"
+      append-to-body
+      class="app-dialog role-form-dialog"
+    >
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 角色配置</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (form.roleName || '角').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ form.roleName || '未命名角色' }}</div>
+              <div class="app-dialog-hero__meta">
+                <span>{{ form.roleKey || '未设置权限字符' }}</span>
+                <span class="app-dialog-hero__dot">·</span>
+                <span>{{ form.status === '0' ? '正常' : '停用' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-form ref="roleFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
+        <section class="app-dialog-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="角色名称" prop="roleName">
+                <el-input v-model="form.roleName" placeholder="请输入角色名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item prop="roleKey">
+                <template #label>
+                  <span>
+                    <el-tooltip content="控制器中定义的权限字符，如：@SaCheckRole('admin')" placement="top">
+                      <el-icon><question-filled /></el-icon>
+                    </el-tooltip>
+                    权限字符
+                  </span>
+                </template>
+                <el-input v-model="form.roleKey" placeholder="请输入权限字符" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="角色顺序" prop="roleSort">
+                <el-input-number v-model="form.roleSort" controls-position="right" :min="0" class="w-full" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="状态">
+                <el-radio-group v-model="form.status">
+                  <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="app-dialog-section">
+          <h4>备注</h4>
+          <el-form-item label="备注" prop="remark">
+            <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入内容"></el-input>
+          </el-form-item>
+        </section>
       </el-form>
+
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button @click="cancel">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
         </div>
       </template>
     </el-dialog>
 
+    <!-- 分配用户对话框 -->
+    <el-dialog
+      v-model="authUserDialog.visible"
+      width="900px"
+      append-to-body
+      class="app-dialog auth-user-dialog"
+      @closed="handleAuthUserClosed"
+    >
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 角色分配</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (authUserDialog.roleName || '用').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">分配用户 · {{ authUserDialog.roleName || '-' }}</div>
+              <div class="app-dialog-hero__meta">
+                <span>{{ authUserDialog.roleKey || '未设置权限字符' }}</span>
+                <span class="app-dialog-hero__dot">·</span>
+                <span>已授权 {{ authUserTotal }} 人</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div class="auth-user-toolbar">
+        <el-form :model="authUserQuery" :inline="true" class="query-form auth-user-filter">
+          <el-form-item label="用户名称">
+            <el-input v-model="authUserQuery.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleAuthUserQuery" />
+          </el-form-item>
+          <el-form-item label="手机号码">
+            <el-input v-model="authUserQuery.phoneNumber" placeholder="请输入手机号码" clearable @keyup.enter="handleAuthUserQuery" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="Search" @click="handleAuthUserQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetAuthUserQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <el-table
+        v-loading="authUserLoading"
+        class="data-table auth-user-table"
+        :data="authUserList"
+        @selection-change="handleAuthUserSelectionChange"
+      >
+        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column label="成员" min-width="200">
+          <template #default="scope">
+            <div class="member-cell">
+              <span class="member-avatar">{{ (scope.row.nickName || scope.row.userName || '用').slice(0, 1) }}</span>
+              <div class="member-info">
+                <span class="member-name">{{ scope.row.nickName || scope.row.userName }}</span>
+                <span class="member-account">{{ scope.row.userName }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="手机号码" align="center" prop="phoneNumber" width="140" />
+        <el-table-column label="状态" align="center" width="110">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === '0' ? 'success' : 'info'" size="small">
+              {{ scope.row.status === '0' ? '正常' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" prop="createTime" width="170">
+          <template #default="scope">
+            <span class="cell-nowrap">{{ parseTime(scope.row.createTime) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="100">
+          <template #default="scope">
+            <el-tooltip content="取消授权" placement="top">
+              <el-button link type="danger" icon="CircleClose" @click="handleCancelAuthUser(scope.row)" />
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <pagination
+        v-model:page="authUserQuery.pageNum"
+        v-model:limit="authUserQuery.pageSize"
+        :total="authUserTotal"
+        @pagination="getAuthUserList"
+      />
+
+      <template #footer>
+        <div class="dialog-footer auth-user-footer">
+          <el-button
+            v-hasPermi="['system:role:remove']"
+            type="danger"
+            plain
+            icon="CircleClose"
+            :disabled="!authUserIds.length"
+            @click="handleCancelAuthUserAll"
+          >
+            批量取消授权
+          </el-button>
+          <div class="auth-user-footer__right">
+            <el-button @click="authUserDialog.visible = false">关闭</el-button>
+            <el-button
+              v-hasPermi="['system:role:add']"
+              type="primary"
+              icon="Plus"
+              @click="openSelectUserDialog"
+            >
+              添加用户
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 选择待分配用户 -->
+    <SelectUser ref="selectUserRef" :role-id="authUserDialog.roleId" @ok="handleAuthUserAdded" />
+
     <!-- 分配角色权限对话框 -->
-    <el-dialog v-model="openDataScope" :title="dialog.title" width="760px" append-to-body>
+    <el-dialog v-model="openDataScope" :title="dialog.title" width="760px" append-to-body class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 角色权限</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (form.roleName || '权').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ form.roleName || '角色权限分配' }}</div>
+              <div class="app-dialog-hero__meta">
+                <span>{{ form.roleKey || '未设置权限字符' }}</span>
+                <span class="app-dialog-hero__dot">·</span>
+                <span>菜单权限与数据权限</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
       <el-form ref="dataScopeRef" :model="form" label-width="90px" class="dialog-grid-form permission-dialog-form">
         <el-tabs v-model="permissionTab">
           <el-tab-pane label="菜单权限" name="menu">
@@ -340,7 +517,10 @@ import {
   listRole,
   updateRolePermission,
   updateRole,
-  deptTreeSelect
+  deptTreeSelect,
+  allocatedUserList,
+  authUserCancel,
+  authUserCancelAll
 } from '@/api/system/role';
 import { RoleVO, RoleForm, RoleQuery, DeptTreeOption } from '@/api/system/role/types';
 import { MenuTypeEnum } from '@/enums/MenuTypeEnum';
@@ -354,6 +534,7 @@ import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
 import { parseTime } from '@/utils/ruoyi';
+import SelectUser from './selectUser.vue';
 
 const router = useRouter();
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
@@ -866,9 +1047,103 @@ const handleStatusChange = async (row: Partial<RoleVO>) => {
   }
 };
 
-/** 分配用户 */
+/** ===== 分配用户弹窗（不跳转新标签页） ===== */
+const selectUserRef = ref<InstanceType<typeof SelectUser>>();
+const authUserDialog = reactive({
+  visible: false,
+  roleId: undefined as string | number | undefined,
+  roleName: '',
+  roleKey: ''
+});
+const authUserList = ref<any[]>([]);
+const authUserTotal = ref(0);
+const authUserLoading = ref(false);
+const authUserIds = ref<Array<string | number>>([]);
+const authUserQuery = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  userName: '',
+  phoneNumber: '',
+  roleId: '' as string | number
+});
+
+const getAuthUserList = async () => {
+  if (!authUserDialog.roleId) return;
+  authUserLoading.value = true;
+  try {
+    const res = await allocatedUserList({ ...authUserQuery, roleId: authUserDialog.roleId } as any);
+    authUserList.value = res.data?.rows ?? [];
+    authUserTotal.value = res.data?.total ?? 0;
+  } finally {
+    authUserLoading.value = false;
+  }
+};
+
+const handleAuthUserSelectionChange = (selection: any[]) => {
+  authUserIds.value = selection.map(item => item.userId);
+};
+
+const handleAuthUserQuery = () => {
+  authUserQuery.pageNum = 1;
+  getAuthUserList();
+};
+
+const resetAuthUserQuery = () => {
+  authUserQuery.userName = '';
+  authUserQuery.phoneNumber = '';
+  handleAuthUserQuery();
+};
+
+/** 打开分配用户弹窗 */
+const openAuthUserDialog = async (row: Partial<RoleVO>) => {
+  authUserDialog.roleId = row.roleId;
+  authUserDialog.roleName = row.roleName ?? '';
+  authUserDialog.roleKey = (row as any).roleKey ?? '';
+  authUserQuery.pageNum = 1;
+  authUserQuery.userName = '';
+  authUserQuery.phoneNumber = '';
+  authUserIds.value = [];
+  authUserDialog.visible = true;
+  await getAuthUserList();
+};
+
+const handleAuthUserClosed = () => {
+  authUserList.value = [];
+  authUserIds.value = [];
+  authUserTotal.value = 0;
+};
+
+/** 取消单个用户授权 */
+const handleCancelAuthUser = async (row: any) => {
+  await modal.confirm('确定要取消用户"' + (row.nickName || row.userName) + '"对该角色的授权吗？');
+  await authUserCancel({ userId: row.userId, roleId: authUserDialog.roleId } as any);
+  modal.msgSuccess('取消授权成功');
+  await getAuthUserList();
+};
+
+/** 批量取消授权 */
+const handleCancelAuthUserAll = async () => {
+  if (!authUserIds.value.length) return;
+  await modal.confirm('是否取消选中用户对该角色的授权？');
+  await authUserCancelAll({ roleId: authUserDialog.roleId, userIds: authUserIds.value.join(',') } as any);
+  modal.msgSuccess('取消授权成功');
+  await getAuthUserList();
+};
+
+/** 打开选择用户弹窗 */
+const openSelectUserDialog = () => {
+  selectUserRef.value?.show();
+};
+
+/** 添加用户后刷新 */
+const handleAuthUserAdded = async () => {
+  modal.msgSuccess('分配成功');
+  await getAuthUserList();
+};
+
+/** 分配用户入口 */
 const handleAuthUser = (row: Partial<RoleVO>) => {
-  router.push('/system/role-auth/user/' + row.roleId);
+  openAuthUserDialog(row);
 };
 
 /** 所有部门节点数据 */
@@ -1196,5 +1471,127 @@ onMounted(() => {
   @media (max-width: 900px) {
     --menu-name-col-width: 160px;
   }
+}
+</style>
+
+<style lang="scss" scoped>
+.role-form-dialog :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.role-form-dialog :deep(.el-input-number) {
+  width: 100%;
+}
+.role-form-dialog :deep(.el-radio-group) {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 角色列表：内容不换行 + 空值占位 */
+.role-page .cell-nowrap {
+  white-space: nowrap;
+}
+.role-page .cell-placeholder {
+  color: #9aa39c;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 数据权限弹窗：标签不换行 */
+:deep(.permission-dialog-form .el-form-item__label) {
+  white-space: nowrap;
+}
+</style>
+
+<style lang="scss" scoped>
+/* ===== 分配用户弹窗 ===== */
+.auth-user-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.auth-user-filter :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.auth-user-table {
+  border-radius: 10px;
+}
+.auth-user-table :deep(th.el-table__cell) {
+  background: #f6f8f7 !important;
+  color: #5f7067;
+  font-weight: 700;
+  font-size: 12px;
+}
+.auth-user-table :deep(.el-table__cell) {
+  text-align: left;
+}
+.auth-user-table :deep(.el-table__cell .cell) {
+  text-align: left;
+}
+/* 复选框列与居中列不受左对齐影响 */
+.auth-user-table :deep(.el-table-column--selection),
+.auth-user-table :deep(.el-table-column--selection .cell),
+.auth-user-table :deep(.el-table__cell:nth-child(1)),
+.auth-user-table :deep(.el-table__cell:nth-child(1) .cell) {
+  text-align: center !important;
+  display: table-cell;
+}
+.auth-user-table :deep(.el-table__cell:nth-child(1) .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-user-table :deep(.el-table__cell:nth-child(3) .cell),
+.auth-user-table :deep(.el-table__cell:nth-child(4) .cell) {
+  text-align: center !important;
+}
+.auth-user-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.auth-user-footer__right {
+  display: flex;
+  gap: 10px;
+}
+.auth-user-dialog .member-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-user-dialog .member-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #e8f2ec;
+  color: #1c5a48;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.auth-user-dialog .member-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+.auth-user-dialog .member-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d2b24;
+}
+.auth-user-dialog .member-account {
+  font-size: 11.5px;
+  color: #7c8880;
+}
+.auth-user-dialog .cell-nowrap {
+  white-space: nowrap;
 }
 </style>

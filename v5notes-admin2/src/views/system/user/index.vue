@@ -187,7 +187,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column v-if="columns[6].visible" label="创建时间" align="center" prop="createTime" width="160">
+            <el-table-column v-if="columns[6].visible" label="创建时间" align="center" prop="createTime" width="160" show-overflow-tooltip>
               <template #default="scope">
                 <span>{{ scope.row.createTime }}</span>
               </template>
@@ -416,7 +416,23 @@
     </FormDrawer>
 
     <!-- 用户导入对话框 -->
-    <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body>
+    <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 用户</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">导</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ upload.title }}</div>
+              <div class="app-dialog-hero__meta"><span>导入 Excel 批量创建成员</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <el-upload
         ref="uploadRef"
         :limit="1"
@@ -462,6 +478,129 @@
       </template>
     </el-dialog>
 
+    <!-- 重置密码对话框 -->
+    <el-dialog
+      v-model="resetPwdDialog.visible"
+      width="460px"
+      append-to-body
+      class="app-dialog reset-pwd-dialog"
+    >
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 用户</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (resetPwdDialog.nickName || resetPwdDialog.userName || '密').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">重置密码</div>
+              <div class="app-dialog-hero__meta">
+                <span>{{ resetPwdDialog.nickName || resetPwdDialog.userName || '-' }}</span>
+                <span class="app-dialog-hero__dot">·</span>
+                <span>{{ resetPwdDialog.userName }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-form
+        ref="resetPwdFormRef"
+        :model="resetPwdForm"
+        :rules="resetPwdRules"
+        label-position="top"
+        class="app-dialog-form"
+        @submit.prevent
+      >
+        <el-form-item label="新密码" prop="password">
+          <el-input
+            v-model="resetPwdForm.password"
+            type="password"
+            show-password
+            maxlength="20"
+            placeholder="请输入 5–20 位新密码"
+            autocomplete="new-password"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="resetPwdDialog.visible = false">取消</el-button>
+          <el-button type="primary" icon="Key" @click="submitResetPwd">确定重置</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 分配角色对话框 -->
+    <el-dialog
+      v-model="authRoleDialog.visible"
+      width="820px"
+      append-to-body
+      class="app-dialog auth-role-dialog"
+    >
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 用户分配</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (authRoleDialog.nickName || authRoleDialog.userName || '角').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">分配角色 · {{ authRoleDialog.nickName || authRoleDialog.userName || '-' }}</div>
+              <div class="app-dialog-hero__meta">
+                <span>{{ authRoleDialog.userName }}</span>
+                <span class="app-dialog-hero__dot">·</span>
+                <span>已选 {{ authRoleSelected.length }} 个角色</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        ref="authRoleTableRef"
+        v-loading="authRoleLoading"
+        class="data-table auth-role-table"
+        :data="authRoleList"
+        row-key="roleId"
+        max-height="380"
+        fit
+        empty-text="暂无可分配的角色"
+        @selection-change="handleAuthRoleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" align="center" :selectable="checkRoleSelectable" />
+        <el-table-column label="角色名称" min-width="150" prop="roleName" show-overflow-tooltip />
+        <el-table-column label="权限字符" min-width="130" prop="roleKey" show-overflow-tooltip />
+        <el-table-column label="描述" min-width="150" prop="remark" show-overflow-tooltip>
+          <template #default="scope">
+            <span :class="{ 'cell-placeholder': !scope.row.remark }">{{ scope.row.remark || '—' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" align="center" width="90">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === '0' ? 'success' : 'info'" size="small">
+              {{ scope.row.status === '0' ? '正常' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" width="170">
+          <template #default="scope">
+            <span class="cell-nowrap">{{ scope.row.createTime ? parseTime(scope.row.createTime) : '—' }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="authRoleDialog.visible = false">取消</el-button>
+          <el-button type="primary" icon="CircleCheck" @click="submitAuthRole">确定分配</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 用户详情抽屉 -->
     <user-view-drawer ref="userViewRef" />
   </div>
@@ -469,13 +608,12 @@
 
 <script setup name="User" lang="ts">
 import { to } from 'await-to-js';
-import { useRouter } from 'vue-router';
 import { getConfigKey } from '@/api/system/config';
 import { DeptTreeVO, DeptVO } from '@/api/system/dept/types';
 import { optionselect } from '@/api/system/post';
 import { PostVO } from '@/api/system/post/types';
 import { RoleVO } from '@/api/system/role/types';
-import api from '@/api/system/user';
+import api, { getAuthRole, updateAuthRole } from '@/api/system/user';
 import { UserForm, UserQuery, UserVO } from '@/api/system/user/types';
 import TreePanel from '@/components/TreePanel/index.vue';
 import { useLoading } from '@/hooks/async/useLoading';
@@ -494,9 +632,8 @@ import { download as requestDownload } from '@/utils/request';
 import UserViewDrawer from './view.vue';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
-import { selectDictLabel } from '@/utils/ruoyi';
+import { parseTime, selectDictLabel } from '@/utils/ruoyi';
 
-const router = useRouter();
 const { sys_normal_disable, sys_user_gender, user_type } = toRefs<any>(
   useDict('sys_normal_disable', 'sys_user_gender', 'user_type')
 );
@@ -725,32 +862,106 @@ const handleStatusChange = async (row: Partial<UserVO>) => {
     row.status = row.status === '0' ? '1' : '0';
   }
 };
-/** 跳转角色分配 */
-const handleAuthRole = (row: Partial<UserVO>) => {
-  const userId = row.userId;
-  router.push('/system/user-auth/role/' + userId);
+/** ===== 分配角色弹窗 ===== */
+const authRoleDialog = reactive({
+  visible: false,
+  userId: undefined as string | number | undefined,
+  userName: '',
+  nickName: ''
+});
+const authRoleLoading = ref(false);
+const authRoleList = ref<any[]>([]);
+const authRoleSelected = ref<Array<string | number>>([]);
+const authRoleTableRef = ref<ElTableInstance>();
+
+const handleAuthRoleSelectionChange = (selection: any[]) => {
+  authRoleSelected.value = selection.map(item => item.roleId);
+};
+
+const checkRoleSelectable = (row: any) => row.status === '0';
+
+/** 打开分配角色弹窗并回显已分配角色 */
+const handleAuthRole = async (row: Partial<UserVO>) => {
+  authRoleDialog.userId = row.userId;
+  authRoleDialog.userName = row.userName ?? '';
+  authRoleDialog.nickName = row.nickName ?? '';
+  authRoleLoading.value = true;
+  authRoleList.value = [];
+  authRoleSelected.value = [];
+  try {
+    const res: any = await getAuthRole(row.userId as string);
+    // 兼容多种返回结构：{roles:[...]} / {data:{roles}} / 直接数组
+    const payload: any = res?.data ?? {};
+    const rawRoles = Array.isArray(payload) ? payload : (payload.roles ?? res?.roles ?? []);
+    authRoleList.value = Array.isArray(rawRoles) ? rawRoles : [];
+    if (!authRoleList.value.length) {
+      console.warn('[分配角色] 接口未返回角色，原始响应：', res);
+    }
+  } catch (e) {
+    console.error('[分配角色] 加载失败', e);
+    authRoleList.value = [];
+  } finally {
+    authRoleLoading.value = false;
+  }
+  // 数据就绪后再显示，弹窗展开动画结束后再布局一次，确保列宽正确
+  authRoleDialog.visible = true;
+  await nextTick();
+  authRoleTableRef.value?.doLayout?.();
+  setTimeout(() => authRoleTableRef.value?.doLayout?.(), 320);
+  authRoleList.value.forEach(role => {
+    if ((role?.flag || role?.initialized) && checkRoleSelectable(role)) {
+      authRoleTableRef.value?.toggleRowSelection(role, true);
+    }
+  });
+};
+
+/** 提交分配角色 */
+const submitAuthRole = async () => {
+  await updateAuthRole({
+    userId: String(authRoleDialog.userId),
+    roleIds: authRoleSelected.value.join(',')
+  });
+  modal.msgSuccess('授权成功');
+  authRoleDialog.visible = false;
+};
+
+
+
+/** ===== 重置密码弹窗 ===== */
+const resetPwdDialog = reactive({
+  visible: false,
+  userId: undefined as string | number | undefined,
+  userName: '',
+  nickName: ''
+});
+const resetPwdFormRef = ref<ElFormInstance>();
+const resetPwdForm = reactive({ password: '' });
+const resetPwdRules = {
+  password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 5, max: 20, message: '密码长度必须介于 5 和 20 之间', trigger: 'blur' }
+  ]
 };
 
 /** 重置密码按钮操作 */
-const handleResetPwd = async (row: Partial<UserVO>) => {
-  const [err, res] = await to(
-    ElMessageBox.prompt('请输入"' + row.userName + '"的新密码', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      closeOnClickModal: false,
-      inputPattern: /^.{5,20}$/,
-      inputErrorMessage: '用户密码长度必须介于 5 和 20 之间',
-      inputValidator: value => {
-        if (/<|>|"|'|\||\\/.test(value)) {
-          return '不能包含非法字符：< > " \' \\ |';
-        }
-      }
-    })
-  );
-  if (!err && res) {
-    await api.resetUserPwd(row.userId, res.value);
-    modal.msgSuccess('修改成功，新密码是：' + res.value);
-  }
+const handleResetPwd = (row: Partial<UserVO>) => {
+  resetPwdForm.password = '';
+  resetPwdDialog.userId = row.userId;
+  resetPwdDialog.userName = row.userName ?? '';
+  resetPwdDialog.nickName = row.nickName ?? '';
+  resetPwdDialog.visible = true;
+  nextTick(() => resetPwdFormRef.value?.clearValidate());
+};
+
+/** 提交重置密码 */
+const submitResetPwd = () => {
+  resetPwdFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return;
+    await api.resetUserPwd(resetPwdDialog.userId, resetPwdForm.password);
+    modal.msgSuccess('密码已重置为：' + resetPwdForm.password);
+    resetPwdDialog.visible = false;
+    resetPwdForm.password = '';
+  });
 };
 
 /** 详情按钮操作 */
@@ -1212,6 +1423,13 @@ async function handleDeptChange(value: number | string) {
 .user-page :deep(.el-table td.el-table__cell .cell) {
   text-align: left !important;
 }
+/* 复选框与居中列保持居中，不受左对齐影响 */
+.user-page :deep(.el-table__cell:nth-child(1) .cell),
+.user-page :deep(.el-table-column--selection .cell),
+.user-page :deep(.el-table__cell.is-center .cell) {
+  text-align: center !important;
+  justify-content: center;
+}
 .user-page :deep(.el-table th.el-table__cell) {
   background: #f6f8f7 !important;
   color: #5f7067;
@@ -1226,5 +1444,133 @@ async function handleDeptChange(value: number | string) {
 }
 .user-page :deep(.el-table) {
   border-radius: 10px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* ===== 用户管理：部门树与成员列表底部对齐 ===== */
+.user-page {
+  height: calc(100vh - 76px - 24px - 8px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.app-main.with-tags-view .user-page {
+  height: calc(100vh - 111px - 24px - 8px);
+}
+.user-page .content-grid {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  margin-bottom: 0;
+}
+/* 左：部门树列 */
+.user-page .tree-panel-col {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.user-page :deep(.tree-panel-shell) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.user-page :deep(.tree-panel-shell .el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.user-page :deep(.dept-tree-wrap) {
+  flex: 1;
+  min-height: 0;
+}
+/* 右：成员列表列 */
+.user-page .tree-content-col {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.user-page .tree-content-col .table-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.user-page .tree-content-col .table-panel :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 页面上部区域固定高度，剩余空间全给内容区 */
+.user-page > .page-head,
+.user-page > .stat-grid,
+.user-page > .filter-bar {
+  flex: none;
+}
+.user-page > .content-grid {
+  flex: 1;
+  min-height: 0;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 重置密码弹窗：输入框加宽 + 提示文字 */
+.reset-pwd-dialog :deep(.el-form-item) {
+  margin-bottom: 6px;
+}
+.reset-pwd-dialog :deep(.el-input__wrapper) {
+  height: 42px;
+  border-radius: 10px;
+}
+.reset-pwd-dialog :deep(.el-input__inner) {
+  letter-spacing: 0.08em;
+}
+</style>
+
+<style lang="scss" scoped>
+/* ===== 分配角色弹窗 ===== */
+.auth-role-table {
+  border-radius: 10px;
+}
+.auth-role-table :deep(th.el-table__cell) {
+  background: #f6f8f7 !important;
+  color: #5f7067;
+  font-weight: 700;
+  font-size: 12px;
+}
+.auth-role-table :deep(th.el-table__cell .cell),
+.auth-role-table :deep(td.el-table__cell .cell) {
+  text-align: left !important;
+}
+.auth-role-table :deep(th.el-table__cell:nth-child(1) .cell),
+.auth-role-table :deep(td.el-table__cell:nth-child(1) .cell) {
+  text-align: center !important;
+}
+.auth-role-table :deep(.cell-placeholder) {
+  color: #9aa39c;
+}
+.auth-role-table :deep(.cell-nowrap) {
+  white-space: nowrap;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 分配角色：表格宽度自适应容器，避免横向截断 */
+.auth-role-table {
+  width: 100%;
+}
+.auth-role-dialog :deep(.el-dialog__body) {
+  overflow-x: hidden;
 }
 </style>

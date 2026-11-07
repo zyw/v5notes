@@ -27,8 +27,12 @@
       </div>
     </transition>
 
-    <el-card shadow="never">
+    <el-card shadow="hover" class="table-panel">
       <template #header>
+        <div class="table-heading list-heading">
+          <h3>笔记列表</h3>
+          <p>共 {{ total }} 篇笔记，按目录归类维护。</p>
+        </div>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
             <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['notes:notes:add']">新增</el-button>
@@ -46,7 +50,7 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="notesList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" class="data-table" :data="notesList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="笔记名" align="left" prop="name" min-width="300" width="auto" />
         <el-table-column label="文件大小" align="center" prop="fileSize" width="150" />
@@ -73,27 +77,47 @@
     </el-card>
 
     <!-- 添加或修改笔记对话框 -->
-    <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" @open="handleOpen" @close="handleClose" append-to-body>
-      <el-form ref="notesFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="所属目录" prop="dirId">
-          <el-tree-select
-            v-model="form.dirId"
-            :data="dirTreeData"
-            value-key="id"
-            default-expand-all
-            check-strictly
-            :render-after-expand="false"
-            placeholder="请选择所属目录"
-          />
-        </el-form-item>
-        <el-form-item label="笔记名" prop="name">
-          <el-input v-model="form.name" placeholder="请输入笔记名" />
-        </el-form-item>
+    <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" @open="handleOpen" @close="handleClose" append-to-body class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 笔记</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (form.name || '笔').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ form.name || dialog.title }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ dialog.title }}</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-form ref="notesFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
+        <section class="app-dialog-section">
+          <h4>基本信息</h4>
+          <el-form-item label="所属目录" prop="dirId">
+            <el-tree-select
+              v-model="form.dirId"
+              :data="dirTreeData"
+              value-key="id"
+              default-expand-all
+              check-strictly
+              :render-after-expand="false"
+              placeholder="请选择所属目录"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="笔记名" prop="name">
+            <el-input v-model="form.name" placeholder="请输入笔记名" />
+          </el-form-item>
+        </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button @click="cancel">取消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -299,5 +323,24 @@ onMounted(() => {
 }
 .va-1 {
   vertical-align: -1px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 列表头部：标题 + 描述 */
+.list-heading {
+  margin-bottom: 10px;
+}
+.list-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #15241e;
+}
+.list-heading p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #5f7067;
+  line-height: 1.5;
 }
 </style>

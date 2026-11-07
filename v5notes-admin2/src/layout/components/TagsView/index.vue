@@ -34,18 +34,33 @@
       </span>
       <template #dropdown>
         <el-dropdown-menu class="tags-dropdown-menu">
-          <el-dropdown-item v-if="!isAffix(selectedDropdownTag)" command="close">关闭当前</el-dropdown-item>
-          <el-dropdown-item command="closeOthers">关闭其他</el-dropdown-item>
-          <el-dropdown-item command="closeLeft" :disabled="isFirstView()">关闭左侧</el-dropdown-item>
-          <el-dropdown-item command="closeRight" :disabled="isLastView()">关闭右侧</el-dropdown-item>
-          <el-dropdown-item command="closeAll">全部关闭</el-dropdown-item>
+          <el-dropdown-item v-if="!isAffix(selectedDropdownTag)" command="close">
+            <el-icon class="tags-dropdown__icon"><Close /></el-icon>
+            <span>关闭当前</span>
+          </el-dropdown-item>
+          <el-dropdown-item command="closeOthers">
+            <el-icon class="tags-dropdown__icon"><CircleClose /></el-icon>
+            <span>关闭其他</span>
+          </el-dropdown-item>
+          <el-dropdown-item command="closeLeft" :disabled="isFirstView()">
+            <el-icon class="tags-dropdown__icon"><Back /></el-icon>
+            <span>关闭左侧</span>
+          </el-dropdown-item>
+          <el-dropdown-item command="closeRight" :disabled="isLastView()">
+            <el-icon class="tags-dropdown__icon"><Right /></el-icon>
+            <span>关闭右侧</span>
+          </el-dropdown-item>
+          <el-dropdown-item command="closeAll">
+            <el-icon class="tags-dropdown__icon"><CircleClose /></el-icon>
+            <span>全部关闭</span>
+          </el-dropdown-item>
           <el-dropdown-item command="fullscreen" divided>
             <template v-if="!isFullscreen">
-              <FullScreen />
+              <el-icon class="tags-dropdown__icon"><FullScreen /></el-icon>
               <span>全屏显示</span>
             </template>
             <template v-else>
-              <CloseBold />
+              <el-icon class="tags-dropdown__icon"><CloseBold /></el-icon>
               <span>退出全屏</span>
             </template>
           </el-dropdown-item>
@@ -60,28 +75,32 @@
 
     <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
       <li @click="refreshSelectedTag(selectedTag)">
-        <RefreshRight style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><RefreshRight /></el-icon>
         刷新页面
       </li>
       <li v-if="!isAffix(selectedTag)" @click="closeSelectedTag(selectedTag)">
-        <Close style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><Close /></el-icon>
         关闭当前
       </li>
       <li @click="closeOthersTags">
-        <CircleClose style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><CircleClose /></el-icon>
         关闭其他
       </li>
       <li v-if="!isFirstView()" @click="closeLeftTags">
-        <Back style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><Back /></el-icon>
         关闭左侧
       </li>
       <li v-if="!isLastView()" @click="closeRightTags">
-        <Right style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><Right /></el-icon>
         关闭右侧
       </li>
       <li @click="closeAllTags(selectedTag)">
-        <CircleClose style="width: 1em; height: 1em" />
+        <el-icon class="contextmenu__icon"><CircleClose /></el-icon>
         全部关闭
+      </li>
+      <li @click="toggleFullscreen">
+        <el-icon class="contextmenu__icon"><FullScreen /></el-icon>
+        全屏显示
       </li>
     </ul>
   </div>
@@ -655,13 +674,32 @@ onBeforeUnmount(() => {
     box-shadow: var(--app-shadow-md);
 
     li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin: 0;
-      padding: 7px 16px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #2b3a32;
       cursor: pointer;
+      white-space: nowrap;
 
       &:hover {
         background: var(--el-fill-color-light);
+        color: var(--app-accent-strong);
       }
+    }
+
+    .contextmenu__icon {
+      flex: none;
+      width: 15px;
+      height: 15px;
+      font-size: 15px;
+      color: var(--app-text-muted);
+    }
+
+    li:hover .contextmenu__icon {
+      color: var(--app-accent-strong);
     }
   }
 }
@@ -735,5 +773,55 @@ body.tags-fullscreen-mode .navbar {
   min-height: calc(100vh - var(--tags-fullscreen-header-height, 50px)) !important;
   padding-top: 12px !important;
   overflow: auto;
+}
+</style>
+
+<style lang="scss">
+/* 标签页下拉：图标与文字对齐，保持一致的字号与间距 */
+.tags-dropdown-menu.el-dropdown-menu {
+  padding: 6px;
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 150px;
+  padding: 8px 12px;
+  margin: 1px 0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2b3a32;
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item:not(.is-disabled):hover,
+.tags-dropdown-menu .el-dropdown-menu__item:not(.is-disabled):focus {
+  background: #e8f2ec;
+  color: #17624a;
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item .tags-dropdown__icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  color: var(--app-text-muted);
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item:not(.is-disabled):hover .tags-dropdown__icon {
+  color: #1c5a48;
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item.is-disabled {
+  opacity: 0.45;
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item--divided {
+  margin-top: 6px;
+  border-top: 1px solid var(--app-surface-border);
+}
+
+.tags-dropdown-menu .el-dropdown-menu__item--divided::before {
+  display: none;
 }
 </style>

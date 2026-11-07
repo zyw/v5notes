@@ -1,4 +1,5 @@
-/* 弹窗：遮罩模糊、居中 el-dialog 头身脚与关闭按钮；底部 .upload-container 为上传区宽度占位。 */
+/* 弹窗：遮罩模糊、居中 el-dialog 头身脚与关闭按钮；底部 .upload-container 为上传区宽度占位。
+ * 方向 2 · 薄荷工作台：统一弹窗语言（标题区 / 分区表单 / 底部按钮顺序）。 */
 
 .el-overlay {
   overflow: hidden;
@@ -14,36 +15,67 @@
     padding: 20px;
 
     .el-dialog {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 40px);
       margin: 0 auto !important;
-      border-radius: var(--app-radius-base);
-      box-shadow: var(--app-shadow-md);
+      border-radius: 14px;
+      box-shadow: 0 24px 64px rgba(20, 40, 30, 0.18);
       overflow: hidden;
       border: 1px solid var(--app-surface-border);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) padding-box,
-        var(--app-surface-bg);
+      background: var(--app-surface-bg);
 
+      /* --- 头部 --- */
       .el-dialog__header {
         position: relative;
-        padding: 18px 20px 14px;
+        flex: none;
+        padding: 20px 24px 16px;
         box-sizing: border-box;
         border-bottom: 1px solid var(--app-surface-border);
         margin-right: 0;
-        background: var(--app-elevated-soft-bg);
+        background: linear-gradient(180deg, #f4faf7 0%, var(--app-surface-bg) 100%);
+      }
+
+      /* 深墨绿身份头（与侧抽屉一致）：配合 <template #header> 使用 */
+      .el-dialog__header:has(.app-dialog-hero) {
+        padding: 0;
+        border-bottom: 0;
+        background: transparent;
+      }
+
+      .el-dialog__header:has(.app-dialog-hero) .el-dialog__headerbtn {
+        top: 18px;
+        right: 18px;
+        border-color: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.1);
+        z-index: 3;
+
+        .el-dialog__close {
+          color: #ffffff;
+        }
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.4);
+
+          .el-dialog__close {
+            color: #ffffff;
+          }
+        }
       }
 
       .el-dialog__title {
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 17px;
+        font-weight: 700;
         line-height: 1.3;
         color: var(--app-text-title);
-        letter-spacing: 0;
+        letter-spacing: -0.01em;
       }
 
       .el-dialog__headerbtn {
         position: absolute;
-        top: 50%;
-        right: 16px;
+        top: 18px;
+        right: 18px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -51,13 +83,12 @@
         height: 32px;
         padding: 0;
         margin: 0;
-        border: 0;
-        border-radius: 10px;
-        background: var(--app-elevated-close-bg);
-        transform: translateY(-50%);
+        border: 1px solid var(--app-surface-border);
+        border-radius: 9px;
+        background: var(--app-surface-bg);
         transition:
           background-color 0.2s ease,
-          transform 0.2s ease,
+          border-color 0.2s ease,
           color 0.2s ease;
 
         .el-dialog__close {
@@ -66,8 +97,8 @@
         }
 
         &:hover {
-          background: var(--app-elevated-close-hover-bg);
-          transform: translateY(calc(-50% - 1px));
+          background: var(--app-accent-soft);
+          border-color: rgba(28, 90, 72, 0.28);
 
           .el-dialog__close {
             color: var(--app-accent-strong);
@@ -75,35 +106,196 @@
         }
       }
 
+      /* --- 内容区 --- */
       .el-dialog__body {
-        padding: 18px 20px 12px !important;
+        flex: 1;
+        min-height: 0;
+        padding: 20px 24px !important;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
 
+      /* --- 底部 --- */
       .el-dialog__footer {
+        flex: none;
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: 8px;
-        padding: 14px 20px 20px;
+        gap: 10px;
+        padding: 14px 24px 16px;
         border-top: 1px solid var(--app-surface-border);
+        background: #fcfdfc;
+      }
+
+      .el-dialog__footer .el-button {
+        min-width: 88px;
+        height: 38px;
+        border-radius: 10px;
+        font-weight: 600;
+        margin-left: 0 !important;
+      }
+
+      .el-dialog__footer .el-button--primary {
+        box-shadow: 0 8px 18px rgba(28, 90, 72, 0.2);
       }
     }
   }
 }
 
+/* 兼容保留：未在 overrides 中设置 max-height 时的兜底 */
 .el-dialog__body {
-  max-height: calc(90vh - 111px) !important;
+  max-height: calc(90vh - 111px);
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-.el-dialog__footer .el-button {
-  margin-left: 0 !important;
 }
 
 .el-dialog__footer .dialog-footer {
   display: flex;
   width: 100%;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
+}
+
+/* ===== 统一弹窗内的表单语言（与侧抽屉一致） ===== */
+.app-dialog__heading .app-dialog__eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2f6b57;
+}
+
+.app-dialog__heading .app-dialog__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #15241e;
+}
+
+.app-dialog__heading .app-dialog__subtitle {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: #5f7067;
+  line-height: 1.5;
+}
+
+.app-dialog-form .el-form-item__label {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+
+.app-dialog-form .el-input__wrapper,
+.app-dialog-form .el-select__wrapper,
+.app-dialog-form .el-textarea__inner,
+[class*='-form'] .el-input__wrapper,
+[class*='-form'] .el-select__wrapper,
+[class*='-form'] .el-textarea__inner {
+  border-radius: 10px;
+}
+
+.app-dialog-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+
+.app-dialog-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.app-dialog-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
+}
+
+/* ===== 弹窗深墨绿身份头（与表单抽屉统一） ===== */
+.app-dialog-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+
+.app-dialog-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.app-dialog-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #dff1e8;
+}
+
+.app-dialog-hero__top img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.app-dialog-hero__main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 18px;
+}
+
+.app-dialog-hero__icon {
+  width: 54px;
+  height: 54px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 21px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.app-dialog-hero__name {
+  margin-bottom: 6px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-dialog-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+
+.app-dialog-hero__dot {
+  color: rgba(223, 241, 232, 0.5);
 }

@@ -14,6 +14,7 @@
                 >
                   <div>
                     <h3>字典管理</h3>
+                    <p class="dict-card__subtitle">共 {{ typeTotal }} 个字典类型，选中左侧字典查看右侧数据项</p>
                   </div>
                 </div>
               </div>
@@ -98,6 +99,8 @@
               v-loading="typeLoading"
               border
               class="data-table"
+              data-full-height-table="false"
+              :height="typeTableHeight"
               :data="typeList"
               highlight-current-row
               @row-click="handleTypeRowClick"
@@ -151,7 +154,6 @@
           </div>
 
           <pagination
-            v-show="typeTotal > 0"
             v-model:page="typeQueryParams.pageNum"
             v-model:limit="typeQueryParams.pageSize"
             :total="typeTotal"
@@ -251,6 +253,8 @@
               v-loading="dataLoading"
               border
               class="data-table"
+              data-full-height-table="false"
+              :height="dataTableHeight"
               :data="dataList"
               @selection-change="handleDataSelectionChange"
             >
@@ -319,7 +323,6 @@
           </div>
 
           <pagination
-            v-show="dataTotal > 0"
             v-model:page="dataQueryParams.pageNum"
             v-model:limit="dataQueryParams.pageSize"
             :total="dataTotal"
@@ -330,8 +333,24 @@
     </el-row>
 
     <!-- 字典类型对话框 -->
-    <el-dialog v-model="typeDialog.visible" :title="typeDialog.title" width="500px" append-to-body>
-      <el-form ref="typeFormRef" :model="typeForm" :rules="typeRules" label-width="100px">
+    <el-dialog v-model="typeDialog.visible" :title="typeDialog.title" width="500px" append-to-body class="app-dialog">
+      <template #header>
+        <div class="app-dialog-hero">
+          <div class="app-dialog-hero__top">
+            <img src="@/assets/logo/logo.png" alt="" />
+            <span>V5Notes 字典类型</span>
+          </div>
+          <div class="app-dialog-hero__main">
+            <div class="app-dialog-hero__icon">{{ (typeForm.dictName || '字').slice(0, 1) }}</div>
+            <div>
+              <div class="app-dialog-hero__name">{{ typeForm.dictName || typeDialog.title }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ typeForm.dictType || typeDialog.title }}</span></div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <el-form ref="typeFormRef" :model="typeForm" :rules="typeRules" label-position="top" class="app-dialog-form">
         <el-form-item label="字典名称" prop="dictName">
           <el-input v-model="typeForm.dictName" placeholder="请输入字典名称" />
         </el-form-item>
@@ -464,6 +483,66 @@ import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
 
 const typeList = ref<DictTypeVO[]>([]);
+
+/** 表格自适应高度：占满卡片剩余空间，只在表格内部滚动（页面不出现纵向滚动条） */
+const typeTableHeight = ref<number>();
+const dataTableHeight = ref<number>();
+const TABLE_MIN_HEIGHT = 200;
+let resizeRaf = 0;
+
+// 分页行固定占位（含 margin），始终预留，避免数据加载前后高度跳动把分页挤出卡片
+const PAGINATION_RESERVED = 44;
+
+/** 计算卡片可用高度上限（以视口为基准，小屏也不会溢出） */
+const getCardRoom = (card: HTMLElement) => {
+  const rect = card.getBoundingClientRect();
+  const bottomGap = 16;
+  return Math.max(0, window.innerHeight - rect.top - bottomGap);
+};
+
+const measureTable = (wrap: HTMLElement, min: number) => {
+  const card = wrap.closest('.el-card') as HTMLElement | null;
+  const body = wrap.parentElement as HTMLElement | null;
+  if (!card || !body) return min;
+  const cardRoom = getCardRoom(card);
+  const bodyStyle = window.getComputedStyle(body);
+  const padTop = Number.parseFloat(bodyStyle.paddingTop) || 0;
+  const padBottom = Number.parseFloat(bodyStyle.paddingBottom) || 0;
+  const headerEl = card.querySelector<HTMLElement>('.el-card__header');
+  const headerHeight = headerEl?.getBoundingClientRect().height || 0;
+  let used = padTop + padBottom + headerHeight + PAGINATION_RESERVED;
+  Array.from(body.children).forEach(child => {
+    if (child === wrap) return;
+    const el = child as HTMLElement;
+    if (el.classList.contains('pagination-container')) return;
+    const style = window.getComputedStyle(el);
+    used += el.getBoundingClientRect().height + (Number.parseFloat(style.marginBottom) || 0);
+  });
+  return Math.max(min, Math.floor(cardRoom - used));
+};
+
+const measureTables = () => {
+  const wraps = Array.from(document.querySelectorAll<HTMLElement>('.dict-page .dict-table-wrap'));
+  if (wraps.length === 0) return;
+  // 先给卡片写入视口驱动的最大高度，再据此计算表格高度
+  const card = wraps[0].closest('.el-card') as HTMLElement | null;
+  if (card) {
+    const room = getCardRoom(card);
+    document.querySelectorAll<HTMLElement>('.dict-page .dict-card').forEach(el => {
+      el.style.setProperty('--dict-card-max', room + 'px');
+    });
+  }
+  typeTableHeight.value = measureTable(wraps[0], TABLE_MIN_HEIGHT);
+  if (wraps.length > 1) dataTableHeight.value = measureTable(wraps[1], TABLE_MIN_HEIGHT);
+};
+
+const scheduleMeasure = () => {
+  if (resizeRaf) return;
+  resizeRaf = window.requestAnimationFrame(() => {
+    resizeRaf = 0;
+    measureTables();
+  });
+};
 const typeLoading = ref(true);
 const showTypeSearch = ref(true);
 const typeIds = ref<Array<number | string>>([]);
@@ -787,7 +866,19 @@ const handleDataExport = () => {
 
 onMounted(() => {
   getTypeList();
+  scheduleMeasure();
+  [60, 180, 360].forEach(delay => window.setTimeout(scheduleMeasure, delay));
+  window.addEventListener('resize', scheduleMeasure);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', scheduleMeasure);
+});
+
+watch(
+  [() => typeList.value?.length, () => dataList.value?.length, () => showTypeSearch.value, () => showDataSearch.value],
+  () => nextTick(scheduleMeasure)
+);
 </script>
 
 <style lang="scss" scoped>
@@ -982,5 +1073,61 @@ onMounted(() => {
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #6b7d74;
+}
+</style>
+
+
+
+
+
+
+<style lang="scss" scoped>
+/* 字典管理：卡片高度不超出视口，表格高度由脚本按剩余空间计算 */
+/* 卡片高度由脚本按视口计算并写入 --dict-card-max，保证小屏也不溢出 */
+.dict-page .dict-card {
+  max-height: var(--dict-card-max, none);
+}
+</style>
+
+<style lang="scss" scoped>
+/* 分页固定高度，确保始终可见 */
+.dict-page .pagination-container {
+  flex: none;
+  height: 36px;
+  min-height: 36px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: visible;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 字典管理：整页不滚动，分页始终可见（含小屏） */
+.dict-page {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dict-page .dict-grid {
+  flex: 1;
+  min-height: 0;
+}
+.dict-page .dict-grid > .el-col {
+  min-height: 0;
+}
+.dict-page .dict-card {
+  overflow: hidden;
+}
+.dict-page .dict-card :deep(.el-card__body) {
+  overflow: hidden;
+}
+/* 小屏：两栏堆叠时每张卡片各占一半可用高度，仍保留分页 */
+@media (max-width: 1199px) {
+  .dict-page .dict-grid > .el-col {
+    max-height: 50%;
+    overflow: hidden;
+  }
 }
 </style>
