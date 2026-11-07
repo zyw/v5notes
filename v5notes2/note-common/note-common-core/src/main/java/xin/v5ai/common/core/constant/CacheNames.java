@@ -86,4 +86,9 @@ public interface CacheNames {
      */
     String PWD_ERR_CNT_KEY = "pwd_err_cnt:";
 
+    /**
+     * 首页聚合统计（TTL 60 秒）
+     */
+    String NOTES_DASHBOARD = "notes:dashboard#60s";
+
 }
