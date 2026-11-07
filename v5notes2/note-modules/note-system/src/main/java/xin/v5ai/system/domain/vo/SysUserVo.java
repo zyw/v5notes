@@ -71,15 +71,9 @@ public class SysUserVo implements Serializable {
     private String gender;
 
     /**
-     * 头像 OSS ID
-     */
-    private Long avatar;
-
-    /**
      * 头像地址
      */
-    @Translation(type = TransConstant.OSS_ID_TO_URL, mapper = "avatar")
-    private String avatarUrl;
+    private String avatar;
 
     /**
      * 密码

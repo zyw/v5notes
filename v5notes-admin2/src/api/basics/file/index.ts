@@ -1,7 +1,7 @@
 import type { PageResult } from '@/api/types';
 import type { AxiosPromise } from '@/utils/api-types';
 import request from '@/utils/request';
-import type { FileQuery, FileVO } from './types';
+import type { FileQuery, FileUploadVO, FileVO } from './types';
 
 const baseUrl = '/basics/admin/file';
 
@@ -19,6 +19,15 @@ export function listByIds(fileId: string | number): AxiosPromise<FileVO[]> {
   return request({
     url: baseUrl + '/listByIds/' + fileId,
     method: 'get'
+  });
+}
+
+// 上传文件对象存储
+export function uploadFile(data: FormData): AxiosPromise<FileUploadVO> {
+  return request({
+    url: baseUrl + '/upload',
+    method: 'post',
+    data
   });
 }
 

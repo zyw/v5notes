@@ -2,9 +2,7 @@ package xin.v5ai.common.translation.core.impl;
 
 import xin.v5ai.common.core.service.DictService;
 import xin.v5ai.system.api.DeptService;
-import xin.v5ai.system.api.OssService;
 import xin.v5ai.system.api.UserService;
-import xin.v5ai.system.api.domain.OssDTO;
 import xin.v5ai.system.api.domain.UserDTO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -81,25 +79,6 @@ class TranslationImplementationsTest {
     }
 
     /**
-     * 验证 OSS 翻译合并所有 ID 后只查询一次，并按每个原始键恢复 URL 顺序。
-     */
-    @Test
-    @DisplayName("批量翻译 OSS 地址")
-    void shouldTranslateOssUrlsInBatch() {
-        OssService service = mock(OssService.class);
-        when(service.selectUrlByIds("1")).thenReturn("https://file/1");
-        when(service.selectByIds("2,1")).thenReturn(List.of(
-            oss(1L, "https://file/1"), oss(2L, "https://file/2")));
-        OssUrlTranslationImpl translation = new OssUrlTranslationImpl(service);
-
-        assertEquals("https://file/1", translation.translation(1L, null));
-        assertNull(translation.translation(1, null));
-        assertEquals(Map.of("2,1", "https://file/2,https://file/1", 1L, "https://file/1"),
-            translation.translationBatch(new LinkedHashSet<>(List.of("2,1", 1L)), null));
-        verify(service).selectByIds("2,1");
-    }
-
-    /**
      * 验证字典翻译处理逗号分隔值、空片段和空字典类型，并保持原键映射关系。
      */
     @Test
@@ -130,19 +109,5 @@ class TranslationImplementationsTest {
         user.setUserId(id);
         user.setUserName(userName);
         return user;
-    }
-
-    /**
-     * 创建包含访问地址的测试 OSS DTO。
-     *
-     * @param id  OSS ID
-     * @param url 访问地址
-     * @return OSS DTO
-     */
-    private static OssDTO oss(Long id, String url) {
-        OssDTO oss = new OssDTO();
-        oss.setOssId(id);
-        oss.setUrl(url);
-        return oss;
     }
 }

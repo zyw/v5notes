@@ -38,8 +38,8 @@ export interface UserVO extends BaseEntity {
   email: string;
   phoneNumber: string;
   gender: string;
-  avatar?: string | number;
-  avatarUrl?: string;
+  /** 头像 URL（后端直接存 URL 字符串） */
+  avatar?: string;
   status: string;
   delFlag: string;
   loginIp: string;
@@ -71,7 +71,7 @@ export interface UserForm {
   userType?: string;
   status: string;
   remark?: string;
-  avatar?: string | number;
+  avatar?: string;
   postIds: string[];
   roleIds: string[];
 }
@@ -84,7 +84,7 @@ export interface UserProfileForm {
   phoneNumber?: string;
   email?: string;
   gender?: string;
-  avatar?: string | number;
+  avatar?: string;
 }
 
 export interface UserInfoVO {

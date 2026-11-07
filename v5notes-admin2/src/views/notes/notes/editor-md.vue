@@ -115,9 +115,9 @@ const options: IOptions = {
     linkToImgUrl: import.meta.env.VITE_APP_BASE_API + '/basics/base/file',
     filename(name: string) {
       return name
-        .replace(/[^(a-zA-Z0-9\u4e00-\u9fa5\.)]/g, '')
-        .replace(/[\?\\/:|<>\*\[\]\(\)\$%\{\}@~]/g, '')
-        .replace('/\s/g', '');
+        .replace(/[^(a-zA-Z0-9\u4e00-\u9fa5.)]/g, '')
+        .replace(/[?\\/:|<>*[\]()$%{}@~]/g, '')
+        .replace(/\s/g, '');
     },
     linkToImgCallback(responseText: string) {
       console.log(responseText, 'linkToImgCallback====');

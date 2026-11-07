@@ -246,8 +246,8 @@ const handleAdd = () => {
 /** 修改按钮操作 */
 const handleUpdate = async (row?: NotesVO) => {
   reset();
-  const _id = row?.id || ids.value[0];
-  const res = await getNotes(_id);
+  const noteId = row?.id || ids.value[0];
+  const res = await getNotes(noteId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
   dialog.title = '修改笔记';
@@ -272,9 +272,9 @@ const submitForm = () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: NotesVO) => {
-  const _ids = row?.id || ids.value;
-  await modal.confirm('是否确认删除笔记编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
-  await delNotes(_ids);
+  const noteIds = row?.id || ids.value;
+  await modal.confirm('是否确认删除笔记编号为"' + noteIds + '"的数据项？').finally(() => (loading.value = false));
+  await delNotes(noteIds);
   modal.msgSuccess('删除成功');
   await getList();
 };

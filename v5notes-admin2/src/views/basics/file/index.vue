@@ -317,7 +317,7 @@ const submitForm = () => {
 
 /** 下载按钮操作 */
 const handleDownload = (row: FileVO) => {
-  download.oss(row.id);
+  download.file(row.id);
 };
 
 /** 预览开关按钮  */

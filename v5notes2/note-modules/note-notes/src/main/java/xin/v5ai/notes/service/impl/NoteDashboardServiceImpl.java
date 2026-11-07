@@ -3,7 +3,10 @@ package xin.v5ai.notes.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.spring.data.connection.RedissonConnectionFactory;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisConnectionUtils;
 import org.springframework.stereotype.Service;
 import xin.v5ai.common.core.constant.CacheNames;
 import xin.v5ai.common.core.utils.StringUtils;
@@ -28,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * 首页聚合统计服务实现
@@ -78,6 +82,11 @@ public class NoteDashboardServiceImpl implements INoteDashboardService {
     private static final int RECENT_LIMIT = 6;
 
     private final NoteDashboardMapper dashboardMapper;
+
+    /**
+     * 仅用于读取 Redis INFO stats（命中率），与 CacheController 同一做法
+     */
+    private final RedissonConnectionFactory redisConnectionFactory;
 
     @Override
     @Cacheable(
@@ -358,10 +367,47 @@ public class NoteDashboardServiceImpl implements INoteDashboardService {
     /**
      * 缓存命中率（%）：Redis INFO stats 的 keyspace_hits/(hits+misses)，失败时返回 0
      */
+    /**
+     * Redis 命中率（%）= keyspace_hits / (keyspace_hits + keyspace_misses)。
+     * <p>
+     * Redisson 4.8 没有暴露 INFO 的编程接口，这里沿用 {@code CacheController} 的做法，
+     * 通过 {@link RedissonConnectionFactory} 取一条连接执行 {@code INFO stats}。
+     * 该指标属于「锦上添花」，任何异常都降级为 0，绝不拖垮首页。
+     */
     private double queryCacheHit() {
-        // 待确认 #7：Redisson 4.8 未暴露 keyspace hits/misses 的编程接口（无 INFO / getNodesGroup），
-        // 本期先降级为 0，前端隐藏该项；后续可接 Micrometer / Redis INFO 命令补充。
-        return 0.0;
+        RedisConnection connection = null;
+        try {
+            connection = redisConnectionFactory.getConnection();
+            Properties stats = connection.commands().info("stats");
+            if (stats == null) {
+                return 0.0;
+            }
+            long hits = parseLong(stats.getProperty("keyspace_hits"));
+            long misses = parseLong(stats.getProperty("keyspace_misses"));
+            long total = hits + misses;
+            if (total <= 0) {
+                return 0.0;
+            }
+            return round2(hits * 100.0 / total);
+        } catch (Exception e) {
+            log.warn("读取 Redis keyspace 命中率失败，本次降级为 0：{}", e.getMessage());
+            return 0.0;
+        } finally {
+            if (connection != null) {
+                RedisConnectionUtils.releaseConnection(connection, redisConnectionFactory);
+            }
+        }
+    }
+
+    private static long parseLong(String value) {
+        if (value == null || value.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 
     private static long val(DashboardKpiVo k, java.util.function.Function<DashboardKpiVo, Long> fn) {

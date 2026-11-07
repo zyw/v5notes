@@ -63,9 +63,9 @@ public class SysUser extends BaseEntity {
     private String gender;
 
     /**
-     * 用户头像
+     * 用户头像地址
      */
-    private Long avatar;
+    private String avatar;
 
     /**
      * 密码

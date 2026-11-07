@@ -251,8 +251,8 @@ const handleAdd = () => {
 /** 修改按钮操作 */
 const handleUpdate = async (row?: DirectoryVO) => {
   reset();
-  const _id = row?.id || ids.value[0];
-  const res = await getDirectory(_id);
+  const dirId = row?.id || ids.value[0];
+  const res = await getDirectory(dirId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
   dialog.title = '修改目录';
@@ -277,9 +277,9 @@ const submitForm = () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: DirectoryVO) => {
-  const _ids = row?.id || ids.value;
-  await modal.confirm('删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
-  await delDirectory(_ids);
+  const dirIds = row?.id || ids.value;
+  await modal.confirm('删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"' + dirIds + '"的数据项？').finally(() => (loading.value = false));
+  await delDirectory(dirIds);
   modal.msgSuccess('删除成功');
   await getList();
 };

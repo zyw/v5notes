@@ -50,8 +50,8 @@ public class SysUserProfileBo implements Serializable {
     private String gender;
 
     /**
-     * 头像 OSS ID
+     * 头像地址
      */
-    private Long avatar;
+    private String avatar;
 
 }

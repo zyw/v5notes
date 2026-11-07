@@ -320,3 +320,19 @@ VALUES (8, '文档管理', 0, 7, 'docs', 'docs/index', '', 'N', 'Y', 'C', '0', '
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, 8 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = 8);
+
+-- -----------------------------------------------------------------------------
+-- 9、首页聚合统计接口权限（notes:dashboard:query）
+--    GET /notes/dashboard/overview 带 @SaCheckPermission("notes:dashboard:query")，
+--    没有这条 F 类型权限记录时，除超管外所有角色打开首页都会 403。
+--    默认授予所有现存角色；要收紧时删掉 sys_role_menu 里对应行即可。
+-- -----------------------------------------------------------------------------
+DELETE FROM sys_role_menu WHERE menu_id = 1849657043265904648;
+DELETE FROM sys_menu WHERE menu_id = 1849657043265904648;
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query_param, is_frame, is_cache,
+                      menu_type, visible, status, perms, icon, active_menu, ext,
+                      create_dept, create_by, create_time, update_by, update_time, remark)
+VALUES (1849657043265904648, '首页统计', 7, 0, '', '', '', 'N', 'Y', 'F', '0', '0',
+        'notes:dashboard:query', '#', '', '', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, '首页聚合统计接口权限');
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT role_id, 1849657043265904648 FROM sys_role WHERE del_flag = '0';

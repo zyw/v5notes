@@ -1,4 +1,4 @@
-import { listByIds } from '@/api/system/oss';
+import { listByIds } from '@/api/basics/file';
 
 const OSS_MARKER_RE = /oss:\/\/([\w-]+)/g;
 
@@ -21,8 +21,8 @@ export async function resolveOssContent(html: string): Promise<string> {
   try {
     const res = await listByIds(ossIds.join(','));
     let result = html;
-    for (const oss of res.data) {
-      result = result.replaceAll(`oss://${oss.ossId}`, oss.url);
+    for (const file of res.data) {
+      result = result.replaceAll(`oss://${file.id}`, file.url);
     }
     return result;
   } catch {

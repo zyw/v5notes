@@ -75,7 +75,7 @@
 import 'vue-cropper/dist/index.css';
 import { UploadRawFile } from 'element-plus';
 import { VueCropper } from 'vue-cropper';
-import { uploadOss } from '@/api/system/oss';
+import { uploadFile } from '@/api/basics/file';
 import { updateUserProfile } from '@/api/system/user';
 import modal from '@/plugins/modal';
 import { useUserStore } from '@/store/modules/user';
@@ -148,18 +148,27 @@ const beforeUpload = (file: UploadRawFile): any => {
     };
   }
 };
-/** 上传图片 */
+/** 上传图片：裁剪后的 Blob 直接上传到 basics 文件接口，头像字段存返回的 URL */
 const uploadImg = async () => {
-  cropper.value.getCropBlob(async (data: any) => {
+  cropper.value.getCropBlob(async (data: Blob) => {
     const formData = new FormData();
     formData.append('file', data, options.fileName || 'avatar.png');
-    const res = await uploadOss(formData);
-    await updateUserProfile({ avatar: res.data.ossId });
-    open.value = false;
-    options.img = res.data.url;
-    userStore.setAvatar(options.img);
-    modal.msgSuccess('修改成功');
-    visible.value = false;
+    try {
+      const res = await uploadFile(formData);
+      const url = res.data?.url;
+      if (!url) {
+        modal.msgError('头像上传失败');
+        return;
+      }
+      await updateUserProfile({ avatar: url });
+      open.value = false;
+      options.img = url;
+      userStore.setAvatar(url);
+      modal.msgSuccess('修改成功');
+      visible.value = false;
+    } catch {
+      // 错误提示已由请求拦截器统一处理，这里保持弹窗打开以便重试
+    }
   });
 };
 /** 实时预览 */

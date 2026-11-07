@@ -387,8 +387,8 @@ const handleAdd = () => {
 /** 修改按钮操作 */
 const handleUpdate = async (row?: FileConfigVO) => {
   reset();
-  const _id = row?.id || ids.value[0];
-  const res = await getFileConfig(_id);
+  const configId = row?.id || ids.value[0];
+  const res = await getFileConfig(configId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
   dialog.title = '修改文件配置';
@@ -413,15 +413,15 @@ const submitForm = () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: FileConfigVO) => {
-  const _ids = row?.id || ids.value;
-  const _names = row?.name || fileConfigList.value.filter((item) => ids.value.includes(item.id)).map((item) => item.name);
+  const configIds = row?.id || ids.value;
+  const configNames = row?.name || fileConfigList.value.filter((item) => ids.value.includes(item.id)).map((item) => item.name);
   const result = await modal
-    .confirm('是否确认删除文件配置编号为"' + _names + '"的数据项？')
+    .confirm('是否确认删除文件配置编号为"' + configNames + '"的数据项？')
     .catch((err) => err)
     .finally(() => (loading.value = false));
 
   if (result === 'confirm') {
-    await delFileConfig(_ids);
+    await delFileConfig(configIds);
     modal.msgSuccess('删除成功');
     await getList();
   }
@@ -435,8 +435,8 @@ const getDictData = async () => {
 
 /** 设置主配置 */
 const handleMaster = async (row: FileConfigVO) => {
-  const _id = row.id;
-  const res = await updateMasterConfig(_id);
+  const masterId = row.id;
+  const res = await updateMasterConfig(masterId);
   modal.msgSuccess(res.code === 200 ? '设置主配置成功' : '取消主配置成功');
   await getList();
 };

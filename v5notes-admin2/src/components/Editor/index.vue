@@ -17,7 +17,7 @@
 import '@wangeditor-next/editor/dist/css/style.css';
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor-next/editor';
 import { Editor as WangEditor, Toolbar as EditorToolbar } from '@wangeditor-next/editor-for-vue';
-import { listByIds } from '@/api/system/oss';
+import { listByIds } from '@/api/basics/file';
 import modal from '@/plugins/modal';
 import { propTypes } from '@/utils/propTypes';
 import { globalHeaders } from '@/utils/request';
@@ -46,7 +46,7 @@ const editorRef = shallowRef<IDomEditor>();
 const content = ref('');
 
 const baseUrl = import.meta.env.VITE_APP_BASE_API;
-const uploadOssUrl = baseUrl + '/resource/oss/upload';
+const uploadFileUrl = baseUrl + '/basics/admin/file/upload';
 
 // URL → ossId 映射，在上传和解析阶段填充
 const ossUrlToId = new Map<string, string>();
@@ -82,11 +82,11 @@ const toolbarConfig = computed<Partial<IToolbarConfig>>(() => {
 
 /* ==================== OSS 上传 & 内容转换 ==================== */
 
-const uploadToOss = async (file: File): Promise<{ url: string; fileName: string; ossId: string }> => {
+const uploadToFile = async (file: File): Promise<{ url: string; path: string; id: string }> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(uploadOssUrl, {
+  const res = await fetch(uploadFileUrl, {
     method: 'POST',
     headers: globalHeaders(),
     body: formData
@@ -94,7 +94,7 @@ const uploadToOss = async (file: File): Promise<{ url: string; fileName: string;
   const data = await res.json();
 
   if (data.code === 200) {
-    ossUrlToId.set(data.data.url, String(data.data.ossId));
+    ossUrlToId.set(data.data.url, String(data.data.id));
     return data.data;
   }
   throw new Error(data.msg || '上传失败');
@@ -126,10 +126,10 @@ const decodeOssContent = async (html: string): Promise<string> => {
   try {
     const res = await listByIds(ossIds.join(','));
     let result = html;
-    for (const oss of res.data) {
-      const id = String(oss.ossId);
-      ossUrlToId.set(oss.url, id);
-      result = result.replaceAll(`oss://${id}`, oss.url);
+    for (const file of res.data) {
+      const id = String(file.id);
+      ossUrlToId.set(file.url, id);
+      result = result.replaceAll(`oss://${id}`, file.url);
     }
     return result;
   } catch {
@@ -209,7 +209,7 @@ const getUploadImageMenuConfig = () => {
 
       modal.loading('正在上传图片，请稍候...');
       try {
-        const result = await uploadToOss(file);
+        const result = await uploadToFile(file);
         insertFn(result.url, file.name, result.url);
       } catch {
         modal.msgError('图片上传失败');
@@ -227,7 +227,7 @@ const getUploadVideoMenuConfig = () => ({
 
     modal.loading('正在上传视频，请稍候...');
     try {
-      const result = await uploadToOss(file);
+      const result = await uploadToFile(file);
       insertFn(result.url);
     } catch {
       modal.msgError('视频上传失败');

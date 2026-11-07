@@ -9,8 +9,8 @@ const axios = axiosModule as any;
 const baseURL = import.meta.env.VITE_APP_BASE_API;
 let downloadLoadingInstance: LoadingInstance | undefined;
 export default {
-  async oss(ossId: string | number) {
-    const url = baseURL + '/resource/oss/download/' + ossId;
+  async file(fileId: string | number) {
+    const url = baseURL + '/basics/admin/file/download/' + fileId;
     downloadLoadingInstance = ElLoading.service({
       text: '正在下载数据，请稍候',
       background: 'rgba(0, 0, 0, 0.7)'

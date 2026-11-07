@@ -57,11 +57,6 @@ public interface CacheNames {
     String SYS_DEPT = "sys_dept#30d";
 
     /**
-     * OSS内容
-     */
-    String SYS_OSS = "sys_oss#30d";
-
-    /**
      * 角色自定义权限
      */
     String SYS_ROLE_CUSTOM = "sys_role_custom#30d";
@@ -70,11 +65,6 @@ public interface CacheNames {
      * 部门及以下权限
      */
     String SYS_DEPT_AND_CHILD = "sys_dept_and_child#30d";
-
-    /**
-     * OSS配置
-     */
-    String SYS_OSS_CONFIG = "sys_oss_config";
 
     /**
      * 在线用户

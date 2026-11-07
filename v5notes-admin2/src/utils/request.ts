@@ -297,8 +297,8 @@ service.interceptors.response.use(
       const originalHeaders: any = originalConfig.headers || {};
       const isRefreshRequest =
         originalHeaders.isRefreshTokenRequest === true || originalHeaders.isRefreshTokenRequest === 'true';
-      if (!isRefreshRequest && !originalConfig._retry && getRefreshToken()) {
-        originalConfig._retry = true;
+      if (!isRefreshRequest && !originalConfig.retried && getRefreshToken()) {
+        originalConfig.retried = true;
         originalConfig.headers = originalHeaders;
         // 重放时关闭重复提交校验，避免被本地防重拦截
         originalHeaders.repeatSubmit = false;
