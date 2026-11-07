@@ -13,6 +13,41 @@ export default {
     code: '验证码',
     rememberPassword: '记住我',
     switchRegisterPage: '立即注册',
+    welcome: '欢迎回来',
+    welcomeSub: '使用管理员账号进入工作台。',
+    brandSub: '云笔记 · 管理控制台',
+    account: '账号',
+    accountPh: '请输入账号',
+    passwordPh: '请输入密码',
+    codePh: '请输入验证码',
+    rememberAccount: '记住账号',
+    submit: '登录',
+    submitLoading: '登录中…',
+    refreshCode: '换一张',
+    showPassword: '显示密码',
+    hidePassword: '隐藏密码',
+    otherWays: '或使用其他方式',
+    langAria: '语言切换',
+    socialShort: {
+      wechat: '微信',
+      maxkey: 'MaxKey',
+      topiam: 'TopIAM',
+      gitee: 'Gitee',
+      github: 'GitHub'
+    },
+    scene: {
+      line1: '把零散的笔记，',
+      line2: '收成',
+      accent: '一棵树',
+      end: '。',
+      lede: '目录、Markdown 与权限，让团队的每一条笔记都有归处。',
+      treeTitle: '目录树',
+      treeDesc: '笔记按目录归位，层级就是上下文。',
+      mdTitle: 'Markdown',
+      mdDesc: '边写边预览，格式不打断思路。',
+      permTitle: '权限',
+      permDesc: '目录、笔记、成员，三级可见范围。'
+    },
     rule: {
       username: {
         required: '请输入您的账号'

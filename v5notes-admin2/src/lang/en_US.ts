@@ -13,6 +13,41 @@ export default {
     code: 'Verification Code',
     rememberPassword: 'Remember me',
     switchRegisterPage: 'Sign up now',
+    welcome: 'Welcome back',
+    welcomeSub: 'Sign in with your administrator account.',
+    brandSub: 'Cloud notes · Admin console',
+    account: 'Account',
+    accountPh: 'Enter your account',
+    passwordPh: 'Enter your password',
+    codePh: 'Enter the code',
+    rememberAccount: 'Remember me',
+    submit: 'Sign in',
+    submitLoading: 'Signing in…',
+    refreshCode: 'New code',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    otherWays: 'Or continue with',
+    langAria: 'Language',
+    socialShort: {
+      wechat: 'WeChat',
+      maxkey: 'MaxKey',
+      topiam: 'TopIAM',
+      gitee: 'Gitee',
+      github: 'GitHub'
+    },
+    scene: {
+      line1: 'Scattered notes,',
+      line2: 'grown into ',
+      accent: 'one tree',
+      end: '.',
+      lede: 'Folders, Markdown and permissions — every note has its place.',
+      treeTitle: 'Folders',
+      treeDesc: 'Notes live in their folders; hierarchy is context.',
+      mdTitle: 'Markdown',
+      mdDesc: 'Write and preview side by side.',
+      permTitle: 'Permissions',
+      permDesc: 'Folder, note and member level access.'
+    },
     rule: {
       username: {
         required: 'Please enter your account'

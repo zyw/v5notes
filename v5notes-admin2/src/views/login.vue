@@ -1,175 +1,219 @@
 <template>
-  <div class="login">
-    <div class="login-shell">
-      <section class="login-brand">
-        <span class="brand-pill">Plus UI Workspace</span>
-        <h1 class="brand-title">企业级后台管理系统</h1>
-        <p class="brand-desc">
-          真正面向企业级的应用框架 组件化 模块化 轻耦合 高扩展 针对企业痛点 业界一流技术栈
-          <br />
-          重写 RuoYi-Vue 所有功能 集成 Sa-Token、Mybatis-Plus、WarmFlow、SpringDoc、Hutool、OSS 定期同步。
-        </p>
-        <div class="brand-highlights">
-          <span v-for="item in highlights" :key="item" class="highlight-chip">{{ item }}</span>
-        </div>
-        <div class="brand-metrics">
-          <article v-for="item in quickStats" :key="item.label" class="metric-card">
-            <strong>{{ item.value }}</strong>
-            <span>{{ item.label }}</span>
-          </article>
-        </div>
-      </section>
-
-      <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
-        <div class="title-box">
+  <div class="login-page">
+    <!-- 左：科技感动效 + 笔记特点 -->
+    <section class="login-scene" aria-label="V5Notes 产品介绍">
+      <login-tech-background />
+      <div class="scene-inner">
+        <div class="brand">
+          <img :src="brandLogo" alt="V5Notes" />
           <div>
-            <p class="eyebrow">Workspace Sign In</p>
-            <h3 class="title">{{ title }}</h3>
-            <p class="subtitle">使用当前账号体系登录到业务工作台。</p>
+            <b>V5Notes</b>
+            <span>{{ $t('login.brandSub') }}</span>
           </div>
-          <lang-select />
         </div>
 
-        <el-form-item prop="username">
+        <div class="story">
+          <h1>
+            {{ $t('login.scene.line1') }}<br />
+            {{ $t('login.scene.line2') }}<em>{{ $t('login.scene.accent') }}</em>{{ $t('login.scene.end') }}
+          </h1>
+          <p class="lede">{{ $t('login.scene.lede') }}</p>
+
+          <ul class="features">
+            <li>
+              <span class="fi" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <path d="M8 13h8M8 17h5" />
+                </svg>
+              </span>
+              <div class="ft">
+                <b>{{ $t('login.scene.treeTitle') }}</b>
+                <p>{{ $t('login.scene.treeDesc') }}</p>
+              </div>
+            </li>
+            <li>
+              <span class="fi" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 19V5" />
+                  <path d="M8 16l4-9 4 9" />
+                  <path d="M9.5 13h5" />
+                </svg>
+              </span>
+              <div class="ft">
+                <b>{{ $t('login.scene.mdTitle') }}</b>
+                <p>{{ $t('login.scene.mdDesc') }}</p>
+              </div>
+            </li>
+            <li>
+              <span class="fi" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" />
+                  <path d="M9.2 12l2 2 3.6-4" />
+                </svg>
+              </span>
+              <div class="ft">
+                <b>{{ $t('login.scene.permTitle') }}</b>
+                <p>{{ $t('login.scene.permDesc') }}</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="scene-foot">
+          <span>V5NOTES · ADMIN CONSOLE</span>
+          <span>v6.1.0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右：登录 -->
+    <section class="login-panel">
+      <div class="panel-head">
+        <div class="lang-switch" role="group" :aria-label="$t('login.langAria')">
+          <button type="button" :aria-pressed="appStore.language === 'zh_CN'" @click="switchLang('zh_CN')">简体中文</button>
+          <i aria-hidden="true">/</i>
+          <button type="button" :aria-pressed="appStore.language === 'en_US'" @click="switchLang('en_US')">English</button>
+        </div>
+      </div>
+
+      <el-form
+        ref="loginRef"
+        :model="loginForm"
+        :rules="loginRules"
+        label-position="top"
+        class="login-form"
+        @submit.prevent="handleLogin"
+      >
+        <div class="form-head">
+          <h2>{{ $t('login.welcome') }}</h2>
+          <p>{{ $t('login.welcomeSub') }}</p>
+        </div>
+
+        <el-form-item prop="username" :label="$t('login.account')">
           <el-input
             v-model="loginForm.username"
             type="text"
             size="large"
-            auto-complete="off"
-            :placeholder="$t('login.username')"
-          >
-            <template #prefix><svg-icon icon-class="user" class="el-input__icon input-icon" /></template>
-          </el-input>
+            autocomplete="username"
+            :placeholder="$t('login.accountPh')"
+          />
         </el-form-item>
 
-        <el-form-item prop="password">
-          <el-input
-            v-model="loginForm.password"
-            type="password"
-            size="large"
-            auto-complete="off"
-            :placeholder="$t('login.password')"
-            @keyup.enter="handleLogin"
-          >
-            <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
-          </el-input>
+        <el-form-item prop="password" :label="$t('login.password')">
+          <div class="pw-field">
+            <el-input
+              v-model="loginForm.password"
+              :type="passwordVisible ? 'text' : 'password'"
+              size="large"
+              autocomplete="current-password"
+              :placeholder="$t('login.passwordPh')"
+              @keyup.enter="handleLogin"
+            />
+            <button
+              class="pw-eye"
+              type="button"
+              :aria-label="passwordVisible ? $t('login.hidePassword') : $t('login.showPassword')"
+              :aria-pressed="passwordVisible"
+              @click="togglePassword"
+            >
+              <svg v-if="!passwordVisible" viewBox="0 0 24 24">
+                <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" />
+                <circle cx="12" cy="12" r="2.7" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24">
+                <path d="M3 3l18 18" />
+                <path d="M10.6 6.1A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.4 3.9" />
+                <path d="M6.2 7.4A16.5 16.5 0 0 0 2.5 12S6 18 12 18c1.6 0 3-.5 4.2-1.2" />
+              </svg>
+            </button>
+          </div>
         </el-form-item>
 
-        <el-form-item v-if="captchaEnabled" prop="code" class="captcha-row">
-          <el-input
-            v-model="loginForm.code"
-            size="large"
-            auto-complete="off"
-            :placeholder="$t('login.code')"
-            @keyup.enter="handleLogin"
-          >
-            <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>
-          </el-input>
-          <div class="login-code">
-            <img :src="codeUrl" class="login-code-img" @click="getCode" />
+        <el-form-item v-if="captchaEnabled" prop="code" :label="$t('login.code')" class="captcha-item">
+          <div class="captcha-row">
+            <el-input
+              v-model="loginForm.code"
+              size="large"
+              autocomplete="off"
+              maxlength="4"
+              :placeholder="$t('login.codePh')"
+              @keyup.enter="handleLogin"
+            />
+            <button class="code-box" type="button" :aria-label="$t('login.refreshCode')" @click="getCode">
+              <img v-if="codeUrl" :src="codeUrl" alt="" />
+            </button>
           </div>
         </el-form-item>
 
         <div class="form-meta">
-          <el-checkbox v-model="loginForm.rememberMe">{{ $t('login.rememberPassword') }}</el-checkbox>
-          <router-link v-if="register" class="link-type" :to="'/register'">
-            {{ $t('login.switchRegisterPage') }}
-          </router-link>
+          <el-checkbox v-model="loginForm.rememberMe">{{ $t('login.rememberAccount') }}</el-checkbox>
+          <button class="refresh" type="button" @click="getCode">{{ $t('login.refreshCode') }}</button>
         </div>
 
-        <div class="social-panel">
-          <span class="social-label">第三方登录</span>
-          <div class="social-actions">
-            <el-button circle :title="$t('login.social.wechat')" @click="doSocialLogin('wechat')">
-              <svg-icon icon-class="wechat" />
-            </el-button>
-            <el-button circle :title="$t('login.social.maxkey')" @click="doSocialLogin('maxkey')">
-              <svg-icon icon-class="maxkey" />
-            </el-button>
-            <el-button circle :title="$t('login.social.topiam')" @click="doSocialLogin('topiam')">
-              <svg-icon icon-class="topiam" />
-            </el-button>
-            <el-button circle :title="$t('login.social.gitee')" @click="doSocialLogin('gitee')">
-              <svg-icon icon-class="gitee" />
-            </el-button>
-            <el-button circle :title="$t('login.social.github')" @click="doSocialLogin('github')">
-              <svg-icon icon-class="github" />
-            </el-button>
+        <el-button class="submit" type="primary" :loading="loading" @click="handleLogin">
+          {{ loading ? $t('login.submitLoading') : $t('login.submit') }}
+        </el-button>
+
+        <div class="alt">
+          <div class="alt-hint">{{ $t('login.otherWays') }}</div>
+          <div class="prov">
+            <template v-for="(key, index) in providerKeys" :key="key">
+              <button type="button" :title="$t('login.social.' + key)" @click="doSocialLogin(key)">
+                {{ $t('login.socialShort.' + key) }}
+              </button>
+              <i v-if="index < providerKeys.length - 1" aria-hidden="true">·</i>
+            </template>
           </div>
         </div>
-
-        <el-form-item class="submit-row">
-          <el-button :loading="loading" size="large" type="primary" class="submit-button" @click.prevent="handleLogin">
-            <span v-if="!loading">{{ $t('login.login') }}</span>
-            <span v-else>{{ $t('login.logging') }}</span>
-          </el-button>
-        </el-form-item>
       </el-form>
-    </div>
 
-    <div class="el-login-footer">
-      <span>Copyright © 2018-{{ currentYear }} 疯狂的狮子Li All Rights Reserved.</span>
-    </div>
+      <div class="panel-foot">
+        <span>Copyright © 2018-{{ currentYear }} V5科技 All Rights Reserved.</span>
+        <span class="ver">v6.1.0</span>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { to } from 'await-to-js';
 import { useI18n } from 'vue-i18n';
+import brandLogo from '@/assets/logo/logo.png';
 import { getCodeImg } from '@/api/login';
 import { authRouterUrl } from '@/api/system/social/auth';
 import { LoginData } from '@/api/types';
 import { HttpStatus } from '@/enums/RespEnum';
+import { useAppStore } from '@/store/modules/app';
 import { useUserStore } from '@/store/modules/user';
+import LoginTechBackground from '@/components/LoginTechBackground/index.vue';
 
-const title = import.meta.env.VITE_APP_TITLE;
-const currentYear = new Date().getFullYear();
-const quickStats = [
-  { label: '细粒度权限管理', value: '动态权限控制' },
-  { label: '主流技术栈', value: '全栈技术集成' },
-  { label: 'UI样式', value: '卡片式' }
-];
-const highlights = ['技术栈全面升级', '动态菜单', '多主题布局', '深浅色主题'];
+const { t, locale } = useI18n();
+const appStore = useAppStore();
 const userStore = useUserStore();
 const router = useRouter();
-const { t } = useI18n();
+
+const currentYear = new Date().getFullYear();
+const providerKeys = ['wechat', 'maxkey', 'topiam', 'gitee', 'github'];
 
 const loginForm = ref<LoginData>({
-  username: 'admin',
-  password: 'admin123',
+  username: '',
+  password: '',
   rememberMe: false,
   code: '',
   uuid: ''
 } as LoginData);
 
-const loginRules: ElFormRules = {
-  username: [
-    {
-      required: true,
-      trigger: 'blur',
-      message: t('login.rule.username.required')
-    }
-  ],
-  password: [
-    {
-      required: true,
-      trigger: 'blur',
-      message: t('login.rule.password.required')
-    }
-  ],
-  code: [
-    {
-      required: true,
-      trigger: 'change',
-      message: t('login.rule.code.required')
-    }
-  ]
-};
+const loginRules = computed<ElFormRules>(() => ({
+  username: [{ required: true, trigger: 'blur', message: t('login.rule.username.required') }],
+  password: [{ required: true, trigger: 'blur', message: t('login.rule.password.required') }],
+  code: [{ required: true, trigger: 'change', message: t('login.rule.code.required') }]
+}));
 
 const codeUrl = ref('');
 const loading = ref(false);
+const passwordVisible = ref(false);
 const captchaEnabled = ref(true);
-const register = ref(false);
 const redirect = ref('/');
 const loginRef = ref<ElFormInstance>();
 
@@ -181,34 +225,45 @@ watch(
   { immediate: true }
 );
 
+function switchLang(lang: 'zh_CN' | 'en_US') {
+  if (appStore.language === lang) return;
+  locale.value = lang;
+  appStore.changeLanguage(lang);
+}
+
 const handleLogin = () => {
-  loginRef.value?.validate(async (valid: boolean, fields: any) => {
-    if (valid) {
-      loading.value = true;
-      if (loginForm.value.rememberMe) {
-        localStorage.setItem('username', String(loginForm.value.username));
-        localStorage.setItem('rememberMe', String(loginForm.value.rememberMe));
-      } else {
-        localStorage.removeItem('username');
-        localStorage.removeItem('rememberMe');
-      }
-      localStorage.removeItem('password');
-      const [err] = await to(userStore.login(loginForm.value));
-      if (!err) {
-        const redirectUrl = redirect.value || '/';
-        await router.push(redirectUrl);
-        loading.value = false;
-      } else {
-        loading.value = false;
-        if (captchaEnabled.value) {
-          await getCode();
-        }
-      }
+  loginRef.value?.validate(async (valid: boolean) => {
+    if (!valid) {
+      await nextTick();
+      document.querySelector<HTMLInputElement>('.login-form .el-form-item.is-error input')?.focus();
+      return;
+    }
+    loading.value = true;
+    if (loginForm.value.rememberMe) {
+      localStorage.setItem('username', String(loginForm.value.username));
+      localStorage.setItem('rememberMe', String(loginForm.value.rememberMe));
     } else {
-      console.log('error submit!', fields);
+      localStorage.removeItem('username');
+      localStorage.removeItem('rememberMe');
+    }
+    localStorage.removeItem('password');
+    const [err] = await to(userStore.login(loginForm.value));
+    if (!err) {
+      const redirectUrl = redirect.value || '/';
+      await router.push(redirectUrl);
+      loading.value = false;
+    } else {
+      loading.value = false;
+      if (captchaEnabled.value) {
+        await getCode();
+      }
     }
   });
 };
+
+function togglePassword() {
+  passwordVisible.value = !passwordVisible.value;
+}
 
 const getCode = async () => {
   const res = await getCodeImg();
@@ -226,8 +281,8 @@ const getLoginData = () => {
   const rememberMe = localStorage.getItem('rememberMe');
   localStorage.removeItem('password');
   loginForm.value = {
-    username: username === null ? String(loginForm.value.username) : username,
-    password: username === null ? String(loginForm.value.password) : '',
+    username: username === null ? '' : username,
+    password: '',
     rememberMe: rememberMe === 'true'
   } as LoginData;
 };
@@ -249,178 +304,375 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.login {
-  min-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px 88px;
-  background:
-    radial-gradient(circle at 12% 12%, rgba(28, 90, 72, 0.22), transparent 24%),
-    radial-gradient(circle at 88% 18%, rgba(79, 191, 148, 0.16), transparent 24%),
-    linear-gradient(135deg, #05140f 0%, #0a2018 42%, #123a2c 100%);
-}
-
-.login-shell {
-  width: min(1180px, 100%);
+/* ==========================================================================
+   登录页 · 左侧科技动效 + 笔记特点 / 右侧表单
+   ========================================================================== */
+.login-page {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 440px);
-  gap: 26px;
-  align-items: stretch;
+  grid-template-columns: 56% 44%;
+  min-height: 100vh;
+  background: #fff;
 }
 
-.login-brand,
-.login-form {
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 30px 80px rgba(2, 16, 12, 0.38);
-  backdrop-filter: blur(18px);
-}
-
-.login-brand {
-  padding: 42px;
+/* ---------------- 左侧场景 ---------------- */
+.login-scene {
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  color: #eef4ff;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-    linear-gradient(135deg, rgba(28, 90, 72, 0.32), rgba(10, 32, 24, 0.24));
+  min-height: 100vh;
+  padding: 52px 64px 36px;
+  overflow: hidden;
+  background: #06120e;
 }
 
-.brand-pill {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.brand-title {
-  margin: 22px 0 14px;
-  font-size: clamp(34px, 4vw, 52px);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-}
-
-.brand-desc {
-  margin: 0;
-  max-width: 580px;
-  color: rgba(226, 232, 240, 0.88);
-  font-size: 15px;
-  line-height: 1.8;
-}
-
-.brand-highlights {
+.scene-inner {
+  position: relative;
+  z-index: 2;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 28px 0 34px;
-}
-
-.highlight-chip {
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f8fbff;
-  font-size: 13px;
-}
-
-.brand-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metric-card {
-  padding: 18px 16px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 6px;
+}
 
-  strong {
-    font-size: 24px;
-    color: #fff;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  img {
+    display: block;
+    width: 32px;
+    height: 32px;
+  }
+
+  b {
+    display: block;
+    color: #f2fbf6;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
   }
 
   span {
-    color: rgba(226, 232, 240, 0.72);
-    font-size: 13px;
+    display: block;
+    margin-top: 3px;
+    color: rgba(214, 236, 225, 0.62);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+}
+
+.story {
+  max-width: 470px;
+  margin: auto 0;
+  padding: 26px 0;
+
+  h1 {
+    margin: 0 0 18px;
+    color: #f4fbf7;
+    font-size: clamp(30px, 3.1vw, 44px);
+    font-weight: 600;
+    line-height: 1.24;
+    letter-spacing: -0.025em;
+
+    em {
+      color: #8fe0bc;
+      font-style: normal;
+    }
+  }
+
+  .lede {
+    max-width: 410px;
+    margin: 0;
+    color: rgba(216, 236, 226, 0.72);
+    font-size: 14.5px;
+    line-height: 1.85;
+  }
+}
+
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 430px;
+  margin: 34px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+  }
+}
+
+.fi {
+  display: grid;
+  flex: 0 0 30px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border: 1px solid rgba(143, 224, 188, 0.2);
+  border-radius: 9px;
+  background: rgba(143, 224, 188, 0.06);
+
+  svg {
+    width: 15px;
+    height: 15px;
+    stroke: #8fe0bc;
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.ft {
+  b {
+    display: block;
+    color: #eaf5ef;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  p {
+    margin: 3px 0 0;
+    color: rgba(206, 229, 217, 0.62);
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+}
+
+.scene-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  color: rgba(190, 216, 203, 0.58);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+/* ---------------- 右侧表单 ---------------- */
+.login-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 44px 56px 30px;
+  background: #fff;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  button {
+    padding: 5px 7px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #8a9991;
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1;
+    cursor: pointer;
+
+    &[aria-pressed='true'] {
+      color: #15241e;
+      font-weight: 600;
+    }
+
+    &:hover {
+      color: #1c5a48;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #1c5a48;
+      outline-offset: 1px;
+    }
+  }
+
+  i {
+    color: #ccd5d0;
+    font-style: normal;
   }
 }
 
 .login-form {
   width: 100%;
-  padding: 34px 30px 26px;
-  z-index: 1;
-  background: var(--app-surface-bg);
+  max-width: 352px;
+  margin: auto;
+  padding: 36px 0 24px;
 }
 
-.title-box {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 28px;
+.form-head {
+  margin-bottom: 30px;
 
-  .eyebrow {
-    margin: 0 0 8px;
-    color: var(--app-accent-strong);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .title {
+  h2 {
     margin: 0;
-    color: var(--app-text-title);
+    color: #15241e;
+    font-size: 26px;
     font-weight: 700;
-    font-size: 30px;
-    letter-spacing: -0.03em;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
   }
 
-  .subtitle {
-    margin: 8px 0 0;
-    color: var(--app-text-muted);
-    font-size: 14px;
-    line-height: 1.7;
-  }
-
-  :deep(.lang-select--style) {
-    line-height: 0;
-    color: var(--app-text-muted);
-    padding: 10px;
-    border-radius: 14px;
-    background: var(--app-elevated-soft-bg);
-    border: 1px solid var(--app-surface-border);
+  p {
+    margin: 7px 0 0;
+    color: #5f7067;
+    font-size: 13px;
   }
 }
 
-.login-form .el-input {
-  height: 48px;
+.login-form :deep(.el-form-item) {
+  margin-bottom: 16px;
 }
 
-.login-form .input-icon {
+.login-form :deep(.el-form-item.is-required:not(.is-no-asterisk) > .el-form-item__label::before) {
+  display: none;
+}
+
+.login-form :deep(.el-form-item__label) {
+  padding: 0;
+  margin-bottom: 7px;
+  color: #2b3a32;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.login-form :deep(.el-input__wrapper) {
   height: 46px;
-  width: 14px;
-  margin-left: 0;
+  padding: 0 13px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #dfe5e1 inset;
+  transition: box-shadow 0.16s;
+}
+
+.login-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #cbd5cf inset;
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow:
+    0 0 0 1px #1c5a48 inset,
+    0 0 0 3px rgba(28, 90, 72, 0.12);
+}
+
+.login-form :deep(.el-input__inner) {
+  height: 44px;
+  color: #15241e;
+  font-size: 14px;
+}
+
+.login-form :deep(.el-input__inner::placeholder) {
+  color: #7c8b84;
+}
+
+.login-form :deep(.el-input__password) {
+  color: #7f8f87;
+}
+
+.login-form :deep(.el-form-item__error) {
+  position: static;
+  padding-top: 5px;
+  color: #b4534b;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.login-form :deep(.el-form-item.is-error .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #d9a3a0 inset;
 }
 
 .captcha-row {
-  :deep(.el-form-item__content) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 122px;
-    gap: 12px;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+
+  :deep(.el-input) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.code-box {
+  flex: 0 0 112px;
+  width: 112px;
+  height: 46px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dfe5e1;
+  border-radius: 10px;
+  background: #e8f2ec;
+  cursor: pointer;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1c5a48;
+    outline-offset: 2px;
+  }
+}
+
+.pw-field {
+  position: relative;
+  width: 100%;
+
+  :deep(.el-input__wrapper) {
+    padding-right: 42px;
+  }
+}
+
+.pw-eye {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  transform: translateY(-50%);
+  place-items: center;
+  cursor: pointer;
+
+  svg {
+    width: 17px;
+    height: 17px;
+    stroke: #7f8f87;
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &:hover {
+    background: #e8f2ec;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1c5a48;
+    outline-offset: 0;
   }
 }
 
@@ -429,151 +681,269 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: -2px 0 18px;
-}
-
-.social-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  margin-bottom: 22px;
-  border-radius: 20px;
-  background: var(--app-elevated-soft-bg);
-  border: 1px solid var(--app-surface-border);
-}
-
-.social-label {
-  color: var(--app-text-muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.social-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.submit-row {
-  margin-bottom: 0;
-}
-
-.submit-button {
-  width: 100%;
-  height: 50px;
-  border-radius: 16px;
-  box-shadow: 0 18px 34px rgba(28, 90, 72, 0.22);
-}
-
-.login-form :deep(.el-input__wrapper) {
-  min-height: 48px;
-  background-color: var(--el-bg-color);
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px var(--app-surface-border) inset;
-}
-
-.login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow:
-    0 0 0 1px rgba(28, 90, 72, 0.24) inset,
-    0 0 0 4px rgba(28, 90, 72, 0.12);
+  margin: 2px 0 20px;
 }
 
 .login-form :deep(.el-checkbox__label) {
-  color: var(--app-text-muted);
+  color: #2b3a32;
+  font-size: 12.5px;
 }
 
-.login-form :deep(.el-button.is-circle) {
-  background: var(--app-elevated-soft-bg);
-  border: 1px solid var(--app-surface-border);
-  color: var(--app-text-muted);
+.login-form :deep(.el-checkbox__inner) {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border-color: #c9d3cd;
 }
 
-.login-form :deep(.el-button.is-circle:hover) {
-  background: rgba(28, 90, 72, 0.12);
-  border-color: rgba(28, 90, 72, 0.2);
-  color: var(--app-accent-strong);
+.login-form :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  border-color: #1c5a48;
+  background: #1c5a48;
 }
 
-.login-code {
-  height: 48px;
-  box-sizing: border-box;
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--el-bg-color);
-  border: 1px solid var(--app-surface-border);
+.refresh {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #17624a;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(23, 98, 74, 0.35);
+  cursor: pointer;
 
-  img {
-    cursor: pointer;
-    vertical-align: middle;
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  &:hover {
+    color: #1c5a48;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1c5a48;
+    outline-offset: 2px;
+    border-radius: 3px;
   }
 }
 
-.el-login-footer {
-  height: 40px;
-  line-height: 40px;
-  position: fixed;
-  bottom: 0;
+.submit {
   width: 100%;
-  text-align: center;
-  color: rgba(226, 232, 240, 0.68);
+  height: 46px;
+  border: 0;
+  border-radius: 10px;
+  background: #1c5a48;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(28, 90, 72, 0.18);
+  transition:
+    background 0.16s,
+    box-shadow 0.16s,
+    transform 0.12s;
+
+  &:hover,
+  &:focus {
+    background: #236a55;
+    box-shadow: 0 10px 24px rgba(28, 90, 72, 0.22);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1c5a48;
+    outline-offset: 3px;
+  }
+
+  :deep(.el-icon) {
+    margin-right: 6px;
+  }
+}
+
+.alt {
+  margin-top: 26px;
+
+  .alt-hint {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #8a9991;
+    font-size: 11.5px;
+
+    &::before,
+    &::after {
+      flex: 1;
+      height: 1px;
+      background: #edf1ee;
+      content: '';
+    }
+  }
+}
+
+.prov {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 2px;
+  margin-top: 12px;
+
+  button {
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: #5f7067;
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:hover {
+      background: #e8f2ec;
+      color: #17624a;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #1c5a48;
+      outline-offset: 1px;
+    }
+  }
+
+  i {
+    align-self: center;
+    color: #d5ddd8;
+    font-size: 11px;
+    font-style: normal;
+  }
+}
+
+.panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  color: #6f7f77;
   font-size: 12px;
-  letter-spacing: 0.08em;
+
+  .ver {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
 }
 
-.login-code-img {
-  height: 48px;
-  padding-left: 0;
-}
-
-@media (max-width: 960px) {
-  .login {
-    padding: 24px 14px 80px;
+/* ---------------- 响应式 ---------------- */
+@media (max-width: 1180px) and (min-width: 921px) {
+  .login-scene {
+    padding-right: 46px;
+    padding-left: 46px;
   }
 
-  .login-shell {
+  .login-panel {
+    padding-right: 38px;
+    padding-left: 38px;
+  }
+
+  .story h1 {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 920px) {
+  .login-page {
     grid-template-columns: 1fr;
   }
 
-  .login-brand {
-    padding: 28px 24px;
+  .login-scene {
+    height: 392px;
+    min-height: 0;
+    padding: 26px 22px 22px;
   }
 
-  .brand-metrics {
-    grid-template-columns: 1fr;
+  .brand img {
+    width: 26px;
+    height: 26px;
   }
-}
 
-@media (max-width: 640px) {
-  .login-brand {
+  .brand b {
+    font-size: 12.5px;
+  }
+
+  .brand span {
+    font-size: 10px;
+  }
+
+  .story {
+    max-width: none;
+    margin: 22px 0 0;
+    padding: 0;
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 27px;
+      line-height: 1.3;
+    }
+
+    .lede {
+      max-width: 340px;
+      font-size: 12.5px;
+      line-height: 1.7;
+    }
+  }
+
+  .features {
+    gap: 11px;
+    max-width: none;
+    margin-top: 18px;
+  }
+
+  .fi {
+    flex-basis: 26px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+  }
+
+  .ft {
+    b {
+      font-size: 12px;
+    }
+
+    p {
+      margin-top: 2px;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+  }
+
+  .scene-foot {
     display: none;
   }
 
+  .login-panel {
+    min-height: 0;
+    padding: 22px 20px 26px;
+  }
+
   .login-form {
-    padding: 26px 18px 20px;
+    max-width: none;
+    padding: 14px 0 6px;
   }
 
-  .title-box {
-    flex-direction: column;
+  .form-head h2 {
+    font-size: 24px;
   }
 
-  .social-panel {
-    flex-direction: column;
-    align-items: flex-start;
+  .form-head {
+    margin-bottom: 22px;
   }
 
-  .social-actions {
-    justify-content: flex-start;
-  }
-
-  .captcha-row :deep(.el-form-item__content) {
-    grid-template-columns: 1fr;
+  .panel-foot {
+    margin-top: 22px;
   }
 }
 </style>
