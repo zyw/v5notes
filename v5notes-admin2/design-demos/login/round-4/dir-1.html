@@ -126,6 +126,7 @@ body{
 .brand-row .bt{display:flex;flex-direction:column;line-height:1.12}
 .brand-row .bn{font-size:13px;font-weight:700;color:var(--title);letter-spacing:.01em}
 .brand-row .bs{font-size:12px;color:#67786f;margin-top:3px}
+.brand-row .bt span{white-space:nowrap}
 
 .form-body{
   flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
@@ -212,7 +213,7 @@ input.txt.has-eye{padding-right:52px}
 .tp-hint.show{opacity:1}
 
 .form-foot{flex:none;padding-top:18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
-.lang{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#67786f}
+.lang{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#67786f;white-space:nowrap}
 .lang button{
   background:none;border:0;padding:2px 0;font:500 12.5px/1 var(--font);
   color:#67786f;cursor:pointer;transition:color .15s;
@@ -236,11 +237,16 @@ input.txt{caret-color:var(--ink)}
   .scaler{transform:scale(.5);transform-origin:top left;left:-132px;top:-29px}
   .form-col{
     flex:none;width:100%;min-height:calc(100vh - 176px);
-    border-left:0;border-top:0;box-shadow:none;padding:22px 20px 26px;
+    border-left:0;border-top:0;box-shadow:none;padding:18px 20px 24px;
   }
-  .form-body{flex:none;justify-content:flex-start;max-width:none;padding-top:6px}
-  h1.title{font-size:28px;margin-top:18px}
-  .lede{margin-bottom:22px}
+  .brand-row{gap:8px}
+  .lang{gap:4px;font-size:12px}
+  .lang button{font-size:12px}
+  .form-body{flex:none;justify-content:flex-start;max-width:none;padding-top:0}
+  h1.title{font-size:28px;margin-top:14px}
+  .lede{margin-bottom:18px}
+  .field{margin-bottom:12px}
+  .row-remember{margin:2px 0 16px}
   .form-foot{padding-top:24px}
 }
 </style>
