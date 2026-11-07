@@ -37,17 +37,20 @@
 
     <div class="filter-bar" v-show="showSearch">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="filter-form">
-        <el-form-item label="用户名称" prop="userName">
-          <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item label="用户昵称" prop="nickName">
-          <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable @keyup.enter="handleQuery" />
+        <el-form-item label="关键字" prop="keyword">
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="用户名称 / 昵称，模糊搜索"
+            clearable
+            style="width: 240px"
+            @keyup.enter="handleQuery"
+          />
         </el-form-item>
         <el-form-item label="手机号码" prop="phoneNumber">
           <el-input v-model="queryParams.phoneNumber" placeholder="请输入手机号码" clearable @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
-          <el-select v-model="queryParams.status" placeholder="用户状态" clearable>
+          <el-select v-model="queryParams.status" placeholder="用户状态" clearable style="width: 130px !important">
             <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
         </el-form-item>
@@ -702,7 +705,7 @@ const initData: PageData<UserForm, UserQuery> = {
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    userName: '',
+    keyword: '',
     phoneNumber: '',
     status: '',
     deptId: '',
@@ -1572,5 +1575,17 @@ async function handleDeptChange(value: number | string) {
 }
 .auth-role-dialog :deep(.el-dialog__body) {
   overflow-x: hidden;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 筛选区：控件统一高度，状态下拉收窄 */
+.filter-form :deep(.el-input__wrapper),
+.filter-form :deep(.el-select__wrapper),
+.filter-form :deep(.el-range-editor) {
+  height: 34px;
+}
+.filter-form.el-form--inline :deep(.el-select) {
+  width: 130px;
 }
 </style>

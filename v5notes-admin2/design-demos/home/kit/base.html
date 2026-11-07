@@ -1,0 +1,201 @@
+<!doctype html>
+<!-- ============================================================
+     首页设计稿共用外壳（复制这个文件改内容区，不要改外壳）
+     已批准外壳：薄荷工作台 · 白底侧栏 232px / 顶栏 56px / 画布 #f4f7f5
+     ============================================================ -->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>V5Notes2 · 工作台</title>
+<style>
+  :root{
+    --shell:#f4f7f5; --surface:#ffffff; --surface-2:#fafcfb; --border:#e6ebe7; --border-strong:#d8e2db;
+    --title:#15241e; --body:#2b3a32; --muted:#5f7067; --faint:#66756d;
+    --primary:#1c5a48; --primary-hover:#236a55; --soft:#e8f2ec; --soft-2:#f0f5f2;
+    --success:#2f9e6b; --warning:#d9a33b; --danger:#b4534b; --info:#64748b;
+    --radius-sm:8px; --radius:12px; --radius-lg:14px;
+    --shadow-sm:0 1px 2px rgba(20,40,30,.05); --shadow-md:0 10px 24px rgba(20,40,30,.06);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+    --sans:"PingFang SC","HarmonyOS Sans SC","MiSans",-apple-system,"Helvetica Neue",sans-serif;
+  }
+  html[data-theme="dark"]{
+    --shell:#0c1411; --surface:#111a16; --surface-2:#0f1714; --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.14);
+    --title:#e9f2ec; --body:#cdd9d2; --muted:#8ea79b; --faint:#6b8279;
+    --primary:#4fbf94; --primary-hover:#63cda3; --soft:rgba(79,191,148,.16); --soft-2:rgba(255,255,255,.04);
+    --success:#3ec08a; --warning:#e0b25a; --danger:#d16060; --info:#8ea0bd;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 10px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--shell);color:var(--body);font-family:var(--sans);
+       -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  .app{display:flex;min-height:100vh}
+
+  /* ---------- 侧栏 ---------- */
+  .sidebar{width:232px;flex:0 0 232px;background:var(--surface);border-right:1px solid var(--border);
+           display:flex;flex-direction:column;padding:14px 12px 12px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+  .brand img{width:30px;height:30px;border-radius:8px;display:block}
+  .brand b{display:block;font-size:14px;font-weight:650;letter-spacing:-.02em;color:var(--title);line-height:1.2}
+  .brand span{display:block;font-size:10.5px;color:var(--faint);margin-top:1px}
+  .nav-group{margin-top:14px}
+  .nav-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);
+             padding:0 10px 7px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:9px;
+            color:var(--body);font-size:13.5px;transition:background .15s,color .15s;position:relative}
+  .nav-item svg{width:16px;height:16px;flex:0 0 16px;stroke:currentColor;stroke-width:1.6;fill:none;
+                stroke-linecap:round;stroke-linejoin:round;opacity:.72}
+  .nav-item:hover{background:var(--soft-2)}
+  .nav-item.active{background:var(--soft);color:#17624a;font-weight:600}
+  html[data-theme="dark"] .nav-item.active{color:var(--primary)}
+  .nav-item.active svg{opacity:1}
+  .nav-badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);
+             background:var(--soft-2);border-radius:20px;padding:1px 6px}
+  .nav-item.active .nav-badge{background:rgba(28,90,72,.12);color:#17624a}
+  .sidebar-foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--border);display:grid;gap:2px}
+
+  /* ---------- 顶栏 ---------- */
+  .main-wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--border);
+          display:flex;align-items:center;gap:16px;padding:0 22px;position:sticky;top:0;z-index:20}
+  .crumb{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .crumb b{color:var(--title);font-weight:600}
+  .crumb .sep{color:var(--border-strong)}
+  .search{flex:0 1 340px;height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;
+          background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--faint)}
+  .search input{border:0;background:transparent;outline:none;flex:1;font-size:13px;color:var(--body);font-family:inherit}
+  .search input::placeholder{color:var(--faint)}
+  .search kbd{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--border);
+              border-radius:4px;padding:1px 4px;background:var(--surface)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .icon-btn{width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--muted);
+            display:grid;place-items:center;position:relative}
+  .icon-btn:hover{background:var(--soft-2);color:var(--title)}
+  .icon-btn svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .badge-dot{position:absolute;top:5px;right:5px;min-width:14px;height:14px;border-radius:8px;background:var(--danger);
+             color:#fff;font-family:var(--mono);font-size:9px;line-height:14px;text-align:center;padding:0 3px;border:1.5px solid var(--surface)}
+  .avatar{display:flex;align-items:center;gap:8px;padding:3px 6px 3px 3px;border-radius:20px;border:0;background:transparent}
+  .avatar:hover{background:var(--soft-2)}
+  .avatar .pic{width:28px;height:28px;border-radius:50%;background:var(--soft);color:#17624a;
+               display:grid;place-items:center;font-size:12px;font-weight:650}
+  .avatar .who{text-align:left;line-height:1.15}
+  .avatar .who b{display:block;font-size:12.5px;color:var(--title);font-weight:600}
+  .avatar .who span{display:block;font-size:10.5px;color:var(--faint)}
+
+  /* ---------- 内容区 ---------- */
+  .page{flex:1;min-width:0;padding:20px 22px 26px;display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="../assets/logo.png" alt="V5Notes2" />
+      <div><b>V5Notes2</b><span>云笔记 · 管理控制台</span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        工作台
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Content</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        目录管理
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+        笔记管理<span class="nav-badge">12,486</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Resources</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M8 14h8"/></svg>
+        文件管理
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        客户端账号
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">System</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M19 19v-1.5a3.5 3.5 0 0 0-2.6-3.4"/></svg>
+        用户与权限
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5 6L14 6l2.5 6H21"/></svg>
+        系统监控
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4z"/></svg>
+        系统设置
+      </a>
+    </div>
+
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.7-.9 1.3v.4"/><path d="M12 17h.01"/></svg>
+        帮助中心
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        退出登录
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="crumb"><span>系统</span><span class="sep">/</span><b>工作台</b></div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input placeholder="搜索笔记、目录或成员…" />
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="top-right">
+        <button class="icon-btn" aria-label="通知">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="badge-dot">3</span>
+        </button>
+        <button class="icon-btn" aria-label="帮助"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.7-.9 1.3v.4"/><path d="M12 17h.01"/></svg></button>
+        <button class="icon-btn" aria-label="全屏"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg></button>
+        <button class="avatar">
+          <span class="pic">林</span>
+          <span class="who"><b>林知远</b><span>超级管理员</span></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page">
+      <!-- ======== 各方向内容区从这里开始 ======== -->
+      <h1 style="margin:0;font-size:22px;color:var(--title)">内容区（替换这一段）</h1>
+      <!-- ======== 到这里结束 ======== -->
+    </main>
+  </div>
+</div>
+
+<script src="data/mock-data.js"></script>
+<script src="assets/echarts.min.js"></script>
+<script src="kit/charts.js"></script>
+</body>
+</html>

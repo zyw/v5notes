@@ -250,3 +250,68 @@ onMounted(() => {
   font-size: 13px;
 }
 </style>
+
+<style lang="scss" scoped>
+/* ===== 个人设置：整页撑满，各标签页内容铺满显示区域 ===== */
+.profile-page {
+  height: calc(100vh - 76px - 24px - 8px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.app-main.with-tags-view .profile-page {
+  height: calc(100vh - 111px - 24px - 8px);
+}
+.profile-page .profile-grid {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.profile-page .profile-grid > .el-col {
+  height: 100%;
+  min-height: 0;
+}
+.profile-summary-card,
+.profile-main-card {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.profile-summary-card :deep(.el-card__header),
+.profile-main-card :deep(.el-card__header) {
+  flex: none;
+}
+.profile-summary-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.profile-main-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* tabs 铺满卡片剩余高度 */
+.profile-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.profile-tabs :deep(.el-tabs__header) {
+  flex: none;
+}
+.profile-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.profile-tabs :deep(.el-tab-pane) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

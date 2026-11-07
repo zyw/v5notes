@@ -58,6 +58,11 @@ public class SysUserBo implements Serializable {
     private String nickName;
 
     /**
+     * 模糊搜索关键字（同时匹配用户账号或用户昵称）
+     */
+    private String keyword;
+
+    /**
      * 用户类型（sys_user系统用户）
      */
     private String userType;

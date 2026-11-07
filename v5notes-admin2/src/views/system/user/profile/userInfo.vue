@@ -1,5 +1,5 @@
 <template>
-  <el-form ref="userRef" :model="userForm" :rules="rules" label-width="80px" class="profile-form">
+  <el-form ref="userRef" :model="userForm" :rules="rules" label-width="100px" class="profile-form">
     <el-form-item label="用户昵称" prop="nickName">
       <el-input v-model="userForm.nickName" maxlength="30" />
     </el-form-item>
@@ -85,7 +85,18 @@ const close = () => {
 
 <style lang="scss" scoped>
 .profile-form {
-  max-width: 520px;
+  max-width: 560px;
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+/* 标签不换行、右对齐，避免「用户昵称」被拆成两行 */
+.profile-form :deep(.el-form-item__label) {
+  flex: none;
+  white-space: nowrap;
+  word-break: keep-all;
+  justify-content: flex-end;
 }
 
 .profile-form :deep(.el-input__wrapper) {

@@ -1,6 +1,12 @@
 <template>
   <div class="profile-table-wrap">
-    <el-table :data="devices" border class="data-table profile-device-table">
+    <el-table
+      :data="devices"
+      border
+      class="data-table profile-device-table"
+      data-full-height-table="false"
+      empty-text="暂无在线设备"
+    >
       <el-table-column label="设备类型" align="center">
         <template #default="scope">
           <dict-tag :options="sys_device_type" :value="scope.row.deviceType" />
@@ -62,5 +68,17 @@ const handldDelOnline = (row: any) => {
 <style lang="scss" scoped>
 .profile-table-wrap {
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 表格撑满标签页可用高度 */
+.profile-device-table {
+  height: 100%;
+}
+
+.profile-device-table :deep(th.el-table__cell .cell) {
+  white-space: nowrap;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <el-form ref="pwdRef" :model="user" :rules="rules" label-width="80px" class="profile-form">
+  <el-form ref="pwdRef" :model="user" :rules="rules" label-width="100px" class="profile-form">
     <el-form-item label="旧密码" prop="oldPassword">
       <el-input v-model="user.oldPassword" placeholder="请输入旧密码" type="password" show-password />
     </el-form-item>
@@ -79,7 +79,18 @@ const close = () => {
 
 <style lang="scss" scoped>
 .profile-form {
-  max-width: 520px;
+  max-width: 560px;
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+/* 标签不换行，避免「确认密码」被拆行 */
+.profile-form :deep(.el-form-item__label) {
+  flex: none;
+  white-space: nowrap;
+  word-break: keep-all;
+  justify-content: flex-end;
 }
 
 .profile-form :deep(.el-input__wrapper) {

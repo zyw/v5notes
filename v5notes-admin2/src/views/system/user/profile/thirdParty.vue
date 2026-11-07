@@ -1,16 +1,24 @@
 <template>
   <div class="profile-auth">
-    <el-table :data="auths" border class="data-table profile-auth-table">
-      <el-table-column label="序号" width="50" type="index" />
-      <el-table-column label="绑定账号平台" width="140" align="center" prop="source" show-overflow-tooltip />
-      <el-table-column label="头像" width="120" align="center" prop="avatar">
+    <div class="profile-auth-table-wrap">
+    <el-table
+      :data="auths"
+      border
+      class="data-table profile-auth-table"
+      data-full-height-table="false"
+      empty-text="暂无第三方账号绑定"
+    >
+      <el-table-column label="序号" type="index" width="64" align="center" />
+      <el-table-column label="绑定账号平台" min-width="150" align="center" prop="source" show-overflow-tooltip />
+      <el-table-column label="头像" width="110" align="center" prop="avatar">
         <template #default="scope">
-          <img :src="scope.row.avatar" style="width: 45px; height: 45px" />
+          <img v-if="scope.row.avatar" :src="scope.row.avatar" class="profile-auth-avatar" />
+          <span v-else class="profile-auth-avatar-empty">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="系统账号" width="180" align="center" prop="userName" :show-overflow-tooltip="true" />
-      <el-table-column label="绑定时间" width="180" align="center" prop="createTime" />
-      <el-table-column label="操作" width="80" align="center" class-name="small-padding fixed-width">
+      <el-table-column label="系统账号" min-width="160" align="center" prop="userName" :show-overflow-tooltip="true" />
+      <el-table-column label="绑定时间" min-width="170" align="center" prop="createTime" />
+      <el-table-column label="操作" width="90" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-tooltip content="解绑" placement="top">
             <el-button link type="primary" icon="CircleClose" @click="unlockAuth(scope.row)"></el-button>
@@ -18,6 +26,7 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <div class="provider-section">
       <div class="provider-heading">
@@ -102,17 +111,52 @@ const authUrl = (source: string) => {
 .profile-auth {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 表格占满剩余高度，内部滚动；下方绑定区固定高度 */
+.profile-auth-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.profile-auth-table {
+  height: 100%;
 }
 
 .profile-auth-table {
   width: 100%;
 }
 
+/* 表头不换行，避免「序号」竖排 */
+.profile-auth-table :deep(th.el-table__cell .cell) {
+  white-space: nowrap;
+}
+
+.profile-auth-table :deep(.el-table__cell) {
+  padding: 10px 0;
+}
+
+.profile-auth-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+}
+
+.profile-auth-avatar-empty {
+  color: var(--el-text-color-placeholder);
+}
+
 .provider-section {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: none;
 }
 
 .provider-heading p {
@@ -170,14 +214,6 @@ a {
 .provider-desc {
   margin: 0;
   font-size: 16px;
-}
-
-td > img {
-  height: 20px;
-  width: 20px;
-  display: inline-block;
-  border-radius: 50%;
-  margin-right: 5px;
 }
 
 .app-name {

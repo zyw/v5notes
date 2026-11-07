@@ -1,0 +1,18 @@
+/* 首页设计稿共用令牌 · 与 v5notes-admin2 已落地的「薄荷工作台」一致 */
+:root{
+  --shell:#f4f7f5; --surface:#ffffff; --surface-2:#fafcfb; --border:#e6ebe7; --border-strong:#d8e2db;
+  --title:#15241e; --body:#2b3a32; --muted:#5f7067; --faint:#66756d;
+  --primary:#1c5a48; --primary-hover:#236a55; --soft:#e8f2ec; --soft-2:#f0f5f2;
+  --success:#2f9e6b; --warning:#d9a33b; --danger:#b4534b; --info:#64748b;
+  --radius-sm:8px; --radius:12px; --radius-lg:14px;
+  --shadow-sm:0 1px 2px rgba(20,40,30,.05); --shadow-md:0 10px 24px rgba(20,40,30,.06);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sans:"PingFang SC","HarmonyOS Sans SC","MiSans",-apple-system,"Helvetica Neue",sans-serif;
+}
+html[data-theme="dark"]{
+  --shell:#0c1411; --surface:#111a16; --surface-2:#0f1714; --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.14);
+  --title:#e9f2ec; --body:#cdd9d2; --muted:#8ea79b; --faint:#6b8279;
+  --primary:#4fbf94; --primary-hover:#63cda3; --soft:rgba(79,191,148,.16); --soft-2:rgba(255,255,255,.04);
+  --success:#3ec08a; --warning:#e0b25a; --danger:#d16060; --info:#8ea0bd;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 10px 24px rgba(0,0,0,.35);
+}

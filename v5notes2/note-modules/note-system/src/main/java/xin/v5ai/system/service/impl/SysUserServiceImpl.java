@@ -92,6 +92,10 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
             .in(StringUtils.isNotBlank(user.getUserIds()), SysUser::getUserId, StringUtils.splitTo(user.getUserIds(), Convert::toLong))
             .likeIfText(SysUser::getUserName, user.getUserName())
             .likeIfText(SysUser::getNickName, user.getNickName())
+            .and(StringUtils.isNotBlank(user.getKeyword()), w -> {
+                String keyword = user.getKeyword().trim();
+                w.and(q -> q.like(SysUser::getUserName, keyword).or().like(SysUser::getNickName, keyword));
+            })
             .eqIfText(SysUser::getStatus, user.getStatus())
             .likeIfText(SysUser::getPhoneNumber, user.getPhoneNumber())
             .betweenParams(SysUser::getCreateTime, params, "beginTime", "endTime")

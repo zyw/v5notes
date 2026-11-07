@@ -14,6 +14,8 @@ export interface UserInfo {
  * 用户查询对象类型
  */
 export interface UserQuery extends PageQuery {
+  /** 模糊搜索：同时匹配用户账号或用户昵称 */
+  keyword?: string;
   userName?: string;
   nickName?: string;
   phoneNumber?: string;
