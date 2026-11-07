@@ -1,5 +1,74 @@
 <template>
-  <div class="p-2 system-user-page">
+  <div class="p-2 system-user-page user-page">
+    <header class="page-head">
+      <div class="page-head__text">
+        <div class="eyebrow">成员与权限</div>
+        <h1 class="page-title">成员管理</h1>
+        <p class="page-sub">统一管理工作空间成员、角色与访问范围，共 <b>{{ total }}</b> 位成员。</p>
+      </div>
+      <div class="page-head__actions">
+        <el-button v-if="checkPermi(['system:user:import'])" plain icon="Upload" @click="handleImport">批量导入</el-button>
+        <el-button v-has-permi="['system:user:add']" type="primary" icon="Plus" @click="handleAdd()">新增成员</el-button>
+      </div>
+    </header>
+
+    <section class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card__top"><i class="sdot mint"></i><span>全部成员</span></div>
+        <div class="stat-card__value">{{ total }}<em>位</em></div>
+        <div class="stat-card__hint">当前筛选结果总数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__top"><i class="sdot mint"></i><span>已启用</span></div>
+        <div class="stat-card__value">{{ statEnabled }}<em>位</em></div>
+        <div class="stat-card__hint">本页启用</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__top"><i class="sdot grey"></i><span>已停用</span></div>
+        <div class="stat-card__value">{{ statDisabled }}<em>位</em></div>
+        <div class="stat-card__hint">本页停用</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__top"><i class="sdot amber"></i><span>已选中</span></div>
+        <div class="stat-card__value">{{ statSelected }}<em>项</em></div>
+        <div class="stat-card__hint">勾选待操作</div>
+      </div>
+    </section>
+
+    <div class="filter-bar" v-show="showSearch">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="filter-form">
+        <el-form-item label="用户名称" prop="userName">
+          <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="用户昵称" prop="nickName">
+          <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="手机号码" prop="phoneNumber">
+          <el-input v-model="queryParams.phoneNumber" placeholder="请输入手机号码" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="用户状态" clearable>
+            <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="创建时间">
+          <el-date-picker
+            v-model="dateRange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            type="daterange"
+            range-separator="-"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+          />
+        </el-form-item>
+        <el-form-item class="filter-form__ops">
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
     <el-row :gutter="20" class="content-grid">
       <!-- 部门树 -->
       <tree-panel
@@ -17,113 +86,18 @@
         class="tree-content-col content-main"
         :class="{ 'is-tree-collapsed': treeCollapsed }"
       >
-        <div class="search-wrap">
-          <el-card shadow="hover" class="search-panel" :class="{ 'is-collapsed': !showSearch }">
-            <template #header>
-              <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
-                <div>
-                  <span class="panel-kicker">Search Filters</span>
-                  <h3>筛选条件</h3>
-                </div>
-              </div>
-            </template>
-            <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-              <el-form-item label="用户名称" prop="userName">
-                <el-input
-                  v-model="queryParams.userName"
-                  placeholder="请输入用户名称"
-                  clearable
-                  @keyup.enter="handleQuery"
-                />
-              </el-form-item>
-              <el-form-item label="用户昵称" prop="nickName">
-                <el-input
-                  v-model="queryParams.nickName"
-                  placeholder="请输入用户昵称"
-                  clearable
-                  @keyup.enter="handleQuery"
-                />
-              </el-form-item>
-              <el-form-item label="手机号码" prop="phoneNumber">
-                <el-input
-                  v-model="queryParams.phoneNumber"
-                  placeholder="请输入手机号码"
-                  clearable
-                  @keyup.enter="handleQuery"
-                />
-              </el-form-item>
-
-              <el-form-item label="状态" prop="status">
-                <el-select v-model="queryParams.status" placeholder="用户状态" clearable>
-                  <el-option
-                    v-for="dict in sys_normal_disable"
-                    :key="dict.value"
-                    :label="dict.label"
-                    :value="dict.value"
-                  />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="创建时间" style="width: 308px">
-                <el-date-picker
-                  v-model="dateRange"
-                  value-format="YYYY-MM-DD HH:mm:ss"
-                  type="daterange"
-                  range-separator="-"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-                ></el-date-picker>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </el-card>
-        </div>
-
-        <el-card shadow="hover" class="table-panel">
+        <el-card class="table-panel">
           <template #header>
-            <div class="toolbar-shell">
-              <div class="table-heading">
-                <span class="panel-kicker">User Dataset</span>
-                <h3>用户列表</h3>
-                <p>共 {{ total }} 条记录，支持部门筛选、状态切换、导入导出和角色分配。</p>
+            <div class="table-toolbar">
+              <div class="table-toolbar__left">
+                <h3>成员列表</h3>
+                <span class="count-pill">{{ total }}</span>
+                <span v-if="ids.length" class="sel-note">已选 {{ ids.length }} 项 · <a @click="clearSelection">清空</a></span>
               </div>
-              <div class="toolbar-actions">
-                <el-button v-has-permi="['system:user:add']" type="primary" plain icon="Plus" @click="handleAdd()">
-                  新增
-                </el-button>
-                <el-button
-                  v-has-permi="['system:user:edit']"
-                  type="success"
-                  plain
-                  :disabled="single"
-                  icon="Edit"
-                  @click="handleUpdate()"
-                >
-                  修改
-                </el-button>
-                <el-button
-                  v-has-permi="['system:user:remove']"
-                  type="danger"
-                  plain
-                  :disabled="multiple"
-                  icon="Delete"
-                  @click="handleDelete()"
-                >
-                  删除
-                </el-button>
-                <el-button
-                  v-hasPermi="['system:user:edit']"
-                  type="warning"
-                  plain
-                  icon="Unlock"
-                  :disabled="single"
-                  @click="handleUnlock()"
-                >
-                  解锁
-                </el-button>
+              <div class="table-toolbar__actions">
+                <el-button v-has-permi="['system:user:edit']" :disabled="single" icon="Edit" @click="handleUpdate()">修改</el-button>
+                <el-button v-has-permi="['system:user:remove']" :disabled="multiple" icon="Delete" @click="handleDelete()">删除</el-button>
+                <el-button v-hasPermi="['system:user:edit']" :disabled="single" icon="Unlock" @click="handleUnlock()">解锁</el-button>
                 <el-dropdown class="mt-[1px]">
                   <el-button plain type="info">
                     更多
@@ -132,13 +106,8 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item icon="Download" @click="importTemplate">下载模板</el-dropdown-item>
-                      <!-- 注意 由于el-dropdown-item标签是延迟加载的 所以v-has-permi自定义标签不生效 需要使用v-if调用方法执行 -->
-                      <el-dropdown-item v-if="checkPermi(['system:user:import'])" icon="Top" @click="handleImport">
-                        导入数据
-                      </el-dropdown-item>
-                      <el-dropdown-item v-if="checkPermi(['system:user:export'])" icon="Download" @click="handleExport">
-                        导出数据
-                      </el-dropdown-item>
+                      <el-dropdown-item v-if="checkPermi(['system:user:import'])" icon="Top" @click="handleImport">导入数据</el-dropdown-item>
+                      <el-dropdown-item v-if="checkPermi(['system:user:export'])" icon="Download" @click="handleExport">导出数据</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -154,8 +123,8 @@
           </template>
 
           <el-table
+            ref="userTableRef"
             v-loading="loading"
-            border
             class="data-table"
             :data="userList"
             @selection-change="handleSelectionChange"
@@ -165,14 +134,18 @@
             <el-table-column
               v-if="columns[1].visible"
               key="userName"
-              label="用户名称"
-              align="center"
+              label="成员"
+              min-width="220"
               :show-overflow-tooltip="true"
             >
               <template #default="scope">
-                <el-link type="primary" underline="never" @click="handleViewDetail(scope.row)">
-                  {{ scope.row.userName }}
-                </el-link>
+                <div class="member-cell" @click="handleViewDetail(scope.row)">
+                  <span class="member-avatar">{{ (scope.row.nickName || scope.row.userName || '用').slice(0, 1) }}</span>
+                  <div class="member-info">
+                    <span class="member-name">{{ scope.row.nickName || scope.row.userName }}</span>
+                    <span class="member-account">{{ scope.row.userName }}</span>
+                  </div>
+                </div>
               </template>
             </el-table-column>
             <el-table-column
@@ -199,14 +172,18 @@
               prop="phoneNumber"
               width="120"
             />
-            <el-table-column v-if="columns[5].visible" key="status" label="状态" align="center">
+            <el-table-column v-if="columns[5].visible" key="status" label="状态" width="120">
               <template #default="scope">
-                <el-switch
-                  v-model="scope.row.status"
-                  active-value="0"
-                  inactive-value="1"
-                  @change="handleStatusChange(scope.row)"
-                ></el-switch>
+                <div class="status-cell" :class="scope.row.status === '0' ? 'is-on' : 'is-off'">
+                  <el-switch
+                    v-model="scope.row.status"
+                    active-value="0"
+                    inactive-value="1"
+                    size="small"
+                    @change="handleStatusChange(scope.row)"
+                  />
+                  <span>{{ scope.row.status === '0' ? '正常' : '停用' }}</span>
+                </div>
               </template>
             </el-table-column>
 
@@ -552,8 +529,8 @@ const upload = reactive<ImportOption>({
 // 列显隐信息
 const columns = ref<FieldOption[]>([
   { key: 0, label: `用户编号`, visible: false, children: [] },
-  { key: 1, label: `用户名称`, visible: true, children: [] },
-  { key: 2, label: `用户昵称`, visible: true, children: [] },
+  { key: 1, label: `成员`, visible: true, children: [] },
+  { key: 2, label: `用户昵称`, visible: false, children: [] },
   { key: 3, label: `部门`, visible: true, children: [] },
   { key: 4, label: `手机号码`, visible: true, children: [] },
   { key: 5, label: `状态`, visible: true, children: [] },
@@ -565,6 +542,7 @@ const queryFormRef = ref<ElFormInstance>();
 const userFormRef = ref<ElFormInstance>();
 const uploadRef = ref<ElUploadInstance>();
 const userViewRef = ref<InstanceType<typeof UserViewDrawer>>();
+const userTableRef = ref<any>();
 
 const initFormData: UserForm = {
   userId: undefined,
@@ -640,6 +618,7 @@ const data = reactive<PageData<UserForm, UserQuery>>(initData);
 
 const { queryParams, form, rules } = toRefs<PageData<UserForm, UserQuery>>(data);
 const { ids, single, multiple, handleSelectionChange } = useTableSelection<UserVO>(item => item.userId);
+const clearSelection = () => userTableRef.value?.clearSelection();
 const { dialog, openDialog: openUserDialog, closeDialog: closeUserDialog, setTitle: setDialogTitle } = useDialogState();
 
 const findDeptLabel = (nodes: any[]): string => {
@@ -654,6 +633,10 @@ const heroName = computed(() => form.value.nickName || (form.value.userId ? '未
 const avatarText = computed(() => (form.value.nickName || (form.value.userId ? '用' : '新')).trim().slice(0, 1));
 const userTypeLabel = computed(() => selectDictLabel(user_type.value || [], form.value.userType) || '未选择用户类型');
 const deptLabel = computed(() => (form.value.deptId ? findDeptLabel(enabledDeptOptions.value) : ''));
+/** 方向2 指标卡数据（本页统计，真实数据，不虚构全局值） */
+const statEnabled = computed(() => (userList.value || []).filter(item => item.status === '0').length);
+const statDisabled = computed(() => (userList.value || []).filter(item => item.status === '1').length);
+const statSelected = computed(() => ids.value.length);
 
 /** 查询用户列表 */
 const getList = async () => {
@@ -1054,5 +1037,194 @@ async function handleDeptChange(value: number | string) {
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #6b7d74;
+}
+
+/* ===== 方向 2 · 薄荷工作台 · 成员管理页版式 ===== */
+.user-page { gap: 14px; }
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 2px 2px 0;
+}
+.page-head__text .eyebrow {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #2f6b57;
+}
+.page-title {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #15241e;
+  line-height: 1.1;
+}
+.page-sub {
+  margin: 7px 0 0;
+  font-size: 13.5px;
+  color: #5f7067;
+}
+.page-sub b {
+  color: #17624a;
+}
+.page-head__actions {
+  display: flex;
+  gap: 10px;
+  flex: none;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.stat-card {
+  padding: 14px 18px;
+  background: var(--app-surface-bg);
+  border: 1px solid var(--app-surface-border);
+  border-radius: 12px;
+  box-shadow: var(--app-shadow-sm);
+}
+.stat-card__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f7067;
+}
+.sdot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.sdot.mint { background: #2f9e6b; box-shadow: 0 0 0 3px rgba(47, 158, 107, 0.14); }
+.sdot.grey { background: #b9c2bc; }
+.sdot.amber { background: #d9a33b; box-shadow: 0 0 0 3px rgba(217, 163, 59, 0.16); }
+.stat-card__value {
+  margin-top: 10px;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  color: #15241e;
+}
+.stat-card__value em {
+  margin-left: 3px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  color: #8a978f;
+}
+.stat-card__hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #96a099;
+}
+
+.filter-bar {
+  padding: 14px 16px 2px;
+  background: var(--app-surface-bg);
+  border: 1px solid var(--app-surface-border);
+  border-radius: 12px;
+  box-shadow: var(--app-shadow-sm);
+}
+.filter-form :deep(.el-form-item) { margin-bottom: 12px; }
+.filter-form :deep(.el-form-item__label) {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #5f7067;
+}
+.filter-form__ops {
+  margin-left: auto;
+}
+
+.table-panel { border-radius: 12px; }
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.table-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.table-toolbar__left h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #15241e;
+}
+.count-pill {
+  padding: 2px 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #17624a;
+  background: #e8f2ec;
+  border: 1px solid #d8e7dd;
+  border-radius: 999px;
+}
+.sel-note { font-size: 12px; color: #7a857e; }
+.sel-note a { color: #1c5a48; cursor: pointer; text-decoration: underline; }
+.table-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+
+.member-cell { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.member-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #e8f2ec;
+  color: #1c5a48;
+  font-size: 13px;
+  font-weight: 800;
+}
+.member-info { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.member-name { font-size: 13.5px; font-weight: 700; color: #1d2b24; }
+.member-account { font-size: 11.5px; color: #7c8880; }
+.status-cell { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.status-cell.is-on { color: #1f7a55; }
+.status-cell.is-off { color: #8a948c; }
+
+/* 表格：去竖线、左对齐、浅灰表头、行 hover 薄荷 */
+.user-page :deep(.el-table th.el-table__cell),
+.user-page :deep(.el-table td.el-table__cell) {
+  text-align: left;
+}
+.user-page :deep(.el-table th.el-table__cell .cell),
+.user-page :deep(.el-table td.el-table__cell .cell) {
+  text-align: left !important;
+}
+.user-page :deep(.el-table th.el-table__cell) {
+  background: #f6f8f7 !important;
+  color: #5f7067;
+  font-weight: 700;
+  font-size: 12px;
+}
+.user-page :deep(.el-table td.el-table__cell) {
+  padding: 9px 0;
+}
+.user-page :deep(.el-table .el-table__row:hover > td.el-table__cell) {
+  background: #f6f8f7 !important;
+}
+.user-page :deep(.el-table) {
+  border-radius: 10px;
 }
 </style>

@@ -160,11 +160,9 @@ const isActive = (currentRoute: RouteLocationNormalized): boolean => {
 };
 
 const activeStyle = (tag: RouteLocationNormalized) => {
+  // 方向2：标签平铺——激活态交由 CSS（浅薄荷底、无边框）控制，不用内联高亮
   if (!isActive(tag)) return {};
-  return {
-    backgroundColor: 'var(--tags-view-active-bg)',
-    borderColor: 'var(--tags-view-active-border-color)'
-  };
+  return {};
 };
 
 const isAffix = (tag?: RouteLocationNormalized) => {
@@ -482,10 +480,10 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   height: 38px;
   width: 100%;
-  background-color: var(--app-surface-bg);
-  border: 1px solid var(--app-surface-border);
-  border-radius: var(--app-radius-md);
-  box-shadow: var(--app-shadow-sm);
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 
   $btn-width: 26px;
   $btn-hover-bg: var(--el-fill-color-light);
@@ -502,8 +500,8 @@ onBeforeUnmount(() => {
     cursor: pointer;
     color: var(--app-text-muted);
     user-select: none;
-    background-color: var(--app-surface-bg);
-    border: 1px solid var(--app-surface-border);
+    background-color: transparent;
+    border: 1px solid transparent;
     border-radius: var(--app-radius-md);
     transition:
       box-shadow 0.2s ease,
@@ -514,7 +512,7 @@ onBeforeUnmount(() => {
     &:hover:not(.disabled) {
       background: $btn-hover-bg;
       color: $btn-hover-color;
-      border-color: var(--el-color-primary-light-5);
+      border-color: transparent;
       box-shadow: var(--app-shadow-sm);
       transform: translateY(-1px);
     }
@@ -541,8 +539,8 @@ onBeforeUnmount(() => {
       cursor: pointer;
       height: 26px;
       line-height: 25px;
-      background-color: var(--app-surface-bg);
-      border: 1px solid var(--app-surface-border);
+      background-color: transparent;
+      border: 1px solid transparent;
       color: var(--el-text-color-regular);
       padding: 0 8px;
       font-size: 12px;
@@ -557,9 +555,10 @@ onBeforeUnmount(() => {
 
       &:hover {
         color: var(--el-color-primary);
-        border-color: var(--el-color-primary-light-5);
-        box-shadow: var(--app-shadow-sm);
-        transform: translateY(-1px);
+        background: rgba(28, 90, 72, 0.06);
+        border-color: transparent;
+        box-shadow: none;
+        transform: none;
       }
 
       &:first-of-type {
@@ -571,13 +570,13 @@ onBeforeUnmount(() => {
       }
 
       &.active {
-        background-color: var(--tags-view-active-bg);
-        color: var(--el-color-white);
-        border-color: var(--tags-view-active-border-color);
+        background-color: #e8f2ec;
+        color: #17624a;
+        border-color: transparent;
 
         &::before {
           content: '';
-          background: var(--el-color-white);
+          background: #1c5a48;
           display: inline-block;
           width: 8px;
           height: 8px;
@@ -617,8 +616,8 @@ onBeforeUnmount(() => {
     cursor: pointer;
     color: var(--app-text-muted);
     user-select: none;
-    background-color: var(--app-surface-bg);
-    border: 1px solid var(--app-surface-border);
+    background-color: transparent;
+    border: 1px solid transparent;
     border-radius: var(--app-radius-md);
     transition:
       box-shadow 0.2s ease,
@@ -629,7 +628,7 @@ onBeforeUnmount(() => {
     &:hover {
       background: $btn-hover-bg;
       color: $btn-hover-color;
-      border-color: var(--el-color-primary-light-5);
+      border-color: transparent;
       box-shadow: var(--app-shadow-sm);
       transform: translateY(-1px);
     }

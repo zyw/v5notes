@@ -182,49 +182,105 @@
           />
         </el-card>
 
-        <!-- 添加或修改岗位对话框 -->
-        <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
-          <el-form ref="postFormRef" :model="form" :rules="rules" label-width="80px">
-            <el-form-item label="岗位名称" prop="postName">
-              <el-input v-model="form.postName" placeholder="请输入岗位名称" />
-            </el-form-item>
-            <el-form-item label="部门" prop="deptId">
-              <el-tree-select
-                v-model="form.deptId"
-                :data="deptOptions"
-                :props="{ value: 'id', label: 'label', children: 'children' } as any"
-                value-key="id"
-                placeholder="请选择部门"
-                check-strictly
-              />
-            </el-form-item>
-            <el-form-item label="岗位编码" prop="postCode">
-              <el-input v-model="form.postCode" placeholder="请输入编码名称" />
-            </el-form-item>
-            <el-form-item label="类别编码" prop="postCategory">
-              <el-input v-model="form.postCategory" placeholder="请输入类别编码" />
-            </el-form-item>
-            <el-form-item label="岗位顺序" prop="postSort">
-              <el-input-number v-model="form.postSort" controls-position="right" :min="0" />
-            </el-form-item>
-            <el-form-item label="岗位状态" prop="status">
-              <el-radio-group v-model="form.status">
-                <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
-                  {{ dict.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="备注" prop="remark">
-              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
-            </el-form-item>
-          </el-form>
-          <template #footer>
-            <div class="dialog-footer">
-              <el-button type="primary" @click="submitForm">确 定</el-button>
-              <el-button @click="cancel">取 消</el-button>
+        <!-- 添加或修改岗位抽屉 -->
+        <FormDrawer
+          v-model="dialog.visible"
+          :title="dialog.title"
+          eyebrow="岗位配置"
+          subtitle="配置岗位名称、编码、所属部门与显示状态"
+          size="680px"
+          submit-text="确定"
+          hint="带 * 为必填项，保存后立即生效"
+          @submit="submitForm"
+          @closed="cancel"
+        >
+          <template #hero>
+            <div class="drawer-hero">
+              <div class="drawer-hero__top">
+                <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 岗位</span>
+                <span class="drawer-hero__divider">·</span>
+                <span class="drawer-hero__action">{{ dialog.title }}</span>
+              </div>
+              <div class="drawer-hero__profile">
+                <div class="drawer-hero__icon">{{ (form.postName || '岗').trim().slice(0, 1) }}</div>
+                <div class="drawer-hero__info">
+                  <div class="drawer-hero__name">{{ form.postName || '未命名岗位' }}</div>
+                  <div class="drawer-hero__meta">
+                    <span class="drawer-hero__tag">{{ postStatusLabel }}</span>
+                    <span v-if="form.postCode">{{ form.postCode }}</span>
+                    <span v-else>未设置编码</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
-        </el-dialog>
+
+          <el-form ref="postFormRef" :model="form" :rules="rules" label-position="top" class="post-form">
+            <section class="form-section">
+              <h4>基本信息</h4>
+              <el-row :gutter="18">
+                <el-col :span="12">
+                  <el-form-item label="岗位名称" prop="postName">
+                    <el-input v-model="form.postName" placeholder="请输入岗位名称" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="岗位编码" prop="postCode">
+                    <el-input v-model="form.postCode" placeholder="请输入编码名称" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="部门" prop="deptId">
+                    <el-tree-select
+                      v-model="form.deptId"
+                      :data="deptOptions"
+                      :props="{ value: 'id', label: 'label', children: 'children' } as any"
+                      value-key="id"
+                      placeholder="请选择部门"
+                      check-strictly
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="类别编码" prop="postCategory">
+                    <el-input v-model="form.postCategory" placeholder="请输入类别编码" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </section>
+
+            <section class="form-section">
+              <h4>排序与状态</h4>
+              <el-row :gutter="18">
+                <el-col :span="12">
+                  <el-form-item label="岗位顺序" prop="postSort">
+                    <el-input-number v-model="form.postSort" controls-position="right" :min="0" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="岗位状态" prop="status">
+                    <el-radio-group v-model="form.status">
+                      <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
+                        {{ dict.label }}
+                      </el-radio>
+                    </el-radio-group>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </section>
+
+            <section class="form-section">
+              <h4>备注</h4>
+              <el-row :gutter="18">
+                <el-col :span="24">
+                  <el-form-item label="备注" prop="remark">
+                    <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入内容" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </section>
+          </el-form>
+        </FormDrawer>
       </el-col>
     </el-row>
   </div>
@@ -235,6 +291,8 @@ import { DeptTreeVO, DeptVO } from '@/api/system/dept/types';
 import { listPost, addPost, delPost, getPost, updatePost, deptTreeSelect } from '@/api/system/post';
 import { PostForm, PostQuery, PostVO } from '@/api/system/post/types';
 import TreePanel from '@/components/TreePanel/index.vue';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 import { useLoading } from '@/hooks/async/useLoading';
 import { useFormDialog } from '@/hooks/dialog/useFormDialog';
 import { useSearchReset } from '@/hooks/form/useSearchReset';
@@ -295,6 +353,11 @@ const { dialog, resetForm, openDialog, showDialog, closeDialog } = useFormDialog
   form,
   formRef: postFormRef,
   initialFormData: initFormData
+});
+
+const postStatusLabel = computed(() => {
+  const dict = (sys_normal_disable.value || []).find((item: any) => item.value === form.value.status);
+  return dict?.label || '未知状态';
 });
 const { resetQuery } = useSearchReset({
   queryFormRef,
@@ -403,4 +466,128 @@ onMounted(() => {
 @use '@/assets/styles/components/page-shell' as pageShell;
 
 @include pageShell.tree-table-crud-page;
+
+.post-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.post-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.post-form :deep(.el-input__wrapper),
+.post-form :deep(.el-select__wrapper),
+.post-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.post-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
+}
+.drawer-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.drawer-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.drawer-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.drawer-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.drawer-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.drawer-hero__action {
+  color: #c9e4d7;
+}
+.drawer-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.drawer-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.drawer-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.drawer-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.drawer-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
 </style>

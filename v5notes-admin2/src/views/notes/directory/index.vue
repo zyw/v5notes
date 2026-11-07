@@ -3,7 +3,7 @@
     <transition :enter-active-class="animateConfig.searchAnimate.enter" :leave-active-class="animateConfig.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
             <el-form-item label="所属目录" prop="pid">
               <el-tree-select
                 v-model="queryParams.pid"

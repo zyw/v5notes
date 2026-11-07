@@ -219,7 +219,7 @@ onMounted(() => {
 }
 
 .profile-tabs :deep(.el-tabs__item.is-active) {
-  background: rgba(53, 109, 255, 0.1);
+  background: rgba(28, 90, 72, 0.1);
   color: var(--el-color-primary);
 }
 

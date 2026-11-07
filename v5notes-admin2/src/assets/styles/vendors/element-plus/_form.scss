@@ -5,7 +5,8 @@
 }
 
 .el-form--inline .el-form-item__label {
-  width: 68px;
+  width: auto;
+  white-space: nowrap;
 }
 
 .el-form--inline .el-select {

@@ -47,14 +47,6 @@
             </el-popover>
           </div>
         </el-tooltip>
-        <el-tooltip content="Github" effect="dark" placement="bottom">
-          <ruo-yi-git id="ruoyi-git" class="right-menu-item hover-effect" />
-        </el-tooltip>
-
-        <el-tooltip :content="$t('navbar.document')" effect="dark" placement="bottom">
-          <ruo-yi-doc id="ruoyi-doc" class="right-menu-item hover-effect" />
-        </el-tooltip>
-
         <el-tooltip :content="$t('navbar.full')" effect="dark" placement="bottom">
           <screenfull id="screenfull" class="right-menu-item hover-effect" />
         </el-tooltip>
@@ -190,7 +182,7 @@ const handleCommand = (command: string) => {
 
     &:hover {
       transform: translateY(-1px);
-      border-color: rgba(64, 158, 255, 0.22);
+      border-color: rgba(28, 90, 72, 0.22);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.76),
         0 10px 22px rgba(15, 23, 42, 0.08);
@@ -368,7 +360,7 @@ const handleCommand = (command: string) => {
         &:hover {
           background: var(--app-accent-soft);
           color: var(--app-accent-strong);
-          border-color: rgba(64, 158, 255, 0.16);
+          border-color: rgba(28, 90, 72, 0.16);
         }
       }
     }
@@ -397,8 +389,8 @@ const handleCommand = (command: string) => {
         gap: 12px;
         padding: 4px 8px 4px 4px;
         border-radius: var(--app-radius-base);
-        background: var(--app-surface-bg);
-        border: 1px solid var(--app-surface-border);
+        background: transparent;
+        border: 1px solid transparent;
         min-width: 0;
         cursor: pointer;
         transition:
@@ -407,7 +399,7 @@ const handleCommand = (command: string) => {
 
         &:hover {
           background: var(--app-accent-soft);
-          border-color: rgba(64, 158, 255, 0.16);
+          border-color: transparent;
         }
 
         .user-avatar {
@@ -468,10 +460,14 @@ html.dark {
       0 8px 22px rgba(0, 0, 0, 0.2);
   }
 
-  .navbar .right-menu .right-menu-item,
-  .navbar .right-menu .avatar-wrapper {
+  .navbar .right-menu .right-menu-item {
     background: var(--app-navbar-bg);
     border-color: var(--app-navbar-border);
+  }
+
+  .navbar .right-menu .avatar-wrapper {
+    background: transparent;
+    border-color: transparent;
   }
 }
 </style>

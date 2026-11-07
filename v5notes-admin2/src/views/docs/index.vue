@@ -2,7 +2,7 @@
   <div class="p-2">
     <!-- 搜索 -->
     <el-card shadow="hover" class="mb-[10px]">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
         <el-form-item label="文件名称" prop="name">
           <el-input v-model="queryParams.name" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
         </el-form-item>

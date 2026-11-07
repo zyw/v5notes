@@ -72,7 +72,7 @@
         </el-tabs>
 
         <div class="config-content">
-          <el-table :data="configList" :border="false">
+          <el-table :data="configList" :border="false" class="data-table">
             <el-table-column label="参数名称" prop="configName" min-width="160" />
             <el-table-column label="参数键名" prop="configKey" min-width="160" />
             <el-table-column label="参数键值" min-width="160">
@@ -124,34 +124,79 @@
       </div>
     </el-card>
 
-    <!-- 添加或修改参数配置对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
-      <el-form ref="configFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="参数名称" prop="configName">
-          <el-input v-model="form.configName" placeholder="请输入参数名称" />
-        </el-form-item>
-        <el-form-item label="参数键名" prop="configKey">
-          <el-input v-model="form.configKey" placeholder="请输入参数键名" />
-        </el-form-item>
-        <el-form-item label="参数键值" prop="configValue">
-          <el-input v-model="form.configValue" type="textarea" placeholder="请输入参数键值" />
-        </el-form-item>
-        <el-form-item label="系统内置" prop="configType">
-          <el-radio-group v-model="form.configType">
-            <el-radio v-for="dict in sys_yes_no" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+    <!-- 添加或修改参数配置抽屉 -->
+    <FormDrawer
+      v-model="dialog.visible"
+      :title="dialog.title"
+      eyebrow="参数设置"
+      subtitle="配置系统参数项、键值与类型"
+      size="560px"
+      submit-text="确定"
+      hint="带 * 为必填项，保存后立即生效"
+      @submit="submitForm"
+      @closed="cancel"
+    >
+      <template #hero>
+        <div class="config-hero">
+          <div class="config-hero__top">
+            <span class="config-hero__brand"><img :src="logoUrl" alt="" />V5Notes 参数设置</span>
+            <span class="config-hero__divider">·</span>
+            <span class="config-hero__action">{{ dialog.title }}</span>
+          </div>
+          <div class="config-hero__profile">
+            <div class="config-hero__icon">{{ (form.configName || '参').slice(0, 1) }}</div>
+            <div>
+              <div class="config-hero__name">{{ form.configName || '未命名参数' }}</div>
+              <div class="config-hero__meta">
+                <span class="config-hero__tag">{{ configTypeLabel }}</span>
+                <span>{{ form.configKey || '未设置键名' }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="configFormRef" :model="form" :rules="rules" label-position="top" class="config-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="参数名称" prop="configName">
+                <el-input v-model="form.configName" placeholder="请输入参数名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="参数键名" prop="configKey">
+                <el-input v-model="form.configKey" placeholder="请输入参数键名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="参数键值" prop="configValue">
+                <el-input v-model="form.configValue" type="textarea" :rows="3" placeholder="请输入参数键值" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>类型与备注</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="系统内置" prop="configType">
+                <el-radio-group v-model="form.configType">
+                  <el-radio v-for="dict in sys_yes_no" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="备注" prop="remark">
+                <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入内容" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+      </el-form>
+    </FormDrawer>
   </div>
 </template>
 
@@ -165,8 +210,15 @@ import { useSearchToggle } from '@/hooks/form/useSearchToggle';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 
 const { sys_yes_no } = toRefs<any>(useDict('sys_yes_no'));
+
+const configTypeLabel = computed(() => {
+  const dict = (sys_yes_no.value || []).find((item: any) => item.value === form.value.configType);
+  return dict?.label || (form.value.configType === 'Y' ? '是' : '否');
+});
 
 const configList = ref<ConfigVO[]>([]);
 const { loading, withLoading } = useLoading(true);
@@ -342,5 +394,131 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   padding-left: 16px;
+}
+</style>
+
+<style lang="scss" scoped>
+.config-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.config-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.config-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.config-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.config-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.config-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.config-hero__action {
+  color: #c9e4d7;
+}
+.config-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.config-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+}
+.config-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.config-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.config-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.config-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.config-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.config-form :deep(.el-input__wrapper),
+.config-form :deep(.el-select__wrapper),
+.config-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.config-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
 }
 </style>

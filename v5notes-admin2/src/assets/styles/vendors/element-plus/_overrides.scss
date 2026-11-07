@@ -30,10 +30,10 @@
 .el-button--primary {
   --el-button-bg-color: var(--app-accent-strong);
   --el-button-border-color: var(--app-accent-strong);
-  --el-button-hover-bg-color: #4a7cff;
-  --el-button-hover-border-color: #4a7cff;
-  --el-button-active-bg-color: #2e5ce0;
-  --el-button-active-border-color: #2e5ce0;
+  --el-button-hover-bg-color: #236a55;
+  --el-button-hover-border-color: #236a55;
+  --el-button-active-bg-color: #17493b;
+  --el-button-active-border-color: #17493b;
 }
 
 // --- 表格 CSS 变量接业务 token ---
@@ -51,9 +51,9 @@
 html.dark .el-table {
   --el-table-tr-bg-color: var(--app-surface-bg);
   --el-table-bg-color: var(--app-surface-bg);
-  --el-table-row-hover-bg-color: #2a3a55;
-  --el-table-current-row-bg-color: #1e3a6e;
-  --el-color-primary-light-9: #1e3a6e;
+  --el-table-row-hover-bg-color: rgba(79, 191, 148, 0.1);
+  --el-table-current-row-bg-color: rgba(79, 191, 148, 0.16);
+  --el-color-primary-light-9: rgba(79, 191, 148, 0.16);
   background: var(--app-surface-bg);
 }
 
@@ -82,3 +82,40 @@ html.dark .el-table {
 .el-select__wrapper {
   box-shadow: 0 0 0 1px var(--el-border-color) inset;
 }
+
+/* ===== 方向 2 · 薄荷工作台 · Element Plus 语义色覆盖 ===== */
+:root {
+  --el-color-success: #2f9e6b;
+  --el-color-success-light-7: #c1e2d3;
+  --el-color-success-light-9: #eaf6f0;
+  --el-color-warning: #d9a33b;
+  --el-color-warning-light-7: #f3e3c4;
+  --el-color-warning-light-9: #fbf6eb;
+  --el-color-danger: #b4534b;
+  --el-color-danger-light-7: #e8cbc9;
+  --el-color-danger-light-9: #f7edec;
+  --el-color-info: #64748b;
+  --el-color-info-light-7: #d0d5dc;
+  --el-color-info-light-9: #ebeff2;
+}
+html.dark {
+  --el-color-success: #3ec08a;
+  --el-color-warning: #e0b25a;
+  --el-color-danger: #d16060;
+  --el-color-info: #8ea0bd;
+}
+
+
+/* ===== 方向 2 · 薄荷工作台 · 首次绘制主色（运行时会被 handleThemeStyle 以同值覆盖） ===== */
+:root {
+  --el-color-primary: #1c5a48;
+  --el-color-primary-light-1: #326a5a;
+  --el-color-primary-light-2: #497b6c;
+  --el-color-primary-light-3: #608b7e;
+  --el-color-primary-light-5: #8daca3;
+  --el-color-primary-light-7: #bacdc8;
+  --el-color-primary-light-8: #d1deda;
+  --el-color-primary-light-9: #e8eeec;
+  --el-color-primary-dark-2: #164839;
+}
+

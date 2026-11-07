@@ -128,7 +128,7 @@ onMounted(() => {
     transform: translateY(-1px);
     color: var(--app-accent-strong);
     background: var(--app-accent-soft);
-    border-color: rgba(53, 109, 255, 0.2);
+    border-color: rgba(28, 90, 72, 0.2);
   }
 }
 

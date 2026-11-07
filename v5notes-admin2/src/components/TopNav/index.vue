@@ -319,16 +319,16 @@ onMounted(() => {
 
 .mix-topnav-popper .el-menu--popup .el-menu-item:hover,
 .mix-topnav-popper .el-menu--popup .el-sub-menu__title:hover {
-  background: rgba(64, 158, 255, 0.08) !important;
+  background: rgba(28, 90, 72, 0.08) !important;
   color: v-bind(theme) !important;
   transform: translateX(1px);
 }
 
 .mix-topnav-popper .el-menu--popup .el-menu-item.is-active,
 .mix-topnav-popper .el-menu--popup .el-sub-menu.is-active > .el-sub-menu__title {
-  background: linear-gradient(180deg, rgba(64, 158, 255, 0.16), rgba(64, 158, 255, 0.1)) !important;
+  background: linear-gradient(180deg, rgba(28, 90, 72, 0.16), rgba(28, 90, 72, 0.1)) !important;
   color: v-bind(theme) !important;
-  box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(28, 90, 72, 0.12);
 }
 
 .mix-topnav-popper .el-menu--popup .svg-icon {
@@ -377,12 +377,12 @@ html.dark .mix-topnav-popper .el-menu--popup .el-sub-menu__title {
 
 html.dark .mix-topnav-popper .el-menu--popup .el-menu-item:hover,
 html.dark .mix-topnav-popper .el-menu--popup .el-sub-menu__title:hover {
-  background: rgba(96, 165, 250, 0.14) !important;
+  background: rgba(79, 191, 148, 0.14) !important;
 }
 
 html.dark .mix-topnav-popper .el-menu--popup .el-menu-item.is-active,
 html.dark .mix-topnav-popper .el-menu--popup .el-sub-menu.is-active > .el-sub-menu__title {
   background: linear-gradient(180deg, rgba(37, 99, 235, 0.28), rgba(59, 130, 246, 0.18)) !important;
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(79, 191, 148, 0.16);
 }
 </style>

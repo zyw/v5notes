@@ -3,7 +3,7 @@
     <transition :enter-active-class="animateConfig.searchAnimate.enter" :leave-active-class="animateConfig.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="68px">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
             <el-form-item label="配置名" prop="name">
               <el-input v-model="queryParams.name" placeholder="请输入配置名" clearable style="width: 240px" @keyup.enter="handleQuery" />
             </el-form-item>
@@ -32,7 +32,7 @@
       </div>
     </transition>
 
-    <el-card shadow="never">
+    <el-card shadow="hover" class="table-panel">
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
@@ -48,7 +48,12 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="fileConfigList" @selection-change="handleSelectionChange">
+      <el-table
+        v-loading="loading"
+        class="data-table"
+        :data="fileConfigList"
+        @selection-change="handleSelectionChange"
+      >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="序号" type="index" width="50" :index="hIndex" />
         <el-table-column label="配置名" align="center" prop="name" />
@@ -84,93 +89,165 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
-    <!-- 添加或修改文件配置对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="800px" append-to-body>
-      <el-form ref="fileConfigFormRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="配置名" prop="name">
-          <el-input v-model="form.name" placeholder="请输入配置名" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" placeholder="请输入备注" />
-        </el-form-item>
-        <el-form-item label="存储器" prop="storage">
-          <el-select v-model="form.storage" placeholder="请输入存储器" style="width: 100%">
-            <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="Number(item.dictValue)" />
-          </el-select>
-        </el-form-item>
-        <template v-if="form.storage == 100">
-          <el-form-item label="基础路径" prop="config.basePath">
-            <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
-          </el-form-item>
-          <el-form-item label="自定义域名" prop="config.domain">
-            <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
-          </el-form-item>
-        </template>
-        <template v-if="form.storage == 101">
-          <el-form-item label="自定义域名" prop="config.domain">
-            <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
-          </el-form-item>
-        </template>
-        <template v-if="form.storage == 102 || form.storage == 103">
-          <el-form-item label="基础路径" prop="config.basePath">
-            <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
-          </el-form-item>
-          <el-form-item label="主机地址" prop="config.host">
-            <el-input v-model="form.config.host" placeholder="请输入主机地址" />
-          </el-form-item>
-          <el-form-item label="主机端口" prop="config.port">
-            <el-input-number v-model="form.config.port" :min="1" :max="65535" placeholder="请输入主机端口" />
-          </el-form-item>
-          <el-form-item label="用户名" prop="config.username">
-            <el-input v-model="form.config.username" placeholder="请输入用户名" />
-          </el-form-item>
-          <el-form-item label="密码" prop="config.password">
-            <el-input v-model="form.config.password" placeholder="请输入密码" />
-          </el-form-item>
-          <template v-if="form.storage == 102">
-            <el-form-item label="连接模式" prop="config.mode">
-              <el-radio-group v-model="form.config.mode">
-                <el-radio value="Active">主动模式</el-radio>
-                <el-radio value="Passive">被动模式</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </template>
-          <el-form-item label="自定义域名" prop="config.domain">
-            <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
-          </el-form-item>
-        </template>
-        <template v-if="form.storage == 104">
-          <el-form-item label="节点地址" prop="config.endpoint">
-            <el-input v-model="form.config.endpoint" placeholder="请输入节点地址" />
-          </el-form-item>
-          <el-form-item label="存储 bucket" prop="config.bucket">
-            <el-input v-model="form.config.bucket" placeholder="请输入存储 bucket" />
-          </el-form-item>
-          <el-form-item label="accessKey" prop="config.accessKey">
-            <el-input v-model="form.config.accessKey" placeholder="请输入accessKey" />
-          </el-form-item>
-          <el-form-item label="accessSecret" prop="config.accessSecret">
-            <el-input v-model="form.config.accessSecret" placeholder="请输入accessSecret" />
-          </el-form-item>
-          <el-form-item label="桶权限类型" prop="config.accessPolicy">
-            <el-radio-group v-model="form.config.accessPolicy">
-              <el-radio value="0" size="large">private</el-radio>
-              <el-radio value="1" size="large">public</el-radio>
-              <el-radio value="2" size="large">custom</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="自定义域名">
-            <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
-          </el-form-item>
-        </template>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+    <!-- 添加或修改文件配置抽屉 -->
+    <FormDrawer
+      v-model="dialog.visible"
+      :title="dialog.title"
+      eyebrow="文件配置"
+      subtitle="配置文件存储的存储器与连接参数"
+      size="680px"
+      submit-text="确定"
+      hint="带 * 为必填项，保存后立即生效"
+      :submitting="buttonLoading"
+      @submit="submitForm"
+      @closed="cancel"
+    >
+      <template #hero>
+        <div class="file-config-hero">
+          <div class="file-config-hero__top">
+            <span class="file-config-hero__brand"><img :src="logoUrl" alt="" />V5Notes 文件配置</span>
+            <span class="file-config-hero__divider">·</span>
+            <span class="file-config-hero__action">{{ dialog.title }}</span>
+          </div>
+          <div class="file-config-hero__profile">
+            <div class="file-config-hero__icon">{{ (form.name || '配').slice(0, 1) }}</div>
+            <div>
+              <div class="file-config-hero__name">{{ form.name || '未命名配置' }}</div>
+              <div class="file-config-hero__meta">
+                <span class="file-config-hero__tag">{{ storageLabel }}</span>
+                <span>{{ form.remark || '未设置备注' }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="fileConfigFormRef" :model="form" :rules="rules" label-position="top" class="file-config-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="配置名" prop="name">
+                <el-input v-model="form.name" placeholder="请输入配置名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="存储器" prop="storage">
+                <el-select v-model="form.storage" placeholder="请输入存储器" style="width: 100%">
+                  <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="Number(item.dictValue)" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="备注" prop="remark">
+                <el-input v-model="form.remark" placeholder="请输入备注" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>存储配置</h4>
+          <el-row :gutter="18">
+            <template v-if="form.storage == 100">
+              <el-col :span="12">
+                <el-form-item label="基础路径" prop="config.basePath">
+                  <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="自定义域名" prop="config.domain">
+                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                </el-form-item>
+              </el-col>
+            </template>
+            <template v-if="form.storage == 101">
+              <el-col :span="24">
+                <el-form-item label="自定义域名" prop="config.domain">
+                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                </el-form-item>
+              </el-col>
+            </template>
+            <template v-if="form.storage == 102 || form.storage == 103">
+              <el-col :span="12">
+                <el-form-item label="基础路径" prop="config.basePath">
+                  <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="主机地址" prop="config.host">
+                  <el-input v-model="form.config.host" placeholder="请输入主机地址" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="主机端口" prop="config.port">
+                  <el-input-number v-model="form.config.port" :min="1" :max="65535" placeholder="请输入主机端口" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="用户名" prop="config.username">
+                  <el-input v-model="form.config.username" placeholder="请输入用户名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码" prop="config.password">
+                  <el-input v-model="form.config.password" placeholder="请输入密码" />
+                </el-form-item>
+              </el-col>
+              <el-col v-if="form.storage == 102" :span="12">
+                <el-form-item label="连接模式" prop="config.mode">
+                  <el-radio-group v-model="form.config.mode">
+                    <el-radio value="Active">主动模式</el-radio>
+                    <el-radio value="Passive">被动模式</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="自定义域名" prop="config.domain">
+                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                </el-form-item>
+              </el-col>
+            </template>
+            <template v-if="form.storage == 104">
+              <el-col :span="12">
+                <el-form-item label="节点地址" prop="config.endpoint">
+                  <el-input v-model="form.config.endpoint" placeholder="请输入节点地址" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="存储 bucket" prop="config.bucket">
+                  <el-input v-model="form.config.bucket" placeholder="请输入存储 bucket" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="accessKey" prop="config.accessKey">
+                  <el-input v-model="form.config.accessKey" placeholder="请输入accessKey" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="accessSecret" prop="config.accessSecret">
+                  <el-input v-model="form.config.accessSecret" placeholder="请输入accessSecret" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="桶权限类型" prop="config.accessPolicy">
+                  <el-radio-group v-model="form.config.accessPolicy">
+                    <el-radio value="0">private</el-radio>
+                    <el-radio value="1">public</el-radio>
+                    <el-radio value="2">custom</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="自定义域名">
+                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                </el-form-item>
+              </el-col>
+            </template>
+          </el-row>
+        </section>
+      </el-form>
+    </FormDrawer>
   </div>
 </template>
 
@@ -181,6 +258,8 @@ import { getDicts } from '@/api/system/dict/data';
 import type { DictDataVO } from '@/api/system/dict/data/types';
 import animateConfig from '@/animate';
 import modal from '@/plugins/modal';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 import type { FormRules } from 'element-plus';
 
 const fileConfigList = ref<FileConfigVO[]>([]);
@@ -239,6 +318,11 @@ const data = reactive<PageData<FileConfigForm, FileConfigQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const storageLabel = computed(() => {
+  const dict = dicts.value.find((item: any) => Number(item.dictValue) === form.value.storage);
+  return dict?.dictLabel || '未选择';
+});
 
 const hIndex = (index: number) => {
   return index + 1 + (queryParams.value.pageNum - 1) * queryParams.value.pageSize;
@@ -358,3 +442,129 @@ onMounted(() => {
   getDictData();
 });
 </script>
+
+<style lang="scss" scoped>
+.file-config-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.file-config-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.file-config-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.file-config-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-config-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.file-config-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.file-config-hero__action {
+  color: #c9e4d7;
+}
+.file-config-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.file-config-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+}
+.file-config-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.file-config-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.file-config-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.file-config-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.file-config-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.file-config-form :deep(.el-input__wrapper),
+.file-config-form :deep(.el-select__wrapper),
+.file-config-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.file-config-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
+}
+</style>

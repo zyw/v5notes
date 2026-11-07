@@ -3,7 +3,7 @@
     <transition :enter-active-class="animateConfig.searchAnimate.enter" :leave-active-class="animateConfig.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
             <el-form-item label="原名" prop="name">
               <el-input v-model="queryParams.name" placeholder="请输入文件原名" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -30,7 +30,7 @@
       </div>
     </transition>
 
-    <el-card shadow="hover">
+    <el-card shadow="hover" class="table-panel">
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
@@ -61,6 +61,7 @@
       <el-table
         v-if="showTable"
         v-loading="loading"
+        class="data-table"
         :data="fileList"
         :header-cell-class-name="handleHeaderClass"
         @selection-change="handleSelectionChange"

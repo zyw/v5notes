@@ -19,6 +19,16 @@ export const useSettingsStore = defineStore('setting', () => {
     radiusBase: defaultSettings.radiusBase,
     fullHeightTable: defaultSettings.fullHeightTable
   });
+  // 一次性迁移：旧默认（蓝色主色 + 深色侧栏）升级为「方向2 薄荷工作台」新默认；
+  // 仅当主题与侧栏都仍是旧默认值（说明用户未自定义）时才迁移，避免覆盖用户偏好。
+  {
+    const persisted = storageSetting.value as LayoutSetting;
+    if (persisted.theme?.toLowerCase() === '#409eff' && persisted.sideTheme === 'theme-dark') {
+      persisted.theme = defaultSettings.theme;
+      persisted.sideTheme = defaultSettings.sideTheme;
+      storageSetting.value = { ...persisted };
+    }
+  }
   const title = ref<string>(defaultSettings.title);
   const theme = ref<string>(storageSetting.value.theme);
   const sideTheme = ref<string>(storageSetting.value.sideTheme);

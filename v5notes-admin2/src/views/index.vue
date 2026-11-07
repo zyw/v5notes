@@ -129,7 +129,7 @@ const goTarget = (url: string) => {
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
   gap: 18px;
   padding: 30px;
-  background: radial-gradient(circle at top left, rgba(53, 109, 255, 0.16), transparent 30%), var(--app-surface-bg);
+  background: radial-gradient(circle at top left, rgba(28, 90, 72, 0.16), transparent 30%), var(--app-surface-bg);
 }
 
 .hero-copy {
@@ -159,7 +159,7 @@ const goTarget = (url: string) => {
   width: fit-content;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(53, 109, 255, 0.12);
+  background: rgba(28, 90, 72, 0.12);
   color: var(--app-accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -251,7 +251,7 @@ const goTarget = (url: string) => {
   &:hover {
     transform: translateY(-2px);
     box-shadow: var(--app-shadow-sm);
-    border-color: rgba(53, 109, 255, 0.2);
+    border-color: rgba(28, 90, 72, 0.2);
   }
 }
 
@@ -279,7 +279,7 @@ const goTarget = (url: string) => {
   flex-shrink: 0;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(53, 109, 255, 0.12);
+  background: rgba(28, 90, 72, 0.12);
   color: var(--app-accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -338,7 +338,7 @@ const goTarget = (url: string) => {
       height: 7px;
       border-radius: 50%;
       background: var(--app-accent-strong);
-      box-shadow: 0 0 0 5px rgba(53, 109, 255, 0.12);
+      box-shadow: 0 0 0 5px rgba(28, 90, 72, 0.12);
     }
   }
 }
@@ -364,7 +364,7 @@ const goTarget = (url: string) => {
 
 html.dark {
   .hero-panel {
-    background: radial-gradient(circle at top left, rgba(53, 109, 255, 0.18), transparent 30%), var(--app-surface-bg);
+    background: radial-gradient(circle at top left, rgba(28, 90, 72, 0.18), transparent 30%), var(--app-surface-bg);
   }
 }
 </style>

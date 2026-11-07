@@ -187,7 +187,7 @@ const showSettings = ref(false);
 const theme = ref(settingsStore.theme);
 const sideTheme = ref(settingsStore.sideTheme);
 const storeSettings = computed(() => settingsStore);
-const predefineColors = ref(['#409EFF', '#ff4500', '#ff8c00', '#ffd700', '#90ee90', '#00ced1', '#1e90ff', '#c71585']);
+const predefineColors = ref(['#1c5a48', '#ff4500', '#ff8c00', '#ffd700', '#90ee90', '#00ced1', '#1e90ff', '#c71585']);
 const navType = ref(settingsStore.navType);
 const radiusBase = ref(settingsStore.radiusBase);
 // 是否暗黑模式
@@ -329,7 +329,7 @@ defineExpose({
       transform 0.2s ease;
 
     &:hover {
-      border-color: rgba(64, 158, 255, 0.28);
+      border-color: rgba(28, 90, 72, 0.28);
       transform: translateY(-1px);
     }
 

@@ -20,6 +20,10 @@
   min-width: 0;
 }
 
+.query-form .el-form-item__label {
+  font-weight: 400;
+}
+
 .query-form.el-form--inline .el-form-item__label {
   flex: 0 0 auto;
   width: auto;
@@ -86,13 +90,13 @@
 
 html.dark .query-form .el-button--primary {
   --el-button-bg-color: rgba(37, 99, 235, 0.28);
-  --el-button-border-color: rgba(96, 165, 250, 0.62);
+  --el-button-border-color: rgba(79, 191, 148, 0.62);
   --el-button-text-color: #dbeafe;
   --el-button-hover-bg-color: rgba(59, 130, 246, 0.36);
   --el-button-hover-border-color: rgba(147, 197, 253, 0.78);
   --el-button-hover-text-color: #eff6ff;
   --el-button-active-bg-color: rgba(29, 78, 216, 0.44);
-  --el-button-active-border-color: rgba(96, 165, 250, 0.86);
+  --el-button-active-border-color: rgba(79, 191, 148, 0.86);
   --el-button-active-text-color: #eff6ff;
 }
 

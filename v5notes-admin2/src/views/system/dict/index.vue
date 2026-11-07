@@ -358,45 +358,96 @@
       </template>
     </el-dialog>
 
-    <!-- 字典数据对话框 -->
-    <el-dialog v-model="dataDialog.visible" :title="dataDialog.title" width="500px" append-to-body>
-      <el-form ref="dataFormRef" :model="dataForm" :rules="dataRules" label-width="80px">
-        <el-form-item label="字典类型">
-          <el-input v-model="dataForm.dictType" :disabled="true" />
-        </el-form-item>
-        <el-form-item label="数据标签" prop="dictLabel">
-          <el-input v-model="dataForm.dictLabel" placeholder="请输入数据标签" />
-        </el-form-item>
-        <el-form-item label="数据键值" prop="dictValue">
-          <el-input v-model="dataForm.dictValue" placeholder="请输入数据键值" />
-        </el-form-item>
-        <el-form-item label="样式属性" prop="cssClass">
-          <el-input v-model="dataForm.cssClass" placeholder="请输入样式属性" />
-        </el-form-item>
-        <el-form-item label="显示排序" prop="dictSort">
-          <el-input-number v-model="dataForm.dictSort" controls-position="right" :min="0" />
-        </el-form-item>
-        <el-form-item label="回显样式" prop="listClass">
-          <el-select v-model="dataForm.listClass">
-            <el-option
-              v-for="item in listClassOptions"
-              :key="item.value"
-              :label="item.label + '(' + item.value + ')'"
-              :value="item.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="dataForm.remark" type="textarea" placeholder="请输入内容"></el-input>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitDataForm">确 定</el-button>
-          <el-button @click="cancelData">取 消</el-button>
+    <!-- 字典数据抽屉 -->
+    <FormDrawer
+      v-model="dataDialog.visible"
+      :title="dataDialog.title"
+      eyebrow="字典数据"
+      subtitle="配置字典数据的标签、键值、样式与排序"
+      size="560px"
+      submit-text="确定"
+      hint="带 * 为必填项，保存后立即生效"
+      @submit="submitDataForm"
+      @closed="cancelData"
+    >
+      <template #hero>
+        <div class="data-hero">
+          <div class="data-hero__top">
+            <span class="data-hero__brand"><img :src="logoUrl" alt="" />V5Notes 字典数据</span>
+            <span class="data-hero__divider">·</span>
+            <span class="data-hero__action">{{ dataDialog.title }}</span>
+          </div>
+          <div class="data-hero__profile">
+            <div class="data-hero__icon">{{ (dataForm.dictLabel || '字').slice(0, 1) }}</div>
+            <div>
+              <div class="data-hero__name">{{ dataForm.dictLabel || '未命名数据' }}</div>
+              <div class="data-hero__meta">
+                <span class="data-hero__tag">{{ listClassLabel }}</span>
+                <span>{{ dataForm.dictValue || '未设置键值' }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="dataFormRef" :model="dataForm" :rules="dataRules" label-position="top" class="data-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item label="字典类型">
+                <el-input v-model="dataForm.dictType" :disabled="true" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="数据标签" prop="dictLabel">
+                <el-input v-model="dataForm.dictLabel" placeholder="请输入数据标签" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="数据键值" prop="dictValue">
+                <el-input v-model="dataForm.dictValue" placeholder="请输入数据键值" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>样式与排序</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="样式属性" prop="cssClass">
+                <el-input v-model="dataForm.cssClass" placeholder="请输入样式属性" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示排序" prop="dictSort">
+                <el-input-number v-model="dataForm.dictSort" controls-position="right" :min="0" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="回显样式" prop="listClass">
+                <el-select v-model="dataForm.listClass">
+                  <el-option
+                    v-for="item in listClassOptions"
+                    :key="item.value"
+                    :label="item.label + '(' + item.value + ')'"
+                    :value="item.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>备注</h4>
+          <el-form-item label="备注" prop="remark">
+            <el-input v-model="dataForm.remark" type="textarea" :rows="3" placeholder="请输入内容"></el-input>
+          </el-form-item>
+        </section>
+      </el-form>
+    </FormDrawer>
   </div>
 </template>
 
@@ -409,6 +460,8 @@ import modal from '@/plugins/modal';
 import { useDictStore } from '@/store/modules/dict';
 import { download as requestDownload } from '@/utils/request';
 import { parseTime } from '@/utils/ruoyi';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 
 const typeList = ref<DictTypeVO[]>([]);
 const typeLoading = ref(true);
@@ -509,6 +562,10 @@ const dataState = reactive<PageData<DictDataForm, DictDataQuery>>({
 });
 
 const { queryParams: dataQueryParams, form: dataForm, rules: dataRules } = toRefs(dataState);
+
+const listClassLabel = computed(
+  () => listClassOptions.value.find(item => item.value === dataForm.value.listClass)?.label || '默认'
+);
 
 const getTypeList = () => {
   typeLoading.value = true;
@@ -799,5 +856,131 @@ onMounted(() => {
 
 .dict-table-wrap {
   overflow-x: auto;
+}
+</style>
+
+<style lang="scss" scoped>
+.data-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.data-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.data-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.data-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.data-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.data-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.data-hero__action {
+  color: #c9e4d7;
+}
+.data-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.data-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+}
+.data-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.data-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.data-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.data-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.data-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.data-form :deep(.el-input__wrapper),
+.data-form :deep(.el-select__wrapper),
+.data-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.data-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
 }
 </style>

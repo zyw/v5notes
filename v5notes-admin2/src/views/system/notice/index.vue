@@ -94,7 +94,9 @@
         </el-table-column>
         <el-table-column label="状态" align="center" prop="status" width="100">
           <template #default="scope">
-            <dict-tag :options="sys_notice_status" :value="scope.row.status" />
+            <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">
+              {{ scope.row.status === '0' ? '已发送' : '未发送' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="创建者" align="center" prop="createByName" width="100" />
@@ -107,6 +109,15 @@
           <template #default="scope">
             <el-tooltip content="详情" placement="top">
               <el-button link type="primary" icon="View" @click="handleDetail(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip v-if="scope.row.status === '1'" content="发送" placement="top">
+              <el-button
+                v-hasPermi="['system:notice:edit']"
+                link
+                type="success"
+                icon="Promotion"
+                @click="handleSend(scope.row)"
+              ></el-button>
             </el-tooltip>
             <el-tooltip content="修改" placement="top">
               <el-button
@@ -138,57 +149,70 @@
         @pagination="getList"
       />
     </el-card>
-    <!-- 添加或修改公告对话框 -->
-    <el-dialog
+    <!-- 添加或修改公告抽屉 -->
+    <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      width="780px"
-      append-to-body
-      destroy-on-close
-      @closed="handleDialogClosed"
+      eyebrow="V5Notes · 通知公告"
+      subtitle="配置通知公告的标题、类型、内容与显示状态"
+      size="680px"
+      submit-text="确定"
+      hint="带 * 为必填项，保存后立即生效"
+      @submit="submitForm"
+      @closed="cancel"
     >
-      <el-form ref="noticeFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="公告标题" prop="noticeTitle">
-              <el-input v-model="form.noticeTitle" placeholder="请输入公告标题" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="公告类型" prop="noticeType">
-              <el-select v-model="form.noticeType" placeholder="请选择">
-                <el-option
-                  v-for="dict in sys_notice_type"
-                  :key="dict.value"
-                  :label="dict.label"
-                  :value="dict.value"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="状态">
-              <el-radio-group v-model="form.status">
-                <el-radio v-for="dict in sys_notice_status" :key="dict.value" :value="dict.value">
-                  {{ dict.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="内容">
-              <editor v-model="form.noticeContent" :min-height="192" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+      <template #hero>
+        <div class="drawer-hero">
+          <div class="drawer-hero__top">
+            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 通知公告</span>
+            <span class="drawer-hero__divider">·</span>
+            <span class="drawer-hero__action">{{ dialog.title }}</span>
+          </div>
+          <div class="drawer-hero__profile">
+            <div class="drawer-hero__icon">{{ (form.noticeTitle || '通').slice(0, 1) }}</div>
+            <div class="drawer-hero__info">
+              <div class="drawer-hero__name">{{ form.noticeTitle || '未命名公告' }}</div>
+              <div class="drawer-hero__meta">
+                <span class="drawer-hero__tag">{{ noticeTypeLabel }}</span>
+                <span>{{ noticeStatusLabel }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="noticeFormRef" :model="form" :rules="rules" label-position="top" class="notice-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="公告标题" prop="noticeTitle">
+                <el-input v-model="form.noticeTitle" placeholder="请输入公告标题" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="公告类型" prop="noticeType">
+                <el-select v-model="form.noticeType" placeholder="请选择">
+                  <el-option
+                    v-for="dict in sys_notice_type"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>公告内容</h4>
+          <el-form-item label="内容">
+            <editor v-model="form.noticeContent" :min-height="192" />
+          </el-form-item>
+        </section>
+      </el-form>
+    </FormDrawer>
 
     <el-dialog
       v-model="detailDialog.visible"
@@ -207,7 +231,7 @@
             </div>
             <div class="notice-detail__meta-item">
               <span class="notice-detail__meta-label">状态：</span>
-              <dict-tag :options="sys_notice_status" :value="detailForm.status" />
+              <span>{{ detailForm.status === '0' ? '已发送' : '未发送' }}</span>
             </div>
             <div class="notice-detail__meta-item">
               <span class="notice-detail__meta-label">创建者：</span>
@@ -241,8 +265,10 @@ import { useDict } from '@/utils/dict';
 import { resolveOssContent } from '@/utils/ossContent';
 import { parseTime } from '@/utils/ruoyi';
 import { sanitizeHtml } from '@/utils/sanitize';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 
-const { sys_notice_status, sys_notice_type } = toRefs<any>(useDict('sys_notice_status', 'sys_notice_type'));
+const { sys_notice_type } = toRefs<any>(useDict('sys_notice_type'));
 const route = useRoute();
 const router = useRouter();
 
@@ -261,12 +287,16 @@ const initFormData: NoticeForm = {
   noticeTitle: '',
   noticeType: '',
   noticeContent: '',
-  status: '0',
+  status: '1',
   remark: '',
   createByName: ''
 };
 const detailForm = ref<NoticeVO>({} as NoticeVO);
 const safeNoticeContent = computed(() => sanitizeHtml(detailForm.value.noticeContent || emptyNoticeContent));
+const noticeTypeLabel = computed(() => {
+  return sys_notice_type.value.find((d: any) => d.value === form.value.noticeType)?.label || '未设置类型';
+});
+const noticeStatusLabel = computed(() => (form.value.status === '0' ? '已发送' : '未发送'));
 const data = reactive<PageData<NoticeForm, NoticeQuery>>({
   form: { ...initFormData },
   queryParams: {
@@ -313,9 +343,6 @@ const getList = async () => {
 /** 取消按钮 */
 const cancel = () => {
   closeDialog();
-};
-/** 对话框关闭后重置 */
-const handleDialogClosed = () => {
   reset();
 };
 /** 搜索按钮操作 */
@@ -346,6 +373,15 @@ const handleUpdate = async (row?: Partial<NoticeVO>) => {
 /** 详情按钮操作 */
 const handleDetail = async (row: Partial<NoticeVO>) => {
   await openDetail(row.noticeId);
+};
+/** 发送按钮操作：新增/编辑后不立即发送，点发送才发出 */
+const handleSend = async (row: Partial<NoticeVO>) => {
+  await modal.confirm('确定发送公告"' + row.noticeTitle + '"吗？');
+  const { data } = await getNotice(row.noticeId!);
+  data.status = '0';
+  await updateNotice(data);
+  modal.msgSuccess('发送成功');
+  await getList();
 };
 /** 打开详情 */
 const openDetail = async (noticeId: string | number) => {
@@ -458,3 +494,134 @@ watch(
   }
 }
 </style>
+
+<style lang="scss" scoped>
+.notice-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.notice-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.notice-form :deep(.el-input__wrapper),
+.notice-form :deep(.el-select__wrapper),
+.notice-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.notice-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
+}
+</style>
+
+<style lang="scss" scoped>
+.drawer-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.drawer-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.drawer-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.drawer-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.drawer-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.drawer-hero__action {
+  color: #c9e4d7;
+}
+.drawer-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.drawer-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.drawer-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.drawer-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.drawer-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+</style>
+
+

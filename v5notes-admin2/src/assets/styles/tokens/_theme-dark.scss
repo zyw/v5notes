@@ -16,39 +16,39 @@ html.dark {
   --tableHeaderTextColor: var(--el-text-color);
 
   // --- 表格：暗色下选中行背景 ---
-  --el-table-current-row-bg-color: rgba(53, 109, 255, 0.14);
+  --el-table-current-row-bg-color: rgba(28, 90, 72, 0.14);
   --el-table-row-hover-bg-color: rgba(148, 163, 184, 0.07);
 
   // --- 全局：暗色下修正 primary 浅底色（表格行选中、树节点等） ---
-  --el-color-primary-light-9: rgba(53, 109, 255, 0.14);
+  --el-color-primary-light-9: rgba(28, 90, 72, 0.14);
 
   .el-tree-node__content {
-    --el-color-primary-light-9: rgba(53, 109, 255, 0.14);
+    --el-color-primary-light-9: rgba(28, 90, 72, 0.14);
   }
 
   .el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.is-text):not(
       .is-link
     ) {
     --el-button-bg-color: rgba(15, 23, 42, 0.44);
-    --el-button-border-color: rgba(96, 165, 250, 0.38);
+    --el-button-border-color: rgba(79, 191, 148, 0.38);
     --el-button-text-color: #dbeafe;
-    --el-button-hover-bg-color: rgba(96, 165, 250, 0.16);
-    --el-button-hover-border-color: rgba(96, 165, 250, 0.58);
+    --el-button-hover-bg-color: rgba(79, 191, 148, 0.16);
+    --el-button-hover-border-color: rgba(79, 191, 148, 0.58);
     --el-button-hover-text-color: #bfdbfe;
     --el-button-active-bg-color: rgba(59, 130, 246, 0.22);
-    --el-button-active-border-color: rgba(96, 165, 250, 0.72);
+    --el-button-active-border-color: rgba(79, 191, 148, 0.72);
     --el-button-active-text-color: #dbeafe;
   }
 
   // --- 各类型按钮（含 plain）在暗色下的 EP CSS 变量 ---
   .el-button--primary {
-    --el-button-bg-color: #2b6bd3;
-    --el-button-border-color: #3a7be8;
+    --el-button-bg-color: #2c7a5f;
+    --el-button-border-color: #35906f;
     --el-button-text-color: #eef4ff;
-    --el-button-hover-bg-color: #3a7be8;
-    --el-button-hover-border-color: #3a7be8;
-    --el-button-active-bg-color: #255fb8;
-    --el-button-active-border-color: #255fb8;
+    --el-button-hover-bg-color: #35906f;
+    --el-button-hover-border-color: #35906f;
+    --el-button-active-bg-color: #24654e;
+    --el-button-active-border-color: #24654e;
   }
 
   .el-button--primary.is-plain {
@@ -202,14 +202,14 @@ html.dark {
   --app-navbar-bg: #111827;
   --app-navbar-border: rgba(71, 85, 105, 0.48);
   --app-navbar-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-  --app-accent-soft: rgba(64, 158, 255, 0.14);
+  --app-accent-soft: rgba(28, 90, 72, 0.14);
   --app-accent-strong: #60a5fa;
   --app-text-title: #f3f7ff;
   --app-text-muted: #8ea0bd;
   --app-overlay-mask: rgba(2, 6, 23, 0.58);
   --app-elevated-soft-bg: rgba(148, 163, 184, 0.08);
   --app-elevated-close-bg: rgba(148, 163, 184, 0.18);
-  --app-elevated-close-hover-bg: rgba(96, 165, 250, 0.18);
+  --app-elevated-close-hover-bg: rgba(79, 191, 148, 0.18);
   --el-bg-color-page: var(--app-shell-bg);
 
   // --- vxe-table 暗色（与 vxe 业务表并存） ---
@@ -227,3 +227,60 @@ html.dark {
 
   --brder-color: #37373a;
 }
+
+/* ===== 方向 2 · 薄荷工作台 · 暗色令牌覆盖（追加，覆盖上文同名变量） ===== */
+html.dark {
+  --menuBg: #0f1a16;
+  --menuColor: #cfe0d7;
+  --menuActiveText: #eafff5;
+  --menuHover: rgba(79, 191, 148, 0.16);
+  --subMenuBg: #0f1a16;
+  --subMenuActiveText: #eafff5;
+  --subMenuHover: rgba(79, 191, 148, 0.14);
+  --subMenuTitleHover: rgba(148, 163, 184, 0.1);
+
+  --fixedHeaderBg: #0e1713;
+  --tableHeaderBg: rgba(255, 255, 255, 0.03);
+  --tableHeaderTextColor: #a9c0b5;
+  --brder-color: rgba(255, 255, 255, 0.09);
+
+  --app-surface-bg: #111a16;
+  --app-surface-border: rgba(255, 255, 255, 0.09);
+  --app-shell-bg: #0c1411;
+  --app-shell-spot-1: rgba(79, 191, 148, 0.12);
+  --app-shell-spot-2: rgba(79, 191, 148, 0.06);
+  --app-sidebar-border: rgba(255, 255, 255, 0.08);
+  --app-navbar-bg: #111a16;
+  --app-navbar-border: rgba(255, 255, 255, 0.09);
+  --app-navbar-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --app-accent-soft: rgba(79, 191, 148, 0.16);
+  --app-accent-strong: #4fbf94;
+  --app-text-title: #e9f2ec;
+  --app-text-muted: #8ea79b;
+  --app-overlay-mask: rgba(2, 10, 7, 0.6);
+  --app-elevated-soft-bg: rgba(255, 255, 255, 0.05);
+  --app-elevated-close-bg: rgba(255, 255, 255, 0.1);
+  --app-elevated-close-hover-bg: rgba(79, 191, 148, 0.18);
+  --el-bg-color-page: #0c1411;
+  --tags-view-active-bg: rgba(79, 191, 148, 0.16);
+  --tags-view-active-border-color: rgba(79, 191, 148, 0.5);
+
+  .el-button--primary {
+    --el-button-bg-color: #2c7a5f;
+    --el-button-border-color: #35906f;
+    --el-button-text-color: #eafff5;
+    --el-button-hover-bg-color: #35906f;
+    --el-button-hover-border-color: #35906f;
+    --el-button-active-bg-color: #24654e;
+    --el-button-active-border-color: #24654e;
+  }
+  .el-button--primary.is-plain {
+    --el-button-bg-color: rgba(79, 191, 148, 0.12);
+    --el-button-border-color: rgba(79, 191, 148, 0.5);
+    --el-button-text-color: #c9ffe6;
+    --el-button-hover-bg-color: rgba(79, 191, 148, 0.2);
+    --el-button-hover-border-color: rgba(79, 191, 148, 0.7);
+    --el-button-hover-text-color: #c9ffe6;
+  }
+}
+

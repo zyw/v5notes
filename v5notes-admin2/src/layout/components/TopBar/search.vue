@@ -356,7 +356,7 @@ defineExpose({
 
   &:hover {
     transform: translateY(-1px);
-    background: rgba(64, 158, 255, 0.08);
+    background: rgba(28, 90, 72, 0.08);
   }
 
   &.is-active {

@@ -176,102 +176,170 @@
         @pagination="getList"
       />
     </el-card>
-    <!-- 添加或修改客户端管理对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="760px" append-to-body>
-      <el-form ref="clientFormRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="客户端key" prop="clientKey">
-          <el-input v-model="form.clientKey" :disabled="form.id != null" placeholder="请输入客户端key" />
-        </el-form-item>
-        <el-form-item label="客户端秘钥" prop="clientSecret">
-          <el-input v-model="form.clientSecret" :disabled="form.id != null" placeholder="请输入客户端秘钥" />
-        </el-form-item>
-        <el-form-item label="授权类型" prop="grantTypeList">
-          <el-select v-model="form.grantTypeList" multiple placeholder="请输入授权类型">
-            <el-option
-              v-for="dict in sys_grant_type"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="设备类型" prop="deviceType">
-          <el-select v-model="form.deviceType" placeholder="请输入设备类型">
-            <el-option
-              v-for="dict in sys_device_type"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item prop="accessPath" label-width="auto">
-          <template #label>
-            <span>
-              <el-tooltip content="多个路径可按换行、逗号或分号分隔；为空表示允许访问所有接口路径" placement="top">
-                <el-icon><question-filled /></el-icon>
-              </el-tooltip>
-              允许访问路径
-            </span>
-          </template>
-          <el-input v-model="form.accessPath" type="textarea" :rows="4" placeholder="示例：/app/**" />
-        </el-form-item>
-        <el-form-item prop="ipWhitelist" label-width="auto">
-          <template #label>
-            <span>
-              <el-tooltip
-                content="支持精确IP、通配符和CIDR；多个规则可按换行、逗号或分号分隔；为空表示允许所有IP"
-                placement="top"
-              >
-                <el-icon><question-filled /></el-icon>
-              </el-tooltip>
-              IP白名单
-            </span>
-          </template>
-          <el-input
-            v-model="form.ipWhitelist"
-            type="textarea"
-            :rows="4"
-            placeholder="示例：127.0.0.1&#10;192.168.*.*&#10;10.0.0.0/24"
-          />
-        </el-form-item>
-        <el-form-item prop="activeTimeout" label-width="auto">
-          <template #label>
-            <span>
-              <el-tooltip content="指定时间无操作则过期（单位：秒），默认30分钟（1800秒）" placement="top">
-                <el-icon><question-filled /></el-icon>
-              </el-tooltip>
-              Token活跃超时时间
-            </span>
-          </template>
-          <el-input v-model="form.activeTimeout" placeholder="请输入Token活跃超时时间" />
-        </el-form-item>
-        <el-form-item prop="timeout" label-width="auto">
-          <template #label>
-            <span>
-              <el-tooltip content="指定时间必定过期（单位：秒），默认七天（604800秒）" placement="top">
-                <el-icon><question-filled /></el-icon>
-              </el-tooltip>
-              Token固定超时时间
-            </span>
-          </template>
-          <el-input v-model="form.timeout" placeholder="请输入Token固定超时时间" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.status">
-            <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
-              {{ dict.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+    <!-- 添加或修改客户端管理抽屉 -->
+    <FormDrawer
+      v-model="dialog.visible"
+      :title="dialog.title"
+      eyebrow="客户端配置"
+      subtitle="配置客户端的密钥、授权类型、设备类型与访问白名单"
+      size="680px"
+      submit-text="确定"
+      :submitting="buttonLoading"
+      hint="带 * 为必填项，保存后立即生效"
+      @submit="submitForm"
+      @closed="cancel"
+    >
+      <template #hero>
+        <div class="drawer-hero">
+          <div class="drawer-hero__top">
+            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 客户端</span>
+            <span class="drawer-hero__divider">·</span>
+            <span class="drawer-hero__action">{{ dialog.title }}</span>
+          </div>
+          <div class="drawer-hero__profile">
+            <div class="drawer-hero__icon">{{ clientInitial }}</div>
+            <div class="drawer-hero__info">
+              <div class="drawer-hero__name">{{ clientName }}</div>
+              <div class="drawer-hero__meta">
+                <span class="drawer-hero__tag">{{ deviceTypeLabel }}</span>
+                <span>{{ statusLabel }}</span>
+                <span v-if="accessPathText">{{ accessPathText }}</span>
+                <span v-else>全部路径</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
-    </el-dialog>
+
+      <el-form ref="clientFormRef" :model="form" :rules="rules" label-position="top" class="client-form">
+        <section class="form-section">
+          <h4>基本信息</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item label="客户端key" prop="clientKey">
+                <el-input v-model="form.clientKey" :disabled="form.id != null" placeholder="请输入客户端key" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="客户端秘钥" prop="clientSecret">
+                <el-input v-model="form.clientSecret" :disabled="form.id != null" placeholder="请输入客户端秘钥" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="授权类型" prop="grantTypeList">
+                <el-select v-model="form.grantTypeList" multiple placeholder="请输入授权类型">
+                  <el-option
+                    v-for="dict in sys_grant_type"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="设备类型" prop="deviceType">
+                <el-select v-model="form.deviceType" placeholder="请输入设备类型">
+                  <el-option
+                    v-for="dict in sys_device_type"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>访问控制</h4>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item prop="accessPath">
+                <template #label>
+                  <span>
+                    <el-tooltip content="多个路径可按换行、逗号或分号分隔；为空表示允许访问所有接口路径" placement="top">
+                      <el-icon><question-filled /></el-icon>
+                    </el-tooltip>
+                    允许访问路径
+                  </span>
+                </template>
+                <el-input v-model="form.accessPath" type="textarea" :rows="4" placeholder="示例：/app/**" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item prop="ipWhitelist">
+                <template #label>
+                  <span>
+                    <el-tooltip
+                      content="支持精确IP、通配符和CIDR；多个规则可按换行、逗号或分号分隔；为空表示允许所有IP"
+                      placement="top"
+                    >
+                      <el-icon><question-filled /></el-icon>
+                    </el-tooltip>
+                    IP白名单
+                  </span>
+                </template>
+                <el-input
+                  v-model="form.ipWhitelist"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="示例：127.0.0.1&#10;192.168.*.*&#10;10.0.0.0/24"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>超时配置</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item prop="activeTimeout">
+                <template #label>
+                  <span>
+                    <el-tooltip content="指定时间无操作则过期（单位：秒），默认30分钟（1800秒）" placement="top">
+                      <el-icon><question-filled /></el-icon>
+                    </el-tooltip>
+                    Token活跃超时时间
+                  </span>
+                </template>
+                <el-input v-model="form.activeTimeout" placeholder="请输入Token活跃超时时间" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item prop="timeout">
+                <template #label>
+                  <span>
+                    <el-tooltip content="指定时间必定过期（单位：秒），默认七天（604800秒）" placement="top">
+                      <el-icon><question-filled /></el-icon>
+                    </el-tooltip>
+                    Token固定超时时间
+                  </span>
+                </template>
+                <el-input v-model="form.timeout" placeholder="请输入Token固定超时时间" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>状态</h4>
+          <el-row :gutter="18">
+            <el-col :span="24">
+              <el-form-item label="状态">
+                <el-radio-group v-model="form.status">
+                  <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+      </el-form>
+    </FormDrawer>
   </div>
 </template>
 
@@ -286,6 +354,8 @@ import { useTableSelection } from '@/hooks/table/useTableSelection';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
 const { sys_grant_type } = toRefs<any>(useDict('sys_grant_type'));
@@ -348,6 +418,20 @@ const { dialog, resetForm, openDialog, showDialog, closeDialog } = useFormDialog
   formRef: clientFormRef,
   initialFormData: initFormData
 });
+
+/** 抽屉头部：客户端主名称字段为 clientKey */
+const clientName = computed(() => form.value.clientKey || '未命名客户端');
+const clientInitial = computed(() => (form.value.clientKey?.trim() || '客').slice(0, 1));
+const deviceTypeLabel = computed(() => {
+  const dict = sys_device_type.value?.find((d: any) => d.value === form.value.deviceType);
+  return dict?.label || '未设置设备类型';
+});
+const statusLabel = computed(() => {
+  const dict = sys_normal_disable.value?.find((d: any) => d.value === form.value.status);
+  return dict?.label || '正常';
+});
+const accessPathText = computed(() => form.value.accessPath?.trim() || '');
+
 const { resetQuery } = useSearchReset({
   queryFormRef,
   queryParams,
@@ -485,5 +569,134 @@ onMounted(() => {
   .rule-empty {
     color: var(--el-text-color-secondary);
   }
+}
+</style>
+
+<style lang="scss" scoped>
+.client-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.client-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  line-height: 1.3;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3f4a44;
+}
+.client-form :deep(.el-input__wrapper),
+.client-form :deep(.el-select__wrapper),
+.client-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+.client-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+}
+.form-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.form-section h4 {
+  margin: 0 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
+}
+</style>
+
+<style lang="scss" scoped>
+.drawer-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+.drawer-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+.drawer-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+.drawer-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.drawer-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+.drawer-hero__action {
+  color: #c9e4d7;
+}
+.drawer-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+.drawer-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.drawer-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.drawer-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+.drawer-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 </style>

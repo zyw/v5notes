@@ -146,7 +146,7 @@ const authUrl = (source: string) => {
 
 .third-app:hover {
   transform: translateY(-1px);
-  border-color: rgba(53, 109, 255, 0.3);
+  border-color: rgba(28, 90, 72, 0.3);
   box-shadow: var(--app-shadow-sm);
 }
 
@@ -157,7 +157,7 @@ const authUrl = (source: string) => {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(53, 109, 255, 0.08);
+  background: rgba(28, 90, 72, 0.08);
   font-size: 18px;
 }
 
