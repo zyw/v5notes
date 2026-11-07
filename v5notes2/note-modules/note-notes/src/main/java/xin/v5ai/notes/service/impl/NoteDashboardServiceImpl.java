@@ -227,7 +227,7 @@ public class NoteDashboardServiceImpl implements INoteDashboardService {
         kpi.setSuccessRate(sr);
         kpi.setP95ms(p95 == null ? 0L : p95);
         kpi.setOperlogToday(operlogToday == null ? 0L : operlogToday);
-        double cacheHit = queryCacheHit();
+        Double cacheHit = queryCacheHit();
         kpi.setCacheHit(cacheHit);
 
         // 全部指标就绪后统一写回
@@ -374,24 +374,32 @@ public class NoteDashboardServiceImpl implements INoteDashboardService {
      * 通过 {@link RedissonConnectionFactory} 取一条连接执行 {@code INFO stats}。
      * 该指标属于「锦上添花」，任何异常都降级为 0，绝不拖垮首页。
      */
-    private double queryCacheHit() {
+    private Double queryCacheHit() {
         RedisConnection connection = null;
         try {
             connection = redisConnectionFactory.getConnection();
             Properties stats = connection.commands().info("stats");
-            if (stats == null) {
-                return 0.0;
+            String hitsText = stats == null ? null : stats.getProperty("keyspace_hits");
+            String missesText = stats == null ? null : stats.getProperty("keyspace_misses");
+            // 某些代理/集群实现不返回单独的 stats 段，退回全量 INFO 再找一次
+            if (hitsText == null || missesText == null) {
+                Properties all = connection.commands().info();
+                if (all != null) {
+                    hitsText = all.getProperty("keyspace_hits", hitsText);
+                    missesText = all.getProperty("keyspace_misses", missesText);
+                }
             }
-            long hits = parseLong(stats.getProperty("keyspace_hits"));
-            long misses = parseLong(stats.getProperty("keyspace_misses"));
+            long hits = parseLong(hitsText);
+            long misses = parseLong(missesText);
             long total = hits + misses;
             if (total <= 0) {
-                return 0.0;
+                // 没有读写记录，无法计算命中率：返回 null，前端显示「—」，而不是 0%
+                return null;
             }
             return round2(hits * 100.0 / total);
         } catch (Exception e) {
-            log.warn("读取 Redis keyspace 命中率失败，本次降级为 0：{}", e.getMessage());
-            return 0.0;
+            log.warn("读取 Redis keyspace 命中率失败，本次降级为 null：{}", e.getMessage());
+            return null;
         } finally {
             if (connection != null) {
                 RedisConnectionUtils.releaseConnection(connection, redisConnectionFactory);

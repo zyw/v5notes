@@ -70,8 +70,8 @@
 
       <div class="band-cell">
         <div class="lab"><i class="dot dot-warning" />存储占用</div>
-        <div class="band-row"><span class="v">{{ kpi.storageGB }}</span><span class="u">GB</span></div>
-        <div class="band-meta">{{ num(kpi.files) }} 个文件 · 平均 {{ kpi.avgFileMB }} MB</div>
+        <div class="band-row"><span class="v">{{ storageDisplay.value }}</span><span class="u">{{ storageDisplay.unit }}</span></div>
+        <div class="band-meta">{{ storageMeta }}</div>
         <svg class="spark" viewBox="0 0 58 20" preserveAspectRatio="none" aria-hidden="true">
           <path :d="sparkStorage" :stroke="palette.warning" />
         </svg>
@@ -292,6 +292,21 @@ const dayLabel = computed(() => {
   const date = generatedAt.value;
   const source = date && !Number.isNaN(date.getTime()) ? date : new Date();
   return `${source.getFullYear()}.${pad(source.getMonth() + 1)}.${pad(source.getDate())}`;
+});
+
+const storageDisplay = computed(() => {
+  const gb = Number(kpi.value.storageGB) || 0;
+  const files = Number(kpi.value.files) || 0;
+  if (!files || gb <= 0) return { value: '—', unit: '' };
+  if (gb >= 1) return { value: gb.toFixed(1), unit: 'GB' };
+  return { value: (gb * 1024).toFixed(1), unit: 'MB' };
+});
+
+const storageMeta = computed(() => {
+  const files = Number(kpi.value.files) || 0;
+  if (!files) return '暂无文件';
+  const avg = Number(kpi.value.avgFileMB) || 0;
+  return `${files.toLocaleString('en-US')} 个文件 · 平均 ${avg.toFixed(1)} MB`;
 });
 
 const relativeTime = (iso: string | undefined) => {
@@ -561,18 +576,18 @@ const pulseRows = computed(() => {
       : { name: 'P95 响应', value: '—', width: null, note: '口径待接入' }
   );
 
-  const cacheHit = system?.cacheHit ?? 0;
+  const cacheHit = system?.cacheHit;
   rows.push(
-    cacheHit > 0
+    cacheHit != null && cacheHit > 0
       ? { name: '缓存命中率', value: `${cacheHit}%`, width: Math.min(100, cacheHit), note: '' }
-      : { name: '缓存命中率', value: '—', width: null, note: '需 Redis INFO，暂未采集' }
+      : { name: '缓存命中率', value: '—', width: null, note: '暂无缓存读写数据' }
   );
 
   rows.push({
     name: '当前在线',
     value: `${num(online)} 人`,
     width: null,
-    note: `占用户 ${((online / users) * 100).toFixed(1)}%`
+    note: online > 0 && online <= users ? `占用户 ${((online / users) * 100).toFixed(1)}%` : '活跃会话数'
   });
 
   rows.push({
@@ -793,7 +808,6 @@ onBeforeUnmount(() => {
 
   &:last-child {
     border-right: 0;
-    background: var(--app-elevated-soft-bg);
   }
 }
 

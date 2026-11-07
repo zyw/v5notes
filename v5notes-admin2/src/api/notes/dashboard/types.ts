@@ -38,8 +38,8 @@ export interface DashboardKpi {
   successRate: number;
   /** 24h P95 响应（ms） */
   p95ms: number;
-  /** 缓存命中率（%） */
-  cacheHit: number;
+  /** 缓存命中率（%）；null = 暂无缓存读写数据或采集失败 */
+  cacheHit: number | null;
   /** 今日操作日志条数 */
   operlogToday: number;
 }
@@ -85,7 +85,8 @@ export interface DashboardRecentNote {
 export interface DashboardSystem {
   successRate: number;
   p95ms: number;
-  cacheHit: number;
+  /** 缓存命中率（%）；null = 暂无缓存读写数据 */
+  cacheHit: number | null;
   online: number;
   operlogToday: number;
 }

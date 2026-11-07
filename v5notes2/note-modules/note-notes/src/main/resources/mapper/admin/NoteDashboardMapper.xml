@@ -167,23 +167,29 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ORDER BY COUNT(*) DESC
     </select>
 
-    <!-- 存储构成：basics_file.type 是 MIME 类型，不是扩展名 -->
+    <!--
+        存储构成：basics_file.type 是 MIME 类型，不是扩展名。
+        注意：basics_file 本身有 name / size 列，GROUP BY 别名会优先绑定真实列，
+        导致 ONLY_FULL_GROUP_BY 报「SELECT 列表包含非聚合列 f.type」。故先派生出分类列再聚合。
+    -->
     <select id="selectStorageDistribution" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardStorageVo">
-        SELECT CASE
-                   WHEN f.type LIKE 'image/%' THEN '图片'
-                   WHEN f.type LIKE 'video/%' THEN '视频'
-                   WHEN f.type LIKE 'audio/%' THEN '音频'
-                   WHEN f.type LIKE 'application/%'
-                       AND (f.type LIKE '%zip%' OR f.type LIKE '%rar%' OR f.type LIKE '%7z%'
-                           OR f.type LIKE '%gzip%' OR f.type LIKE '%tar%') THEN '压缩包'
-                   WHEN f.type LIKE 'text/%' OR f.type LIKE 'application/%' THEN '文档'
-                   ELSE '其他'
-                   END                              AS name,
-               SUM(f.size) / 1024 / 1024 / 1024      AS size,
-               COUNT(*)                              AS `count`
-        FROM basics_file f
-        WHERE f.del_flag = '0'
-        GROUP BY name
+        SELECT t.name,
+               SUM(t.bytes) / 1024 / 1024 / 1024 AS size,
+               COUNT(*)                          AS `count`
+        FROM (SELECT CASE
+                         WHEN f.type LIKE 'image/%' THEN '图片'
+                         WHEN f.type LIKE 'video/%' THEN '视频'
+                         WHEN f.type LIKE 'audio/%' THEN '音频'
+                         WHEN f.type LIKE 'application/%'
+                             AND (f.type LIKE '%zip%' OR f.type LIKE '%rar%' OR f.type LIKE '%7z%'
+                                 OR f.type LIKE '%gzip%' OR f.type LIKE '%tar%') THEN '压缩包'
+                         WHEN f.type LIKE 'text/%' OR f.type LIKE 'application/%' THEN '文档'
+                         ELSE '其他'
+                         END AS name,
+                     f.size AS bytes
+              FROM basics_file f
+              WHERE f.del_flag = '0') t
+        GROUP BY t.name
         ORDER BY size DESC
     </select>
 

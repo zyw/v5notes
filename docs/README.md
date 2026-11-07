@@ -8,6 +8,7 @@
 2. [开发与部署](development.md)：依赖、构建命令、配置入口、Docker 现状。
 3. [客户端现状与重构方案](client-redevelopment.md)：桌面端能力盘点、技术选型、迁移边界与验收清单。
 4. [v5notes-client2 设计稿](superpowers/specs/2026-10-31-v5notes-client2-design.md)：Markdown 优先的块编辑体验、与 `v5md`/后端的接口及验证标准。
+5. [查找替换设计方案](superpowers/specs/2026-11-07-find-replace-sidebar-design.md)：查找放进 v5notes 现有右侧大纲栏；大小写、全词和正则由 v5md 完成。
 
 ## 项目概览
 
