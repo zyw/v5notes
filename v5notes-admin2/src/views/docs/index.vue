@@ -1,42 +1,52 @@
 <template>
   <div class="p-2 docs-page">
     <!-- 搜索 -->
-    <el-card shadow="hover" class="mb-[10px] docs-search-card">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-        <el-form-item label="文件名称" prop="name">
-          <el-input v-model="queryParams.name" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item label="文件类型" prop="type">
-          <el-select v-model="queryParams.type" placeholder="请选择文件类型" clearable style="width: 160px">
-            <el-option label="全部" value="" />
-            <el-option label="Markdown" value="markdown" />
-            <el-option label="PDF" value="pdf" />
-            <el-option label="文档" value="doc" />
-            <el-option label="图片" value="image" />
-            <el-option label="其他" value="other" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="search-wrap">
+      <el-card shadow="hover" class="search-panel" :class="{ 'is-collapsed': !showSearch }">
+        <template #header>
+          <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
+            <div>
+              <span class="panel-kicker">Search Filters</span>
+              <h3>筛选条件</h3>
+            </div>
+          </div>
+        </template>
+        <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
+          <el-form-item label="文件名称" prop="name">
+            <el-input v-model="queryParams.name" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
+          </el-form-item>
+          <el-form-item label="文件类型" prop="type">
+            <el-select v-model="queryParams.type" placeholder="请选择文件类型" clearable style="width: 160px">
+              <el-option label="全部" value="" />
+              <el-option label="Markdown" value="markdown" />
+              <el-option label="PDF" value="pdf" />
+              <el-option label="文档" value="doc" />
+              <el-option label="图片" value="image" />
+              <el-option label="其他" value="other" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </div>
 
     <el-card shadow="hover" class="table-panel docs-table-panel">
       <template #header>
-        <div class="table-heading list-heading">
-          <h3>文档列表</h3>
-          <p>共 {{ total }} 个文档，管理文档库中的资源文件。</p>
-        </div>
-        <el-row :gutter="10" class="mb8">
-          <el-col :span="1.5">
+        <div class="toolbar-shell">
+          <div class="table-heading">
+            <span class="panel-kicker">Docs Dataset</span>
+            <h3>文档列表</h3>
+            <p>共 {{ total }} 个文档，管理文档库中的资源文件。</p>
+          </div>
+          <div class="toolbar-actions">
             <el-button type="primary" plain icon="Upload" @click="handleUpload">上传</el-button>
-          </el-col>
-          <el-col :span="1.5">
             <el-button type="danger" plain icon="Delete" :disabled="!ids.length" @click="handleDelete()">删除</el-button>
-          </el-col>
-        </el-row>
+            <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList" />
+          </div>
+        </div>
       </template>
 
       <el-row :gutter="20">
@@ -158,6 +168,7 @@ import { parseTime } from '@/utils/ruoyi';
 const loading = ref(false);
 const ids = ref<Array<string | number>>([]);
 const total = ref(0);
+const showSearch = ref(true);
 const fileList = ref<FileVO[]>([]);
 const activeType = ref('all');
 

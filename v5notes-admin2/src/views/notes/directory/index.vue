@@ -1,64 +1,65 @@
 <template>
   <div class="p-2">
-    <transition :enter-active-class="animateConfig.searchAnimate.enter" :leave-active-class="animateConfig.searchAnimate.leave">
-      <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-            <el-form-item label="所属目录" prop="pid">
-              <el-tree-select
-                v-model="queryParams.pid"
-                :data="dirTreeData"
-                value-key="id"
-                default-expand-all
-                check-strictly
-                :render-after-expand="false"
-                placeholder="请选择所属目录"
-              />
-            </el-form-item>
-            <el-form-item label="目录名称" prop="name">
-              <el-input v-model="queryParams.name" placeholder="请输入目录名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="创建时间" style="width: 308px">
-              <el-date-picker
-                v-model="dateRange"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                type="daterange"
-                range-separator="-"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </div>
-    </transition>
+    <div class="search-wrap">
+      <el-card shadow="hover" class="search-panel" :class="{ 'is-collapsed': !showSearch }">
+        <template #header>
+          <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
+            <div>
+              <span class="panel-kicker">Search Filters</span>
+              <h3>筛选条件</h3>
+            </div>
+          </div>
+        </template>
+        <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
+          <el-form-item label="所属目录" prop="pid">
+            <el-tree-select
+              v-model="queryParams.pid"
+              :data="dirTreeData"
+              value-key="id"
+              default-expand-all
+              check-strictly
+              :render-after-expand="false"
+              placeholder="请选择所属目录"
+            />
+          </el-form-item>
+          <el-form-item label="目录名称" prop="name">
+            <el-input v-model="queryParams.name" placeholder="请输入目录名称" clearable @keyup.enter="handleQuery" />
+          </el-form-item>
+          <el-form-item label="创建时间" style="width: 308px">
+            <el-date-picker
+              v-model="dateRange"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              type="daterange"
+              range-separator="-"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </div>
 
     <el-card shadow="hover" class="table-panel">
       <template #header>
-        <div class="table-heading list-heading">
-          <h3>目录列表</h3>
-          <p>共 {{ total }} 个目录，用于组织笔记的层级结构。</p>
-        </div>
-        <el-row :gutter="10" class="mb8">
-          <el-col :span="1.5">
+        <div class="toolbar-shell">
+          <div class="table-heading">
+            <span class="panel-kicker">Directory Dataset</span>
+            <h3>目录列表</h3>
+            <p>共 {{ total }} 个目录，用于组织笔记的层级结构。</p>
+          </div>
+          <div class="toolbar-actions">
             <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['system:directory:add']">新增</el-button>
-          </el-col>
-          <el-col :span="1.5">
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['system:directory:edit']">修改</el-button>
-          </el-col>
-          <el-col :span="1.5">
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['system:directory:remove']">删除</el-button>
-          </el-col>
-          <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['system:directory:export']">导出</el-button>
-          </el-col>
-          <right-toolbar v-model:show-search="showSearch" @query-table="getList" />
-        </el-row>
+            <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList" />
+          </div>
+        </div>
       </template>
 
       <error-state
@@ -159,7 +160,6 @@ import { classifyRequestError } from '@/utils/errorKind';
 import type { ErrorInfo } from '@/utils/errorKind';
 import { addDirectory, delDirectory, dirTree, getDirectory, listDirectory, updateDirectory } from '@/api/notes/directory';
 import type { DirectoryForm, DirectoryQuery, DirectoryVO, NotesTreeVo } from '@/api/notes/directory/types';
-import animateConfig from '@/animate';
 import modal from '@/plugins/modal';
 import { download } from '@/utils/request';
 import { addDateRange, parseTime } from '@/utils/ruoyi';
