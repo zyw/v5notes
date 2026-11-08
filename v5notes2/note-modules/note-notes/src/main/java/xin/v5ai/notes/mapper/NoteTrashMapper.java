@@ -2,6 +2,7 @@ package xin.v5ai.notes.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Param;
 import xin.v5ai.notes.domain.NoteTrash;
 import xin.v5ai.notes.domain.NoteTrashSubject;
@@ -49,6 +50,10 @@ public interface NoteTrashMapper extends BaseMapper<NoteTrash> {
     int deleteDirectoriesByTrash(@Param("trashId") Long trashId, @Param("userId") Long userId);
 
     List<Long> selectIdsByUser(@Param("userId") Long userId);
+
+    List<Long> selectAllIds();
+
+    Page<NoteTrash> selectAdminPage(Page<NoteTrash> page, @Param("name") String name, @Param("objectType") String objectType, @Param("userName") String userName);
 
     List<Long> selectExpiredIds(@Param("now") LocalDateTime now);
 }

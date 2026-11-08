@@ -13,7 +13,7 @@
 - 客户端删除笔记、删除目录改为进入回收站。
 - 回收站列表、恢复、彻底删除一条、清空。
 - 每天清除已到期的记录。
-- 管理端删除笔记或目录也进入笔记所属用户的回收站。管理端不提供回收站页面。
+- 管理端删除笔记或目录也进入笔记所属用户的回收站。管理端提供回收站页面，可查看全部用户的记录，并代为恢复、彻底删除和清空。
 
 本期不做：
 
@@ -307,7 +307,7 @@ COMMENT ON COLUMN note_trash.expire_time IS '到期清除时间';
 
 `NoteNotesController`、`NoteDirectoryController` 的删除改为调用同一套进入回收站的服务。回收站记录的 `user_id` 是对象主人，`create_by` 是当前管理员。用户在客户端能看到并恢复。
 
-管理端本期没有回收站列表，也没有管理员代为彻底删除的接口。
+管理端在「云笔记」下提供回收站页面，接口挂在 `/notes/trash`。列表包含全部用户，可按名称、类型和所属账号筛选。恢复使用记录上的 `user_id`，把对象放回该用户的目录树；原位置不可用时同样回到该用户的根目录，并返回「原目录已不在，已恢复到根目录」。彻底删除和清空调用同一套 `purge`，清空作用于全部用户。权限为 `notes:trash:list`、`notes:trash:restore`、`notes:trash:remove`、`notes:trash:clean`，默认只授予超级管理员。
 
 ## 代码落点
 
@@ -322,6 +322,7 @@ COMMENT ON COLUMN note_trash.expire_time IS '到期清除时间';
 | `NoteNotesServiceImpl.deleteWithValidByIds` | 改为进入回收站，不再调用 `deleteByNoteIds` |
 | `NoteDirectoryServiceImpl.recursiveDelete` | 改为按批次标记，不再调用 `deleteByNoteIds` |
 | `ClientNotesController` | 列表、恢复、彻底删除、清空 |
+| `controller/admin/NoteTrashController` | 管理端列表、恢复、彻底删除、清空 |
 | 管理端两个删除接口 | 改为进入对象主人的回收站 |
 | 定时任务 | 每天 03:10 调用 `purge` |
 
@@ -352,3 +353,4 @@ API 路径只写在 `src/service/api/index.ts`。
 - 取消删除确认、恢复失败、彻底删除失败时，目录树和打开中的草稿保持操作前的样子。
 - 升级前 `del_flag = 1` 且 `trash_id` 为空的旧数据不出现在回收站。
 - 客户端请求和状态里的回收站 ID、对象 ID、上级 ID 保持字符串。
+- 管理端回收站能列出其他用户的记录。恢复后对象回到该用户的目录树；原目录不可用时回到该用户的根目录。彻底删除和清空使用与客户端相同的 `purge`。

@@ -93,32 +93,17 @@ public class NoteTrashServiceImpl implements INoteTrashService {
 
     @Override
     public PageResult<NoteTrashItemVo> list(Long userId, PageQuery pageQuery) {
-        int pageNum = pageQuery.getPageNum() == null || pageQuery.getPageNum() < 1 ? 1 : pageQuery.getPageNum();
-        int pageSize = pageQuery.getPageSize() == null || pageQuery.getPageSize() < 1 ? 20 : pageQuery.getPageSize();
-        if (pageSize > 50) {
-            pageSize = 50;
-        }
-        Page<NoteTrash> page = trashMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<NoteTrash>lambdaQuery()
+        Page<NoteTrash> page = trashMapper.selectPage(page(pageQuery, 20, 50), Wrappers.<NoteTrash>lambdaQuery()
             .eq(NoteTrash::getUserId, userId)
             .orderByDesc(NoteTrash::getDeletedTime)
             .orderByDesc(NoteTrash::getId));
-        LocalDate today = LocalDate.now();
-        List<NoteTrashItemVo> rows = new ArrayList<>();
-        for (NoteTrash trash : page.getRecords()) {
-            NoteTrashItemVo item = new NoteTrashItemVo();
-            item.setId(trash.getId());
-            item.setObjectType(typeOf(trash));
-            item.setObjectId(trash.getObjectId());
-            item.setName(trash.getName());
-            item.setOriginalPath(trash.getOriginalPath());
-            item.setNoteCount(trash.getNoteCount());
-            item.setDirCount(trash.getDirCount());
-            item.setDeletedTime(trash.getDeletedTime());
-            item.setExpireTime(trash.getExpireTime());
-            item.setDaysLeft(NoteTrashPaths.daysLeft(trash.getExpireTime(), today));
-            rows.add(item);
-        }
-        return PageResult.build(rows, page.getTotal());
+        return PageResult.build(toItems(page.getRecords()), page.getTotal());
+    }
+
+    @Override
+    public PageResult<NoteTrashItemVo> listForAdmin(String name, String objectType, String userName, PageQuery pageQuery) {
+        Page<NoteTrash> page = trashMapper.selectAdminPage(page(pageQuery, 10, 100), blankToNull(name), objectTypeOf(objectType), blankToNull(userName));
+        return PageResult.build(toItems(page.getRecords()), page.getTotal());
     }
 
     @Override
@@ -154,6 +139,16 @@ public class NoteTrashServiceImpl implements INoteTrashService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NoteTrashRestoreVo restoreForAdmin(Long trashId) {
+        NoteTrash trash = trashMapper.selectById(trashId);
+        if (trash == null) {
+            throw new ServiceException(TRASH_MISSING);
+        }
+        return restore(trashId, trash.getUserId());
+    }
+
+    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void purge(Long trashId, Long requiredUserId, boolean missingOk) {
         NoteTrash trash = lockTrash(trashId);
@@ -183,18 +178,12 @@ public class NoteTrashServiceImpl implements INoteTrashService {
 
     @Override
     public int empty(Long userId) {
-        List<Long> ids = trashMapper.selectIdsByUser(userId);
-        int failed = 0;
-        INoteTrashService proxy = self.getObject();
-        for (Long id : ids) {
-            try {
-                proxy.purge(id, userId, true);
-            } catch (RuntimeException exception) {
-                failed++;
-                log.warn("清空回收站记录 {} 失败", id, exception);
-            }
-        }
-        return failed;
+        return purgeEach(trashMapper.selectIdsByUser(userId), userId);
+    }
+
+    @Override
+    public int emptyAll() {
+        return purgeEach(trashMapper.selectAllIds(), null);
     }
 
     @Override
@@ -280,6 +269,66 @@ public class NoteTrashServiceImpl implements INoteTrashService {
         }
         NoteTrashSubject parent = trashMapper.selectLiveDirectory(parentId, userId);
         return parent == null ? 0L : parentId;
+    }
+
+    private int purgeEach(List<Long> ids, Long requiredUserId) {
+        int failed = 0;
+        INoteTrashService proxy = self.getObject();
+        for (Long id : ids) {
+            try {
+                proxy.purge(id, requiredUserId, true);
+            } catch (RuntimeException exception) {
+                failed++;
+                log.warn("清空回收站记录 {} 失败", id, exception);
+            }
+        }
+        return failed;
+    }
+
+    private static Page<NoteTrash> page(PageQuery pageQuery, int defaultSize, int maxSize) {
+        int pageNum = pageQuery.getPageNum() == null || pageQuery.getPageNum() < 1 ? 1 : pageQuery.getPageNum();
+        int pageSize = pageQuery.getPageSize() == null || pageQuery.getPageSize() < 1 ? defaultSize : pageQuery.getPageSize();
+        if (pageSize > maxSize) {
+            pageSize = maxSize;
+        }
+        return new Page<>(pageNum, pageSize);
+    }
+
+    private static List<NoteTrashItemVo> toItems(List<NoteTrash> records) {
+        LocalDate today = LocalDate.now();
+        List<NoteTrashItemVo> rows = new ArrayList<>();
+        for (NoteTrash trash : records) {
+            NoteTrashItemVo item = new NoteTrashItemVo();
+            item.setId(trash.getId());
+            item.setUserId(trash.getUserId());
+            item.setObjectType(typeOf(trash));
+            item.setObjectId(trash.getObjectId());
+            item.setName(trash.getName());
+            item.setOriginalPath(trash.getOriginalPath());
+            item.setNoteCount(trash.getNoteCount());
+            item.setDirCount(trash.getDirCount());
+            item.setDeletedTime(trash.getDeletedTime());
+            item.setExpireTime(trash.getExpireTime());
+            item.setDaysLeft(NoteTrashPaths.daysLeft(trash.getExpireTime(), today));
+            rows.add(item);
+        }
+        return rows;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String objectTypeOf(String objectType) {
+        String trimmed = blankToNull(objectType);
+        if (TYPE_NOTE.equals(trimmed) || TYPE_DIRECTORY.equals(trimmed)) {
+            return trimmed;
+        }
+        return null;
     }
 
     private NoteTrash lockTrash(Long trashId) {

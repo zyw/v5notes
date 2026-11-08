@@ -123,6 +123,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by deleted_time desc, id desc
     </select>
 
+    <select id="selectAllIds" resultType="long">
+        select id
+        from note_trash
+        order by deleted_time desc, id desc
+    </select>
+
+    <select id="selectAdminPage" resultType="xin.v5ai.notes.domain.NoteTrash">
+        select t.id, t.user_id, t.object_type, t.object_id, t.name, t.original_parent_id,
+               t.original_path, t.note_count, t.dir_count, t.create_by, t.deleted_time, t.expire_time
+        from note_trash t
+        left join sys_user u on u.user_id = t.user_id
+        <where>
+            <if test="name != null and name != ''">
+                and t.name like concat('%', #{name}, '%')
+            </if>
+            <if test="objectType != null and objectType != ''">
+                and t.object_type = #{objectType}
+            </if>
+            <if test="userName != null and userName != ''">
+                and u.user_name like concat('%', #{userName}, '%')
+            </if>
+        </where>
+        order by t.deleted_time desc, t.id desc
+    </select>
+
     <select id="selectExpiredIds" resultType="long">
         select id
         from note_trash
