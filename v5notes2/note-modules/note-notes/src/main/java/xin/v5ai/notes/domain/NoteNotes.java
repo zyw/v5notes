@@ -61,6 +61,11 @@ public class NoteNotes extends BaseEntity {
     private String contentHash;
 
     /**
+     * 回收站批次 ID。正常数据为空。
+     */
+    private Long trashId;
+
+    /**
      * 删除标志（0代表存在 2代表删除）
      */
     @TableLogic

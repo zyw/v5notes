@@ -15,6 +15,7 @@ import xin.v5ai.notes.domain.bo.NoteDirectoryBo;
 import xin.v5ai.notes.domain.vo.NoteDirectoryVo;
 import xin.v5ai.notes.domain.vo.NotesTreeVo;
 import xin.v5ai.notes.service.INoteDirectoryService;
+import xin.v5ai.notes.service.INoteTrashService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +33,7 @@ import java.util.List;
 public class ClientNotesDirController extends BaseController {
 
     private final INoteDirectoryService noteDirectoryService;
+    private final INoteTrashService noteTrashService;
 
     /**
      * 新增目录
@@ -80,14 +82,8 @@ public class ClientNotesDirController extends BaseController {
     @DeleteMapping("/{ids}")
     public R<Void> remove(@NotEmpty(message = "主键不能为空")
                           @PathVariable Long[] ids) {
-        // 归属校验：逐个根目录校验，任一不属于当前用户则拒绝，再递归删除
-        for (Long id : ids) {
-            NoteDirectoryVo existing = noteDirectoryService.queryById(id);
-            if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
-                return R.fail("无权操作该目录");
-            }
-        }
-        return toAjax(noteDirectoryService.deleteWithValidByIds(List.of(ids), true));
+        noteTrashService.moveDirectories(List.of(ids), true);
+        return R.ok();
     }
 
     /**

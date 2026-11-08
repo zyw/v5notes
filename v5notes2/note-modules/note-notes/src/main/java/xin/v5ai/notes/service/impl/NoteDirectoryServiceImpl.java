@@ -21,7 +21,7 @@ import xin.v5ai.notes.domain.vo.NotesTreeVo;
 import xin.v5ai.notes.mapper.NoteDirectoryMapper;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.service.INoteDirectoryService;
-import xin.v5ai.notes.service.INoteRevisionService;
+import xin.v5ai.notes.service.INoteTrashService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +42,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 
     private final NoteDirectoryMapper baseMapper;
     private final NoteNotesMapper notesMapper;
-    private final INoteRevisionService revisionService;
+    private final INoteTrashService trashService;
 
     /**
      * 查询目录
@@ -141,12 +141,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if(isValid){
-            //TODO 做一些业务上的校验,判断是否需要校验
-        }
-        // 删除目录下所用笔记和子目录再删除目录
-        recursiveDelete(ids);
-        // 删除选中目录
+        trashService.moveDirectories(ids, false);
         return true;
     }
 
@@ -229,29 +224,5 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
             });
         }
         return result.isEmpty() ? null : result;
-    }
-
-    private void recursiveDelete(Collection<Long> pids) {
-        pids.forEach(pid -> {
-            // 目录下是否有子目录
-            LambdaQueryWrapper<NoteDirectory> queryDirect = Wrappers.lambdaQuery();
-            queryDirect.eq(NoteDirectory::getPid, pid);
-            List<NoteDirectoryVo> list = baseMapper.selectVoList(queryDirect);
-
-            // 删除目录下笔记
-            LambdaQueryWrapper<NoteNotes> queryNotes = Wrappers.lambdaQuery();
-            queryNotes.eq(NoteNotes::getDirId, pid);
-//            queryNotes.eq(NoteNotes::getDelFlag, 0); // 系统自动添加了，无需手动添加
-            List<NoteNotesVo> listNotes = notesMapper.selectVoList(queryNotes);
-            if (CollUtil.isNotEmpty(listNotes)) {
-                List<Long> noteIds = listNotes.stream().map(NoteNotesVo::getId).toList();
-                revisionService.deleteByNoteIds(noteIds);
-                notesMapper.deleteByIds(noteIds);
-            }
-            if (CollUtil.isNotEmpty(list)) {
-                recursiveDelete(list.stream().map(NoteDirectoryVo::getId).toList());
-            }
-            baseMapper.deleteById(pid);
-        });
     }
 }

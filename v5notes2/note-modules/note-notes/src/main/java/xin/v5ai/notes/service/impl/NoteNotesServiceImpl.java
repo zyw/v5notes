@@ -25,6 +25,7 @@ import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
 import xin.v5ai.notes.service.INoteRevisionService;
+import xin.v5ai.notes.service.INoteTrashService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     private final INoteDirectoryService directoryService;
 
     private final INoteRevisionService revisionService;
+
+    private final INoteTrashService trashService;
 
     // markdown标签匹配正则
     private final static String MARKDOWN_REGEX = "\\*\\*(.*?)\\*\\*|__(.*?)__|~~(.*?)~~|`(.*?)`|\\[(.*?)\\]\\((.*?)\\)|!\\[(.*?)\\]\\((.*?)\\)|<.*?>|#{1,6}(.*?)|^-{3,}|-{3,}";
@@ -177,11 +180,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if(isValid){
-            //TODO 做一些业务上的校验,判断是否需要校验
-        }
-        revisionService.deleteByNoteIds(ids);
-        return baseMapper.deleteByIds(ids) > 0;
+        trashService.moveNotes(ids, false);
+        return true;
     }
 
     /**

@@ -13,6 +13,7 @@ import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.notes.domain.NoteNotes;
 import xin.v5ai.notes.domain.NoteRevision;
+import xin.v5ai.notes.domain.NoteTrashSubject;
 import xin.v5ai.notes.domain.bo.NoteNotesBo;
 import xin.v5ai.notes.domain.bo.NoteRestoreBo;
 import xin.v5ai.notes.domain.vo.NoteHashVo;
@@ -22,8 +23,10 @@ import xin.v5ai.notes.domain.vo.NoteRevisionItemVo;
 import xin.v5ai.notes.exception.NoteContentConflictException;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.mapper.NoteRevisionMapper;
+import xin.v5ai.notes.mapper.NoteTrashMapper;
 import xin.v5ai.notes.service.INoteRevisionService;
 import xin.v5ai.notes.util.NoteContentDigest;
+import xin.v5ai.notes.util.NoteTrashPaths;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,8 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private final NoteRevisionMapper revisionMapper;
 
     private final NoteNotesMapper noteNotesMapper;
+
+    private final NoteTrashMapper trashMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -284,17 +289,24 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     }
 
     private NoteNotes lockNote(Long id, String missingMessage) {
-        NoteNotes note = noteNotesMapper.selectOne(Wrappers.<NoteNotes>lambdaQuery()
-            .eq(NoteNotes::getId, id)
-            .last("FOR UPDATE"));
-        if (note == null) {
+        NoteTrashSubject row = trashMapper.lockNote(id);
+        if (row == null) {
             throw new ServiceException(missingMessage);
         }
-        if (FORBIDDEN_NOTE.equals(missingMessage) && !Objects.equals(note.getUserId(), LoginHelper.getUserId())) {
-            throw new ServiceException(FORBIDDEN_NOTE);
+        boolean clientNote = FORBIDDEN_NOTE.equals(missingMessage);
+        boolean history = MISSING_REVISION.equals(missingMessage);
+        if ((clientNote || history) && !Objects.equals(row.getUserId(), LoginHelper.getUserId())) {
+            throw new ServiceException(missingMessage);
         }
-        if (MISSING_REVISION.equals(missingMessage) && !Objects.equals(note.getUserId(), LoginHelper.getUserId())) {
-            throw new ServiceException(MISSING_REVISION);
+        if (!NoteTrashPaths.live(row.getDelFlag())) {
+            if (clientNote || "笔记不存在".equals(missingMessage)) {
+                throw new ServiceException("笔记已在回收站");
+            }
+            throw new ServiceException(missingMessage);
+        }
+        NoteNotes note = noteNotesMapper.selectById(id);
+        if (note == null) {
+            throw new ServiceException(missingMessage);
         }
         return note;
     }

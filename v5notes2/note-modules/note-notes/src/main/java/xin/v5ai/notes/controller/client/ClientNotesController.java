@@ -32,6 +32,7 @@ import xin.v5ai.notes.exception.NoteContentConflictException;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
 import xin.v5ai.notes.service.INoteRevisionService;
+import xin.v5ai.notes.service.INoteTrashService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,6 +50,7 @@ public class ClientNotesController extends BaseController {
     private final INoteNotesService noteNotesService;
     private final INoteDirectoryService noteDirectoryService;
     private final INoteRevisionService noteRevisionService;
+    private final INoteTrashService noteTrashService;
 
     /**
      * 新增笔记
@@ -81,6 +83,9 @@ public class ClientNotesController extends BaseController {
         // 归属校验：原笔记必须属于当前用户
         NotesContentVo existing = noteNotesService.queryById(bo.getId());
         if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
+            if (noteTrashService.ownedTrashedNote(bo.getId(), LoginHelper.getUserId())) {
+                return R.fail("笔记已在回收站");
+            }
             return R.fail("无权操作该笔记");
         }
         // 若目录发生变更，还需校验目标目录归属
@@ -133,14 +138,8 @@ public class ClientNotesController extends BaseController {
     @DeleteMapping("/{ids}")
     public R<Void> remove(@NotEmpty(message = "主键不能为空")
                           @PathVariable Long[] ids) {
-        // 归属校验：逐个校验，任一不属于当前用户则拒绝
-        for (Long id : ids) {
-            NotesContentVo existing = noteNotesService.queryById(id);
-            if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
-                return R.fail("无权操作该笔记");
-            }
-        }
-        return toAjax(noteNotesService.deleteWithValidByIds(List.of(ids), true));
+        noteTrashService.moveNotes(List.of(ids), true);
+        return R.ok();
     }
 
     /**

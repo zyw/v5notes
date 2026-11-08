@@ -17,6 +17,7 @@ SET NAMES utf8mb4;
 -- 1、云笔记业务表
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS note_revision;
+DROP TABLE IF EXISTS note_trash;
 DROP TABLE IF EXISTS note_directory;
 CREATE TABLE note_directory
 (
@@ -25,6 +26,7 @@ CREATE TABLE note_directory
     dept_id     bigint(20)   NOT NULL DEFAULT 0 COMMENT '所属部门ID',
     name        varchar(100) NOT NULL COMMENT '目录名称',
     pid         bigint(20)   NOT NULL DEFAULT 0 COMMENT '父目录ID',
+    trash_id    bigint(20)            DEFAULT NULL COMMENT '回收站批次ID。正常数据为空',
     del_flag    char(1)      NOT NULL DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
     descr       varchar(255)          DEFAULT NULL COMMENT '描述',
     create_dept bigint(20)            DEFAULT NULL COMMENT '创建部门',
@@ -34,7 +36,8 @@ CREATE TABLE note_directory
     update_time datetime              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_note_directory_user (user_id),
-    KEY idx_note_directory_pid (pid)
+    KEY idx_note_directory_pid (pid),
+    KEY idx_note_directory_trash (trash_id)
 ) ENGINE = InnoDB COMMENT = '目录表';
 
 DROP TABLE IF EXISTS note_notes;
@@ -47,6 +50,7 @@ CREATE TABLE note_notes
     dir_id      bigint(20)   NOT NULL DEFAULT 0 COMMENT '所属目录ID',
     content      mediumtext COMMENT '笔记内容',
     content_hash char(64)            DEFAULT NULL COMMENT '当前正文 SHA-256，十六进制小写。NULL 表示尚未计算',
+    trash_id     bigint(20)          DEFAULT NULL COMMENT '回收站批次ID。正常数据为空',
     del_flag     char(1)             DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
     create_dept bigint(20)            DEFAULT NULL COMMENT '创建部门',
     create_by   bigint(20)            DEFAULT NULL COMMENT '创建者',
@@ -56,7 +60,8 @@ CREATE TABLE note_notes
     PRIMARY KEY (id),
     KEY idx_note_notes_user (user_id),
     KEY idx_note_notes_dir (dir_id),
-    KEY idx_note_notes_update_time (update_time)
+    KEY idx_note_notes_update_time (update_time),
+    KEY idx_note_notes_trash (trash_id)
 ) ENGINE = InnoDB COMMENT = '笔记表';
 
 DROP TABLE IF EXISTS note_revision;
@@ -75,6 +80,25 @@ CREATE TABLE note_revision
     PRIMARY KEY (id),
     KEY idx_note_revision_note_time (note_id, create_time, id)
 ) ENGINE = InnoDB COMMENT = '笔记版本';
+
+CREATE TABLE note_trash
+(
+    id                 bigint(20)   NOT NULL COMMENT '回收站记录ID',
+    user_id            bigint(20)   NOT NULL COMMENT '对象所属用户',
+    object_type        char(1)      NOT NULL COMMENT '1笔记 2目录',
+    object_id          bigint(20)   NOT NULL COMMENT '笔记ID或目录ID',
+    name               varchar(100) NOT NULL COMMENT '删除时的名称',
+    original_parent_id bigint(20)   NOT NULL COMMENT '删除时的上级ID，根级为0',
+    original_path      varchar(500) NOT NULL COMMENT '删除时的路径',
+    note_count         int          NOT NULL COMMENT '这次一并删除的笔记数',
+    dir_count          int          NOT NULL COMMENT '这次一并删除的目录数，含目录本身',
+    create_by          bigint(20)            DEFAULT NULL COMMENT '执行删除的人',
+    deleted_time       datetime     NOT NULL COMMENT '删除时间',
+    expire_time        datetime     NOT NULL COMMENT '到期清除时间',
+    PRIMARY KEY (id),
+    KEY idx_note_trash_user_time (user_id, deleted_time, id),
+    KEY idx_note_trash_object (object_type, object_id)
+) ENGINE = InnoDB COMMENT = '笔记回收站';
 
 -- -----------------------------------------------------------------------------
 -- 2、基础文件模块业务表（替代 6.1.0 的 OSS，保留旧 /basics/base/file 端点）

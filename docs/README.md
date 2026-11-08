@@ -10,6 +10,7 @@
 4. [v5notes-client2 设计稿](superpowers/specs/2026-10-31-v5notes-client2-design.md)：Markdown 优先的块编辑体验、与 `v5md`/后端的接口及验证标准。
 5. [查找替换设计方案](superpowers/specs/2026-11-07-find-replace-sidebar-design.md)：查找放进 v5notes 现有右侧大纲栏；大小写、全词和正则由 v5md 完成。
 6. [笔记版本历史设计](superpowers/specs/2026-11-08-note-revision-design.md)：保存正文快照、历史预览与可再撤回的恢复，含完整表结构。
+7. [笔记回收站设计](superpowers/specs/2026-11-08-note-trash-design.md)：删除笔记和目录先进入回收站，保留 30 天，彻底删除时才清除正文版本。
 
 ## 项目概览
 

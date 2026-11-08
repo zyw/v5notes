@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.notes.mapper.NoteTrashMapper">
+
+    <select id="selectNote" resultType="xin.v5ai.notes.domain.NoteTrashSubject">
+        select id, user_id, name, dir_id as parent_id, del_flag
+        from note_notes
+        where id = #{id}
+    </select>
+
+    <select id="lockNote" resultType="xin.v5ai.notes.domain.NoteTrashSubject">
+        select id, user_id, name, dir_id as parent_id, del_flag
+        from note_notes
+        where id = #{id}
+        for update
+    </select>
+
+    <select id="lockDirectory" resultType="xin.v5ai.notes.domain.NoteTrashSubject">
+        select id, user_id, name, pid as parent_id, del_flag
+        from note_directory
+        where id = #{id}
+        for update
+    </select>
+
+    <select id="selectLiveDirectory" resultType="xin.v5ai.notes.domain.NoteTrashSubject">
+        select id, user_id, name, pid as parent_id, del_flag
+        from note_directory
+        where id = #{id} and user_id = #{userId} and del_flag = '0'
+    </select>
+
+    <select id="selectLiveDirectories" resultType="xin.v5ai.notes.domain.NoteTrashSubject">
+        select id, user_id, name, pid as parent_id, del_flag
+        from note_directory
+        where user_id = #{userId} and del_flag = '0'
+    </select>
+
+    <select id="selectLiveNoteIds" resultType="long">
+        select id
+        from note_notes
+        where user_id = #{userId}
+          and del_flag = '0'
+          and dir_id in
+        <foreach collection="dirIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="markNotes">
+        update note_notes
+        set del_flag = '1', trash_id = #{trashId}
+        where user_id = #{userId}
+          and del_flag = '0'
+          and trash_id is null
+          and id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="markDirectories">
+        update note_directory
+        set del_flag = '1', trash_id = #{trashId}
+        where user_id = #{userId}
+          and del_flag = '0'
+          and trash_id is null
+          and id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="restoreNote">
+        update note_notes
+        set del_flag = '0', trash_id = null, dir_id = #{parentId}
+        where id = #{id} and trash_id = #{trashId} and user_id = #{userId}
+    </update>
+
+    <update id="restoreDirectory">
+        update note_directory
+        set del_flag = '0', trash_id = null, pid = #{parentId}
+        where id = #{id} and trash_id = #{trashId} and user_id = #{userId}
+    </update>
+
+    <update id="restoreChildDirectories">
+        update note_directory
+        set del_flag = '0', trash_id = null
+        where trash_id = #{trashId} and user_id = #{userId} and id != #{rootId}
+    </update>
+
+    <update id="restoreNotesByTrash">
+        update note_notes
+        set del_flag = '0', trash_id = null
+        where trash_id = #{trashId} and user_id = #{userId}
+    </update>
+
+    <select id="selectNoteIdsByTrash" resultType="long">
+        select id
+        from note_notes
+        where trash_id = #{trashId} and user_id = #{userId}
+    </select>
+
+    <delete id="deleteNotePhysical">
+        delete from note_notes
+        where id = #{id} and trash_id = #{trashId} and user_id = #{userId}
+    </delete>
+
+    <delete id="deleteNotesByTrash">
+        delete from note_notes
+        where trash_id = #{trashId} and user_id = #{userId}
+    </delete>
+
+    <delete id="deleteDirectoriesByTrash">
+        delete from note_directory
+        where trash_id = #{trashId} and user_id = #{userId}
+    </delete>
+
+    <select id="selectIdsByUser" resultType="long">
+        select id
+        from note_trash
+        where user_id = #{userId}
+        order by deleted_time desc, id desc
+    </select>
+
+    <select id="selectExpiredIds" resultType="long">
+        select id
+        from note_trash
+        where expire_time &lt;= #{now}
+    </select>
+</mapper>
