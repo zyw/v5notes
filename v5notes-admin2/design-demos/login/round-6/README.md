@@ -1,23 +1,33 @@
 # 登录页 · 第六轮（左侧科技动效 + 笔记特点）
 
-用户指定方向：「左侧有科技感的动图背景，文字描述笔记特点。这样的登录页面」。
+用户指定方向：「左侧有科技感的动图背景，文字描述笔记特点。这样的登录页面」。已按此落地到管理端真实登录页。
 
-## 文件
-- 页面：[dir-1.html](dir-1.html)（单文件，Logo 已内嵌，无外链）
-- 桌面：`shots/dir-1.png`（1440×900）
-- 手机：`shots/dir-1-m375.png`（真 375×812，@2x）
-- 平板：`shots/dir-1-1024.png`（1024×800）
-- 动效片段：`shots/left-motion.gif`（左栏 4.6s，8fps）
+## 已落地
+- 页面：`src/views/login.vue`
+- 动效组件：`src/components/LoginTechBackground/index.vue`
+- 文案：`src/lang/zh_CN.ts` / `src/lang/en_US.ts` 的 `login.scene`、`login.welcome` 等
+- 文案变更（按用户要求）：
+  - 品牌 `V5Notes2` → `V5Notes`
+  - 版权 `疯狂的狮子Li` → `V5科技`
+  - `VITE_APP_TITLE` 同步为 `V5Notes云笔记`（标签页标题；其余页面早已使用 V5Notes）
+  - 注册页版权同步为 V5科技
+- 另外去掉了原登录表单预填的 `admin / admin123`，改为空表单 + 记住账号回填用户名。
+
+## 实现截图
+- 桌面：`shots/impl-login.png`（1440×900）
+- 手机：`shots/impl-login-m375.png`（真 375×812）
+- 动效：`shots/impl-motion.gif`（左栏实时录制的 3.7s 片段）
 
 ## 结构
 - 左 56%：`#06120e` 深绿黑场。Canvas 绘制节点网络、距离连线、数据脉冲；三条流线；44px 网格向上流动；薄荷光斑与斜扫光带；鼠标经过时附近节点与指针连线。上层为品牌、标题、三条笔记特点、版本信息。
 - 右 44%：白面登录表单（账号 / 密码 / 验证码 / 记住账号 / 登录 / 五个第三方入口 / 中英切换 / 版权与版本）。
 - 手机（≤920）：左侧收成 392px 顶部画面带，表单接管整屏。
+- `prefers-reduced-motion` 下关闭 Canvas 与 CSS 动效，保留静态渐变背景。
 
-## 交互
-密码显隐、验证码 SVG 刷新、空值 inline 校验并聚焦首错、提交 900ms loading →「正在进入工作台…」、第三方 inline 提示、中英全量切换（含 title / placeholder / 场景文案）。
-`prefers-reduced-motion` 下关闭 Canvas 与 CSS 动效，保留静态渐变背景。
+## 设计原型
+`dir-1.html` 是同一设计的独立原型（Logo 已内嵌，可直接打开）；`shots/dir-1*.png` 为原型截图。
 
-## 说明
-- 场景文案为产品真实能力描述：目录树、Markdown 编辑与预览、目录/笔记/成员权限。
-- 动图为程序化生成（Canvas + CSS），不含任何外部视频或图片，单文件可离线运行。
+## 验证
+- `pnpm build` 通过；`oxlint` 0 warning / 0 error。
+- 1440×900、1440×800、1280×720、1024×800、375×812 均无横向溢出；桌面一屏无滚动条。
+- 实测：中英全量切换、密码显隐、验证码刷新、空值校验（错误文案 + 聚焦首错）、提交 loading；场景层 `aria-hidden`、不参与键盘焦点。

@@ -2,7 +2,6 @@
   <div class="login-page">
     <!-- 左：科技感动效 + 笔记特点 -->
     <section class="login-scene" aria-label="V5Notes 产品介绍">
-      <login-tech-background />
       <div class="scene-inner">
         <div class="brand">
           <img :src="brandLogo" alt="V5Notes" />
@@ -186,7 +185,6 @@ import { LoginData } from '@/api/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { useAppStore } from '@/store/modules/app';
 import { useUserStore } from '@/store/modules/user';
-import LoginTechBackground from '@/components/LoginTechBackground/index.vue';
 
 const { t, locale } = useI18n();
 const appStore = useAppStore();
@@ -311,7 +309,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 56% 44%;
   min-height: 100vh;
-  background: #fff;
+  background: #f4f7f5;
 }
 
 /* ---------------- 左侧场景 ---------------- */
@@ -322,7 +320,24 @@ onMounted(() => {
   min-height: 100vh;
   padding: 52px 64px 36px;
   overflow: hidden;
-  background: #06120e;
+  background:
+    radial-gradient(860px 500px at 2% -12%, rgba(28, 90, 72, 0.06), transparent 62%),
+    radial-gradient(760px 520px at 98% 108%, rgba(79, 191, 148, 0.12), transparent 64%),
+    radial-gradient(520px 420px at 62% 46%, rgba(255, 255, 255, 0.7), transparent 70%),
+    linear-gradient(158deg, #f8fcfa 0%, #eff6f1 54%, #e8f1eb 100%);
+  border-right: 1px solid #e2ebe5;
+}
+
+.login-scene::before {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(28, 90, 72, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 90, 72, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  mask-image: radial-gradient(80% 70% at 30% 20%, #000 20%, transparent 85%);
+  pointer-events: none;
 }
 
 .scene-inner {
@@ -346,7 +361,7 @@ onMounted(() => {
 
   b {
     display: block;
-    color: #f2fbf6;
+    color: #15241e;
     font-size: 14px;
     font-weight: 600;
     line-height: 1.2;
@@ -356,7 +371,7 @@ onMounted(() => {
   span {
     display: block;
     margin-top: 3px;
-    color: rgba(214, 236, 225, 0.62);
+    color: #5f7067;
     font-size: 11px;
     letter-spacing: 0.02em;
   }
@@ -369,14 +384,14 @@ onMounted(() => {
 
   h1 {
     margin: 0 0 18px;
-    color: #f4fbf7;
+    color: #15241e;
     font-size: clamp(30px, 3.1vw, 44px);
     font-weight: 600;
     line-height: 1.24;
     letter-spacing: -0.025em;
 
     em {
-      color: #8fe0bc;
+      color: #1c5a48;
       font-style: normal;
     }
   }
@@ -384,7 +399,7 @@ onMounted(() => {
   .lede {
     max-width: 410px;
     margin: 0;
-    color: rgba(216, 236, 226, 0.72);
+    color: #5f7067;
     font-size: 14.5px;
     line-height: 1.85;
   }
@@ -413,14 +428,14 @@ onMounted(() => {
   width: 30px;
   height: 30px;
   margin-top: 1px;
-  border: 1px solid rgba(143, 224, 188, 0.2);
+  border: 1px solid #cfe3d8;
   border-radius: 9px;
-  background: rgba(143, 224, 188, 0.06);
+  background: #fff;
 
   svg {
     width: 15px;
     height: 15px;
-    stroke: #8fe0bc;
+    stroke: #1c5a48;
     stroke-width: 1.5;
     fill: none;
     stroke-linecap: round;
@@ -431,7 +446,7 @@ onMounted(() => {
 .ft {
   b {
     display: block;
-    color: #eaf5ef;
+    color: #15241e;
     font-size: 13.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
@@ -439,7 +454,7 @@ onMounted(() => {
 
   p {
     margin: 3px 0 0;
-    color: rgba(206, 229, 217, 0.62);
+    color: #5f7067;
     font-size: 12.5px;
     line-height: 1.7;
   }
@@ -450,7 +465,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   margin-top: auto;
-  color: rgba(190, 216, 203, 0.58);
+  color: #7d8d84;
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0.08em;
