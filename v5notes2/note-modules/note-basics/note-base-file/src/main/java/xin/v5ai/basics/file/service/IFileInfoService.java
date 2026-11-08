@@ -29,6 +29,11 @@ public interface IFileInfoService {
     PageResult<FileInfoVo> queryPageList(FileInfoSearchBo bo, PageQuery pageQuery);
 
     /**
+     * 查询指定用户上传的图片
+     */
+    PageResult<FileInfoVo> queryMyImages(Long userId, String name, PageQuery pageQuery);
+
+    /**
      * 查询文件路径列表
      */
     List<FileInfoVo> queryList(FileInfoSearchBo bo);

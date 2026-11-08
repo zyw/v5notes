@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { listMatches, type FindOptions } from '@v5md/core'
 import { computed, nextTick, ref, watch } from 'vue'
+import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
@@ -18,6 +20,7 @@ const findHits = ref<FindMatchPreview[]>([])
 const currentMatch = ref<{ from: number, to: number } | null>(null)
 const findInput = ref<HTMLInputElement | null>(null)
 const findList = ref<HTMLElement | null>(null)
+const libraryOpen = ref(false)
 const findOptions = computed<FindOptions>(() => ({
   caseSensitive: caseSensitive.value,
   wholeWord: wholeWord.value,
@@ -28,6 +31,17 @@ const outlineEntries = computed(() => {
   void content.value
   return editorInstance.value?.getOutline() ?? []
 })
+
+function openImageLibrary(): void {
+  if (editorMode.value !== 'edit') return
+  libraryOpen.value = true
+}
+
+function insertLibraryImage(image: LibraryImage): void {
+  const alt = image.name.replace(/\.[^.]+$/, '').trim() || '图片'
+  editorInstance.value?.insertImageUrl(image.url, alt)
+  libraryOpen.value = false
+}
 
 function onEditorReady(instance: Parameters<typeof editorReady>[0]): void {
   editorReady(instance)
@@ -227,7 +241,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" placeholder="开始编写…" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" placeholder="开始编写…" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>
@@ -282,5 +296,6 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
         <span class="empty-mark">✳</span><p class="eyebrow">V5 NOTES</p><h2>选择一篇笔记开始阅读</h2><p>从左侧目录树打开笔记。笔记默认以预览模式显示，需要修改时再进入编辑。</p>
         <div class="empty-actions"><button class="primary" @click="newNote">新建笔记</button><button class="secondary-action" @click="directoryVisible = true">显示目录</button></div>
       </div>
+      <ImageLibraryDialog v-model="libraryOpen" @insert="insertLibraryImage" />
     </main>
 </template>

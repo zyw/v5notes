@@ -50,6 +50,15 @@ export interface Page<T> {
   total: number
 }
 
+export interface LibraryImage {
+  id: string
+  name: string
+  url: string
+  type?: string
+  size?: number
+  createTime?: string
+}
+
 export function createApi(
   config: () => Connection,
   onUnauthorized: () => void,
@@ -118,6 +127,13 @@ export function createApi(
       body.append('file', file)
       const data = await call<{ url: string }>('/basics/base/file', { method: 'POST', body })
       return data.url
+    },
+    listMyImages: async (pageNum = 1, name = '') => {
+      const params = new URLSearchParams({ pageNum: String(pageNum), pageSize: '24' })
+      const keyword = name.trim()
+      if (keyword) params.set('name', keyword)
+      const page = await call<Page<LibraryImage>>(`/basics/base/file/images?${params}`)
+      return { rows: page?.rows ?? [], total: page?.total ?? 0 }
     },
     uploadProfileImage: async (file: File) => {
       const body = new FormData()

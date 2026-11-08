@@ -320,6 +320,25 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .danger-eyebrow { color: #ad5745; }
 .danger-button { padding: 9px 13px; border-radius: 7px; color: white; background: #b7483c; font-weight: 600; }
 .danger-button:hover { background: #9e372e; }
+.image-library { width: min(760px, 100%); max-height: min(calc(100dvh - 91px), 760px); display: flex; flex-direction: column; padding: 26px; overflow: hidden; }
+.image-library h2 { margin-bottom: 6px; }
+.image-library > p { margin: 0; }
+.image-library-search { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.image-library-search input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #dfe4dc; border-radius: 8px; background: #fff; color: #27342d; font-size: 13px; }
+.image-library-search > button { padding: 9px 12px; border: 1px solid #e1e6df; border-radius: 8px; background: #fffefa; color: #526355; font-size: 12px; }
+.image-library-upload { position: relative; overflow: hidden; padding: 9px 12px; font-size: 12px; }
+.image-library-upload input { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; opacity: 0; }
+.image-library-upload.disabled { opacity: .6; pointer-events: none; }
+.image-library-body { min-height: 180px; margin-top: 14px; overflow: auto; }
+.image-library-empty { margin: 28px 0; text-align: center; color: #89958b; }
+.image-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.image-library-item { display: grid; gap: 6px; padding: 6px; border: 1px solid #e1e6df; border-radius: 10px; background: #f7f6f1; text-align: left; }
+.image-library-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 7px; background: #fff; }
+.image-library-item span { overflow: hidden; color: #526355; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.image-library-item.is-selected { border-color: #315b4a; box-shadow: 0 0 0 2px #315b4a2e; }
+.image-library-pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; color: #718176; font-size: 12px; }
+.image-library-pager button { padding: 6px 10px; border: 1px solid #e1e6df; border-radius: 7px; background: #fffefa; }
+.image-library .modal-actions { margin-top: 16px; }
 
 @media (max-width: 980px) {
   .workspace { --sidebar-width: 245px; }

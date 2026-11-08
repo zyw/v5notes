@@ -37,6 +37,22 @@ describe('client API', () => {
     expect(sent.body).not.toContain('secret')
   })
 
+  it('loads the signed-in user image library by page', async () => {
+    let url = ''
+    const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async (requestUrl: string) => {
+        url = requestUrl
+        return new Response(JSON.stringify({
+          code: 200,
+          data: { rows: [{ id: '934509293439939393', name: '照片.png', url: 'https://cdn.example/a.png' }], total: 1 },
+        }))
+      }) as typeof fetch)
+    const page = await api.listMyImages(2, ' 照片 ')
+    expect(url).toBe('https://notes.test/basics/base/file/images?pageNum=2&pageSize=24&name=%E7%85%A7%E7%89%87')
+    expect(page.total).toBe(1)
+    expect(page.rows[0]?.id).toBe('934509293439939393')
+  })
+
   it('normalizes a scalar create response to a string ID', async () => {
     const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
       vi.fn(async () => new Response(JSON.stringify({ code: 200, data: 0 }))) as typeof fetch)

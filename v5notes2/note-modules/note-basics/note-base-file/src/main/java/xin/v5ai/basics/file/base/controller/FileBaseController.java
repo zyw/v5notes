@@ -16,7 +16,10 @@ import xin.v5ai.basics.file.domain.bo.FileUploadBo;
 import xin.v5ai.basics.file.domain.vo.FileInfoVo;
 import xin.v5ai.basics.file.domain.vo.FileUploadVo;
 import xin.v5ai.basics.file.service.IFileInfoService;
+import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.mybatis.core.page.PageQuery;
+import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.common.core.utils.MapstructUtils;
 import xin.v5ai.common.core.utils.file.FileUtils;
 import xin.v5ai.common.log.annotation.Log;
@@ -65,6 +68,19 @@ public class FileBaseController extends BaseController {
             .build();
 
         return R.ok("上传成功",vo);
+    }
+
+    /**
+     * 查询当前登录用户上传的图片
+     */
+    @SaCheckLogin
+    @GetMapping("/images")
+    public R<PageResult<FileInfoVo>> images(@RequestParam(required = false) String name, PageQuery pageQuery) {
+        Long userId = LoginHelper.getUserId();
+        if (userId == null) {
+            return R.ok(PageResult.build());
+        }
+        return R.ok(fileInfoService.queryMyImages(userId, name, pageQuery));
     }
 
     /**

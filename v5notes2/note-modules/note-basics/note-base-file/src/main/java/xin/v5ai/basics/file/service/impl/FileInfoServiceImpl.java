@@ -70,6 +70,24 @@ public class FileInfoServiceImpl implements IFileInfoService {
     }
 
     /**
+     * 查询指定用户上传的图片
+     */
+    @Override
+    public PageResult<FileInfoVo> queryMyImages(Long userId, String name, PageQuery pageQuery) {
+        if (userId == null) {
+            return PageResult.build();
+        }
+        LambdaQueryWrapper<FileInfo> lqw = Wrappers.lambdaQuery();
+        lqw.eq(FileInfo::getCreateBy, userId);
+        lqw.likeRight(FileInfo::getType, "image/");
+        lqw.like(StringUtils.isNotBlank(name), FileInfo::getName, name);
+        lqw.orderByDesc(FileInfo::getCreateTime);
+        Page<FileInfoVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
+        result.getRecords().forEach(item -> item.setUrl(matchingUrl(item).getUrl()));
+        return PageResult.build(result.getRecords(), result.getTotal());
+    }
+
+    /**
      * 查询文件路径列表
      */
     @Override
