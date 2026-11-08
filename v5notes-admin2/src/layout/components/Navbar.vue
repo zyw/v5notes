@@ -54,6 +54,22 @@
         <el-tooltip :content="$t('navbar.language')" effect="dark" placement="bottom">
           <lang-select id="lang-select" class="right-menu-item hover-effect" />
         </el-tooltip>
+
+        <el-tooltip :content="themeLabel" effect="dark" placement="bottom">
+          <button class="theme-toggle" type="button" :aria-label="themeLabel" @click="cycleTheme">
+            <svg v-if="themeMode === 'auto'" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
+            </svg>
+            <svg v-else-if="themeMode === 'dark'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.2" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+          </button>
+        </el-tooltip>
       </template>
       <div class="avatar-container">
         <el-dropdown class="avatar-dropdown" trigger="click" popper-class="avatar-dropdown-popper" @command="handleCommand">
@@ -93,6 +109,7 @@
 import type { ElMessageBoxOptions } from 'element-plus';
 import { CaretBottom, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import appLogo from '@/assets/logo/logo.png';
+import { useThemeMode } from '@/composables/useThemeMode';
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import tab from '@/plugins/tab';
 import router from '@/router';
@@ -108,6 +125,7 @@ const appStore = useAppStore();
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
 const noticeStore = storeToRefs(useNoticeStore());
+const { mode: themeMode, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const navType = computed(() => settingsStore.navType);
 const showLogo = computed(() => settingsStore.sidebarLogo);
@@ -369,6 +387,46 @@ const handleCommand = (command: string) => {
           color: var(--app-accent-strong);
           border-color: rgba(28, 90, 72, 0.16);
         }
+      }
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--app-navbar-border);
+      border-radius: 12px;
+      background: var(--app-navbar-bg);
+      color: var(--app-text-muted);
+      cursor: pointer;
+      transition:
+        background 0.3s,
+        color 0.3s,
+        border-color 0.3s;
+
+      svg {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      &:hover {
+        border-color: rgba(28, 90, 72, 0.16);
+        background: var(--app-accent-soft);
+        color: var(--app-accent-strong);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--app-accent-strong);
+        outline-offset: 2px;
       }
     }
 

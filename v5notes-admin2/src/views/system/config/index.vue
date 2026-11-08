@@ -90,7 +90,7 @@
                 {{ row.remark || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80" align="center">
+            <el-table-column label="操作" width="100" align="center" class-name="small-padding">
               <template #default="{ row }">
                 <el-tooltip content="修改" placement="top">
                   <el-button

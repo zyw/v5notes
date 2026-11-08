@@ -96,21 +96,6 @@
       </span>
     </div>
     <div class="drawer-item">
-      <span>主题模式</span>
-      <span class="comp-style mode-group">
-        <button
-          v-for="m in themeModes"
-          :key="m.value"
-          type="button"
-          class="mode-btn"
-          :class="{ 'is-active': themeMode === m.value }"
-          @click="setThemeMode(m.value)"
-        >
-          {{ m.label }}
-        </button>
-      </span>
-    </div>
-    <div class="drawer-item">
       <span>布局大小</span>
       <span class="comp-style mode-group">
         <button
@@ -194,7 +179,6 @@
 
 <script setup lang="ts">
 import { useThemeMode } from '@/composables/useThemeMode';
-import type { ThemeMode } from '@/composables/useThemeMode';
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import { SideThemeEnum } from '@/enums/SideThemeEnum';
 import modal from '@/plugins/modal';
@@ -217,12 +201,7 @@ const predefineColors = ref(['#1c5a48', '#ff4500', '#ff8c00', '#ffd700', '#90ee9
 const navType = ref(settingsStore.navType);
 const radiusBase = ref(settingsStore.radiusBase);
 // 主题模式：自动 / 深色 / 浅色（与登录页共用同一套状态）
-const { mode: themeMode, resolved: themeResolved, setMode: setThemeMode } = useThemeMode();
-const themeModes: { label: string; value: ThemeMode }[] = [
-  { label: '自动', value: 'auto' },
-  { label: '深色', value: 'dark' },
-  { label: '浅色', value: 'light' }
-];
+const { resolved: themeResolved } = useThemeMode();
 const sizeOptions = [
   { label: '较大', value: 'large' as const },
   { label: '默认', value: 'default' as const },

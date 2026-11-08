@@ -116,7 +116,8 @@ input { outline: none; }
 .directory-row .tree-icon { color: #5d8268; }
 .tree-icon.folder-icon.open { color: #557e63; }
 .tree-actions { display: flex; align-items: center; opacity: 0; transition: opacity .12s ease; }
-.tree-row:hover .tree-actions, .tree-row:focus-within .tree-actions { opacity: 1; }
+.tree-row:hover .tree-actions, .tree-row:focus-within .tree-actions, .tree-row:has(.tree-menu[open]) .tree-actions { opacity: 1; }
+.tree-menu > .popover-menu { position: fixed; inset: auto; z-index: 80; width: max-content; height: auto; margin: 0; overflow: visible; }
 .tree-menu > summary { width: 24px; height: 26px; display: grid; place-items: center; border-radius: 5px; color: #6e7f72; font-size: 18px; line-height: 1; }
 .tree-menu > summary svg { width: 17px; height: 17px; fill: currentColor; }
 .tree-menu > summary:hover { background: #dfe7dd; color: #315b4a; }
