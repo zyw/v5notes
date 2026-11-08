@@ -40,6 +40,26 @@ export interface NoteRestoreResult {
   updateTime?: string
 }
 
+export interface NoteTrashItem {
+  id: string
+  objectType: string
+  objectId: string
+  name: string
+  originalPath: string
+  noteCount: number
+  dirCount: number
+  deletedTime?: string
+  expireTime?: string
+  daysLeft: number
+}
+
+export interface NoteTrashRestoreResult {
+  objectType: string
+  objectId: string
+  parentId: string
+  relocated: boolean
+}
+
 export interface TreeNode {
   id: string
   pid: string
@@ -159,6 +179,13 @@ export function createApi(
         body: JSON.stringify({ baseHash, force }),
       }),
     remove: (id: string) => call<void>(`/client/notes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    trash: (pageNum = 1) =>
+      call<Page<NoteTrashItem>>(`/client/notes/trash?${new URLSearchParams({ pageNum: String(pageNum), pageSize: '20' })}`),
+    restoreTrash: (id: string) =>
+      call<NoteTrashRestoreResult>(`/client/notes/trash/${encodeURIComponent(id)}/restore`, { method: 'POST' }),
+    purgeTrash: (id: string) =>
+      call<void>(`/client/notes/trash/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    emptyTrash: () => call<{ failed: number }>('/client/notes/trash', { method: 'DELETE' }),
     addDirectory: (name: string, pid: string) =>
       call<void>('/client/notes/dir', { method: 'POST', body: JSON.stringify({ name, pid }) }),
     renameDirectory: (id: string, name: string, pid: string) =>

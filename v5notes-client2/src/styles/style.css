@@ -72,7 +72,9 @@ input { outline: none; }
 .settings-trigger, .rail-settings { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; padding: 5px; border-radius: 8px; color: #748177; }
 .settings-trigger:hover, .rail-settings:hover { background: #e9eee8; color: #315b4a; }
 .settings-trigger svg, .rail-settings svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
-.rail-settings { width: 36px; height: 36px; flex-basis: 36px; margin-bottom: 2px; }
+.rail-settings, .rail-trash { width: 36px; height: 36px; flex-basis: 36px; margin-bottom: 2px; }
+.rail-trash { display: grid; place-items: center; padding: 5px; border-radius: 8px; color: #748177; }
+.rail-trash:hover { background: #e9eee8; color: #315b4a; }
 .search { min-height: 38px; display: flex; align-items: center; margin: 4px 3px 17px; padding: 0 8px 0 12px; border: 1px solid transparent; border-radius: 9px; background: #eaede7; }
 .search.search-inline { position: absolute; z-index: 2; inset: 0 0 7px 0; flex: 1 1 auto; width: auto; min-width: 0; min-height: 34px; margin: 0; padding: 0 4px 0 8px; border-radius: 8px; }
 .inline-search-enter-active, .inline-search-leave-active { transition: opacity .18s ease, transform .18s ease; }
@@ -130,6 +132,9 @@ input { outline: none; }
 .search-result:hover { background: #ecefe9; }
 .search-result.active { background: #e2eae1; color: #254c3a; font-weight: 650; }
 .empty-list { padding: 18px 10px; color: #98a49a; font-size: 12px; line-height: 1.7; text-align: center; }
+.trash-entry { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: #526355; text-align: left; }
+.trash-entry svg, .rail-trash svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.trash-entry:hover, .trash-entry.active, .rail-trash[aria-pressed="true"] { color: #315b4a; background: #eef3ee; }
 .sidebar-footer { min-height: 53px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; border-top: 1px solid #e6e8e1; color: #9aa49b; font-size: 10px; }
 .sidebar-footer button, .sidebar-footer summary { color: #748177; font-size: 11px; }
 .profile-menu { position: relative; width: fit-content; min-width: 0; max-width: calc(100% - 46px); flex: 0 1 auto; }
@@ -148,7 +153,16 @@ input { outline: none; }
 .profile-avatar { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: #dfe8df; color: #315b4a; font-size: 13px; font-weight: 600; }
 .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.editor-pane { --panel-header-height: 52px; position: relative; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: #fffefa; }
+.editor-pane, .trash-pane { --panel-header-height: 52px; position: relative; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: #fffefa; }
+.notice-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 16px 0; padding: 8px 12px; border-radius: 8px; color: #315b4a; background: #eef3ee; }
+.trash-header { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 22px; border-bottom: 1px solid #efefe9; }
+.trash-header h1 { margin: 0; color: #364c3b; font-size: 16px; }
+.trash-list { margin: 0; padding: 8px 16px 16px; overflow: auto; list-style: none; }
+.trash-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 4px; border-bottom: 1px solid #efefe9; }
+.trash-copy { display: flex; flex-wrap: wrap; gap: 6px 14px; min-width: 0; color: #748177; font-size: 12px; }
+.trash-copy strong { color: #364c3b; font-size: 14px; }
+.trash-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.trash-pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 22px 18px; color: #748177; }
 .editor-header { position: relative; z-index: 20; box-sizing: border-box; width: calc(100% - var(--outline-width, 0px)); min-height: var(--panel-header-height); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 clamp(18px, 2.1vw, 34px); border-bottom: 1px solid #efefe9; background: #fffefa; transition: width .2s ease; }
 .editor-toolbar-left, .actions { display: flex; align-items: center; min-width: 0; }
 .editor-toolbar-left { gap: 8px; }

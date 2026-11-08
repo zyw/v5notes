@@ -79,6 +79,39 @@ describe('client API', () => {
     await expect(api.read('2')).rejects.toBeInstanceOf(ConflictError)
   })
 
+  it('keeps trash ids as strings and uses the trash endpoints', async () => {
+    const calls: string[] = []
+    const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push(`${init?.method || 'GET'} ${url}`)
+        return new Response(JSON.stringify({
+          code: 200,
+          data: {
+            rows: [{ id: '934509293439939393', objectId: '934509293439939394', objectType: '2', name: '工作', originalPath: '根目录', noteCount: 1, dirCount: 1, daysLeft: 29 }],
+            total: 1,
+            objectId: '934509293439939394',
+            parentId: '0',
+            relocated: true,
+            failed: 0,
+          },
+        }))
+      }) as typeof fetch)
+    const page = await api.trash(1)
+    const restored = await api.restoreTrash('934509293439939393')
+    await api.purgeTrash('934509293439939393')
+    await api.emptyTrash()
+    expect(page.rows[0]?.id).toBe('934509293439939393')
+    expect(page.rows[0]?.objectId).toBe('934509293439939394')
+    expect(restored.parentId).toBe('0')
+    expect(restored.relocated).toBe(true)
+    expect(calls).toEqual([
+      'GET https://notes.test/client/notes/trash?pageNum=1&pageSize=20',
+      'POST https://notes.test/client/notes/trash/934509293439939393/restore',
+      'DELETE https://notes.test/client/notes/trash/934509293439939393',
+      'DELETE https://notes.test/client/notes/trash',
+    ])
+  })
+
   it('normalizes a scalar create response to a string ID', async () => {
     const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
       vi.fn(async () => new Response(JSON.stringify({ code: 200, data: 0 }))) as typeof fetch)

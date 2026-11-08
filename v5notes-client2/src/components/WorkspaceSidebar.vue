@@ -3,7 +3,7 @@ import { useWorkspaceContext } from '../hooks/workspaceContext'
 import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
 import brandIcon from '../assets/brand-icon.png'
-const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart } = useWorkspaceContext()
+const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
 
 function closeProfileMenu(event: Event): void {
   const menu = (event.currentTarget as HTMLElement).closest('details.profile-menu')
@@ -57,6 +57,10 @@ function closeProfileMenu(event: Event): void {
         />
         <p v-if="!directories.length" class="empty-list">还没有目录或笔记。</p>
       </div>
+      <button class="trash-entry" type="button" :class="{ active: trashOpen }" :aria-pressed="trashOpen" @click="openTrash">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11"/></svg>
+        <span>回收站</span>
+      </button>
       <footer class="sidebar-footer">
         <details class="profile-menu" @keydown.esc.prevent="closeProfileMenu">
           <summary class="profile-trigger" aria-label="用户菜单" title="用户菜单">
@@ -77,6 +81,7 @@ function closeProfileMenu(event: Event): void {
         <button class="rail-brand" type="button" aria-label="展开笔记栏" title="展开笔记栏" @click="directoryVisible = true"><img class="brand-mark" :src="brandIcon" alt="V5Notes" /></button>
         <button class="rail-notes" type="button" aria-label="展开笔记栏" @click="directoryVisible = true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="5" cy="5" r=".7"/><circle cx="5" cy="10" r=".7"/><circle cx="5" cy="15" r=".7"/></svg><span>笔记</span></button>
         <div class="rail-spacer" />
+        <button class="rail-trash" type="button" aria-label="回收站" title="回收站" :aria-pressed="trashOpen" @click="openTrash"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11"/></svg></button>
         <button class="rail-settings" type="button" aria-label="设置" title="设置" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <details class="profile-menu rail-profile-menu" @keydown.esc.prevent="closeProfileMenu">
           <summary class="rail-profile" aria-label="用户菜单" title="用户菜单"><span class="profile-avatar"><img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" /><span v-else>{{ currentUser?.nickName?.slice(0, 1) || username.slice(0, 1) || 'U' }}</span></span></summary>

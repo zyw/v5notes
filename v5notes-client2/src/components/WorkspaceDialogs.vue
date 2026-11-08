@@ -26,7 +26,7 @@ const { dialog, dialogValue, dialogError, dialogBusy, submitNameDialog, closeDia
         <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
         <div class="modal-actions">
           <button type="button" @click="closeDialog">取消</button>
-          <button class="danger-button" type="button" @click="confirmDialog">{{ dialog.confirmLabel }}</button>
+          <button :class="dialog.danger ? 'danger-button' : 'primary'" type="button" @click="confirmDialog">{{ dialog.confirmLabel }}</button>
         </div>
       </template>
     </section>

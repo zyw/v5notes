@@ -4,12 +4,13 @@ import { provideWorkspace } from '../hooks/workspaceContext'
 import LoginView from './LoginView.vue'
 import WorkspaceSidebar from '../components/WorkspaceSidebar.vue'
 import EditorPane from '../components/EditorPane.vue'
+import TrashPane from '../components/TrashPane.vue'
 import WorkspaceDialogs from '../components/WorkspaceDialogs.vue'
 import NoteHistoryDialog from '../components/NoteHistoryDialog.vue'
 import SettingsDialog from '../components/SettingsDialog.vue'
 const state = useWorkspace()
 provideWorkspace(state)
-const { server, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible } = state
+const { server, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible, trashOpen } = state
 </script>
 
 <template>
@@ -17,7 +18,8 @@ const { server, username, password, token, busy, error, login, focusMode, direct
     @update:server="server = $event" @update:username="username = $event" @update:password="password = $event" @submit="login" @settings="openSettings" />
   <div v-else class="workspace" :class="{ 'directory-hidden': focusMode, 'sidebar-collapsed': !directoryVisible && !focusMode, 'focus-mode': focusMode, 'is-resizing': resizingSidebar }" :style="{ '--sidebar-width': `${sidebarWidth}px` }">
     <WorkspaceSidebar />
-    <EditorPane />
+    <TrashPane v-if="trashOpen" />
+    <EditorPane v-else />
     <WorkspaceDialogs />
     <NoteHistoryDialog />
   </div>
