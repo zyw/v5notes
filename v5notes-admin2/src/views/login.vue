@@ -1,7 +1,8 @@
 <template>
-  <div class="login-page">
+  <div class="login-page" :data-theme="resolved">
     <!-- 左：科技感动效 + 笔记特点 -->
     <section class="login-scene" aria-label="V5Notes 产品介绍">
+      <login-tech-background :theme="resolved" />
       <div class="scene-inner">
         <div class="brand">
           <img :src="brandLogo" alt="V5Notes" />
@@ -69,6 +70,26 @@
     <!-- 右：登录 -->
     <section class="login-panel">
       <div class="panel-head">
+        <button
+          class="theme-toggle"
+          type="button"
+          :aria-label="themeLabel"
+          :title="themeLabel"
+          :data-mode="mode"
+          @click="cycleTheme"
+        >
+          <svg v-if="mode === 'auto'" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="12" rx="2" />
+            <path d="M8 20h8M12 16v4" />
+          </svg>
+          <svg v-else-if="mode === 'dark'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </svg>
+        </button>
         <div class="lang-switch" role="group" :aria-label="$t('login.langAria')">
           <button type="button" :aria-pressed="appStore.language === 'zh_CN'" @click="switchLang('zh_CN')">简体中文</button>
           <i aria-hidden="true">/</i>
@@ -177,6 +198,8 @@
 
 <script setup lang="ts">
 import { to } from 'await-to-js';
+import LoginTechBackground from '@/components/LoginTechBackground/index.vue';
+import { useThemeMode } from '@/composables/useThemeMode';
 import { useI18n } from 'vue-i18n';
 import brandLogo from '@/assets/logo/logo.png';
 import { getCodeImg } from '@/api/login';
@@ -190,6 +213,7 @@ const { t, locale } = useI18n();
 const appStore = useAppStore();
 const userStore = useUserStore();
 const router = useRouter();
+const { mode, resolved, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const currentYear = new Date().getFullYear();
 const providerKeys = ['wechat', 'maxkey', 'topiam', 'gitee', 'github'];
@@ -328,17 +352,6 @@ onMounted(() => {
   border-right: 1px solid #e2ebe5;
 }
 
-.login-scene::before {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(28, 90, 72, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(28, 90, 72, 0.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  content: '';
-  mask-image: radial-gradient(80% 70% at 30% 20%, #000 20%, transparent 85%);
-  pointer-events: none;
-}
 
 .scene-inner {
   position: relative;
@@ -960,5 +973,251 @@ onMounted(() => {
   .panel-foot {
     margin-top: 22px;
   }
+}
+
+/* ==========================================================================
+   主题切换按钮（仅图标，三态：跟随系统 / 深色 / 浅色）
+   ========================================================================== */
+.panel-head {
+  gap: 10px;
+}
+
+.theme-toggle {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e2ebe5;
+  border-radius: 9px;
+  background: #fff;
+  color: #4a5b52;
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    color 0.16s;
+  place-items: center;
+
+  svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &:hover {
+    border-color: #cfe3d8;
+    background: #e8f2ec;
+    color: #1c5a48;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1c5a48;
+    outline-offset: 2px;
+  }
+}
+
+/* ==========================================================================
+   深色主题
+   ========================================================================== */
+.login-page[data-theme='dark'] {
+  background: #050d0a;
+}
+
+.login-page[data-theme='dark'] .login-scene {
+  border-right-color: #12241c;
+  background: #06120e;
+}
+
+.login-page[data-theme='dark'] .brand b {
+  color: #f2fbf6;
+}
+
+.login-page[data-theme='dark'] .brand span {
+  color: rgba(214, 236, 225, 0.62);
+}
+
+.login-page[data-theme='dark'] .story h1 {
+  color: #f4fbf7;
+}
+
+.login-page[data-theme='dark'] .story h1 em {
+  color: #8fe0bc;
+}
+
+.login-page[data-theme='dark'] .story .lede {
+  color: rgba(216, 236, 226, 0.72);
+}
+
+.login-page[data-theme='dark'] .fi {
+  border-color: rgba(143, 224, 188, 0.2);
+  background: rgba(143, 224, 188, 0.06);
+}
+
+.login-page[data-theme='dark'] .fi svg {
+  stroke: #8fe0bc;
+}
+
+.login-page[data-theme='dark'] .ft b {
+  color: #eaf5ef;
+}
+
+.login-page[data-theme='dark'] .ft p {
+  color: rgba(206, 229, 217, 0.62);
+}
+
+.login-page[data-theme='dark'] .scene-foot {
+  color: rgba(190, 216, 203, 0.58);
+}
+
+.login-page[data-theme='dark'] .login-panel {
+  background: #0b1410;
+}
+
+.login-page[data-theme='dark'] .theme-toggle {
+  border-color: #24352c;
+  background: #101b16;
+  color: #9fc0ae;
+}
+
+.login-page[data-theme='dark'] .theme-toggle:hover {
+  border-color: #2f4439;
+  background: #16261e;
+  color: #8fe0bc;
+}
+
+.login-page[data-theme='dark'] .lang-switch button {
+  color: #8fa39a;
+}
+
+.login-page[data-theme='dark'] .lang-switch button[aria-pressed='true'] {
+  color: #e9f5ee;
+}
+
+.login-page[data-theme='dark'] .lang-switch button:hover {
+  color: #8fe0bc;
+}
+
+.login-page[data-theme='dark'] .lang-switch i {
+  color: #33463d;
+}
+
+.login-page[data-theme='dark'] .form-head h2 {
+  color: #eef7f2;
+}
+
+.login-page[data-theme='dark'] .form-head p {
+  color: #9fb3a8;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-form-item__label) {
+  color: #cfe0d7;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-input__wrapper) {
+  background: #101b16;
+  box-shadow: 0 0 0 1px #24352c inset;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #2f4439 inset;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow:
+    0 0 0 1px #4fbf94 inset,
+    0 0 0 3px rgba(79, 191, 148, 0.18);
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-input__inner) {
+  color: #eaf5ef;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-input__inner::placeholder) {
+  color: #6f8478;
+}
+
+.login-page[data-theme='dark'] .pw-eye svg {
+  stroke: #7f9a8c;
+}
+
+.login-page[data-theme='dark'] .pw-eye:hover {
+  background: #1b2c23;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-form-item__error) {
+  color: #e08a82;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-form-item.is-error .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #7a4a46 inset;
+}
+
+.login-page[data-theme='dark'] .code-box {
+  border-color: #24352c;
+  background: #16241d;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-checkbox__label) {
+  color: #cfe0d7;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-checkbox__inner) {
+  border-color: #3b5145;
+}
+
+.login-page[data-theme='dark'] .login-form :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  border-color: #4fbf94;
+  background: #4fbf94;
+}
+
+.login-page[data-theme='dark'] .refresh {
+  color: #7fd6b0;
+  text-decoration-color: rgba(127, 214, 176, 0.4);
+}
+
+.login-page[data-theme='dark'] .refresh:hover {
+  color: #9be7c6;
+}
+
+.login-page[data-theme='dark'] .submit {
+  background: #4fbf94;
+  color: #07130d;
+  box-shadow: 0 8px 20px rgba(79, 191, 148, 0.18);
+}
+
+.login-page[data-theme='dark'] .submit:hover,
+.login-page[data-theme='dark'] .submit:focus {
+  background: #5fd0a4;
+  box-shadow: 0 10px 24px rgba(79, 191, 148, 0.24);
+}
+
+.login-page[data-theme='dark'] .alt .alt-hint {
+  color: #7f948a;
+}
+
+.login-page[data-theme='dark'] .alt .alt-hint::before,
+.login-page[data-theme='dark'] .alt .alt-hint::after {
+  background: #1e2d25;
+}
+
+.login-page[data-theme='dark'] .prov button {
+  color: #9fb3a8;
+}
+
+.login-page[data-theme='dark'] .prov button:hover {
+  background: #17271f;
+  color: #7fd6b0;
+}
+
+.login-page[data-theme='dark'] .prov i {
+  color: #33463d;
+}
+
+.login-page[data-theme='dark'] .panel-foot {
+  color: #8ba396;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootRef" class="tech-bg" aria-hidden="true">
+  <div ref="rootRef" class="tech-bg" :class="'is-' + theme" aria-hidden="true">
     <canvas ref="canvasRef" class="tech-canvas"></canvas>
     <div class="glow g1"></div>
     <div class="glow g2"></div>
@@ -57,6 +57,54 @@ let W = 0;
 let H = 0;
 let sprite: HTMLCanvasElement | null = null;
 
+type TechTheme = 'light' | 'dark';
+
+const props = withDefaults(defineProps<{ theme?: TechTheme }>(), { theme: 'dark' });
+
+interface Palette {
+  sprite: [string, string, string];
+  stream1: string;
+  stream2: string;
+  cardFill: string;
+  cardStroke: string;
+  cardLine: string;
+  nodeFill: string;
+  packet: string;
+  link: (alpha: number) => string;
+  linkMouse: (alpha: number) => string;
+}
+
+const DARK_PALETTE: Palette = {
+  sprite: ['rgba(143,224,188,1)', 'rgba(143,224,188,.32)', 'rgba(143,224,188,0)'],
+  stream1: 'rgba(143,224,188,.09)',
+  stream2: 'rgba(190,255,227,.2)',
+  cardFill: 'rgba(143,224,188,.035)',
+  cardStroke: 'rgba(143,224,188,.12)',
+  cardLine: 'rgba(143,224,188,.1)',
+  nodeFill: '#c8f5e0',
+  packet: 'rgba(225,255,240,.92)',
+  link: (a: number) => 'rgba(79,191,148,' + a.toFixed(3) + ')',
+  linkMouse: (a: number) => 'rgba(143,224,188,' + a.toFixed(3) + ')'
+};
+
+const LIGHT_PALETTE: Palette = {
+  sprite: ['rgba(28,90,72,1)', 'rgba(28,90,72,.3)', 'rgba(28,90,72,0)'],
+  stream1: 'rgba(28,90,72,.1)',
+  stream2: 'rgba(28,90,72,.2)',
+  cardFill: 'rgba(28,90,72,.045)',
+  cardStroke: 'rgba(28,90,72,.14)',
+  cardLine: 'rgba(28,90,72,.12)',
+  nodeFill: '#1c5a48',
+  packet: 'rgba(28,90,72,.85)',
+  link: (a: number) => 'rgba(28,90,72,' + a.toFixed(3) + ')',
+  linkMouse: (a: number) => 'rgba(28,90,72,' + a.toFixed(3) + ')'
+};
+
+let PAL: Palette = DARK_PALETTE;
+function usePalette(theme: TechTheme) {
+  PAL = theme === 'light' ? LIGHT_PALETTE : DARK_PALETTE;
+}
+
 const isMobile = () => window.innerWidth <= 920;
 const nodeCount = () => (isMobile() ? 42 : 88);
 
@@ -67,9 +115,9 @@ function buildSprite() {
   const sctx = c.getContext('2d');
   if (!sctx) return null;
   const g = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, 'rgba(143,224,188,1)');
-  g.addColorStop(0.35, 'rgba(143,224,188,.32)');
-  g.addColorStop(1, 'rgba(143,224,188,0)');
+  g.addColorStop(0, PAL.sprite[0]);
+  g.addColorStop(0.35, PAL.sprite[1]);
+  g.addColorStop(1, PAL.sprite[2]);
   sctx.fillStyle = g;
   sctx.fillRect(0, 0, 64, 64);
   return c;
@@ -155,12 +203,12 @@ function frame(ts: number) {
       if (xx === -40) c.moveTo(xx, yy);
       else c.lineTo(xx, yy);
     }
-    c.strokeStyle = 'rgba(143,224,188,.09)';
+    c.strokeStyle = PAL.stream1;
     c.lineWidth = 1;
     c.stroke();
     c.setLineDash([2, 12]);
     c.lineDashOffset = -(ts * 0.03 * (1 + s * 0.3));
-    c.strokeStyle = 'rgba(190,255,227,.2)';
+    c.strokeStyle = PAL.stream2;
     c.stroke();
     c.setLineDash([]);
   }
@@ -176,13 +224,13 @@ function frame(ts: number) {
     c.save();
     c.translate(cd.x, cd.y);
     c.rotate(cd.rot);
-    c.fillStyle = 'rgba(143,224,188,.035)';
-    c.strokeStyle = 'rgba(143,224,188,.12)';
+    c.fillStyle = PAL.cardFill;
+    c.strokeStyle = PAL.cardStroke;
     c.lineWidth = 1;
     roundRect(c, -cd.w / 2, -cd.h / 2, cd.w, cd.h, 3);
     c.fill();
     c.stroke();
-    c.strokeStyle = 'rgba(143,224,188,.1)';
+    c.strokeStyle = PAL.cardLine;
     c.beginPath();
     c.moveTo(-cd.w / 2 + 5, -cd.h / 2 + 6);
     c.lineTo(cd.w / 2 - 8, -cd.h / 2 + 6);
@@ -207,7 +255,7 @@ function frame(ts: number) {
       const dy = a.y - b.y;
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < maxD) {
-        c.strokeStyle = 'rgba(79,191,148,' + ((1 - d / maxD) * 0.24).toFixed(3) + ')';
+        c.strokeStyle = PAL.link((1 - d / maxD) * 0.24);
         c.lineWidth = 0.7;
         c.beginPath();
         c.moveTo(a.x, a.y);
@@ -220,7 +268,7 @@ function frame(ts: number) {
       const dy = a.y - mouse.y;
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < 170) {
-        c.strokeStyle = 'rgba(143,224,188,' + ((1 - d / 170) * 0.3).toFixed(3) + ')';
+        c.strokeStyle = PAL.linkMouse((1 - d / 170) * 0.3);
         c.lineWidth = 0.8;
         c.beginPath();
         c.moveTo(a.x, a.y);
@@ -237,7 +285,7 @@ function frame(ts: number) {
       c.globalAlpha = a.a * tw * 0.55;
       c.drawImage(sprite, a.x - a.r * 8, a.y - a.r * 8, a.r * 16, a.r * 16);
       c.globalAlpha = a.a * tw;
-      c.fillStyle = '#c8f5e0';
+      c.fillStyle = PAL.nodeFill;
       c.beginPath();
       c.arc(a.x, a.y, a.r, 0, Math.PI * 2);
       c.fill();
@@ -262,7 +310,7 @@ function frame(ts: number) {
       c.drawImage(sprite, px - 9, py - 9, 18, 18);
       c.globalAlpha = 1;
     }
-    c.fillStyle = 'rgba(225,255,240,.92)';
+    c.fillStyle = PAL.packet;
     c.beginPath();
     c.arc(px, py, 1.5, 0, Math.PI * 2);
     c.fill();
@@ -289,6 +337,7 @@ function onPointerLeave() {
 onMounted(() => {
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced) return;
+  usePalette(props.theme);
   sprite = buildSprite();
   resize();
   if (!ctx) return;
@@ -305,6 +354,14 @@ onMounted(() => {
     observer.observe(rootRef.value);
   }
 });
+
+watch(
+  () => props.theme,
+  t => {
+    usePalette(t);
+    if (!disposed) sprite = buildSprite();
+  }
+);
 
 onBeforeUnmount(() => {
   disposed = true;
@@ -323,6 +380,39 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: #06120e;
   pointer-events: none;
+}
+
+.tech-bg.is-light {
+  background: transparent;
+}
+
+.tech-bg.is-light .glow.g1 {
+  background: rgba(28, 90, 72, 0.13);
+}
+
+.tech-bg.is-light .glow.g2 {
+  background: rgba(79, 191, 148, 0.16);
+}
+
+.tech-bg.is-light .grid {
+  background-image:
+    linear-gradient(rgba(28, 90, 72, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 90, 72, 0.07) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at 34% 42%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 80%);
+}
+
+.tech-bg.is-light .sweep {
+  background: linear-gradient(112deg, transparent 42%, rgba(28, 90, 72, 0.06) 50%, transparent 58%);
+}
+
+.tech-bg.is-light .scrim {
+  background: linear-gradient(
+    102deg,
+    rgba(248, 252, 250, 0.92) 0%,
+    rgba(248, 252, 250, 0.56) 40%,
+    rgba(248, 252, 250, 0.1) 70%,
+    transparent 100%
+  );
 }
 
 .tech-canvas {
@@ -429,6 +519,10 @@ onBeforeUnmount(() => {
 
   .tech-bg {
     background: radial-gradient(circle at 30% 30%, #0d2b21, #06120e 70%);
+  }
+
+  .tech-bg.is-light {
+    background: radial-gradient(circle at 30% 30%, #eaf4ee, #f4f7f5 70%);
   }
 }
 </style>

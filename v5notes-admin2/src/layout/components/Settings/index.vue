@@ -96,9 +96,33 @@
       </span>
     </div>
     <div class="drawer-item">
-      <span>深色模式</span>
-      <span class="comp-style">
-        <el-switch v-model="isDark" class="drawer-switch" @change="toggleDark" />
+      <span>主题模式</span>
+      <span class="comp-style mode-group">
+        <button
+          v-for="m in themeModes"
+          :key="m.value"
+          type="button"
+          class="mode-btn"
+          :class="{ 'is-active': themeMode === m.value }"
+          @click="setThemeMode(m.value)"
+        >
+          {{ m.label }}
+        </button>
+      </span>
+    </div>
+    <div class="drawer-item">
+      <span>布局大小</span>
+      <span class="comp-style mode-group">
+        <button
+          v-for="s in sizeOptions"
+          :key="s.value"
+          type="button"
+          class="mode-btn"
+          :class="{ 'is-active': appStore.size === s.value }"
+          @click="appStore.setSize(s.value)"
+        >
+          {{ s.label }}
+        </button>
       </span>
     </div>
     <div class="drawer-item">
@@ -169,6 +193,8 @@
 </template>
 
 <script setup lang="ts">
+import { useThemeMode } from '@/composables/useThemeMode';
+import type { ThemeMode } from '@/composables/useThemeMode';
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import { SideThemeEnum } from '@/enums/SideThemeEnum';
 import modal from '@/plugins/modal';
@@ -190,21 +216,26 @@ const storeSettings = computed(() => settingsStore);
 const predefineColors = ref(['#1c5a48', '#ff4500', '#ff8c00', '#ffd700', '#90ee90', '#00ced1', '#1e90ff', '#c71585']);
 const navType = ref(settingsStore.navType);
 const radiusBase = ref(settingsStore.radiusBase);
-// 是否暗黑模式
-const isDark = useDark({
-  storageKey: 'useDarkKey',
-  valueDark: 'dark',
-  valueLight: 'light'
-});
+// 主题模式：自动 / 深色 / 浅色（与登录页共用同一套状态）
+const { mode: themeMode, resolved: themeResolved, setMode: setThemeMode } = useThemeMode();
+const themeModes: { label: string; value: ThemeMode }[] = [
+  { label: '自动', value: 'auto' },
+  { label: '深色', value: 'dark' },
+  { label: '浅色', value: 'light' }
+];
+const sizeOptions = [
+  { label: '较大', value: 'large' as const },
+  { label: '默认', value: 'default' as const },
+  { label: '稍小', value: 'small' as const }
+];
 // 匹配菜单颜色
-watch(isDark, () => {
-  if (isDark.value) {
+watch(themeResolved, val => {
+  if (val === 'dark') {
     settingsStore.sideTheme = SideThemeEnum.DARK;
   } else {
     settingsStore.sideTheme = sideTheme.value;
   }
 });
-const toggleDark = () => useToggle(isDark);
 
 /** 菜单导航设置 */
 watch(
@@ -244,7 +275,7 @@ const radiusBaseChange = (val: number) => {
 };
 const handleTheme = (val: string) => {
   sideTheme.value = val;
-  if (isDark.value && val === SideThemeEnum.LIGHT) {
+  if (themeResolved.value === 'dark' && val === SideThemeEnum.LIGHT) {
     // 暗黑模式颜色不变
     settingsStore.sideTheme = SideThemeEnum.DARK;
     return;
@@ -446,6 +477,43 @@ defineExpose({
     b:last-child {
       display: none;
     }
+  }
+}
+
+.mode-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: 8px;
+}
+
+.mode-btn {
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--el-text-color-regular, #606266);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    color 0.16s;
+
+  &:hover {
+    color: var(--el-color-primary, #1c5a48);
+  }
+
+  &.is-active {
+    background: var(--el-color-primary, #1c5a48);
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--el-color-primary, #1c5a48);
+    outline-offset: 1px;
   }
 }
 </style>

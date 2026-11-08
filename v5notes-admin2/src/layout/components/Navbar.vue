@@ -54,10 +54,6 @@
         <el-tooltip :content="$t('navbar.language')" effect="dark" placement="bottom">
           <lang-select id="lang-select" class="right-menu-item hover-effect" />
         </el-tooltip>
-
-        <el-tooltip :content="$t('navbar.layoutSize')" effect="dark" placement="bottom">
-          <size-select id="size-select" class="right-menu-item hover-effect" />
-        </el-tooltip>
       </template>
       <div class="avatar-container">
         <el-dropdown class="avatar-dropdown" trigger="click" popper-class="avatar-dropdown-popper" @command="handleCommand">
