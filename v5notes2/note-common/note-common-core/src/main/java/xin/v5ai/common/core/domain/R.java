@@ -150,6 +150,19 @@ public class R<T> implements Serializable {
     }
 
     /**
+     * 构建失败响应结果（自定义状态码、提示信息和业务数据）
+     *
+     * @param code 自定义状态码
+     * @param msg  自定义提示信息
+     * @param data 业务数据
+     * @param <T>  响应数据的泛型类型
+     * @return 失败响应结果对象
+     */
+    public static <T> R<T> fail(int code, String msg, T data) {
+        return restResult(data, code, msg);
+    }
+
+    /**
      * 构建警告响应结果
      *
      * @param msg 自定义提示信息

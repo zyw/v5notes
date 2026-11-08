@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createApi } from '.'
+import { ConflictError } from '../request'
 
 describe('client API', () => {
   it('sends string snowflake IDs unchanged in reads and saves', async () => {
@@ -13,7 +14,10 @@ describe('client API', () => {
     await api.update({ ...note, content: '# updated' })
     expect(note.dirId).toBe('0')
     expect(calls[0][0]).toBe('https://notes.test/client/notes/934509293439939393')
-    expect(JSON.parse(calls[1][1].body as string).id).toBe('934509293439939393')
+    const saved = JSON.parse(calls[1][1].body as string)
+    expect(saved.id).toBe('934509293439939393')
+    expect(saved.baseHash).toBe('')
+    expect(saved.force).toBe(false)
     expect((calls[1][1].headers as Record<string, string>).Authorization).toBe('Bearer token')
   })
 
@@ -51,6 +55,28 @@ describe('client API', () => {
     expect(url).toBe('https://notes.test/basics/base/file/images?pageNum=2&pageSize=24&name=%E7%85%A7%E7%89%87')
     expect(page.total).toBe(1)
     expect(page.rows[0]?.id).toBe('934509293439939393')
+  })
+
+  it('reads the id from a create response that also carries the content hash', async () => {
+    const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async () => new Response(JSON.stringify({ code: 200, data: { id: '934509293439939393', contentHash: 'ab' } }))) as typeof fetch)
+    expect(await api.create({ name: 'Test', dirId: '0', content: '' })).toBe('934509293439939393')
+  })
+
+  it('exposes the current hash when a save conflicts', async () => {
+    const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async () => new Response(JSON.stringify({
+        code: 409,
+        msg: '笔记已在其他地方保存',
+        data: { contentHash: 'c'.repeat(64), updateTime: '2026-11-08 22:00:00' },
+      }))) as typeof fetch)
+    await expect(api.update({ id: '2', dirId: '0', name: '笔记', content: '新', contentHash: 'a'.repeat(64) })).rejects.toMatchObject({
+      name: 'ConflictError',
+      message: '笔记已在其他地方保存',
+      contentHash: 'c'.repeat(64),
+      updateTime: '2026-11-08 22:00:00',
+    })
+    await expect(api.read('2')).rejects.toBeInstanceOf(ConflictError)
   })
 
   it('normalizes a scalar create response to a string ID', async () => {

@@ -17,6 +17,27 @@ export interface Note {
   name: string
   content: string
   updateTime?: string
+  contentHash?: string
+}
+
+export interface NoteRevision {
+  id: string
+  noteId: string
+  contentHash: string
+  excerpt: string
+  size: number
+  createTime?: string
+  head?: boolean
+}
+
+export interface NoteRevisionDetail extends NoteRevision {
+  content: string
+}
+
+export interface NoteRestoreResult {
+  content: string
+  contentHash: string
+  updateTime?: string
 }
 
 export interface TreeNode {
@@ -111,10 +132,32 @@ export function createApi(
     search: (query: string) =>
       call<Note[]>(`/client/notes/search?${new URLSearchParams({ searchValue: query })}`),
     read: (id: string) => call<Note>(`/client/notes/${encodeURIComponent(id)}`),
-    create: async (note: Pick<Note, 'name' | 'dirId' | 'content'>) =>
-      asId(await call<unknown>('/client/notes', { method: 'POST', body: JSON.stringify(note) })),
-    update: (note: Note) =>
-      call<void>('/client/notes', { method: 'PUT', body: JSON.stringify(note) }),
+    create: async (note: Pick<Note, 'name' | 'dirId' | 'content'>) => {
+      const data = await call<unknown>('/client/notes', { method: 'POST', body: JSON.stringify(note) })
+      if (data !== null && typeof data === 'object' && 'id' in data) return asId(data.id)
+      return asId(data)
+    },
+    update: (note: Note, force = false) =>
+      call<{ contentHash: string }>('/client/notes', {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: note.id,
+          dirId: note.dirId,
+          name: note.name,
+          content: note.content,
+          baseHash: note.contentHash ?? '',
+          force,
+        }),
+      }),
+    revisions: (noteId: string, pageNum = 1) =>
+      call<Page<NoteRevision>>(`/client/notes/${encodeURIComponent(noteId)}/revisions?${new URLSearchParams({ pageNum: String(pageNum), pageSize: '20' })}`),
+    revision: (noteId: string, revisionId: string) =>
+      call<NoteRevisionDetail>(`/client/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}`),
+    restoreRevision: (noteId: string, revisionId: string, baseHash: string, force = false) =>
+      call<NoteRestoreResult>(`/client/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}/restore`, {
+        method: 'POST',
+        body: JSON.stringify({ baseHash, force }),
+      }),
     remove: (id: string) => call<void>(`/client/notes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     addDirectory: (name: string, pid: string) =>
       call<void>('/client/notes/dir', { method: 'POST', body: JSON.stringify({ name, pid }) }),

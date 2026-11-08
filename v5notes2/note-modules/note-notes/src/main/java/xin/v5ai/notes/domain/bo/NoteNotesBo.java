@@ -1,6 +1,7 @@
 package xin.v5ai.notes.domain.bo;
 
 import io.github.linpeilie.annotations.AutoMapper;
+import io.github.linpeilie.annotations.AutoMapping;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -46,6 +47,22 @@ public class NoteNotesBo extends BaseEntity {
      * 笔记内容
      */
     private String content;
+
+    /**
+     * 服务端回写的正文哈希，不从请求映射到笔记列。
+     */
+    @AutoMapping(target = "contentHash", ignore = true)
+    private String contentHash;
+
+    /**
+     * 客户端打开或上次保存时的正文哈希。
+     */
+    private String baseHash;
+
+    /**
+     * 为 true 时忽略哈希不一致，仍先补记库中正文。
+     */
+    private Boolean force;
 
     /**
      * 搜索值（按笔记名/内容模糊匹配）

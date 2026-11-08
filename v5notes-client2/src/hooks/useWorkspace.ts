@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch 
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Editor } from '@v5md/view'
-import { createApi, type Note, type TreeNode } from '../service/api'
+import { createApi, type Note, type NoteRevision, type TreeNode } from '../service/api'
+import { ConflictError } from '../service/request'
 import { Draft } from '../models/draft'
 import { resolveDirty, type DirtyChoice } from './useDirtyNavigation'
 import { setDirtyCheck, watchClose } from '../utils/window'
@@ -47,6 +48,9 @@ const notes = ref<Note[]>([])
 const draft = reactive(new Draft())
 const editorInstance = shallowRef<Editor | null>(null)
 const promptVisible = ref(false)
+const historyOpen = ref(false)
+const restoreTarget = ref<NoteRevision | null>(null)
+const conflict = ref<null | { message: string; contentHash?: string; updateTime?: string; action: 'save' | 'restore'; revisionId?: string }>(null)
 const dialog = ref<DialogState | null>(null)
 const dialogValue = ref('')
 const dialogError = ref('')
@@ -199,15 +203,21 @@ async function submitNameDialog(): Promise<void> {
         try { await refreshDirectories() } catch (cause) { report(cause) }
         await openNote(id, true, 'edit')
       } else if (draft.note) {
-        if (draft.dirty) await draft.save(api.update)
-        if (draft.dirty) throw new Error('笔记内容保存失败，请重试后再重命名')
+        if (draft.dirty) {
+          const saved = await persistDraft()
+          if (!saved) {
+            if (conflict.value) dialog.value = null
+            else throw new Error('笔记内容保存失败，请重试后再重命名')
+            return
+          }
+        }
         if (name === draft.note.name) {
           dialog.value = null
           return
         }
         const renamed = { ...draft.note, name }
-        await api.update(renamed)
-        draft.note = renamed
+        const saved = await api.update(renamed)
+        draft.note = { ...renamed, contentHash: saved.contentHash || renamed.contentHash }
         dialog.value = null
         try { await refreshDirectories() } catch (cause) { report(cause) }
       }
@@ -225,7 +235,8 @@ async function submitNameDialog(): Promise<void> {
       try { await refreshDirectories() } catch (cause) { report(cause) }
     }
   } catch (cause) {
-    if (dialog.value?.kind === 'name') dialogError.value = cause instanceof Error ? cause.message : '操作失败，请重试'
+    if (showConflict(cause, 'save')) dialog.value = null
+    else if (dialog.value?.kind === 'name') dialogError.value = cause instanceof Error ? cause.message : '操作失败，请重试'
     else report(cause)
   } finally {
     dialogBusy.value = false
@@ -358,9 +369,15 @@ function respond(choice: DirtyChoice): void {
 }
 
 async function mayLeave(): Promise<boolean> {
-  const allowed = await resolveDirty(draft, choose, api.update)
-  if (!allowed && !promptVisible.value) error.value = '未保存：请重试保存或继续编辑'
-  return allowed
+  try {
+    const allowed = await resolveDirty(draft, choose, note => api.update(note))
+    if (!allowed && !promptVisible.value && !conflict.value) error.value = '未保存：请重试保存或继续编辑'
+    return allowed
+  } catch (cause) {
+    if (showConflict(cause, 'save')) return false
+    error.value = '未保存：请重试保存或继续编辑'
+    return false
+  }
 }
 
 async function openNote(id: string, skipGuard = false, initialMode: 'preview' | 'edit' = 'preview'): Promise<void> {
@@ -393,25 +410,80 @@ async function openNote(id: string, skipGuard = false, initialMode: 'preview' | 
   }
 }
 
-async function save(): Promise<void> {
+function showConflict(cause: unknown, action: 'save' | 'restore', revisionId?: string): boolean {
+  if (!(cause instanceof ConflictError)) return false
+  conflict.value = { message: cause.message, contentHash: cause.contentHash, updateTime: cause.updateTime, action, revisionId }
+  return true
+}
+
+async function persistDraft(force = false): Promise<boolean> {
   try {
-    await draft.save(api.update)
-    if (!draft.dirty) await refreshDirectories()
-  } catch (cause) { report(cause) }
+    await draft.save(note => api.update(note, force))
+    return !draft.dirty
+  } catch (cause) {
+    if (!force && showConflict(cause, 'save')) return false
+    report(cause)
+    return false
+  }
+}
+
+async function save(): Promise<void> {
+  if (await persistDraft()) {
+    try { await refreshDirectories() } catch (cause) { report(cause) }
+  }
 }
 
 async function finishEditing(): Promise<void> {
   if (draft.dirty) {
-    try {
-      await draft.save(api.update)
-      if (draft.dirty) return
-      try { await refreshDirectories() } catch (cause) { report(cause) }
-    } catch (cause) {
-      report(cause)
-      return
-    }
+    if (!(await persistDraft())) return
+    try { await refreshDirectories() } catch (cause) { report(cause) }
   }
   editorMode.value = 'preview'
+}
+
+async function openHistory(): Promise<void> {
+  if (draft.dirty && !(await persistDraft())) return
+  historyOpen.value = true
+}
+
+async function reloadSelectedNote(): Promise<void> {
+  const id = selectedId.value
+  if (!id) return
+  const mode = editorMode.value
+  const note = await api.read(id)
+  draft.load(note)
+  editorMode.value = mode
+}
+
+async function reloadAfterConflict(): Promise<void> {
+  if (draft.dirty) {
+    const choice = await choose()
+    if (choice === 'cancel') return
+    if (choice === 'save' && !(await persistDraft())) return
+  }
+  conflict.value = null
+  historyOpen.value = false
+  restoreTarget.value = null
+  try { await reloadSelectedNote() } catch (cause) { report(cause) }
+}
+
+async function overwriteConflict(): Promise<void> {
+  const current = conflict.value
+  if (!current || !draft.note) return
+  try {
+    if (current.action === 'restore' && current.revisionId) {
+      const restored = await api.restoreRevision(draft.note.id, current.revisionId, draft.note.contentHash ?? '', true)
+      draft.load({ ...draft.note, content: restored.content, contentHash: restored.contentHash, updateTime: restored.updateTime })
+      historyOpen.value = false
+      restoreTarget.value = null
+    } else if (!(await persistDraft(true))) {
+      return
+    }
+    conflict.value = null
+  } catch (cause) {
+    if (showConflict(cause, current.action, current.revisionId)) return
+    report(cause)
+  }
 }
 
 async function runSearch(): Promise<void> {
@@ -521,6 +593,9 @@ function reauthenticate(): void {
 function keydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     if (settingsDialogOpen.value) settingsDialogOpen.value = false
+    else if (conflict.value) conflict.value = null
+    else if (restoreTarget.value) restoreTarget.value = null
+    else if (historyOpen.value) historyOpen.value = false
     else if (dialog.value && !dialogBusy.value) closeDialog()
     else if (promptVisible.value) respond('cancel')
   }
@@ -555,5 +630,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

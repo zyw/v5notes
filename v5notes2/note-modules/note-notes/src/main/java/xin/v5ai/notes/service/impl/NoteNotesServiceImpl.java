@@ -24,7 +24,9 @@ import xin.v5ai.notes.domain.vo.NotesSearchVo;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
+import xin.v5ai.notes.service.INoteRevisionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -45,6 +47,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
 
     private final INoteDirectoryService directoryService;
 
+    private final INoteRevisionService revisionService;
+
     // markdown标签匹配正则
     private final static String MARKDOWN_REGEX = "\\*\\*(.*?)\\*\\*|__(.*?)__|~~(.*?)~~|`(.*?)`|\\[(.*?)\\]\\((.*?)\\)|!\\[(.*?)\\]\\((.*?)\\)|<.*?>|#{1,6}(.*?)|^-{3,}|-{3,}";
 
@@ -56,8 +60,19 @@ public class NoteNotesServiceImpl implements INoteNotesService {
      */
     @Override
     public NotesContentVo queryById(Long id){
-        NoteNotesVo noteNotesVo = baseMapper.selectVoById(id);
-        return MapstructUtils.convert(noteNotesVo, NotesContentVo.class);
+        NoteNotes entity = baseMapper.selectById(id);
+        if (entity == null) {
+            return null;
+        }
+        NotesContentVo vo = new NotesContentVo();
+        vo.setId(entity.getId());
+        vo.setName(entity.getName());
+        vo.setDirId(entity.getDirId());
+        vo.setUserId(entity.getUserId());
+        vo.setContent(entity.getContent());
+        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setContentHash(revisionService.ensureContentHash(entity));
+        return vo;
     }
 
     /**
@@ -115,6 +130,7 @@ public class NoteNotesServiceImpl implements INoteNotesService {
      * @return 是否新增成功
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean insertByBo(NoteNotesBo bo) {
         NoteNotes add = MapstructUtils.convert(bo, NoteNotes.class);
         add.setUserId(LoginHelper.getUserId());
@@ -124,6 +140,7 @@ public class NoteNotesServiceImpl implements INoteNotesService {
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
             bo.setId(add.getId());
+            bo.setContentHash(revisionService.recordInitial(add));
         }
         return flag;
     }
@@ -135,10 +152,12 @@ public class NoteNotesServiceImpl implements INoteNotesService {
      * @return 是否修改成功
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateByBo(NoteNotesBo bo) {
         NoteNotes update = MapstructUtils.convert(bo, NoteNotes.class);
         validEntityBeforeSave(update);
-        return baseMapper.updateById(update) > 0;
+        revisionService.saveAdmin(bo);
+        return true;
     }
 
     /**
@@ -156,10 +175,12 @@ public class NoteNotesServiceImpl implements INoteNotesService {
      * @return 是否删除成功
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if(isValid){
             //TODO 做一些业务上的校验,判断是否需要校验
         }
+        revisionService.deleteByNoteIds(ids);
         return baseMapper.deleteByIds(ids) > 0;
     }
 

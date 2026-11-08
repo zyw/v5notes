@@ -3,6 +3,7 @@ package xin.v5ai.notes.controller.client;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.core.validate.AddGroup;
 import xin.v5ai.common.core.validate.EditGroup;
@@ -17,13 +18,20 @@ import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.web.core.BaseController;
 import xin.v5ai.notes.domain.bo.ClientNotesBo;
 import xin.v5ai.notes.domain.bo.NoteNotesBo;
+import xin.v5ai.notes.domain.bo.NoteRestoreBo;
 import xin.v5ai.notes.domain.vo.NewNotesVo;
+import xin.v5ai.notes.domain.vo.NoteConflictVo;
+import xin.v5ai.notes.domain.vo.NoteCreatedVo;
 import xin.v5ai.notes.domain.vo.NoteDirectoryVo;
 import xin.v5ai.notes.domain.vo.NoteNotesVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionDetailVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionItemVo;
 import xin.v5ai.notes.domain.vo.NotesContentVo;
 import xin.v5ai.notes.domain.vo.NotesSearchVo;
+import xin.v5ai.notes.exception.NoteContentConflictException;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
+import xin.v5ai.notes.service.INoteRevisionService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +48,7 @@ public class ClientNotesController extends BaseController {
 
     private final INoteNotesService noteNotesService;
     private final INoteDirectoryService noteDirectoryService;
+    private final INoteRevisionService noteRevisionService;
 
     /**
      * 新增笔记
@@ -47,7 +56,7 @@ public class ClientNotesController extends BaseController {
     @Log(title = "笔记", businessType = BusinessType.INSERT)
     @RepeatSubmit()
     @PostMapping()
-    public R<Long> add(@Validated(AddGroup.class) @RequestBody NoteNotesBo bo) {
+    public R<NoteCreatedVo> add(@Validated(AddGroup.class) @RequestBody NoteNotesBo bo) {
         // 归属校验：非根目录时，目标目录必须属于当前用户
         if (bo.getDirId() != null && bo.getDirId() != 0L && !isOwnDirectory(bo.getDirId())) {
             return R.fail("无权使用该目录");
@@ -56,7 +65,10 @@ public class ClientNotesController extends BaseController {
         if (!result) {
             return R.fail("添加笔记失败");
         }
-        return R.ok("添加笔记成功", bo.getId());
+        NoteCreatedVo created = new NoteCreatedVo();
+        created.setId(bo.getId());
+        created.setContentHash(bo.getContentHash());
+        return R.ok("添加笔记成功", created);
     }
 
     /**
@@ -65,7 +77,7 @@ public class ClientNotesController extends BaseController {
     @Log(title = "笔记", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
     @PutMapping()
-    public R<Void> edit(@Validated(EditGroup.class) @RequestBody NoteNotesBo bo) {
+    public R<?> edit(@Validated(EditGroup.class) @RequestBody NoteNotesBo bo) {
         // 归属校验：原笔记必须属于当前用户
         NotesContentVo existing = noteNotesService.queryById(bo.getId());
         if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
@@ -76,7 +88,40 @@ public class ClientNotesController extends BaseController {
             && bo.getDirId() != 0L && !isOwnDirectory(bo.getDirId())) {
             return R.fail("无权使用该目录");
         }
-        return toAjax(noteNotesService.updateByBo(bo));
+        try {
+            return R.ok(noteRevisionService.saveClient(bo));
+        } catch (NoteContentConflictException exception) {
+            return conflict(exception);
+        }
+    }
+
+    /**
+     * 历史版本列表，不含正文。
+     */
+    @GetMapping("/{noteId}/revisions")
+    public R<PageResult<NoteRevisionItemVo>> revisions(@PathVariable Long noteId, PageQuery pageQuery) {
+        return R.ok(noteRevisionService.list(noteId, pageQuery));
+    }
+
+    /**
+     * 某一版的全文。
+     */
+    @GetMapping("/{noteId}/revisions/{revisionId}")
+    public R<NoteRevisionDetailVo> revision(@PathVariable Long noteId, @PathVariable Long revisionId) {
+        return R.ok(noteRevisionService.detail(noteId, revisionId));
+    }
+
+    /**
+     * 把选中版本恢复为最新正文。恢复前的正文会先留在历史里。
+     */
+    @PostMapping("/{noteId}/revisions/{revisionId}/restore")
+    public R<?> restore(@PathVariable Long noteId, @PathVariable Long revisionId,
+                                    @RequestBody(required = false) NoteRestoreBo bo) {
+        try {
+            return R.ok(noteRevisionService.restore(noteId, revisionId, bo));
+        } catch (NoteContentConflictException exception) {
+            return conflict(exception);
+        }
     }
 
     /**
@@ -145,6 +190,13 @@ public class ClientNotesController extends BaseController {
      * @param dirId 目录ID
      * @return true=属于当前用户
      */
+    private R<NoteConflictVo> conflict(NoteContentConflictException exception) {
+        NoteConflictVo conflict = new NoteConflictVo();
+        conflict.setContentHash(exception.getContentHash());
+        conflict.setUpdateTime(exception.getUpdateTime());
+        return R.fail(HttpStatus.CONFLICT, exception.getMessage(), conflict);
+    }
+
     private boolean isOwnDirectory(Long dirId) {
         NoteDirectoryVo dir = noteDirectoryService.queryById(dirId);
         return dir != null && LoginHelper.getUserId().equals(dir.getUserId());

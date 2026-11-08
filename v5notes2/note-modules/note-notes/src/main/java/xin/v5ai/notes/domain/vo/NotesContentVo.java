@@ -43,6 +43,11 @@ public class NotesContentVo extends NewNotesVo {
     private String content;
 
     /**
+     * 当前正文 SHA-256
+     */
+    private String contentHash;
+
+    /**
      * 修改时间
      */
     @ExcelProperty(value = "修改时间")

@@ -33,4 +33,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ORDER BY
             update_time DESC
     </select>
+
+    <update id="fillContentHash">
+        update note_notes
+        set content_hash = #{contentHash}, update_time = update_time
+        where id = #{id} and content_hash is null and del_flag = '0'
+    </update>
 </mapper>

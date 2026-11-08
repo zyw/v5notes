@@ -56,6 +56,11 @@ public class NoteNotes extends BaseEntity {
     private String content;
 
     /**
+     * 当前正文 SHA-256，十六进制小写。空表示尚未计算。
+     */
+    private String contentHash;
+
+    /**
      * 删除标志（0代表存在 2代表删除）
      */
     @TableLogic

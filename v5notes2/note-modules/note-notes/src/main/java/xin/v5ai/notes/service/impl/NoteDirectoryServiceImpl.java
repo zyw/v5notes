@@ -21,6 +21,7 @@ import xin.v5ai.notes.domain.vo.NotesTreeVo;
 import xin.v5ai.notes.mapper.NoteDirectoryMapper;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.service.INoteDirectoryService;
+import xin.v5ai.notes.service.INoteRevisionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 
     private final NoteDirectoryMapper baseMapper;
     private final NoteNotesMapper notesMapper;
+    private final INoteRevisionService revisionService;
 
     /**
      * 查询目录
@@ -242,7 +244,9 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 //            queryNotes.eq(NoteNotes::getDelFlag, 0); // 系统自动添加了，无需手动添加
             List<NoteNotesVo> listNotes = notesMapper.selectVoList(queryNotes);
             if (CollUtil.isNotEmpty(listNotes)) {
-                notesMapper.deleteByIds(listNotes.stream().map(NoteNotesVo::getId).toList());
+                List<Long> noteIds = listNotes.stream().map(NoteNotesVo::getId).toList();
+                revisionService.deleteByNoteIds(noteIds);
+                notesMapper.deleteByIds(noteIds);
             }
             if (CollUtil.isNotEmpty(list)) {
                 recursiveDelete(list.stream().map(NoteDirectoryVo::getId).toList());

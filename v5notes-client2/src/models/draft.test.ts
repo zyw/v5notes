@@ -37,6 +37,15 @@ describe('draft saves', () => {
     expect(draft.note?.content).toBe('离线草稿')
   })
 
+  it('keeps the saved content hash for the next request', async () => {
+    const draft = new Draft()
+    draft.load({ ...note, contentHash: 'a'.repeat(64) })
+    draft.edit('修改')
+    await draft.save(async () => ({ contentHash: 'b'.repeat(64) }))
+    expect(draft.dirty).toBe(false)
+    expect(draft.note?.contentHash).toBe('b'.repeat(64))
+  })
+
   it('clears a discarded draft before another directory is opened', () => {
     const draft = new Draft()
     draft.load(note)

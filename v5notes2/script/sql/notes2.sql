@@ -16,6 +16,7 @@ SET NAMES utf8mb4;
 -- -----------------------------------------------------------------------------
 -- 1、云笔记业务表
 -- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS note_revision;
 DROP TABLE IF EXISTS note_directory;
 CREATE TABLE note_directory
 (
@@ -44,8 +45,9 @@ CREATE TABLE note_notes
     dept_id     bigint(20)   NOT NULL DEFAULT 0 COMMENT '所属部门ID',
     name        varchar(100) NOT NULL COMMENT '笔记名',
     dir_id      bigint(20)   NOT NULL DEFAULT 0 COMMENT '所属目录ID',
-    content     mediumtext COMMENT '笔记内容',
-    del_flag    char(1)               DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+    content      mediumtext COMMENT '笔记内容',
+    content_hash char(64)            DEFAULT NULL COMMENT '当前正文 SHA-256，十六进制小写。NULL 表示尚未计算',
+    del_flag     char(1)             DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
     create_dept bigint(20)            DEFAULT NULL COMMENT '创建部门',
     create_by   bigint(20)            DEFAULT NULL COMMENT '创建者',
     create_time datetime              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -56,6 +58,23 @@ CREATE TABLE note_notes
     KEY idx_note_notes_dir (dir_id),
     KEY idx_note_notes_update_time (update_time)
 ) ENGINE = InnoDB COMMENT = '笔记表';
+
+DROP TABLE IF EXISTS note_revision;
+CREATE TABLE note_revision
+(
+    id           bigint(20)   NOT NULL COMMENT '版本ID',
+    note_id      bigint(20)   NOT NULL COMMENT '笔记ID',
+    user_id      bigint(20)   NOT NULL COMMENT '笔记所属用户',
+    content_hash char(64)     NOT NULL COMMENT '该快照正文 SHA-256，十六进制小写',
+    content      mediumtext   NOT NULL COMMENT '正文全文快照',
+    excerpt      varchar(200) NOT NULL DEFAULT '' COMMENT '列表摘要，最多 120 个 Unicode 码位',
+    size         int          NOT NULL COMMENT '正文 UTF-8 字节数',
+    create_dept  bigint(20)            DEFAULT NULL COMMENT '创建部门',
+    create_by    bigint(20)            DEFAULT NULL COMMENT '创建者',
+    create_time  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '版本时间',
+    PRIMARY KEY (id),
+    KEY idx_note_revision_note_time (note_id, create_time, id)
+) ENGINE = InnoDB COMMENT = '笔记版本';
 
 -- -----------------------------------------------------------------------------
 -- 2、基础文件模块业务表（替代 6.1.0 的 OSS，保留旧 /basics/base/file 端点）

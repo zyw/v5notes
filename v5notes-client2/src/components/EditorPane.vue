@@ -5,7 +5,7 @@ import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
-const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
+const { sessionExpired, reauthenticate, error, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -217,6 +217,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
             <template v-if="editorMode === 'preview'">
               <span class="mode-label" aria-label="当前模式：预览"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 2.5h7l4 4v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 3.5 17.5v-13A2 2 0 0 1 5.5 2.5Z"/><path d="M11.5 2.75v4h3.75M5.5 12s1.5-2.5 4-2.5 4 2.5 4 2.5-1.5 2.5-4 2.5-4-2.5-4-2.5Z"/><circle cx="9.5" cy="12" r="1"/></svg>预览</span>
               <span v-if="draft.dirty" class="save-state unsaved"><i />未保存</span>
+              <button class="history-toggle" type="button" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史</button>
               <button class="mode-switch" type="button" aria-label="切换到编辑模式" title="切换到编辑模式" @click="switchEditorMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</button>
             </template>
             <template v-else>
@@ -224,6 +225,7 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
               <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>
               <button class="mode-switch" type="button" aria-label="切换到预览模式" title="切换到预览模式" @click="switchEditorMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览</button>
               <button class="focus-toggle" type="button" :aria-pressed="focusMode" @click="focusMode = !focusMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>{{ focusMode ? '退出专注' : '专注写作' }}</button>
+              <button class="history-toggle" type="button" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史</button>
             </template>
             <div v-if="editorMode === 'edit'" class="save-split">
               <button class="primary save-button" :disabled="!draft.dirty" @click="save"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h10l3.5 3.5v10A1.5 1.5 0 0 1 16 17.5H4A1.5 1.5 0 0 1 2.5 16V4A1.5 1.5 0 0 1 4 2.5Z"/><path d="M6 2.8v5h7v-5M6 17v-6h8v6"/></svg>保存 <kbd>⌘S / Ctrl+S</kbd></button>
