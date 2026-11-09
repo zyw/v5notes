@@ -12,7 +12,7 @@
         </div>
       </el-card>
     </div>
-    <note-history-drawer v-model="historyVisible" :note-id="mdEditorForm?.id" :note-name="mdEditorForm?.name" @restored="onHistoryRestored" />
+    <note-history-drawer v-if="historyVisible" v-model="historyVisible" :note-id="mdEditorForm?.id" :note-name="mdEditorForm?.name" @restored="onHistoryRestored" />
     <div class="editor-wrapper">
       <div id="contentVditor" class="vditor"></div>
     </div>

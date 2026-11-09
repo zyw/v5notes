@@ -136,7 +136,7 @@
         </div>
       </template>
     </el-dialog>
-    <note-history-drawer v-model="historyVisible" :note-id="historyNoteId" :note-name="historyNoteName" @restored="getList" />
+    <note-history-drawer v-if="historyVisible" v-model="historyVisible" :note-id="historyNoteId" :note-name="historyNoteName" @restored="getList" />
   </div>
 </template>
 

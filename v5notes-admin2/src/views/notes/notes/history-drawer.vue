@@ -1,42 +1,73 @@
 <template>
-  <el-drawer v-model="visible" :title="title" size="760px" append-to-body class="note-history-drawer">
-    <div v-loading="loading" class="history-layout">
-      <aside class="history-list">
-        <el-alert v-if="error" :title="error" type="error" :closable="false" />
-        <el-empty v-else-if="!loading && rows.length === 0" description="还没有历史版本" />
-        <button
-          v-for="row in rows"
-          :key="String(row.id)"
-          type="button"
-          class="history-item"
-          :class="{ 'is-active': String(row.id) === String(selectedId) }"
-          @click="select(row)"
-        >
-          <span class="history-item-time">
-            {{ formatTime(row.createTime) }}
-            <el-tag v-if="row.head" size="small" type="success">当前</el-tag>
-          </span>
-          <span class="history-item-excerpt">{{ row.excerpt || '（空正文）' }}</span>
-          <span class="history-item-size">{{ formatSize(row.size) }}</span>
-        </button>
-        <el-button v-if="canLoadMore" class="history-more" text :loading="loading" @click="loadMore">加载更多</el-button>
-      </aside>
-      <section class="history-preview-pane">
-        <div ref="previewEl" class="history-preview"></div>
-        <div class="history-actions">
-          <el-button
-            v-hasPermi="['notes:notes:edit']"
-            type="primary"
-            :disabled="!selected || selected.head"
-            :loading="restoring"
-            @click="confirmRestore"
-          >
-            恢复此版本
-          </el-button>
+  <FormDrawer
+    v-model="visible"
+    class="note-history-drawer"
+    size="880px"
+    :hint="hint"
+  >
+    <template #hero>
+      <div class="drawer-hero">
+        <div class="drawer-hero__top">
+          <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 笔记</span>
+          <span class="drawer-hero__divider">·</span>
+          <span class="drawer-hero__action">历史版本</span>
         </div>
+        <div class="drawer-hero__profile">
+          <div class="drawer-hero__icon">{{ initial }}</div>
+          <div class="drawer-hero__info">
+            <div class="drawer-hero__name">{{ noteName || '未命名笔记' }}</div>
+            <div class="drawer-hero__meta">
+              <span class="drawer-hero__tag">最多保留 50 个版本</span>
+              <span>{{ total }} 个版本</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div v-loading="loading" class="history-layout">
+      <aside class="history-pane">
+        <h4>版本列表</h4>
+        <div class="history-list">
+          <el-alert v-if="error" :title="error" type="error" :closable="false" />
+          <el-empty v-else-if="!loading && rows.length === 0" description="还没有历史版本" />
+          <button
+            v-for="row in rows"
+            :key="String(row.id)"
+            type="button"
+            class="history-item"
+            :class="{ 'is-active': String(row.id) === String(selectedId) }"
+            @click="select(row)"
+          >
+            <span class="history-item-time">
+              {{ formatTime(row.createTime) }}
+              <span v-if="row.head" class="history-item-tag">当前</span>
+            </span>
+            <span class="history-item-excerpt">{{ row.excerpt || '（空正文）' }}</span>
+            <span class="history-item-size">{{ formatSize(row.size) }}</span>
+          </button>
+          <el-button v-if="canLoadMore" class="history-more" text :loading="loading" @click="loadMore">加载更多</el-button>
+        </div>
+      </aside>
+      <section class="history-pane history-preview-pane">
+        <h4>正文预览</h4>
+        <div ref="previewEl" class="history-preview"></div>
       </section>
     </div>
-  </el-drawer>
+
+    <template #footer>
+      <el-button @click="visible = false">关闭</el-button>
+      <el-button
+        v-hasPermi="['notes:notes:edit']"
+        type="primary"
+        :disabled="!selected || selected.head"
+        :loading="restoring"
+        @click="confirmRestore"
+      >
+        恢复此版本
+      </el-button>
+    </template>
+  </FormDrawer>
 </template>
 
 <script setup lang="ts">
@@ -46,6 +77,8 @@ import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { getNoteRevision, listNoteRevisions, restoreNoteRevision } from '@/api/notes/notes';
 import type { NoteRevisionDetailVO, NoteRevisionVO } from '@/api/notes/notes/types';
+import FormDrawer from '@/components/FormDrawer/index.vue';
+import logoUrl from '@/assets/logo/logo.png';
 import { isHandledRequestError } from '@/utils/request';
 
 const props = defineProps<{
@@ -76,8 +109,17 @@ const previewEl = ref<HTMLDivElement>();
 const pageSize = 20;
 let loadSeq = 0;
 
-const title = computed(() => (props.noteName ? `历史版本 · ${props.noteName}` : '历史版本'));
+const initial = computed(() => (props.noteName || '笔').trim().slice(0, 1) || '笔');
 const canLoadMore = computed(() => rows.value.length < total.value);
+const hint = computed(() => {
+  if (selected.value?.head) {
+    return '这是当前正文';
+  }
+  if (selected.value) {
+    return '恢复前的正文会先记入历史，编辑区里尚未保存的修改会被替换';
+  }
+  return '选择一个版本查看正文';
+});
 
 watch(
   () => props.modelValue,
@@ -91,7 +133,8 @@ watch(
       return;
     }
     void load(true);
-  }
+  },
+  { immediate: true }
 );
 
 async function load(reset: boolean) {
@@ -211,19 +254,143 @@ function formatSize(size?: number) {
 </script>
 
 <style scoped lang="scss">
+.note-history-drawer {
+  :deep(.fd-body) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 18px 22px 16px;
+    overflow: hidden;
+  }
+}
+
+.drawer-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px 24px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+
+.drawer-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.drawer-hero__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 44px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+
+.drawer-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-hero__brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.drawer-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+
+.drawer-hero__action {
+  color: #c9e4d7;
+}
+
+.drawer-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 22px;
+}
+
+.drawer-hero__icon {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.drawer-hero__name {
+  margin-bottom: 7px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.drawer-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+
+.drawer-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
 .history-layout {
   display: flex;
-  gap: 16px;
-  height: calc(100vh - 140px);
-  min-height: 360px;
+  flex: 1;
+  gap: 18px;
+  min-height: 0;
+}
+
+.history-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.history-pane h4 {
+  flex: none;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7d74;
 }
 
 .history-list {
-  flex: none;
-  width: 240px;
+  flex: 1;
+  width: 248px;
   overflow: auto;
-  border-right: 1px solid var(--el-border-color-lighter);
-  padding-right: 12px;
+  padding-right: 2px;
 }
 
 .history-item {
@@ -232,17 +399,17 @@ function formatSize(size?: number) {
   gap: 4px;
   width: 100%;
   margin: 0 0 8px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   text-align: left;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border: 1px solid #e8ecea;
+  border-radius: 12px;
   background: #fff;
   cursor: pointer;
 }
 
 .history-item.is-active {
-  border-color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
+  border-color: #1c5a48;
+  background: #f3faf6;
 }
 
 .history-item-time {
@@ -251,13 +418,23 @@ function formatSize(size?: number) {
   justify-content: space-between;
   gap: 8px;
   font-size: 13px;
-  color: var(--el-text-color-primary);
+  font-weight: 600;
+  color: #15241e;
+}
+
+.history-item-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e7f5ee;
+  color: #1c5a48;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .history-item-excerpt {
   font-size: 12px;
-  line-height: 1.4;
-  color: var(--el-text-color-regular);
+  line-height: 1.45;
+  color: #5f7067;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -266,7 +443,7 @@ function formatSize(size?: number) {
 
 .history-item-size {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: #8a978f;
 }
 
 .history-more {
@@ -274,24 +451,17 @@ function formatSize(size?: number) {
 }
 
 .history-preview-pane {
-  display: flex;
   flex: 1;
-  flex-direction: column;
   min-width: 0;
 }
 
 .history-preview {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 4px 8px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-}
-
-.history-actions {
-  flex: none;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e8ecea;
+  border-radius: 12px;
+  background: #fff;
 }
 </style>
