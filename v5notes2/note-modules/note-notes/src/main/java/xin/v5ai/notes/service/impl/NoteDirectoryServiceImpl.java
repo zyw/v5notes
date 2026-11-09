@@ -16,7 +16,6 @@ import xin.v5ai.notes.domain.NoteDirectory;
 import xin.v5ai.notes.domain.NoteNotes;
 import xin.v5ai.notes.domain.bo.NoteDirectoryBo;
 import xin.v5ai.notes.domain.vo.NoteDirectoryVo;
-import xin.v5ai.notes.domain.vo.NoteNotesVo;
 import xin.v5ai.notes.domain.vo.NotesTreeVo;
 import xin.v5ai.notes.mapper.NoteDirectoryMapper;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
@@ -152,17 +151,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 
     @Override
     public List<NotesTreeVo> dirTreeList(Long userId) {
-        List<NotesTreeVo> result = Lists.newArrayList();
-        List<NoteDirectoryVo> dirlist = userId == null
-            ? baseMapper.selectVoList()
-            : baseMapper.selectVoList(Wrappers.lambdaQuery(NoteDirectory.class).eq(NoteDirectory::getUserId, userId));
-        List<NoteDirectoryVo> parentDirList = dirlist.stream().filter(item -> item.getPid() == 0).toList();
-        parentDirList.forEach(item -> {
-            NotesTreeVo vo = NotesConvert.INSTANCE.dirVoToNotesTreeVo(item);
-            vo.setChildren(getChild(dirlist, item.getId(), List.of()));
-            result.add(vo);
-        });
-        return result;
+        return assembleTree(listDirectories(userId), List.of());
     }
 
     @Override
@@ -172,25 +161,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 
     @Override
     public List<NotesTreeVo> notesTreeList(Long userId) {
-        List<NotesTreeVo> result = Lists.newArrayList();
-        List<NoteDirectoryVo> dirlist = userId == null
-            ? baseMapper.selectVoList()
-            : baseMapper.selectVoList(Wrappers.lambdaQuery(NoteDirectory.class).eq(NoteDirectory::getUserId, userId));
-        List<NoteNotesVo> notesList = userId == null
-            ? notesMapper.selectVoList()
-            : notesMapper.selectVoList(Wrappers.lambdaQuery(NoteNotes.class).eq(NoteNotes::getUserId, userId));
-        List<NoteDirectoryVo> parentDirList = dirlist.stream().filter(item -> item.getPid() == 0).toList();
-        parentDirList.forEach(item -> {
-            NotesTreeVo vo = NotesConvert.INSTANCE.dirVoToNotesTreeVo(item);
-            vo.setChildren(getChild(dirlist, item.getId(), notesList));
-            result.add(vo);
-        });
-        List<NoteNotesVo> notesVos = notesList.stream().filter(item -> item.getDirId() == 0).toList();
-        notesVos.forEach(item -> {
-            NotesTreeVo notesTreeVo = NotesConvert.INSTANCE.nnVoToNotesTreeVo(item);
-            result.add(notesTreeVo);
-        });
-        return result;
+        return assembleTree(listDirectories(userId), listNotes(userId));
     }
 
     @Override
@@ -206,23 +177,37 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
         return result;
     }
 
-    private List<NotesTreeVo> getChild(List<NoteDirectoryVo> list, Long pid,List<NoteNotesVo> notesList) {
+    private List<NoteDirectory> listDirectories(Long userId) {
+        LambdaQueryWrapper<NoteDirectory> query = Wrappers.lambdaQuery();
+        query.eq(userId != null, NoteDirectory::getUserId, userId);
+        return baseMapper.selectList(query);
+    }
+
+    private List<NoteNotes> listNotes(Long userId) {
+        LambdaQueryWrapper<NoteNotes> query = Wrappers.lambdaQuery();
+        query.eq(userId != null, NoteNotes::getUserId, userId);
+        return notesMapper.selectList(query);
+    }
+
+    private List<NotesTreeVo> assembleTree(List<NoteDirectory> directories, List<NoteNotes> notes) {
         List<NotesTreeVo> result = Lists.newArrayList();
-        List<NoteDirectoryVo> childList = list.stream().filter(item -> Objects.equals(item.getPid(), pid)).toList();
-        List<NoteNotesVo> notesVos = notesList.stream().filter(item -> Objects.equals(item.getDirId(), pid)).toList();
-        if(!childList.isEmpty()) {
-            childList.forEach(item -> {
-                NotesTreeVo vo = NotesConvert.INSTANCE.dirVoToNotesTreeVo(item);
-                vo.setChildren(getChild(list, item.getId(), notesList));
-                result.add(vo);
-            });
-        }
-        if(!notesVos.isEmpty()) {
-            notesVos.forEach(item -> {
-                NotesTreeVo notesTreeVo = NotesConvert.INSTANCE.nnVoToNotesTreeVo(item);
-                result.add(notesTreeVo);
-            });
-        }
+        directories.stream().filter(item -> Objects.equals(item.getPid(), 0L)).forEach(item -> {
+            NotesTreeVo vo = NotesConvert.INSTANCE.directoryToTree(item);
+            vo.setChildren(childNodes(directories, notes, item.getId()));
+            result.add(vo);
+        });
+        notes.stream().filter(item -> Objects.equals(item.getDirId(), 0L)).forEach(item -> result.add(NotesConvert.INSTANCE.noteToTree(item)));
+        return result;
+    }
+
+    private List<NotesTreeVo> childNodes(List<NoteDirectory> directories, List<NoteNotes> notes, Long pid) {
+        List<NotesTreeVo> result = Lists.newArrayList();
+        directories.stream().filter(item -> Objects.equals(item.getPid(), pid)).forEach(item -> {
+            NotesTreeVo vo = NotesConvert.INSTANCE.directoryToTree(item);
+            vo.setChildren(childNodes(directories, notes, item.getId()));
+            result.add(vo);
+        });
+        notes.stream().filter(item -> Objects.equals(item.getDirId(), pid)).forEach(item -> result.add(NotesConvert.INSTANCE.noteToTree(item)));
         return result.isEmpty() ? null : result;
     }
 }

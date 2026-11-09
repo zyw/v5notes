@@ -1,5 +1,7 @@
 package xin.v5ai.notes.convert;
 
+import xin.v5ai.notes.domain.NoteDirectory;
+import xin.v5ai.notes.domain.NoteNotes;
 import xin.v5ai.notes.domain.vo.NewNotesVo;
 import xin.v5ai.notes.domain.vo.NoteDirectoryVo;
 import xin.v5ai.notes.domain.vo.NoteNotesVo;
@@ -30,6 +32,30 @@ public class NotesConvert {
         target.setId(vo.getId());
         target.setDirId(vo.getDirId());
         target.setName(vo.getName());
+        return target;
+    }
+
+    public NotesTreeVo directoryToTree(NoteDirectory directory) {
+        if (directory == null) {
+            return null;
+        }
+        NotesTreeVo target = new NotesTreeVo();
+        target.setId(directory.getId());
+        target.setPid(directory.getPid());
+        target.setLabel(directory.getName());
+        target.setType(1);
+        return target;
+    }
+
+    public NotesTreeVo noteToTree(NoteNotes note) {
+        if (note == null) {
+            return null;
+        }
+        NotesTreeVo target = new NotesTreeVo();
+        target.setId(note.getId());
+        target.setPid(note.getDirId());
+        target.setLabel(note.getName());
+        target.setType(2);
         return target;
     }
 
