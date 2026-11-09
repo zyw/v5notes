@@ -121,7 +121,13 @@ function formatSize(size: number): string {
           <span class="eyebrow">HISTORY</span>
           <h2 id="history-title">历史版本</h2>
         </div>
-        <button class="settings-close" type="button" aria-label="关闭历史" @click="historyOpen = false">×</button>
+        <div class="history-header-tools">
+          <button class="settings-close" type="button" aria-label="关闭历史" @click="historyOpen = false">×</button>
+          <div v-if="rows.length > 0" class="history-actions">
+            <button type="button" :aria-pressed="compare" :disabled="!selected" @click="compare = !compare">{{ compare ? '查看全文' : '与当前对比' }}</button>
+            <button class="primary" type="button" :disabled="!selected || selected.head" @click="askRestore">恢复此版本</button>
+          </div>
+        </div>
       </header>
       <p v-if="error" class="dialog-error" role="alert">{{ error }}</p>
       <div v-if="!loading && rows.length === 0 && !error" class="history-empty">这篇笔记还没有历史版本。</div>
@@ -136,14 +142,12 @@ function formatSize(size: number): string {
           <button v-if="rows.length < total" class="history-more" type="button" :disabled="loading" @click="loadMore">{{ loading ? '正在加载…' : '更早的版本' }}</button>
         </div>
         <div class="history-preview">
-          <div class="history-preview-bar">
-            <button type="button" :aria-pressed="compare" :disabled="!selected" @click="compare = !compare">{{ compare ? '查看全文' : '与当前对比' }}</button>
-            <button class="primary" type="button" :disabled="!selected || selected.head" @click="askRestore">恢复此版本</button>
-          </div>
           <div v-if="selected && compare" class="history-diff" aria-label="与当前正文的差异">
             <p v-for="(line, index) in diff" :key="index" :class="`diff-${line.kind}`"><span>{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' ' }}</span>{{ line.text || ' ' }}</p>
           </div>
-          <pre v-else-if="selected">{{ selected.content }}</pre>
+          <div v-else-if="selected" class="history-rendered" aria-readonly="true">
+            <V5Editor :key="selected.id" :model-value="selected.content || ''" :editable="false" placeholder="" />
+          </div>
           <p v-else class="history-empty">选择一个版本查看正文。</p>
         </div>
       </div>
