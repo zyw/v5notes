@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
-import { computed, nextTick, ref, watch } from 'vue'
+import { toWechatHtml } from '@v5md/view'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
-const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote } = useWorkspaceContext()
+import { buildEditorCommands, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
+import { buildExportDocument, buildMarkdownDocument, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources } from '../utils/exportFile'
+const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -31,6 +36,219 @@ const outlineEntries = computed(() => {
   void content.value
   return editorInstance.value?.getOutline() ?? []
 })
+
+const FONT_MIN = 13
+const FONT_MAX = 26
+const fontSize = ref(Number(localStorage.getItem('v5notes-editor-font-size')) || 17)
+if (!Number.isFinite(fontSize.value) || fontSize.value < FONT_MIN || fontSize.value > FONT_MAX) fontSize.value = 17
+const paletteOpen = ref(false)
+const exporting = ref(false)
+
+function onFontRange(event: Event): void {
+  applyFontSize(Number((event.target as HTMLInputElement).value))
+}
+
+function applyFontSize(next: number): void {
+  const clamped = Math.max(FONT_MIN, Math.min(FONT_MAX, Math.round(next)))
+  fontSize.value = clamped
+  localStorage.setItem('v5notes-editor-font-size', String(clamped))
+}
+
+const commandContext = computed<CommandContext>(() => ({
+  mode: (editorMode.value === 'preview' ? 'preview' : sourceMode.value ? 'source' : 'edit') as WorkspaceMode,
+  focusMode: focusMode.value,
+  toolbarVisible: toolbarVisible.value,
+  hasNote: Boolean(draft.note),
+  dirty: draft.dirty,
+  fontSize: fontSize.value,
+}))
+
+function setMode(mode: WorkspaceMode): void {
+  if (mode === 'preview') {
+    if (editorMode.value !== 'preview') void finishEditing()
+    return
+  }
+  if (editorMode.value !== 'edit') editorMode.value = 'edit'
+  if (mode === 'source' && !sourceMode.value) toggleSourceMode()
+  if (mode === 'edit' && sourceMode.value) toggleSourceMode()
+}
+
+/**
+ * The webview cannot read cross-origin image bytes (CORS), and drawing a
+ * cross-origin image would taint the export canvas. The desktop shell fetches
+ * images through Rust instead; browser dev falls back to a normal request.
+ */
+async function loadExportImage(source: string): Promise<string> {
+  if (isTauri()) {
+    try {
+      return await invoke<string>('fetch_image_data_url', { url: source })
+    } catch (cause) {
+      console.warn('[export] 宿主取图失败，尝试浏览器请求：', source, cause)
+    }
+  }
+  return fetchImageDataUrl(source)
+}
+
+const toast = ref<{ message: string; tone: 'ok' | 'warn' } | null>(null)
+let toastTimer: number | undefined
+function showToast(message: string, tone: 'ok' | 'warn' = 'ok'): void {
+  toast.value = { message, tone }
+  if (toastTimer !== undefined) window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => { toast.value = null }, 4000)
+}
+onBeforeUnmount(() => { if (toastTimer !== undefined) window.clearTimeout(toastTimer) })
+
+/**
+ * macOS: writes a vector, selectable PDF straight into ~/Downloads through
+ * NSPrintOperation(NSPrintSaveJob) — no print dialog. Returns false when the
+ * platform/command is unavailable so the caller can fall back to the image PDF.
+ */
+async function exportVectorPdf(fileName: string): Promise<boolean> {
+  if (!isTauri()) return false
+  // createPDF captures the screen layout, so the app chrome has to be hidden by
+  // class (not @media print) and the document measured in that state.
+  document.body.classList.add('is-exporting')
+  try {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 120))
+    const canvas = document.querySelector<HTMLElement>('.editor-mount')
+    if (!canvas) throw new Error('找不到编辑器画布')
+    const rect = canvas.getBoundingClientRect()
+    const x = Math.round(rect.left + window.scrollX)
+    const y = Math.round(rect.top + window.scrollY)
+    const width = Math.ceil(rect.width)
+    const height = Math.ceil(canvas.scrollHeight)
+    const path = await invoke<string>('export_pdf', { fileName, x, y, width, height })
+    showToast(`已导出矢量 PDF：${path}`)
+    return true
+  } catch (cause) {
+    console.warn('[export] 矢量 PDF 不可用，改用图片版：', cause)
+    return false
+  } finally {
+    document.body.classList.remove('is-exporting')
+  }
+}
+
+async function exportNote(format: ExportFormat): Promise<void> {
+  const note = draft.note
+  if (!note || exporting.value) return
+  exporting.value = true
+  try {
+    if (draft.dirty) {
+      await save()
+      if (draft.dirty) {
+        error.value = '保存失败，已取消导出'
+        return
+      }
+    }
+    // The mounted editor owns the document currently on screen. Giving it the
+    // notes server as baseUrl resolves relative image paths (for example
+    // images/a.png) there instead of against the webview origin.
+    const exportBase = server.value ? `${server.value.replace(/\/+$/, '')}/` : undefined
+    const options = exportBase ? { baseUrl: exportBase } : undefined
+    const html = editorInstance.value?.getWechatHtml(options) ?? toWechatHtml(note.content, options)
+    const payload = {
+      name: note.name,
+      markdown: note.content,
+      // baseUrl leaves absolute URLs alone, so webview-local images
+      // (tauri://localhost/...) still have to be pointed at the notes server.
+      html: rewriteImageSources(html, server.value),
+    }
+    if (format === 'markdown') {
+      const fileName = exportFileName(note.name, 'md')
+      downloadText(fileName, buildMarkdownDocument(payload), 'text/markdown')
+      showToast(`已导出 ${fileName}`)
+    } else if (format === 'html') {
+      const fileName = exportFileName(note.name, 'html')
+      downloadText(fileName, buildExportDocument(payload), 'text/html')
+      showToast(`已导出 ${fileName}`)
+    } else if (format === 'pdf' || format === 'pdf-image') {
+      const fileName = exportFileName(note.name, 'pdf')
+      // The vector path prints the live view, so source mode would print the
+      // markdown source instead of the formatted note.
+      if (format === 'pdf' && sourceMode.value) {
+        setMode('edit')
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 60))
+      }
+      // Vector first (macOS prints the live view in-app, no dialog); anything
+      // that fails falls back to the cross-platform image PDF.
+      if (format === 'pdf' && (await exportVectorPdf(fileName))) return
+      const { blob, pages, missingImages } = await renderNotePdf(payload.html, { serverBase: server.value, loadImage: loadExportImage })
+      downloadBlob(fileName, blob)
+      showToast(
+        missingImages
+          ? `已导出 ${fileName}（${pages} 页），${missingImages} 张图片未能嵌入`
+          : `已导出 ${fileName}（${pages} 页）`,
+        missingImages ? 'warn' : 'ok',
+      )
+    } else {
+      const fileName = exportFileName(note.name, 'png')
+      const { blob, missingImages } = await renderNotePng(payload.html, { serverBase: server.value, loadImage: loadExportImage })
+      downloadBlob(fileName, blob)
+      showToast(
+        missingImages
+          ? `已导出 ${fileName}，${missingImages} 张外链图片未能嵌入`
+          : `已导出 ${fileName}`,
+        missingImages ? 'warn' : 'ok',
+      )
+    }
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
+
+const commandActions: CommandActions = {
+  setMode,
+  toggleFocus: () => { focusMode.value = !focusMode.value },
+  toggleToolbar,
+  openHistory: () => { void openHistory() },
+  changeFontSize: delta => applyFontSize(fontSize.value + delta),
+  exportNote: format => { void exportNote(format) },
+  renameNote,
+  copyMarkdown: () => { void copyNoteContent() },
+  deleteNote,
+}
+const commands = buildEditorCommands(commandActions)
+
+function runCommand(command: EditorCommand): void {
+  paletteOpen.value = false
+  void command.run()
+}
+
+function onGlobalKeydown(event: KeyboardEvent): void {
+  const modifier = event.metaKey || event.ctrlKey
+  if (!modifier || event.altKey) return
+  if ((event.target as HTMLElement | null)?.closest('.modal-backdrop')) return
+  const key = event.key.toLowerCase()
+  if (key === 'k') {
+    event.preventDefault()
+    paletteOpen.value = true
+    return
+  }
+  if (event.key === '/') {
+    event.preventDefault()
+    if (editorMode.value === 'edit' && !sourceMode.value) toggleToolbar()
+    return
+  }
+  if (!draft.note) return
+  if (key === '1' || key === '2' || key === '3') {
+    event.preventDefault()
+    setMode(key === '1' ? 'edit' : key === '2' ? 'source' : 'preview')
+    return
+  }
+  if (event.key === '.') {
+    event.preventDefault()
+    if (editorMode.value !== 'preview') focusMode.value = !focusMode.value
+    return
+  }
+  if (key === 'y') {
+    event.preventDefault()
+    void openHistory()
+  }
+}
 
 function openImageLibrary(): void {
   if (editorMode.value !== 'edit') return
@@ -199,48 +417,97 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
   outlineWidth.value = Math.max(190, Math.min(520, outlineWidth.value + direction * 16))
   localStorage.setItem('v5notes-outline-width', String(outlineWidth.value))
 }
+
+onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
 </script>
 
 <template>
-    <main class="editor-pane" :class="{ 'is-resizing-outline': resizingOutline }" :style="{ '--outline-width': `${outlineVisible ? outlineWidth : 0}px` }" @pointermove="resizeOutline" @pointerup="stopOutlineResize" @pointercancel="stopOutlineResize">
+    <main class="editor-pane" :class="{ 'is-resizing-outline': resizingOutline }" :style="{ '--outline-width': `${outlineVisible ? outlineWidth : 0}px`, '--doc-size': `${fontSize}px` }" @pointermove="resizeOutline" @pointerup="stopOutlineResize" @pointercancel="stopOutlineResize">
       <div v-if="sessionExpired" class="session-alert">登录已过期；草稿仍在当前窗口。请重新登录后保存。<button @click="reauthenticate">重新登录</button></div>
       <div v-if="notice" class="notice-bar">{{ notice }} <button @click="notice = ''">×</button></div>
       <div v-if="error" class="error-bar" role="alert">{{ error }} <button @click="error = ''">×</button></div>
+      <Teleport to="body">
+        <Transition name="export-toast">
+          <div v-if="toast" class="export-toast" :class="`is-${toast.tone}`" role="status" aria-live="polite">
+            <svg class="export-toast-icon" viewBox="0 0 20 20" aria-hidden="true">
+              <path v-if="toast.tone === 'ok'" d="m4.5 10.5 3.5 3.5 7.5-8" />
+              <path v-else d="M10 5.5v5.5m0 3v.5" />
+              <circle v-if="toast.tone !== 'ok'" cx="10" cy="10" r="7.5" />
+            </svg>
+            <span class="export-toast-text">{{ toast.message }}</span>
+            <button type="button" class="export-toast-close" aria-label="关闭提示" @click="toast = null">×</button>
+          </div>
+        </Transition>
+      </Teleport>
       <template v-if="draft.note">
         <header class="editor-header">
           <div class="editor-toolbar-left">
             <button class="toolbar-icon sidebar-toggle" :aria-pressed="directoryVisible && !focusMode" :aria-label="directoryVisible ? '收起侧栏' : '展开侧栏'" :title="directoryVisible ? '收起侧栏' : '展开侧栏'" @click="toggleSidebar">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9 4v16"/><path v-if="directoryVisible" d="m15 9-3 3 3 3"/><path v-else d="m12 9 3 3-3 3"/></svg>
             </button>
-            <span class="breadcrumb"><span>{{ focusMode ? '专注写作' : '笔记' }}</span><span aria-hidden="true">/</span><strong>{{ draft.note.name }}</strong></span>
+            <div class="note-identity">
+              <span class="note-name" :title="draft.note.name">{{ draft.note.name }}</span>
+              <span v-if="editorMode === 'preview'" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览中</span>
+              <span v-else-if="sourceMode" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 6-3.5 4 3.5 4M13 6l3.5 4-3.5 4"/></svg>源码</span>
+              <span v-if="draft.dirty" class="save-state unsaved"><i />未保存</span>
+            </div>
           </div>
           <div class="actions">
+            <button class="command-trigger" type="button" aria-label="打开命令面板" title="命令面板（⌘K）" @click="paletteOpen = true">
+              <span>命令</span><kbd>⌘K</kbd>
+            </button>
             <template v-if="editorMode === 'preview'">
-              <span class="mode-label" aria-label="当前模式：预览"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 2.5h7l4 4v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 3.5 17.5v-13A2 2 0 0 1 5.5 2.5Z"/><path d="M11.5 2.75v4h3.75M5.5 12s1.5-2.5 4-2.5 4 2.5 4 2.5-1.5 2.5-4 2.5-4-2.5-4-2.5Z"/><circle cx="9.5" cy="12" r="1"/></svg>预览</span>
-              <span v-if="draft.dirty" class="save-state unsaved"><i />未保存</span>
-              <button class="history-toggle" type="button" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史</button>
-              <button class="mode-switch" type="button" aria-label="切换到编辑模式" title="切换到编辑模式" @click="switchEditorMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</button>
+              <button class="toolbar-icon" type="button" aria-label="历史记录" title="历史记录" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg></button>
+              <button class="primary mode-switch" type="button" aria-label="切换到编辑模式" title="切换到编辑模式" @click="switchEditorMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</button>
             </template>
             <template v-else>
-              <button class="mode-label" type="button" :aria-pressed="sourceMode" :aria-label="sourceMode ? '切换到编辑模式' : '切换到源码模式'" :title="sourceMode ? '切换到编辑模式' : '切换到源码模式'" @click="toggleSourceMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg><span class="mode-label-text">{{ sourceMode ? '源码' : '编辑' }}</span></button>
-              <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>
-              <button class="mode-switch" type="button" aria-label="切换到预览模式" title="切换到预览模式" @click="switchEditorMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览</button>
-              <button class="focus-toggle" type="button" :aria-pressed="focusMode" @click="focusMode = !focusMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>{{ focusMode ? '退出专注' : '专注写作' }}</button>
-              <button class="history-toggle" type="button" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史</button>
-            </template>
-            <div v-if="editorMode === 'edit'" class="save-split">
-              <button class="primary save-button" :disabled="!draft.dirty" @click="save"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h10l3.5 3.5v10A1.5 1.5 0 0 1 16 17.5H4A1.5 1.5 0 0 1 2.5 16V4A1.5 1.5 0 0 1 4 2.5Z"/><path d="M6 2.8v5h7v-5M6 17v-6h8v6"/></svg>保存 <kbd>⌘S / Ctrl+S</kbd></button>
-              <details class="action-menu save-menu" data-action-menu="note" @toggle="syncActionMenu('note', $event)">
-                <summary aria-label="笔记操作" title="笔记操作"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg></summary>
-                <div class="popover-menu" @click="closeActionMenu"><button @click="renameNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>重命名</button><button @click="copyNoteContent"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="10" height="11" rx="1.5"/><path d="M13 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></svg>复制内容</button><button class="danger-menu-item" @click="deleteNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>删除笔记</button></div>
+              <button class="preview-switch" type="button" aria-label="切换到预览模式" title="切换到预览模式（⌘3）" @click="switchEditorMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览</button>
+              <button class="save-button" :class="{ 'is-clean': !draft.dirty }" type="button" :aria-label="draft.dirty ? '保存笔记' : '笔记已保存'" @click="save">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h10l3.5 3.5v10A1.5 1.5 0 0 1 16 17.5H4A1.5 1.5 0 0 1 2.5 16V4A1.5 1.5 0 0 1 4 2.5Z"/><path d="M6 2.8v5h7v-5M6 17v-6h8v6"/></svg>
+                <span>{{ draft.dirty ? '保存' : '已保存' }}</span>
+              </button>
+              <details class="action-menu note-menu" data-action-menu="note" @toggle="syncActionMenu('note', $event)">
+                <summary aria-label="更多笔记操作" title="更多笔记操作"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></summary>
+                <div class="popover-menu" @click="closeActionMenu">
+                  <button @click="renameNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>重命名</button>
+                  <button @click="copyNoteContent"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="10" height="11" rx="1.5"/><path d="M13 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></svg>复制 Markdown</button>
+                  <button @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史记录</button>
+                  <button class="danger-menu-item" @click="deleteNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>删除笔记</button>
+                </div>
               </details>
-            </div>
+            </template>
             <button class="toolbar-icon outline-toggle" :aria-pressed="outlineVisible" :aria-label="outlineVisible ? '隐藏大纲' : '显示大纲'" :title="outlineVisible ? '隐藏大纲' : '显示大纲'" @click="outlineVisible = !outlineVisible">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M14 4v16"/><path v-if="outlineVisible" d="m15 9 3 3-3 3"/><path v-else d="m18 9-3 3 3 3"/></svg>
             </button>
           </div>
         </header>
         <div class="editor-body">
+          <div v-if="editorMode === 'edit' && !sourceMode && toolbarVisible" class="strip-tools">
+            <details class="font-menu">
+              <summary aria-label="设置字号" title="设置字号"><span class="font-aa">Aa</span><span class="font-current">{{ fontSize }}</span></summary>
+              <div class="font-panel">
+                <div class="font-head"><strong>正文字号</strong><span>只影响阅读与编辑</span></div>
+                <div class="font-value">
+                  <button type="button" class="font-step" aria-label="减小字号" @click="applyFontSize(fontSize - 1)">−</button>
+                  <div class="font-read">{{ fontSize }}<small> px</small></div>
+                  <button type="button" class="font-step" aria-label="增大字号" @click="applyFontSize(fontSize + 1)">+</button>
+                </div>
+                <input class="font-range" type="range" min="13" max="26" step="1" :value="fontSize" aria-label="字号滑块" @input="onFontRange">
+                <div class="font-presets">
+                  <button v-for="preset in [{ size: 15, label: '小 15' }, { size: 17, label: '标准 17' }, { size: 19, label: '大 19' }, { size: 22, label: '特大 22' }]" :key="preset.size" type="button" :aria-pressed="fontSize === preset.size" @click="applyFontSize(preset.size)">{{ preset.label }}</button>
+                </div>
+                <div class="font-note"><span>记在本机，下次打开沿用</span><button type="button" @click="applyFontSize(17)">重置</button></div>
+              </div>
+            </details>
+            <span class="strip-divider" aria-hidden="true"></span>
+            <button class="strip-hide" type="button" title="隐藏编辑器工具条（⌘/）" aria-label="隐藏编辑器工具条" @click="toggleToolbar">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg><span>隐藏</span>
+            </button>
+          </div>
+          <button v-if="editorMode === 'edit' && !sourceMode && !toolbarVisible" class="toolbar-reveal" type="button" title="显示编辑器工具条（⌘/）" aria-label="显示编辑器工具条" @click="toggleToolbar">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>格式<kbd>⌘/</kbd>
+          </button>
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
@@ -299,6 +566,13 @@ function keyboardResizeOutline(event: KeyboardEvent): void {
         <span class="empty-mark">✳</span><p class="eyebrow">V5 NOTES</p><h2>选择一篇笔记开始阅读</h2><p>从左侧目录树打开笔记。笔记默认以预览模式显示，需要修改时再进入编辑。</p>
         <div class="empty-actions"><button class="primary" @click="newNote">新建笔记</button><button class="secondary-action" @click="directoryVisible = true">显示目录</button></div>
       </div>
+      <div v-if="focusMode" class="focus-hud">
+        <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>
+        <span class="hud-divider" aria-hidden="true"></span>
+        <button type="button" @click="focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>退出专注</button>
+        <button type="button" @click="directoryVisible = true; focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>目录</button>
+      </div>
+      <EditorPalette :open="paletteOpen" :commands="commands" :context="commandContext" @close="paletteOpen = false" @run="runCommand" />
       <ImageLibraryDialog v-model="libraryOpen" @insert="insertLibraryImage" />
     </main>
 </template>

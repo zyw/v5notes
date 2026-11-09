@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>编辑器顶部工具布局 · 三个方向 — v5notes</title>
+<style>
+  :root {
+    --paper: #fffefa; --canvas: #f4f2ec; --sidebar: #f5f6f1;
+    --ink: #27342d; --ink-2: #364c3b; --muted: #748177; --muted-2: #8b978d;
+    --line: #e6e9e1; --line-2: #dfe4dc; --accent: #315b4a; --accent-dark: #244636;
+    --accent-soft: #e9eee8; --font-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    --font-read: 'Iowan Old Style', 'Songti SC', 'Noto Serif SC', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: var(--canvas); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { width: min(1240px, calc(100vw - 64px)); margin: 0 auto; }
+
+  .hero { padding: 72px 0 44px; border-bottom: 1px solid #e2e5da; }
+  .eyebrow { margin: 0 0 18px; color: #7d8c81; font-size: 11.5px; font-weight: 600; letter-spacing: .1em; }
+  .hero h1 { margin: 0 0 20px; color: #22352a; font: 650 clamp(32px, 3.6vw, 46px)/1.28 var(--font-read); letter-spacing: -.03em; }
+  .hero .lead { max-width: 760px; margin: 0; color: #4e6154; font-family: var(--font-read); font-size: 17px; line-height: 1.85; }
+  .sec-lead, .next p, .next li { font-size: 14px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+  .chip { padding: 5px 10px; border: 1px solid #dfe4da; border-radius: 999px; color: #6c7c70; background: #fbfbf6; font-size: 11px; letter-spacing: .02em; }
+  .chip strong { color: #3c5344; font-weight: 600; }
+
+  section { padding: 58px 0; border-bottom: 1px solid #e2e5da; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 8px; }
+  .sec-head h2 { margin: 0; color: #2b4033; font: 650 23px/1.4 var(--font-read); }
+  .sec-head span { color: #8b978d; font-size: 11.5px; }
+  .sec-lead { max-width: 720px; margin: 10px 0 30px; color: #5a6c5f; font-size: 13.5px; line-height: 1.8; }
+
+  .cands { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .cand { margin: 0; overflow: hidden; border: 1px solid #e2e6dc; border-radius: 12px; background: #fffefa; }
+  .cand.is-chosen { border-color: #a9c0ac; box-shadow: 0 0 0 1px #c9dcc9 inset; }
+  .cand-shot { padding: 10px 10px 0; background: #fbfbf6; }
+  .cand-shot svg { display: block; width: 100%; height: auto; border: 1px solid #eceee6; border-radius: 6px; }
+  .cand figcaption { position: relative; padding: 12px 14px 14px; }
+  .cand-name { margin: 0 0 4px; color: #33463a; font-size: 12.5px; font-weight: 650; letter-spacing: .01em; }
+  .cand-sub { margin: 0; padding-right: 74px; color: #8b978d; font-size: 10.5px; line-height: 1.55; }
+  .cand-tag { position: absolute; right: 12px; top: 12px; padding: 3px 7px; border-radius: 999px; color: #2f5c46; background: #e6efe4; font-size: 9.5px; font-weight: 650; letter-spacing: .02em; }
+  .cand-tag.is-alt { color: #9aa49b; background: #f2f3ee; font-weight: 500; }
+
+  .dir { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); gap: 30px; align-items: start; padding: 34px 0; border-top: 1px solid #e6e9e1; }
+  .dir:first-of-type { border-top: 0; padding-top: 8px; }
+  .shot-main { display: block; overflow: hidden; border: 1px solid #e2e6dc; border-radius: 12px; background: #fff; box-shadow: 0 10px 30px #27342d0f; }
+  .shot-main img { display: block; width: 100%; height: auto; }
+  .state-links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .state-links a { padding: 6px 10px; border: 1px solid #e0e6da; border-radius: 7px; color: #5d7062; background: #fbfcf7; font-size: 11px; }
+  .state-links a:hover { border-color: #c6d6c7; color: var(--accent); text-decoration: none; }
+  .dir h3 { margin: 2px 0 6px; color: #26402f; font: 650 20px/1.4 var(--font-read); }
+  .dir .tagline { margin: 0 0 18px; color: #6c7d70; font-family: var(--font-read); font-size: 14.5px; line-height: 1.7; }
+  .dir dl { margin: 0; }
+  .dir dt { margin-top: 14px; color: #7d8b80; font-size: 10px; font-weight: 700; letter-spacing: .13em; }
+  .dir dd { margin: 5px 0 0; color: #44564a; font-size: 12.5px; line-height: 1.72; }
+  .dir dd b { color: #2f4c3b; font-weight: 600; }
+  .dir .open { display: inline-flex; align-items: center; gap: 7px; margin-top: 22px; padding: 9px 14px; border: 1px solid #cfdad1; border-radius: 8px; background: #fbfcf7; font-size: 12px; font-weight: 550; }
+  .dir .open:hover { background: #f2f6ef; text-decoration: none; }
+
+  .matrix-wrap { overflow-x: auto; }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .matrix th, .matrix td { padding: 11px 13px; border-bottom: 1px solid #e8ebe3; text-align: left; vertical-align: top; }
+  .matrix thead th { padding-top: 0; color: #6c7c70; font-size: 10px; font-weight: 700; letter-spacing: .1em; border-bottom: 1px solid #dbe2d8; }
+  .matrix tbody th { width: 152px; color: #34483b; font-weight: 600; }
+  .matrix td { color: #4e6154; }
+  .matrix td em { display: block; margin-top: 2px; color: #97a29a; font-style: normal; font-size: 10.5px; }
+  .matrix tr.is-key td { background: #fbfcf7; }
+
+  .next { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr); gap: 34px; padding: 54px 0 70px; }
+  .next h2 { margin: 0 0 14px; color: #2b4033; font: 650 23px/1.4 var(--font-read); }
+  .next p { margin: 0 0 14px; color: #4e6154; font-size: 13.5px; line-height: 1.85; }
+  .next ol { margin: 0; padding-left: 18px; color: #4e6154; font-size: 13px; line-height: 1.9; }
+  .next li { margin-bottom: 8px; }
+  .note-card { padding: 20px 22px; border: 1px solid #e0e5da; border-radius: 12px; background: #fbfbf6; }
+  .note-card h4 { margin: 0 0 10px; color: #3a5344; font-size: 12px; font-weight: 650; letter-spacing: .04em; }
+  .note-card ul { margin: 0; padding-left: 16px; color: #5b6d60; font-size: 11.5px; line-height: 1.85; }
+  .note-card li { margin-bottom: 6px; }
+  .foot { padding: 0 0 80px; color: #98a49b; font-size: 10.5px; }
+
+  @media (max-width: 1080px) {
+    .cands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dir { grid-template-columns: minmax(0, 1fr); }
+    .next { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">编辑器顶部工具布局 · 三方向提案</p>
+    <h1>十个功能，一条顶栏之外<br>还有两种排法</h1>
+    <p class="lead">现在的编辑态顶栏把模式、预览、专注、历史、保存挤在同一排，字号、导出、工具条开关还没有位置。这一轮先不写组件，先给三种结构：它们的差别不是换个皮，而是「谁该一直露面、谁该等你去叫」。</p>
+    <div class="hero-meta">
+      <span class="chip">画布 <strong>1440 × 900</strong></span>
+      <span class="chip">落点 <strong>v5notes-client2</strong></span>
+      <span class="chip">功能 <strong>10 项</strong>：模式 / 预览 / 专注 / 历史 / 字号 / 工具条 / 导出 ×4</span>
+      <span class="chip">2026.03.20</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>六格候选</h2><span>三套逻辑各出两个 · 深色框为出完整版的方向</span></div>
+    <p class="sec-lead">每条逻辑先问一个不同的问题：A 问「十个按钮怎么排得下」，B 问「哪些动作属于文档、哪些属于排版」，C 问「写的时候到底需要看见什么」。两个候选分别代表同一问题下的松 / 紧两种回答。</p>
+    <div class="cands">
+  <figure class="cand is-chosen">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="A1 · 三段式单行 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="10" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="96" y="13" width="74" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <circle cx="177" cy="16.5" r="2.2" fill="#8fb59a"/>
+        <rect x="183" y="13" width="20" height="7" rx="3" fill="#e7ece1"/>
+        <rect x="206" y="12" width="42" height="10" rx="4" fill="#eff2ea"/>
+        <rect x="208" y="13.5" width="19" height="7" rx="3" fill="#fff"/>
+        <rect x="231" y="14" width="14" height="6" rx="3" fill="#dfe6da"/>
+        <circle cx="258" cy="17" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <circle cx="272" cy="17" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="284" y="11.5" width="26" height="11" rx="3.5" fill="#fff" stroke="#dfe4dc" stroke-width="1"/>
+        <rect x="316" y="11.5" width="34" height="11" rx="3.5" fill="#315b4a"/>
+        <rect x="318" y="42" width="30" height="130" fill="none"/>
+        <rect x="66" y="30" width="294" height="12" fill="#f6f6f4"/>
+        <rect x="76" y="34" width="10" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="120" y="34" width="10" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="164" y="34" width="10" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="208" y="34" width="10" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="252" y="34" width="10" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="296" y="33" width="14" height="6" rx="2" fill="#dbe3d8"/>
+        <rect x="86" y="60" width="250" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="76" width="238" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="92" width="244" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="108" width="180" height="8" rx="3" fill="#e9e9e2"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">A1 · 三段式单行</p>
+      <p class="cand-sub">身份 / 视图 / 交付，一条 52px 顶栏收完</p>
+      <span class="cand-tag">出完整版</span>
+    </figcaption>
+  </figure>
+  <figure class="cand ">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="A2 · 单行 + 溢出 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="10" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="96" y="13" width="86" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <circle cx="189" cy="16.5" r="2.2" fill="#8fb59a"/>
+        <circle cx="282" cy="17" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="292" y="12.5" width="18" height="9" rx="3.5" fill="#eff2ea"/>
+        <rect x="314" y="12.5" width="18" height="9" rx="3.5" fill="#eff2ea"/>
+        <rect x="338" y="11.5" width="14" height="11" rx="3.5" fill="#315b4a"/>
+        <rect x="66" y="30" width="294" height="11" fill="#f6f6f4"/>
+        <rect x="76" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="92" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="108" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="124" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="140" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="156" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="172" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="326" y="33" width="22" height="6" rx="2" fill="#dbe3d8"/>
+        <rect x="86" y="60" width="250" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="76" width="238" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="92" width="244" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="108" width="180" height="8" rx="3" fill="#e9e9e2"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">A2 · 单行 + 溢出</p>
+      <p class="cand-sub">模式降为图标，导出收进「···」，更省空间也更难找</p>
+      <span class="cand-tag is-alt">备选线框</span>
+    </figcaption>
+  </figure>
+  <figure class="cand is-chosen">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="B1 · 悬浮机具 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="12" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="98" y="13" width="88" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <circle cx="192" cy="16.5" r="2.2" fill="#8fb59a"/>
+        <circle cx="268" cy="17" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <circle cx="282" cy="17" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="294" y="11.5" width="26" height="11" rx="3.5" fill="#fff" stroke="#dfe4dc" stroke-width="1"/>
+        <rect x="324" y="11.5" width="26" height="11" rx="3.5" fill="#315b4a"/>
+        <rect x="96" y="40" width="196" height="20" rx="7" fill="#fffefa" stroke="#e2e8dd" stroke-width="1"/>
+        <rect x="102" y="45" width="38" height="10" rx="4" fill="#eef1ea"/>
+        <rect x="104" y="46.5" width="17" height="7" rx="3" fill="#fff"/>
+        <rect x="125" y="47" width="13" height="6" rx="3" fill="#e0e6dc"/>
+        <rect x="147" y="46" width="6" height="8" rx="2" fill="#cfd8cb"/>
+        <rect x="157" y="46" width="6" height="8" rx="2" fill="#cfd8cb"/>
+        <rect x="167" y="46" width="6" height="8" rx="2" fill="#cfd8cb"/>
+        <rect x="177" y="46" width="6" height="8" rx="2" fill="#cfd8cb"/>
+        <rect x="187" y="46" width="6" height="8" rx="2" fill="#cfd8cb"/>
+        <rect x="199" y="45.5" width="22" height="9" rx="3" fill="#eff2ea"/>
+        <rect x="227" y="46" width="12" height="8" rx="2" fill="#cfd8cb"/>
+        <circle cx="256" cy="50" r="4.5" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="66" y="74" width="294" height="1" fill="#f0f1ea"/>
+        <rect x="86" y="88" width="250" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="104" width="238" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="120" width="244" height="8" rx="3" fill="#e9e9e2"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">B1 · 悬浮机具</p>
+      <p class="cand-sub">文档动作留顶栏，排版动作漂成一条胶囊</p>
+      <span class="cand-tag">出完整版</span>
+    </figcaption>
+  </figure>
+  <figure class="cand ">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="B2 · 双行分段 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="12" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="98" y="13" width="96" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <circle cx="200" cy="16.5" r="2.2" fill="#8fb59a"/>
+        <rect x="300" y="11.5" width="26" height="11" rx="3.5" fill="#fff" stroke="#dfe4dc" stroke-width="1"/>
+        <rect x="330" y="11.5" width="20" height="11" rx="3.5" fill="#315b4a"/>
+        <rect x="66" y="30" width="294" height="11" fill="#f6f6f4"/>
+        <rect x="76" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="92" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="108" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="124" y="33.5" width="9" height="4" rx="2" fill="#cfd7cb"/>
+        <rect x="226" y="32.5" width="30" height="7" rx="3" fill="#e7ece1"/>
+        <rect x="260" y="32.5" width="14" height="7" rx="3" fill="#dfe6da"/>
+        <rect x="278" y="32.5" width="14" height="7" rx="3" fill="#dfe6da"/>
+        <rect x="296" y="32.5" width="16" height="7" rx="3" fill="#dfe6da"/>
+        <rect x="316" y="32.5" width="30" height="7" rx="3" fill="#dbe3d8"/>
+        <rect x="86" y="60" width="250" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="76" width="238" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="92" width="244" height="8" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="108" width="180" height="8" rx="3" fill="#e9e9e2"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">B2 · 双行分段</p>
+      <p class="cand-sub">文件条 + 工具条分离，最稳，但多占一行</p>
+      <span class="cand-tag is-alt">备选线框</span>
+    </figcaption>
+  </figure>
+  <figure class="cand is-chosen">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="C1 · 极简 + 命令面板 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="12" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="98" y="13" width="96" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <rect x="262" y="12" width="34" height="10" rx="3" fill="#f7f7f2" stroke="#e3e7dd" stroke-width="1"/>
+        <rect x="302" y="11.5" width="24" height="11" rx="3.5" fill="#fff" stroke="#dfe4dc" stroke-width="1"/>
+        <rect x="330" y="11.5" width="20" height="11" rx="3.5" fill="#c8d6cb"/>
+        <rect x="66" y="29" width="294" height="9" fill="#f8f8f4"/>
+        <rect x="76" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="90" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="104" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="118" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="326" y="32" width="22" height="4" rx="2" fill="#e2e8de"/>
+        <rect x="60" y="46" width="248" height="92" rx="8" fill="#fffefa" stroke="#dfe5db" stroke-width="1"/>
+        <rect x="60" y="46" width="248" height="92" rx="8" fill="#1b2f23" opacity=".04"/>
+        <rect x="70" y="56" width="120" height="7" rx="3" fill="#dbe3d7"/>
+        <rect x="70" y="72" width="220" height="6" rx="3" fill="#ecefe7"/>
+        <rect x="70" y="86" width="200" height="6" rx="3" fill="#ecefe7"/>
+        <rect x="70" y="100" width="228" height="6" rx="3" fill="#ecefe7"/>
+        <rect x="70" y="114" width="180" height="6" rx="3" fill="#ecefe7"/>
+        <rect x="230" y="68" width="58" height="12" rx="4" fill="#eaf0e6"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">C1 · 极简 + 命令面板</p>
+      <p class="cand-sub">顶栏只留四件事，其余交给 ⌘K</p>
+      <span class="cand-tag">出完整版</span>
+    </figcaption>
+  </figure>
+  <figure class="cand ">
+    <div class="cand-shot">
+      <svg viewBox="0 0 360 150" role="img" aria-label="C2 · 极简 + 控制台面板 线框">
+        <rect width="360" height="150" fill="#fffefa"/>
+        <rect width="66" height="150" fill="#f5f6f1"/>
+        <rect x="66" y="0" width="1" height="150" fill="#e4e6df"/>
+        <rect x="8" y="10" width="12" height="12" rx="3" fill="#dfe7db"/>
+        <rect x="24" y="13" width="34" height="6" rx="3" fill="#cfd9cd"/>
+        <rect x="9" y="34" width="46" height="8" rx="3" fill="#eceee7"/>
+        <rect x="9" y="52" width="40" height="6" rx="3" fill="#eceee7"/>
+        <rect x="9" y="68" width="44" height="6" rx="3" fill="#e3e8df"/>
+        <rect x="9" y="84" width="36" height="6" rx="3" fill="#eceee7"/>
+        
+        <rect x="80" y="12" width="12" height="10" rx="2" fill="none" stroke="#c3d0c3" stroke-width="1.2"/>
+        <rect x="98" y="13" width="96" height="7" rx="3" fill="#3c5546" opacity=".55"/>
+        <rect x="256" y="12" width="26" height="10" rx="3" fill="#f7f7f2" stroke="#e3e7dd" stroke-width="1"/>
+        <rect x="288" y="11.5" width="26" height="11" rx="3.5" fill="#fff" stroke="#dfe4dc" stroke-width="1"/>
+        <rect x="318" y="11.5" width="20" height="11" rx="3.5" fill="#c8d6cb"/>
+        <rect x="66" y="29" width="294" height="9" fill="#f8f8f4"/>
+        <rect x="76" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="90" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="104" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="118" y="32" width="8" height="3.5" rx="2" fill="#d3dbcf"/>
+        <rect x="326" y="32" width="22" height="4" rx="2" fill="#e2e8de"/>
+        <rect x="212" y="38" width="142" height="86" rx="8" fill="#fffefa" stroke="#dfe5db" stroke-width="1" filter="drop-shadow(0 4px 10px rgba(20,40,30,.10))"/>
+        <rect x="220" y="46" width="42" height="6" rx="3" fill="#dbe3d7"/>
+        <rect x="220" y="60" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="284" y="60" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="220" y="80" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="284" y="80" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="220" y="100" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="284" y="100" width="58" height="14" rx="4" fill="#f1f4ed"/>
+        <rect x="86" y="52" width="110" height="7" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="68" width="240" height="7" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="84" width="228" height="7" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="100" width="236" height="7" rx="3" fill="#e9e9e2"/>
+        <rect x="86" y="116" width="170" height="7" rx="3" fill="#e9e9e2"/>
+      </svg>
+    </div>
+    <figcaption>
+      <p class="cand-name">C2 · 极简 + 控制台面板</p>
+      <p class="cand-sub">一个「工具」按钮弹出九宫格面板</p>
+      <span class="cand-tag is-alt">备选线框</span>
+    </figcaption>
+  </figure></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>三个完整方向</h2><span>可交互原型 · 点开可切换模式、开关工具条、打开导出与字号</span></div>
+
+    <article class="dir">
+      <div>
+        <a class="shot-main" href="v1-single-row.html" target="_blank"><img src="shots/v1.png" alt="方向 A 三段式单行"></a>
+        <div class="state-links">
+          <a href="v1-single-row.html?panel=export" target="_blank">导出菜单 ↗</a>
+          <a href="v1-single-row.html?panel=font" target="_blank">字号面板 ↗</a>
+          <a href="v1-single-row.html?mode=preview" target="_blank">预览态 ↗</a>
+          <a href="v1-single-row.html?mode=source" target="_blank">源码态 ↗</a>
+        </div>
+      </div>
+      <div>
+        <h3>A · 三段式单行</h3>
+        <p class="tagline">一条 52px 的顶栏，从左到右读作「这是哪篇 → 怎么看 → 怎么交出去」。</p>
+        <dl>
+          <dt>结构</dt>
+          <dd>左侧身份簇：折叠栏、目录/标题、保存状态；右侧三簇用 1px 竖线隔开：<b>视图</b>（专注、字号、历史）· <b>模式</b>（所见即所得 / 源码 + 预览眼睛）· <b>交付</b>（导出、保存、大纲）。</dd>
+          <dt>工具条开关</dt>
+          <dd>折叠钮长在格式条自己的右端，指向它要收起来的东西；收起后正文顶部留一条 22px 的浅色把手，随时点回来。</dd>
+          <dt>好处</dt>
+          <dd>所有动作一次可见，迁移成本最低；现有保存分裂菜单、大纲开关、面包屑全部保住。</dd>
+          <dt>代价</dt>
+          <dd>1440 下刚好，大纲展开或窗口变窄需要降级（已做 ≤1240px 收起目录与「导出」文字）。仍是「工具栏思维」，写作时存在感最强。</dd>
+        </dl>
+        <a class="open" href="v1-single-row.html" target="_blank">打开 A 的完整原型 ↗</a>
+      </div>
+    </article>
+
+    <article class="dir">
+      <div>
+        <a class="shot-main" href="v2-floating-capsule.html" target="_blank"><img src="shots/v2.png" alt="方向 B 浮动机具"></a>
+        <div class="state-links">
+          <a href="v2-floating-capsule.html?fmt=off" target="_blank">隐藏工具条 ↗</a>
+          <a href="v2-floating-capsule.html?focus=1" target="_blank">专注写作 ↗</a>
+          <a href="v2-floating-capsule.html?panel=export" target="_blank">导出菜单 ↗</a>
+          <a href="v2-floating-capsule.html?mode=source" target="_blank">源码态 ↗</a>
+        </div>
+      </div>
+      <div>
+        <h3>B · 悬浮机具</h3>
+        <p class="tagline">把「改文件」和「改字」拆开：文件的事留在顶栏，字的事漂在正文上方。</p>
+        <dl>
+          <dt>结构</dt>
+          <dd>顶栏只做文档级动作：标题、保存状态、专注、历史、工具条开关、导出、保存、大纲。模式切换、格式按钮、字号、预览收进一条 42px 悬浮胶囊，居中漂在正文列上方，滚动时吸顶。</dd>
+          <dt>工具条开关</dt>
+          <dd>开关在顶栏（常驻、有 aria-pressed），按下去胶囊只收起排版键，<b>模式与字号留下</b>——隐藏不等于失去入口。</dd>
+          <dt>好处</dt>
+          <dd>省掉一整条 44px 的灰带，正文更靠上；排版键永远在手指附近，视线不用回到顶栏；专注态真正只剩字。</dd>
+          <dt>代价</dt>
+          <dd>胶囊会压在正文上方，首行需要让位（已留 92px 顶距）；浮层在低分辨率下要防止与滚动条打架。</dd>
+        </dl>
+        <a class="open" href="v2-floating-capsule.html" target="_blank">打开 B 的完整原型 ↗</a>
+      </div>
+    </article>
+
+    <article class="dir">
+      <div>
+        <a class="shot-main" href="v3-command.html" target="_blank"><img src="shots/v3.png" alt="方向 C 极简写作条"></a>
+        <div class="state-links">
+          <a href="v3-command.html?panel=palette" target="_blank">⌘K 命令面板（编辑）↗</a>
+          <a href="v3-command.html?mode=preview&panel=palette" target="_blank">⌘K 命令面板（预览）↗</a>
+          <a href="v3-command.html?mode=preview" target="_blank">预览态 ↗</a>
+          <a href="v3-command.html?focus=1" target="_blank">专注写作 ↗</a>
+          <a href="v3-command.html?fmt=off" target="_blank">隐藏工具条 ↗</a>
+        </div>
+      </div>
+      <div>
+        <h3>C · 极简写作条 + 命令面板</h3>
+        <p class="tagline">默认状态下顶栏只有四件事：命令、预览、保存、大纲。</p>
+        <dl>
+          <dt>结构</dt>
+          <dd>顶栏 46px：折叠栏、标题、⌘K 命令、<b>预览</b>、合并了状态的保存按钮（干净时直接写「已保存」，脏了才变成「保存」）、···、大纲。格式条降为一条无灰底的细线，贴着正文左缘。<b>导出整条从顶栏撤掉</b>，交给命令面板——把仅剩的一个常驻位让给「从阅读回到编辑」这条更高频的往返。</dd>
+          <dt>工具条开关</dt>
+          <dd>格式条右端「隐藏」；隐藏后正文左上角留一个低对比的「格式 ⌘/」，⌘K 里也能一键切回。</dd>
+          <dt>模式感知</dt>
+          <dd>命令面板按当前模式过滤：预览态只剩「回到编辑 / 历史 / 字号 / 导出」（8 项），编辑态 11 项，源码态 9 项；面板顶部写明「当前 · 预览 · 只读」，底部标明「只列出当前模式可用的命令」，分组标题在整组不可用时自动隐藏。</dd>
+          <dt>好处</dt>
+          <dd>视觉噪音最低；所有功能在一个可搜索的列表里，快捷键、当前状态、说明都写在同一行；新增功能不用再抢顶栏位置，也不会在错误的模式里出现。</dd>
+          <dt>代价</dt>
+          <dd>导出现在只能从 ⌘K 进（鼠标用户两步：⌘K → 导出 HTML）；命令面板需要做键盘可达、分组、按模式过滤、当前态标注，实现成本最高。若日后发现导出被埋，回退方案是在「···」里补一条兜底，不必动顶栏。</dd>
+        </dl>
+        <a class="open" href="v3-command.html" target="_blank">打开 C 的完整原型 ↗</a>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>十项功能分别落在哪</h2><span>同一张表看三版差别</span></div>
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead><tr><th>功能</th><th>A · 三段式单行</th><th>B · 悬浮机具</th><th>C · 极简写作条</th></tr></thead>
+        <tbody>
+          <tr><th>笔记名 / 目录</th><td>顶栏左，保留「随笔 /」路径</td><td>顶栏左，只留标题</td><td>顶栏左，只留标题</td></tr>
+          <tr class="is-key"><th>保存状态</th><td>标题右侧圆点 + 文字</td><td>标题右侧圆点 + 文字</td><td>并进保存按钮：已保存 / 保存</td></tr>
+          <tr class="is-key"><th>所见即所得 / 源码</th><td>顶栏分段控件（带文字）</td><td>胶囊左端分段控件</td><td>⌘K · 显示模式</td></tr>
+          <tr class="is-key"><th>预览</th><td>分段旁的眼睛按钮</td><td>胶囊右端的眼睛按钮</td><td>顶栏「预览」按钮（⌘K 里也有，⌘3）</td></tr>
+          <tr><th>专注写作</th><td>顶栏图标</td><td>顶栏图标</td><td>⌘K · ⌘.</td></tr>
+          <tr><th>历史记录</th><td>顶栏时钟图标</td><td>顶栏时钟图标</td><td>⌘K · 预览态顶栏也留一个</td></tr>
+          <tr class="is-key"><th>设置字号</th><td>「Aa 17」弹出面板</td><td>胶囊内「Aa 17」弹出面板</td><td>格式条右端「Aa 17」/ ⌘K 增减</td></tr>
+          <tr class="is-key"><th>隐藏 / 显示工具条</th><td>格式条右端折叠钮 + 顶部把手</td><td>顶栏开关，胶囊随之收缩</td><td>格式条右端「隐藏」+ 左上角「格式 ⌘/」</td></tr>
+          <tr class="is-key"><th>导出 HTML / PDF<br>Markdown / 图片</th><td>顶栏「导出」菜单，四项带说明</td><td>顶栏「导出」菜单，四项带说明</td><td>只在 ⌘K（四条独立命令，各带扩展名）</td></tr>
+          <tr><th>保存</th><td>顶栏主按钮 + 分裂菜单（重命名/复制/删除）</td><td>同 A</td><td>合并状态的按钮；笔记操作进「···」</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="next">
+    <div>
+      <h2>我的建议</h2>
+      <p>如果这一轮要的是<b>「把新功能塞进去、别让老用户迷路」</b>，选 A：它只是把现有一排重新分组，字号、导出、工具条开关都有了明确的家，改动最小、验收最快。</p>
+      <p>如果目标是<b>「让编辑页更像一个写作工具」</b>，选 B：它真正解决了「格式条占掉 44px、正文往下掉」的问题，而且隐藏工具条时模式切换不消失——这是三版里唯一把「隐藏」设计干净的一版，也是我个人最想落的一版。</p>
+      <p>C 更像一次产品表态：把工具栏从「排布问题」变成「检索问题」。它最适合后续功能还会继续长的阶段，但需要额外的命令面板、快捷键体系和一次用户教育。</p>
+      <ol>
+        <li>你选一个方向（也可以指定「A 的结构 + B 的胶囊位置」这类组合）。</li>
+        <li>我按选定的方向落到 <code>EditorPane.vue</code> + <code>style.css</code>，复用现有的保存分裂菜单、大纲开关、专注态与预览态规则。</li>
+        <li>导出四项和字号持久化需要真实实现（HTML/Markdown 可直接生成、PDF 走打印样式、图片走整篇渲染），我会同时给出实现路径与降级方案。</li>
+      </ol>
+    </div>
+    <aside class="note-card">
+      <h4>验收时要盯的几件事</h4>
+      <ul>
+        <li>1440 且大纲展开时（主区 ≈884px）顶栏不换行、不截断保存按钮。</li>
+        <li>预览态只留「预览中 / 历史 / 导出 / 编辑」，符合现有模式契约。</li>
+        <li>专注态必须有可见的退出入口，且目录可恢复。</li>
+        <li>工具条隐藏后仍能一键找回（把手 / 顶栏开关 / ⌘/ 三条路至少留两条）。</li>
+        <li>导出前自动保存，失败时不关闭菜单并给出行内错误。</li>
+      </ul>
+    </aside>
+  </div>
+
+  <p class="foot">原型为静态 HTML + 原生 JS，仅用于布局评审；所有截图由 Chrome 在 1440×900 下渲染（2× 像素密度）。</p>
+</div>
+</body>
+</html>

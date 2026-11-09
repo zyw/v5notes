@@ -34,6 +34,7 @@ const editorMode = ref<'preview' | 'edit'>('preview')
 const sourceMode = ref(false)
 const defaultOutlineVisible = ref(localStorage.getItem('v5notes-default-outline-visible') !== 'false')
 const outlineVisible = ref(defaultOutlineVisible.value)
+const toolbarVisible = ref(localStorage.getItem('v5notes-toolbar-visible') !== 'false')
 const sidebarSearchVisible = ref(false)
 const workspaceMenuOpen = ref(false)
 const settingsDialogOpen = ref(false)
@@ -272,7 +273,7 @@ function applyEditorMode(instance = editorInstance.value): void {
   if (!editing) sourceMode.value = false
   const source = editing && sourceMode.value
   instance.setSourceMode(source)
-  instance.setToolbarVisible(editing && !source)
+  instance.setToolbarVisible(editing && !source && toolbarVisible.value)
   // The workspace has its own outline sidebar. Keep the editor's built-in
   // outline disabled independently of that sidebar's visibility.
   instance.setOutlineVisible(false)
@@ -284,6 +285,14 @@ function toggleSourceMode(): void {
   sourceMode.value = !sourceMode.value
   applyEditorMode()
   editorInstance.value?.focus()
+}
+
+/** View preference, persisted per machine: the formatting toolbar can be hidden. */
+function toggleToolbar(): void {
+  toolbarVisible.value = !toolbarVisible.value
+  localStorage.setItem('v5notes-toolbar-visible', String(toolbarVisible.value))
+  applyEditorMode()
+  if (toolbarVisible.value) editorInstance.value?.focus()
 }
 
 function editorReady(instance: Editor): void {
@@ -733,5 +742,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

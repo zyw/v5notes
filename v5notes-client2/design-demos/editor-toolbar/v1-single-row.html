@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A · 三段式单行 — v5notes 编辑器顶部工具布局</title>
+<link rel="stylesheet" href="shared/harness.css">
+<style>
+  /* ===== 方向 A：三段式单行 =====
+     身份（左） / 视图·模式·交付（右）三簇，用 1px 竖线分簇，不换行 */
+  .a-header { padding: 0 22px; gap: 14px; }
+  .a-left { gap: 8px; }
+  .a-right { gap: 6px; }
+  .a-right .vr { margin: 0 4px; }
+
+  .a-title { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+  .a-title .note-name { max-width: 300px; }
+  .a-title .note-path { padding-right: 1px; }
+
+  .a-font { padding: 0 9px; gap: 5px; font-size: 12.5px; letter-spacing: -.01em; }
+  .a-font .aa { font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
+  .a-font .num { color: #8b978e; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .a-font[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
+
+  .a-export { gap: 7px; padding: 0 8px 0 10px; height: 32px; }
+  .a-export .chev { color: #9aa69c; }
+  .a-export[aria-expanded="true"] { border-color: #cfdad1; background: #f2f6f0; color: var(--accent); }
+
+  /* 预览态：只留 历史 / 导出 / 编辑 */
+  .a-preview-mode { display: inline-flex; align-items: center; gap: 6px; color: #8b978e; font-size: 11.5px; letter-spacing: .02em; }
+  .a-preview-mode .ic { color: #94a69a; }
+
+  /* 格式化工具条：右侧收尾一颗折叠钮 */
+  .a-fmt { height: 44px; padding: 0 12px 0 14px; }
+  .a-fmt .fmt-group { flex: 1 1 0; }
+  .a-fmt .fmt-tail { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; padding-left: 8px; }
+  .a-fmt .fmt-tail .hint { color: #a6afa7; font-size: 10px; letter-spacing: .02em; opacity: 0; transition: opacity .15s ease; }
+  .a-fmt:hover .fmt-tail .hint { opacity: 1; }
+  .fmt-collapse { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border-radius: 6px; color: #8b978e; font-size: 10.5px; }
+  .fmt-collapse:hover { background: #e9ede6; color: var(--accent); }
+  .fmt-collapse .ic { width: 13px; height: 13px; }
+
+  .fmt-reveal { position: absolute; z-index: 8; top: 0; left: 50%; display: inline-flex; align-items: center; gap: 7px; height: 22px; padding: 0 12px; border: 1px solid #e7eae2; border-top: 0; border-radius: 0 0 9px 9px; color: #9aa49b; background: #f6f7f3; font-size: 10.5px; transform: translateX(-50%); opacity: .72; transition: opacity .15s ease, color .15s ease, background .15s ease; }
+  .fmt-reveal:hover { opacity: 1; color: var(--accent); background: #eef3ea; }
+  .fmt-reveal .grip { display: inline-flex; gap: 2px; }
+  .fmt-reveal .grip i { width: 2px; height: 2px; border-radius: 50%; background: currentColor; }
+
+  /* 字号面板 */
+  .font-panel { top: calc(100% + 8px); right: -6px; }
+
+  /* 导出菜单 */
+  .export-menu { width: 300px; }
+
+  body[data-fmt="on"] .fmt-reveal { display: none; }
+
+  /* 专注态：标题居左但整体降噪 */
+  body.is-focus .a-header { padding-left: 26px; }
+  body.is-focus .a-header .save-state { opacity: .75; }
+  body[data-mode="preview"] .a-header { padding-block: 0; }
+
+  @media (max-width: 1240px) {
+    .a-title .note-path { display: none; }
+    .a-title .note-name { max-width: 190px; }
+    .a-export .btn-label { display: none; }
+    .a-export { padding: 0 8px; }
+    .a-header { padding: 0 14px; gap: 8px; }
+    .save-button kbd { display: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9 4v16"/><path d="m15.2 9.4-2.8 2.6 2.8 2.6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m9 8-4 4 4 4M15 8l4 4-4 4"/></symbol>
+  <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3.5H3.5V8M16 3.5h4.5V8M20.5 16v4.5H16M8 20.5H3.5V16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6"/><path d="M12 7.8v4.5l2.9 1.8"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.2v10.6M7.6 9.6 12 14l4.4-4.4M4 17.4V20h16v-2.6"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M4.5 3.5h9.6L19 8.4v11.1a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1z"/><path d="M8 3.8v5.4h6.6V3.8M6.8 20.5v-7h8.4v7"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m6.5 14.5 5.5-5.5 5.5 5.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M14.5 4v16"/><path d="m16.6 9.4 2.6 2.6-2.6 2.6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c2.4 2.3 3.6 5.2 3.6 8.4s-1.2 6.1-3.6 8.4c-2.4-2.3-3.6-5.2-3.6-8.4S9.6 5.9 12 3.6Z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3.2h7.6l4 4V20.8h-11.6z"/><path d="M14 3.4v4.2h4.1"/><path d="M9.2 12.6h6M9.2 16.2h6"/></symbol>
+  <symbol id="i-md" viewBox="0 0 24 24"><rect x="3.2" y="5.2" width="17.6" height="13.6" rx="2"/><path d="M6.6 15.6V9.2l2.4 3 2.4-3v6.4M15 9.2v4.6M15 9.2l-2 2.8M18.4 13.8l-2.2-2.4M18.4 11.4v4.2"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m4.4 17.2 4.6-4.6 3.1 3.1L15.6 12l4 4.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.6 12.4 4.6 4.6L19.4 6.6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.4" y="7.2" width="11" height="12" rx="1.6"/><path d="M15 7.2V5.2a1 1 0 0 0-1-1H5.2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1H8"/></symbol>
+  <symbol id="i-rename" viewBox="0 0 24 24"><path d="m14.4 4.4 4 4M4 20l1-4.4L16.4 4.2a1.6 1.6 0 0 1 2.3 2.3L7.4 17.8 4 20Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6.4h16M9.4 6.4V4.2h5.2v2.2M6.2 6.4l.9 13.2h9.8l.9-13.2M9.8 10v6.2M14.2 10v6.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.6 6.6a1.6 1.6 0 0 1 1.6-1.6h4l1.8 2.2h6.8a1.6 1.6 0 0 1 1.6 1.6v9.2a1.6 1.6 0 0 1-1.6 1.6H5.2a1.6 1.6 0 0 1-1.6-1.6z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3.6h7.4l4 4v12.8H6z"/><path d="M13.2 3.8v4h3.8M9 12.4h5.6M9 16h5.6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9.5 6.5 5.5 5.5-5.5 5.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4 4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.6a7.6 7.6 0 0 0 0-3.2l1.8-1.3-1.8-3.2-2.1.8a7.5 7.5 0 0 0-2.8-1.6L14.2 2.8h-4.4l-.3 2.3a7.5 7.5 0 0 0-2.8 1.6l-2.1-.8L2.8 9.1l1.8 1.3a7.6 7.6 0 0 0 0 3.2l-1.8 1.3 1.8 3.2 2.1-.8a7.5 7.5 0 0 0 2.8 1.6l.3 2.3h4.4l.3-2.3a7.5 7.5 0 0 0 2.8-1.6l2.1.8 1.8-3.2z"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar" aria-label="笔记目录">
+    <div class="brand"><img src="../../src/assets/brand-icon.png" alt=""><span>V5Notes</span></div>
+    <label class="search"><svg class="ic ic-16" aria-hidden="true"><use href="#i-search"/></svg><input placeholder="搜索笔记" aria-label="搜索笔记"><kbd>⌘K</kbd></label>
+    <div class="tree-heading"><span>笔记</span><div class="ctl"><button title="新建笔记" aria-label="新建笔记"><svg class="ic ic-16"><use href="#i-plus"/></svg></button><button title="新建目录" aria-label="新建目录"><svg class="ic ic-16"><use href="#i-folder"/></svg></button></div></div>
+    <nav class="tree">
+      <div class="dir-row"><span class="caret"><svg class="ic"><use href="#i-chev-right"/></svg></span><svg class="tree-ic"><use href="#i-folder"/></svg><span class="tree-label">随笔</span></div>
+      <div class="note-row active"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">春分 · 编辑器的呼吸感</span></div>
+      <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">秋分的留白</span></div>
+      <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">读《一日三秋》</span></div>
+      <div class="dir-row"><span class="caret"><svg class="ic"><use href="#i-chev-right"/></svg></span><svg class="tree-ic"><use href="#i-folder"/></svg><span class="tree-label">产品笔记</span></div>
+      <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">编辑器工具条改版</span></div>
+      <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">同步策略与冲突</span></div>
+      <div class="dir-row"><span class="caret"><svg class="ic"><use href="#i-chev-right"/></svg></span><svg class="tree-ic"><use href="#i-folder"/></svg><span class="tree-label">读书</span></div>
+      <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">断舍离 · 摘录</span></div>
+    </nav>
+    <div class="tree-side">
+      <button><svg class="ic ic-16"><use href="#i-trash"/></svg>回收站</button>
+      <button><svg class="ic ic-16"><use href="#i-settings"/></svg>设置</button>
+    </div>
+  </aside>
+
+  <main class="pane">
+    <div class="pane-top">
+      <header class="header a-header">
+        <div class="header-left a-left">
+          <button class="btn btn-icon is-quiet" aria-label="收起侧栏" title="收起侧栏"><svg class="ic ic-18"><use href="#i-sidebar"/></svg></button>
+          <div class="a-title">
+            <span class="note-path" data-only="edit">随笔 /</span>
+            <span class="note-name" contenteditable="true" spellcheck="false" aria-label="笔记名">春分 · 编辑器的呼吸感</span>
+          </div>
+          <span class="save-state" data-bind="save-state"><i></i><span>已保存</span></span>
+        </div>
+
+        <div class="header-right a-right">
+          <!-- 视图簇 -->
+          <button class="btn btn-icon" data-act="focus" title="专注写作" aria-label="专注写作" data-only="edit"><svg class="ic ic-17"><use href="#i-focus"/></svg></button>
+          <div class="menu-anchor" data-only="edit">
+            <button class="btn a-font" data-menu-trigger="font" aria-expanded="false" title="设置字号" aria-label="设置字号">
+              <span class="aa">Aa</span><span class="num" data-bind="font-value">17</span>
+            </button>
+            <div class="menu font-panel" data-menu-panel="font" hidden>
+              <div class="font-head"><strong>正文字号</strong><span>只影响阅读与编辑</span></div>
+              <div class="font-value">
+                <button class="font-step" data-act="font-step" data-delta="-1" aria-label="减小字号">−</button>
+                <div class="font-read"><span data-bind="font-value">17</span><small> px</small></div>
+                <button class="font-step" data-act="font-step" data-delta="1" aria-label="增大字号">+</button>
+              </div>
+              <div class="font-track"><input type="range" min="13" max="26" value="17" step="1" aria-label="字号滑块" data-font-range></div>
+              <div class="font-presets">
+                <button data-act="font-preset" data-size="15" data-font-value="15">小 15</button>
+                <button data-act="font-preset" data-size="17" data-font-value="17" aria-pressed="true">标准 17</button>
+                <button data-act="font-preset" data-size="19" data-font-value="19">大 19</button>
+                <button data-act="font-preset" data-size="22" data-font-value="22">特大 22</button>
+              </div>
+              <div class="font-note"><span>记在本机，下次打开沿用</span><button class="btn is-bare" data-act="font-preset" data-size="17">重置</button></div>
+            </div>
+          </div>
+          <button class="btn btn-icon" data-act="history" title="历史记录" aria-label="历史记录" data-only="edit"><svg class="ic ic-17"><use href="#i-clock"/></svg></button>
+          <span class="vr" data-only="edit"></span>
+
+          <!-- 模式簇 -->
+          <div class="seg" role="group" aria-label="编辑模式" data-only="edit">
+            <button data-act="mode" data-value="edit" aria-pressed="true"><svg class="ic"><use href="#i-pencil"/></svg>编辑</button>
+            <button data-act="mode" data-value="source" aria-pressed="false"><svg class="ic"><use href="#i-code"/></svg>源码</button>
+          </div>
+          <button class="btn btn-icon" data-act="mode" data-value="preview" title="预览" aria-label="预览" data-only="edit"><svg class="ic ic-18"><use href="#i-eye"/></svg></button>
+
+          <span class="a-preview-mode" data-only="preview"><svg class="ic ic-16"><use href="#i-eye"/></svg>预览中</span>
+          <button class="btn btn-icon" data-act="history" title="历史记录" aria-label="历史记录" data-only="preview"><svg class="ic ic-17"><use href="#i-clock"/></svg></button>
+
+          <!-- 交付簇 -->
+          <span class="vr" data-only="edit"></span>
+          <div class="menu-anchor">
+            <button class="btn is-bordered a-export" data-menu-trigger="export" aria-expanded="false" title="导出">
+              <svg class="ic ic-16"><use href="#i-download"/></svg><span class="btn-label">导出</span>
+              <svg class="ic chev" width="12" height="12"><use href="#i-chev-down"/></svg>
+            </button>
+            <div class="menu export-menu" data-menu-panel="export" hidden>
+              <div class="menu-head">导出这篇笔记</div>
+              <button data-act="export" data-format="html"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-globe"/></svg></span><span class="mi-copy"><strong>HTML 网页</strong><span>带样式，可离线打开</span></span><span class="mi-kbd">.html</span></button>
+              <button data-act="export" data-format="pdf"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-doc"/></svg></span><span class="mi-copy"><strong>PDF 文档</strong><span>适合打印与发给别人</span></span><span class="mi-kbd">.pdf</span></button>
+              <button data-act="export" data-format="md"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-md"/></svg></span><span class="mi-copy"><strong>Markdown 源文件</strong><span>原始 .md，跨工具通用</span></span><span class="mi-kbd">.md</span></button>
+              <button data-act="export" data-format="png"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-image"/></svg></span><span class="mi-copy"><strong>图片长图</strong><span>整篇渲染成一张 PNG</span></span><span class="mi-kbd">.png</span></button>
+              <div class="menu-foot">导出前自动保存当前版本</div>
+            </div>
+          </div>
+
+          <div class="split" data-only="edit">
+            <button class="primary-btn" data-act="save" data-bind="save-button" disabled>
+              <svg class="ic ic-16"><use href="#i-save"/></svg>保存<kbd>⌘S</kbd>
+            </button>
+            <div class="menu-anchor">
+              <button class="split-caret" data-menu-trigger="note" aria-expanded="false" aria-label="更多笔记操作" title="更多笔记操作"><svg class="ic" width="14" height="14"><use href="#i-chev-down"/></svg></button>
+              <div class="menu" data-menu-panel="note" hidden>
+                <button data-act="history"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-rename"/></svg></span><span class="mi-copy"><strong>重命名</strong><span>改笔记标题</span></span></button>
+                <button data-act="copy"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-copy"/></svg></span><span class="mi-copy"><strong>复制内容</strong><span>Markdown 复制到剪贴板</span></span></button>
+                <button data-act="history"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-clock"/></svg></span><span class="mi-copy"><strong>历史记录</strong><span>查看与恢复旧版本</span></span></button>
+                <div class="menu-sep"></div>
+                <button class="danger"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-trash"/></svg></span><span class="mi-copy"><strong>删除笔记</strong><span>移入回收站</span></span></button>
+              </div>
+            </div>
+          </div>
+
+          <button class="primary-btn" data-act="mode" data-value="edit" data-only="preview" style="height:34px">
+            <svg class="ic ic-16"><use href="#i-pencil"/></svg>编辑
+          </button>
+
+          <button class="btn btn-icon" title="显示大纲" aria-label="显示大纲"><svg class="ic ic-19"><use href="#i-panel"/></svg></button>
+        </div>
+      </header>
+
+      <!-- 编辑器工具条：右侧一颗折叠钮 -->
+      <div class="fmt a-fmt" data-only="fmt" role="toolbar" aria-label="编辑器工具条">
+        <div class="fmt-group">
+          <button class="fmt-btn" title="公式"><span class="g">Σ</span></button>
+        </div>
+        <div class="fmt-group">
+          <button class="fmt-btn" title="上标"><span class="g-x">x<sup>2</sup></span></button>
+          <button class="fmt-btn" title="加粗"><span class="g">B</span></button>
+          <button class="fmt-btn" title="斜体"><span class="g-i">I</span></button>
+          <button class="fmt-btn" title="下划线"><span class="g-u">U</span></button>
+          <button class="fmt-btn" title="代码"><span class="g-x">&lt;&gt;</span></button>
+          <button class="fmt-btn" title="删除线"><span class="g-s">S</span></button>
+          <button class="fmt-btn" title="提示块"><span class="g-x">💡</span></button>
+        </div>
+        <div class="fmt-group">
+          <button class="fmt-btn" title="复制"><svg class="ic ic-16"><use href="#i-copy"/></svg></button>
+        </div>
+        <div class="fmt-tail">
+          <span class="hint">隐藏</span>
+          <button class="fmt-collapse" data-act="fmt-toggle" title="隐藏编辑器工具条" aria-label="隐藏编辑器工具条">
+            <svg class="ic"><use href="#i-chev-up"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <button class="fmt-reveal" data-act="fmt-toggle" aria-label="显示编辑器工具条">
+        <span class="grip"><i></i><i></i><i></i></span>工具条已隐藏<span style="opacity:.6">· ⌘/ 显示</span>
+      </button>
+
+      <div class="scroll" data-only="not-source">
+        <article class="doc" spellcheck="false">
+          <div class="meta"><span>2026 年 3 月 20 日</span><span>1,240 字</span><span>约 7 分钟</span></div>
+          <h1>春分 · 编辑器的呼吸感</h1>
+          <p class="lede">好的写作工具不该在写字的时候说话。它应该在你需要它的时候刚好在那里——一行，安静，位置固定，不会因为你写了三千字就换一个地方。</p>
+          <p>这段时间一直在调整客户端的编辑页。改到第三版的时候发现，真正的问题不是按钮不够好看，而是它们在争夺注意力：模式、预览、专注、历史、保存，六七个同等重量的东西挤在一行里，每个都在说「我很重要」。</p>
+          <h2>一、把动作按「什么时候会用到」分层</h2>
+          <p>保存是呼吸，每分钟都在发生，但不需要被看见；模式切换是一天几次；导出可能一周一次；字号设置是一次性的偏好。它们不该有一样的视觉重量。</p>
+          <ul>
+            <li><strong>一直可见</strong>：笔记名、保存状态、保存</li>
+            <li><strong>随手可达</strong>：编辑 / 源码、预览、专注、字号</li>
+            <li><strong>需要时再找</strong>：历史、导出、工具条开关</li>
+          </ul>
+          <blockquote>克制不是少放东西，是把东西放到它该在的层级上。</blockquote>
+          <p>于是这一版的工具条只剩一件事要做：让每一次点击都落在它应该在的位置上，然后忘掉它。</p>
+        </article>
+      </div>
+
+      <div class="source" data-only="source">
+<span class="ln">1</span><span class="tok-h"># 春分 · 编辑器的呼吸感</span>
+<span class="ln">2</span>
+<span class="ln">3</span>好的写作工具不该在写字的时候说话。它应该在你需要它的时候
+<span class="ln">4</span>刚好在那里——一行，安静，位置固定。
+<span class="ln">5</span>
+<span class="ln">6</span><span class="tok-h">## 一、把动作按「什么时候会用到」分层</span>
+<span class="ln">7</span>
+<span class="ln">8</span>- 一直可见：笔记名、保存状态、保存
+<span class="ln">9</span>- 随手可达：编辑 / 源码、预览、专注、字号
+<span class="ln">10</span>- 需要时再找：历史、导出、工具条开关
+<span class="ln">11</span>
+<span class="ln">12</span><span class="tok-em">&gt; 克制不是少放东西，是把东西放到它该在的层级上。</span>
+      </div>
+    </div>
+
+    <button class="focus-exit" data-act="focus"><svg class="ic ic-14"><use href="#i-focus"/></svg>退出专注</button>
+  </main>
+</div>
+
+<footer class="demo-foot" style="display:none"></footer>
+
+<div class="backdrop" data-dialog="history" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+    <div class="dialog-head">
+      <div><h2 id="hist-title">历史记录</h2><p>春分 · 编辑器的呼吸感 · 共 18 个版本</p></div>
+      <button class="dialog-close" data-act="close-dialog" aria-label="关闭">×</button>
+    </div>
+    <div class="hist-body">
+      <div class="hist-list">
+        <button class="selected"><strong>今天 16:12</strong><span>1,240 字 · 当前版本</span></button>
+        <button><strong>今天 14:48</strong><span>1,186 字</span></button>
+        <button><strong>今天 11:03</strong><span>1,102 字</span></button>
+        <button><strong>昨天 22:31</strong><span>968 字</span></button>
+      </div>
+      <div class="hist-preview">
+        <p><strong>把动作按「什么时候会用到」分层</strong></p>
+        <p>保存是呼吸，每分钟都在发生，但不需要被看见；模式切换是一天几次；导出可能一周一次；字号设置是一次性的偏好。它们不该有一样的视觉重量。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="shared/harness.js"></script>
+</body>
+</html>

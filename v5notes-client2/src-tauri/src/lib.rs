@@ -85,6 +85,295 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
     }
 }
 
+/// Exports the current editor view as a paginated, vector A4 PDF into the user's
+/// Downloads folder, without opening the print dialog.
+///
+/// WKWebView's print pipeline produces a runaway document on recent macOS
+/// releases, so the PDF is captured with `createPDF` and then repaginated into
+/// A4 pages with Core Graphics. Text stays selectable and searchable.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn export_pdf(
+    window: tauri::WebviewWindow,
+    file_name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<String, String> {
+    use std::time::Duration;
+
+    let name = file_name.trim().to_string();
+    if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
+        return Err("文件名不合法".into());
+    }
+    if !(x.is_finite() && y.is_finite() && width.is_finite() && height.is_finite())
+        || width < 100.0
+        || height < 100.0
+    {
+        return Err("导出尺寸不合法".into());
+    }
+    let home = std::env::var("HOME").map_err(|_| "找不到用户目录".to_string())?;
+    let directory = std::path::Path::new(&home).join("Downloads");
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let target = unique_target(&directory, &name);
+    let path = target.to_string_lossy().to_string();
+    let print_path = path.clone();
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    window
+        .with_webview(move |platform_webview| {
+            // SAFETY: Tauri runs this closure on the main thread with the live WKWebView.
+            let result = unsafe { vector_pdf(platform_webview.inner(), x, y, width, height, &print_path) };
+            let _ = sender.send(result);
+        })
+        .map_err(|error| error.to_string())?;
+
+    receiver
+        .recv_timeout(Duration::from_secs(60))
+        .map_err(|_| "导出超时".to_string())??;
+
+    let bytes = std::fs::read(&target).map_err(|error| error.to_string())?;
+    if bytes.len() < 1024 || !bytes.starts_with(b"%PDF") {
+        let _ = std::fs::remove_file(&target);
+        return Err("生成的 PDF 无效".into());
+    }
+    Ok(path)
+}
+
+/// Captures the web content as one tall vector page, then slices it into A4 pages.
+#[cfg(target_os = "macos")]
+unsafe fn vector_pdf(
+    webview: *mut std::ffi::c_void,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    path: &str,
+) -> Result<(), String> {
+    use block2::RcBlock;
+    use objc2::rc::Retained;
+    use objc2_core_foundation::{CGPoint, CGRect, CGSize};
+    use objc2_core_graphics::{
+        CGContextBeginPage, CGContextClipToRect, CGContextConcatCTM, CGContextDrawPDFPage,
+        CGContextEndPage, CGContextSaveGState, CGContextRestoreGState, CGDataProviderCreateWithCFData,
+        CGPDFContextClose, CGPDFContextCreateWithURL, CGPDFDocumentCreateWithProvider,
+        CGPDFDocumentGetPage, CGPDFPageGetBoxRect, CGPDFBox,
+    };
+    use objc2_core_foundation::{CFData, CFURL};
+    use objc2_foundation::{NSData, NSDate, NSDefaultRunLoopMode, NSError, NSRunLoop, NSString, NSURL};
+    use objc2_web_kit::{WKPDFConfiguration, WKWebView};
+
+    let view: &WKWebView = unsafe { &*(webview as *const WKWebView) };
+    let marker = unsafe { objc2::MainThreadMarker::new_unchecked() };
+    let configuration = unsafe { WKPDFConfiguration::new(marker) };
+    unsafe {
+        configuration.setRect(CGRect {
+            origin: CGPoint { x, y },
+            size: CGSize { width, height },
+        })
+    };
+
+    let (sender, receiver) = std::sync::mpsc::channel::<Result<Vec<u8>, String>>();
+    let handler = RcBlock::new(move |data: *mut NSData, error: *mut NSError| {
+        if !error.is_null() {
+            let message = unsafe { (*error).localizedDescription() }.to_string();
+            let _ = sender.send(Err(message));
+        } else if data.is_null() {
+            let _ = sender.send(Err("PDF 数据为空".to_string()));
+        } else {
+            let bytes = unsafe { (*data).to_vec() };
+            let _ = sender.send(Ok(bytes));
+        }
+    });
+    unsafe { view.createPDFWithConfiguration_completionHandler(Some(&configuration), &handler) };
+
+    // createPDF answers on the main thread, so pump the run loop until it does.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let source = loop {
+        match receiver.try_recv() {
+            Ok(result) => break result?,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => return Err("PDF 生成被中断".into()),
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+        }
+        if std::time::Instant::now() > deadline {
+            return Err("PDF 生成超时".into());
+        }
+        let date = unsafe { NSDate::dateWithTimeIntervalSinceNow(0.02) };
+        let mode = unsafe { NSDefaultRunLoopMode };
+        unsafe { NSRunLoop::currentRunLoop().runMode_beforeDate(mode, &date) };
+    };
+
+    // ---- repaginate into A4 ----
+    let data = CFData::from_bytes(&source);
+    let provider = unsafe { CGDataProviderCreateWithCFData(Some(&data)) }.ok_or("无法读取 PDF 数据")?;
+    let document = unsafe { CGPDFDocumentCreateWithProvider(Some(&provider)) }.ok_or("无法解析 PDF")?;
+    let page = unsafe { CGPDFDocumentGetPage(Some(&document), 1) }.ok_or("PDF 没有页面")?;
+    let bounds = unsafe { CGPDFPageGetBoxRect(Some(&page), CGPDFBox::MediaBox) };
+    if bounds.size.height <= 1.0 {
+        return Err("PDF 页面高度异常".into());
+    }
+
+    let page_width = 595.28_f64;
+    let page_height = 841.89_f64;
+    // ~18mm left/right, ~17mm top/bottom.
+    let margin_x = 51.0_f64;
+    let margin_y = 48.0_f64;
+    let content_width = page_width - margin_x * 2.0;
+    let content_height = page_height - margin_y * 2.0;
+    let scale = content_width / bounds.size.width;
+    let page_count = ((bounds.size.height * scale) / content_height).ceil().max(1.0) as u32;
+
+    let ns_url = NSURL::fileURLWithPath(&NSString::from_str(path));
+    let url: &CFURL = unsafe { &*(Retained::as_ptr(&ns_url) as *const CFURL) };
+    let media = CGRect {
+        origin: CGPoint { x: 0.0, y: 0.0 },
+        size: CGSize { width: page_width, height: page_height },
+    };
+    let context = unsafe { CGPDFContextCreateWithURL(Some(url), &media, None) }.ok_or("无法创建 PDF 文件")?;
+
+    for index in 0..page_count {
+        let top = f64::from(index) * content_height;
+        let slice_height = (bounds.size.height * scale - top).min(content_height).max(1.0);
+        // Content sits inside the page margins: the top margin is where the slice ends.
+        let slice = CGRect {
+            origin: CGPoint {
+                x: margin_x,
+                y: page_height - margin_y - slice_height,
+            },
+            size: CGSize { width: content_width, height: slice_height },
+        };
+        // x' = margin_x + scale * x, y' = scale * y + offset, so the first slice's
+        // top lands on the top margin and every later slice continues downwards.
+        let offset = (page_height - margin_y) - scale * bounds.size.height
+            + f64::from(index) * content_height;
+        let transform = objc2_core_foundation::CGAffineTransform {
+            a: scale,
+            b: 0.0,
+            c: 0.0,
+            d: scale,
+            tx: margin_x,
+            ty: offset,
+        };
+        unsafe {
+            CGContextBeginPage(Some(&context), &slice);
+            CGContextSaveGState(Some(&context));
+            CGContextClipToRect(Some(&context), slice);
+            CGContextConcatCTM(Some(&context), transform);
+            CGContextDrawPDFPage(Some(&context), Some(&page));
+            CGContextRestoreGState(Some(&context));
+            CGContextEndPage(Some(&context));
+        }
+    }
+    CGPDFContextClose(Some(&context));
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn unique_target(directory: &std::path::Path, name: &str) -> std::path::PathBuf {
+    let candidate = directory.join(name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let stem = std::path::Path::new(name)
+        .file_stem()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| name.to_string());
+    for index in 2..1000 {
+        let next = directory.join(format!("{stem} ({index}).pdf"));
+        if !next.exists() {
+            return next;
+        }
+    }
+    candidate
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn export_pdf(
+    _window: tauri::WebviewWindow,
+    _file_name: String,
+    _x: f64,
+    _y: f64,
+    _width: f64,
+    _height: f64,
+) -> Result<String, String> {
+    Err("当前平台暂不支持矢量 PDF，请使用图片版".into())
+}
+
+/// Fetches an HTTP(S) image and returns it as a data URL. Webviews cannot read
+/// cross-origin image bytes because of CORS, and drawing a cross-origin image
+/// would taint the export canvas; going through Rust keeps PNG/PDF export intact
+/// for the notes server and third-party image hosts alike.
+#[tauri::command]
+async fn fetch_image_data_url(url: String) -> Result<String, String> {
+    use base64::Engine as _;
+    use reqwest::header::CONTENT_TYPE;
+
+    let target = url.trim();
+    if !(target.starts_with("http://") || target.starts_with("https://")) {
+        return Err("只支持 http/https 图片".into());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|error| format!("图片客户端初始化失败：{error}"))?;
+    let response = client
+        .get(target)
+        .send()
+        .await
+        .map_err(|error| format!("图片请求失败：{error}"))?;
+    if !response.status().is_success() {
+        return Err(format!("图片请求失败：HTTP {}", response.status()));
+    }
+    const MAX_IMAGE_BYTES: u64 = 40 * 1024 * 1024;
+    if response.content_length().is_some_and(|length| length > MAX_IMAGE_BYTES) {
+        return Err("图片过大，无法嵌入".into());
+    }
+    let declared = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .map(str::trim)
+        .unwrap_or("")
+        .to_string();
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| format!("图片读取失败：{error}"))?;
+    if bytes.len() as u64 > MAX_IMAGE_BYTES {
+        return Err("图片过大，无法嵌入".into());
+    }
+    // The notes server sends files as attachments without an image Content-Type,
+    // and browsers need a usable MIME type for the data URL to decode.
+    let mime = if declared.starts_with("image/") {
+        declared
+    } else {
+        sniff_image_mime(&bytes).to_string()
+    };
+    Ok(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
+}
+
+fn sniff_image_mime(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]) {
+        "image/png"
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        "image/jpeg"
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        "image/gif"
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        "image/webp"
+    } else if bytes.starts_with(b"<svg") || bytes.starts_with(b"<?xml") {
+        "image/svg+xml"
+    } else {
+        "application/octet-stream"
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -101,6 +390,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             exit_app,
             open_project_link,
+            export_pdf,
+            fetch_image_data_url,
             autostart_is_supported,
             autostart_is_enabled,
             set_autostart_enabled

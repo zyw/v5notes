@@ -25,7 +25,9 @@ function containsSelectedNote(node: TreeNode): boolean {
 const expanded = ref(isDirectory.value && (props.defaultTreeExpanded || Boolean(props.node.children?.some(containsSelectedNote))))
 const menuOpen = ref(false)
 const menuRoot = ref<HTMLDetailsElement | null>(null)
-const menuStyle = ref<{ top: string; left: string }>({})
+type MenuPosition = { top: string; left: string }
+// 关闭时清空，所以每次渲染都可能是空对象（菜单还挂在 DOM 上但未定位）。
+const menuStyle = ref<Partial<MenuPosition>>({})
 let trackingMenu = false
 let sidebarObserver: ResizeObserver | null = null
 const onMenuViewportChange = (): void => { placeMenu() }
