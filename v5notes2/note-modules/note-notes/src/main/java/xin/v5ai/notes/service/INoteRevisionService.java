@@ -46,4 +46,19 @@ public interface INoteRevisionService {
     NoteRevisionDetailVo detail(Long noteId, Long revisionId);
 
     NoteRestoreVo restore(Long noteId, Long revisionId, NoteRestoreBo bo);
+
+    /**
+     * 管理端历史列表。不校验笔记归属，回收站中的笔记视为不存在。
+     */
+    PageResult<NoteRevisionItemVo> listForAdmin(Long noteId, PageQuery pageQuery);
+
+    /**
+     * 管理端读取某一版全文。
+     */
+    NoteRevisionDetailVo detailForAdmin(Long noteId, Long revisionId);
+
+    /**
+     * 管理端恢复。不要求客户端持有的正文哈希；当前正文不同时先记入历史再覆盖。
+     */
+    NoteRestoreVo restoreForAdmin(Long noteId, Long revisionId);
 }

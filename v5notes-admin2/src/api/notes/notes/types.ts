@@ -33,6 +33,31 @@ export interface NotesVO {
    * 笔记内容
    */
   content: string;
+
+  /**
+   * 当前正文 SHA-256
+   */
+  contentHash?: string;
+}
+
+export interface NoteRevisionVO {
+  id: string | number;
+  noteId: string | number;
+  contentHash: string;
+  excerpt?: string;
+  size?: number;
+  createTime?: string;
+  head?: boolean;
+}
+
+export interface NoteRevisionDetailVO extends NoteRevisionVO {
+  content: string;
+}
+
+export interface NoteRestoreVO {
+  content: string;
+  contentHash: string;
+  updateTime?: string;
 }
 
 export interface NotesForm extends BaseEntity {

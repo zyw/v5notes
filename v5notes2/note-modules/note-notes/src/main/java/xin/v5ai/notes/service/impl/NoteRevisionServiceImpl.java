@@ -106,17 +106,63 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
 
     @Override
     public PageResult<NoteRevisionItemVo> list(Long noteId, PageQuery pageQuery) {
-        NoteNotes note = requireNote(noteId, MISSING_REVISION);
+        return pageRevisions(requireNote(noteId, MISSING_REVISION), pageQuery);
+    }
+
+    @Override
+    public NoteRevisionDetailVo detail(Long noteId, Long revisionId) {
+        requireNote(noteId, MISSING_REVISION);
+        return toDetail(requireRevision(noteId, revisionId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NoteRestoreVo restore(Long noteId, Long revisionId, NoteRestoreBo bo) {
+        NoteRestoreBo request = bo == null ? new NoteRestoreBo() : bo;
+        requireBaseHash(request.getBaseHash());
+        NoteNotes note = lockNote(noteId, MISSING_REVISION);
+        NoteRevision target = requireRevision(noteId, revisionId);
+        String currentContent = NoteContentDigest.text(note.getContent());
+        String currentHash = currentHash(note, currentContent);
+        if (!Boolean.TRUE.equals(request.getForce())
+            && !currentHash.equals(NoteContentDigest.normalizeHash(request.getBaseHash()))) {
+            throw new NoteContentConflictException(currentHash, note.getUpdateTime());
+        }
+        return applyRestore(note, target, currentContent, currentHash);
+    }
+
+    @Override
+    public PageResult<NoteRevisionItemVo> listForAdmin(Long noteId, PageQuery pageQuery) {
+        return pageRevisions(requireAdminNote(noteId), pageQuery);
+    }
+
+    @Override
+    public NoteRevisionDetailVo detailForAdmin(Long noteId, Long revisionId) {
+        requireAdminNote(noteId);
+        return toDetail(requireRevision(noteId, revisionId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NoteRestoreVo restoreForAdmin(Long noteId, Long revisionId) {
+        NoteNotes note = lockNote(noteId, "笔记不存在");
+        NoteRevision target = requireRevision(noteId, revisionId);
+        String currentContent = NoteContentDigest.text(note.getContent());
+        return applyRestore(note, target, currentContent, currentHash(note, currentContent));
+    }
+
+    private PageResult<NoteRevisionItemVo> pageRevisions(NoteNotes note, PageQuery pageQuery) {
+        PageQuery query = pageQuery == null ? new PageQuery() : pageQuery;
         String noteHash = ensureContentHash(note);
-        int pageNum = pageQuery.getPageNum() == null || pageQuery.getPageNum() < 1 ? 1 : pageQuery.getPageNum();
-        int pageSize = pageQuery.getPageSize() == null ? 20 : pageQuery.getPageSize();
+        int pageNum = query.getPageNum() == null || query.getPageNum() < 1 ? 1 : query.getPageNum();
+        int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         if (pageSize < 1) {
             pageSize = 20;
         }
         if (pageSize > REVISION_RETAIN_COUNT) {
             pageSize = REVISION_RETAIN_COUNT;
         }
-        Page<NoteRevision> page = revisionMapper.selectPage(new Page<>(pageNum, pageSize), listQuery(noteId));
+        Page<NoteRevision> page = revisionMapper.selectPage(new Page<>(pageNum, pageSize), listQuery(note.getId()));
         List<NoteRevisionItemVo> rows = new java.util.ArrayList<>();
         List<NoteRevision> records = page.getRecords();
         for (int index = 0; index < records.size(); index++) {
@@ -134,26 +180,7 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
         return PageResult.build(rows, page.getTotal());
     }
 
-    @Override
-    public NoteRevisionDetailVo detail(Long noteId, Long revisionId) {
-        requireNote(noteId, MISSING_REVISION);
-        NoteRevision revision = requireRevision(noteId, revisionId);
-        return toDetail(revision);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public NoteRestoreVo restore(Long noteId, Long revisionId, NoteRestoreBo bo) {
-        NoteRestoreBo request = bo == null ? new NoteRestoreBo() : bo;
-        requireBaseHash(request.getBaseHash());
-        NoteNotes note = lockNote(noteId, MISSING_REVISION);
-        NoteRevision target = requireRevision(noteId, revisionId);
-        String currentContent = NoteContentDigest.text(note.getContent());
-        String currentHash = currentHash(note, currentContent);
-        if (!Boolean.TRUE.equals(request.getForce())
-            && !currentHash.equals(NoteContentDigest.normalizeHash(request.getBaseHash()))) {
-            throw new NoteContentConflictException(currentHash, note.getUpdateTime());
-        }
+    private NoteRestoreVo applyRestore(NoteNotes note, NoteRevision target, String currentContent, String currentHash) {
         String restored = NoteContentDigest.text(target.getContent());
         String restoredHash = NoteContentDigest.sha256(restored);
         if (!restoredHash.equals(currentHash)) {
@@ -315,6 +342,14 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
         NoteNotes note = noteNotesMapper.selectById(id);
         if (note == null || !Objects.equals(note.getUserId(), LoginHelper.getUserId())) {
             throw new ServiceException(missingMessage);
+        }
+        return note;
+    }
+
+    private NoteNotes requireAdminNote(Long id) {
+        NoteNotes note = noteNotesMapper.selectById(id);
+        if (note == null) {
+            throw new ServiceException("笔记不存在");
         }
         return note;
     }

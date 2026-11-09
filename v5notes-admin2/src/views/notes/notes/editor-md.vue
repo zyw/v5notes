@@ -2,13 +2,17 @@
   <div class="editor-container">
     <div class="note-title">
       <el-card shadow="hover">
-        <el-text size="large">
-          <el-tooltip class="box-item" effect="dark" content="保存笔记，使用 Ctrl + S 快捷键保存" placement="top">
-            <el-link :icon="MessageBox" @click="handleSaveContent">&nbsp;{{ mdEditorForm?.name }}</el-link>
-          </el-tooltip>
-        </el-text>
+        <div class="note-title-bar">
+          <el-text size="large">
+            <el-tooltip class="box-item" effect="dark" content="保存笔记，使用 Ctrl + S 快捷键保存" placement="top">
+              <el-link :icon="MessageBox" @click="handleSaveContent">&nbsp;{{ mdEditorForm?.name }}</el-link>
+            </el-tooltip>
+          </el-text>
+          <el-button v-hasPermi="['notes:notes:query']" :disabled="mdEditorForm?.id == null" icon="Clock" @click="historyVisible = true">历史版本</el-button>
+        </div>
       </el-card>
     </div>
+    <note-history-drawer v-model="historyVisible" :note-id="mdEditorForm?.id" :note-name="mdEditorForm?.name" @restored="onHistoryRestored" />
     <div class="editor-wrapper">
       <div id="contentVditor" class="vditor"></div>
     </div>
@@ -23,6 +27,7 @@ import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { getNotes, updateNotes } from '@/api/notes/notes';
 import type { NotesForm } from '@/api/notes/notes/types';
+import NoteHistoryDrawer from '@/views/notes/notes/history-drawer.vue';
 import modal from '@/plugins/modal';
 import { getToken } from '@/utils/auth';
 
@@ -31,6 +36,7 @@ const saveSvg =
 
 const vditor = ref<Vditor>();
 const mdEditorForm = ref<NotesForm>();
+const historyVisible = ref(false);
 
 /** 保存笔记内容 */
 const handleSaveContent = async () => {
@@ -200,6 +206,12 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 };
 
+const onHistoryRestored = () => {
+  if (mdEditorForm.value?.id != null) {
+    notesInfo(mdEditorForm.value.id);
+  }
+};
+
 defineExpose({ notesInfo });
 
 onMounted(() => {
@@ -224,6 +236,13 @@ onBeforeUnmount(() => {
   .note-title {
     flex: none;
     margin-bottom: 12px;
+  }
+
+  .note-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .editor-wrapper {

@@ -2,13 +2,17 @@
   <div class="editor-container">
     <div class="note-title">
       <el-card shadow="hover">
-        <el-text size="large">
-          <el-tooltip class="box-item" effect="dark" content="编辑笔记" placement="top">
-            <el-link :icon="Edit" @click="handleEditNotes">&nbsp;{{ notesName }}</el-link>
-          </el-tooltip>
-        </el-text>
+        <div class="note-title-bar">
+          <el-text size="large">
+            <el-tooltip class="box-item" effect="dark" content="编辑笔记" placement="top">
+              <el-link :icon="Edit" @click="handleEditNotes">&nbsp;{{ notesName }}</el-link>
+            </el-tooltip>
+          </el-text>
+          <el-button v-hasPermi="['notes:notes:query']" :disabled="notesId == null" icon="Clock" @click="historyVisible = true">历史版本</el-button>
+        </div>
       </el-card>
     </div>
+    <note-history-drawer v-model="historyVisible" :note-id="notesId" :note-name="notesName" @restored="onHistoryRestored" />
     <div class="editor-wrapper">
       <div id="previewVditor" class="vditor preview-content"></div>
     </div>
@@ -22,10 +26,12 @@ import { ElLoading } from 'element-plus';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { getNotes } from '@/api/notes/notes';
+import NoteHistoryDrawer from '@/views/notes/notes/history-drawer.vue';
 
 const notesId = ref<string | number>();
 const notesName = ref('');
 const notesContent = ref('');
+const historyVisible = ref(false);
 
 const emit = defineEmits(['editNotes']);
 
@@ -59,6 +65,12 @@ const handleEditNotes = () => {
   emit('editNotes', notesId.value);
 };
 
+const onHistoryRestored = () => {
+  if (notesId.value != null) {
+    previewNotes(notesId.value);
+  }
+};
+
 defineExpose({ previewNotes });
 
 onMounted(() => {});
@@ -75,6 +87,13 @@ onMounted(() => {});
   .note-title {
     flex: none;
     margin-bottom: 12px;
+  }
+
+  .note-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .editor-wrapper {

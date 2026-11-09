@@ -1,7 +1,7 @@
 import type { PageResult } from '@/api/types';
 import type { AxiosPromise } from '@/utils/api-types';
 import request from '@/utils/request';
-import type { NotesForm, NotesQuery, NotesVO } from '@/api/notes/notes/types';
+import type { NoteRestoreVO, NoteRevisionDetailVO, NoteRevisionVO, NotesForm, NotesQuery, NotesVO } from '@/api/notes/notes/types';
 
 /**
  * 查询笔记列表
@@ -58,5 +58,39 @@ export const delNotes = (id: string | number | Array<string | number>) => {
   return request({
     url: '/notes/notes/' + id,
     method: 'delete'
+  });
+};
+
+/**
+ * 历史版本列表，不含正文
+ */
+export const listNoteRevisions = (
+  id: string | number,
+  query?: { pageNum?: number; pageSize?: number }
+): AxiosPromise<PageResult<NoteRevisionVO>> => {
+  return request({
+    url: '/notes/notes/' + id + '/revisions',
+    method: 'get',
+    params: query
+  });
+};
+
+/**
+ * 某一版的全文
+ */
+export const getNoteRevision = (id: string | number, revisionId: string | number): AxiosPromise<NoteRevisionDetailVO> => {
+  return request({
+    url: '/notes/notes/' + id + '/revisions/' + revisionId,
+    method: 'get'
+  });
+};
+
+/**
+ * 把选中版本恢复为当前正文
+ */
+export const restoreNoteRevision = (id: string | number, revisionId: string | number): AxiosPromise<NoteRestoreVO> => {
+  return request({
+    url: '/notes/notes/' + id + '/revisions/' + revisionId + '/restore',
+    method: 'post'
   });
 };

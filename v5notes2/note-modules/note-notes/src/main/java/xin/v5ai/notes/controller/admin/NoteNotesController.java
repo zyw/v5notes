@@ -17,8 +17,12 @@ import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.web.core.BaseController;
 import xin.v5ai.notes.domain.bo.NoteNotesBo;
 import xin.v5ai.notes.domain.vo.NoteNotesVo;
+import xin.v5ai.notes.domain.vo.NoteRestoreVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionDetailVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionItemVo;
 import xin.v5ai.notes.domain.vo.NotesContentVo;
 import xin.v5ai.notes.service.INoteNotesService;
+import xin.v5ai.notes.service.INoteRevisionService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +41,8 @@ import java.util.List;
 public class NoteNotesController extends BaseController {
 
     private final INoteNotesService noteNotesService;
+
+    private final INoteRevisionService noteRevisionService;
 
     /**
      * 查询笔记列表
@@ -103,5 +109,37 @@ public class NoteNotesController extends BaseController {
     public R<Void> remove(@NotEmpty(message = "主键不能为空")
                           @PathVariable Long[] ids) {
         return toAjax(noteNotesService.deleteWithValidByIds(List.of(ids), true));
+    }
+
+    /**
+     * 历史版本列表，不含正文。
+     */
+    @SaCheckPermission("notes:notes:query")
+    @GetMapping("/{id}/revisions")
+    public R<PageResult<NoteRevisionItemVo>> revisions(@NotNull(message = "主键不能为空") @PathVariable Long id,
+                                                       PageQuery pageQuery) {
+        return R.ok(noteRevisionService.listForAdmin(id, pageQuery));
+    }
+
+    /**
+     * 某一版的全文。
+     */
+    @SaCheckPermission("notes:notes:query")
+    @GetMapping("/{id}/revisions/{revisionId}")
+    public R<NoteRevisionDetailVo> revision(@NotNull(message = "主键不能为空") @PathVariable Long id,
+                                            @NotNull(message = "版本不能为空") @PathVariable Long revisionId) {
+        return R.ok(noteRevisionService.detailForAdmin(id, revisionId));
+    }
+
+    /**
+     * 把选中版本恢复为最新正文。当前正文不同时会先留在历史里。
+     */
+    @SaCheckPermission("notes:notes:edit")
+    @Log(title = "笔记历史", businessType = BusinessType.UPDATE)
+    @RepeatSubmit(message = "正在恢复，请不要重复提交")
+    @PostMapping("/{id}/revisions/{revisionId}/restore")
+    public R<NoteRestoreVo> restore(@NotNull(message = "主键不能为空") @PathVariable Long id,
+                                    @NotNull(message = "版本不能为空") @PathVariable Long revisionId) {
+        return R.ok(noteRevisionService.restoreForAdmin(id, revisionId));
     }
 }

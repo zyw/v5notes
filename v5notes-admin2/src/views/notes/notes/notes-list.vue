@@ -63,10 +63,13 @@
         <el-table-column label="笔记名" align="left" prop="name" min-width="300" width="auto" />
         <el-table-column label="文件大小" align="center" prop="fileSize" width="150" />
         <el-table-column label="修改时间" align="center" prop="updateTime" width="180" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="200">
+        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="240">
           <template #default="scope">
             <el-tooltip content="查看笔记" placement="top">
               <el-button link type="primary" icon="View" @click="handleViewOrEdit('preview', scope.row.id)" v-hasPermi="['notes:notes:query']"></el-button>
+            </el-tooltip>
+            <el-tooltip content="历史版本" placement="top">
+              <el-button link type="primary" icon="Clock" @click="openHistory(scope.row as NotesVO)" v-hasPermi="['notes:notes:query']"></el-button>
             </el-tooltip>
             <el-tooltip content="编辑笔记" placement="top">
               <el-button link type="primary" icon="Document" @click="handleViewOrEdit('editor', scope.row.id)" v-hasPermi="['notes:notes:edit']"></el-button>
@@ -133,6 +136,7 @@
         </div>
       </template>
     </el-dialog>
+    <note-history-drawer v-model="historyVisible" :note-id="historyNoteId" :note-name="historyNoteName" @restored="getList" />
   </div>
 </template>
 
@@ -144,6 +148,7 @@ import { classifyRequestError } from '@/utils/errorKind';
 import type { ErrorInfo } from '@/utils/errorKind';
 import { addNotes, delNotes, getNotes, listNotes, updateNotes } from '@/api/notes/notes';
 import type { NotesForm, NotesQuery, NotesVO } from '@/api/notes/notes/types';
+import NoteHistoryDrawer from '@/views/notes/notes/history-drawer.vue';
 import { dirTree } from '@/api/notes/directory';
 import type { NotesTreeVo } from '@/api/notes/directory/types';
 import modal from '@/plugins/modal';
@@ -161,6 +166,9 @@ const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
+const historyVisible = ref(false);
+const historyNoteId = ref<string | number>();
+const historyNoteName = ref('');
 
 const queryFormRef = ref<ElFormInstance>();
 const notesFormRef = ref<ElFormInstance>();
@@ -202,6 +210,12 @@ const data = reactive<PageData<NotesForm, NotesQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const openHistory = (row: NotesVO) => {
+  historyNoteId.value = row.id;
+  historyNoteName.value = row.name;
+  historyVisible.value = true;
+};
 
 /** 查询笔记列表 */
 const getList = async () => {
