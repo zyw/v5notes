@@ -96,6 +96,12 @@ describe('editor commands', () => {
     expect(font?.badge?.(editContext)).toBe('17 px')
   })
 
+  it('lets the font size commands keep the palette open', () => {
+    const commands = buildEditorCommands(actions())
+    const repeatable = commands.filter(command => command.keepOpen).map(command => command.id)
+    expect(repeatable).toEqual(['font.increase', 'font.decrease'])
+  })
+
   it('matches commands by label, hint and keywords', () => {
     const commands = buildEditorCommands(actions())
     expect(commands.filter(command => matchesQuery(command, '字号')).length).toBe(2)

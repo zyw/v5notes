@@ -81,6 +81,12 @@ function move(step: number): void {
 
 function run(command: EditorCommand): void {
   emit('run', command)
+  if (command.keepOpen) {
+    // Repeatable commands (font size) leave the panel open; keep the caret in the
+    // search field so Enter and the arrow keys keep working.
+    input.value?.focus()
+    return
+  }
   emit('close')
 }
 

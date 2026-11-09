@@ -537,6 +537,69 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .palette-group { padding: 8px 10px 3px; color: #a0aaa1; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .palette-item { display: flex; align-items: center; gap: 11px; width: 100%; padding: 5px 10px; border-radius: 8px; color: #3b4c41; text-align: left; }
 .palette-item:hover, .palette-item.is-active { background: #edf2ea; }
+/* 命令项内的图标与文本 */
+.palette-item svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: #6b8072; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.palette-item .pi-copy { display: grid; gap: 1px; min-width: 0; }
+.palette-item .pi-copy strong { color: #33463a; font-size: 12.5px; font-weight: 550; }
+.palette-item .pi-copy span { color: #94a096; font-size: 10.5px; }
+.palette-item .pi-badge { margin-left: auto; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.palette-item .pi-badge.is-state { padding: 2px 7px; border-radius: 999px; color: #315b4a; background: #eaf0e6; font-weight: 600; }
+.palette-item .pi-badge.is-meta { color: #a2aca3; letter-spacing: .01em; }
+.palette-item .pi-kbd { margin-left: auto; color: #a7b0a8; font-size: 11px; }
+.palette-empty { margin: 28px 0; color: #94a096; font-size: 12px; text-align: center; }
+.palette-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 14px; border-top: 1px solid #efefe9; color: #9aa49c; font-size: 10.5px; }
+
+/* ============================================================
+   打印 / 导出 PDF：只留正文
+   ============================================================ */
+@media print {
+  @page { margin: 16mm 15mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  .workspace { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+  .sidebar, .editor-header, .strip-tools, .toolbar-reveal, .outline-sidebar, .focus-hud,
+  .notice-bar, .error-bar, .session-alert, .palette-backdrop, .modal-backdrop, .empty-editor,
+  .v5md .v5-toolbar, .v5md .v5-slash-menu, .v5md .v5-block-menu, .v5md .v5-block-handle,
+  .v5md .v5-tablebar, .v5md .v5-outline, .v5md .v5-findbar, .v5md .v5-image-resize,
+  .v5md .v5-drop-line { display: none !important; }
+  .pane, .editor-pane, .editor-body { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+  .editor-scroll { height: auto !important; min-height: 0 !important; overflow: visible !important; padding: 0 !important; }
+  .editor-paper, .editor-mount, .v5md-host, .v5md { width: auto !important; min-height: 0 !important; background: #fff !important; }
+  .v5md { font-size: var(--doc-size, 17px) !important; }
+  .v5md .v5-doc { min-height: 0 !important; padding: 0 !important; }
+  .v5md .v5-doc[data-empty='true']::before { display: none !important; }
+  .v5md .v5-doc .v5-marker { display: none !important; }
+  .v5md .v5-doc :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; }
+  .v5md .v5-doc :is(img, .v5-image-frame, .v5-image, .v5-mermaid, .v5-math) { break-inside: avoid; max-width: 100% !important; }
+  .v5md .v5-doc :is(p, li, blockquote, pre, table) { break-inside: auto; }
+  .v5md [contenteditable]:focus { outline: none !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  a { color: inherit !important; text-decoration: underline !important; }
+}
+
+/* createPDF 抓的是屏幕布局，导出时给 body 加 is-exporting：只解裁高度、
+   隐藏正文内的浮动小件，不改宽度，正文不会重排，所以不会有明显跳动。 */
+body.is-exporting { background: #fff !important; }
+body.is-exporting .pane, body.is-exporting .editor-pane, body.is-exporting .editor-body {
+  height: auto !important; min-height: 0 !important; overflow: visible !important;
+}
+body.is-exporting .editor-scroll {
+  height: auto !important; max-height: none !important; min-height: 0 !important;
+  overflow: visible !important;
+}
+body.is-exporting .editor-paper, body.is-exporting .editor-mount, body.is-exporting .v5md-host,
+body.is-exporting .v5md { min-height: 0 !important; background: #fff !important; }
+body.is-exporting .v5md .v5-doc { min-height: 0 !important; }
+body.is-exporting .v5md .v5-doc[data-empty='true']::before { display: none !important; }
+body.is-exporting .v5md .v5-toolbar, body.is-exporting .v5md .v5-slash-menu,
+body.is-exporting .v5md .v5-block-menu, body.is-exporting .v5md .v5-block-handle,
+body.is-exporting .v5md .v5-tablebar, body.is-exporting .v5md .v5-outline,
+body.is-exporting .v5md .v5-findbar, body.is-exporting .v5md .v5-image-resize,
+body.is-exporting .v5md .v5-drop-line, body.is-exporting .v5md .v5-marker,
+body.is-exporting .export-toast, body.is-exporting .notice-bar,
+body.is-exporting .toolbar-reveal { visibility: hidden !important; }
+body.is-exporting .v5md [contenteditable]:focus { outline: none !important; }
+body.is-exporting * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
 /* ============================================================
    导出结果提示：浮层，4 秒后自动收起
    ============================================================ */

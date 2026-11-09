@@ -100,6 +100,7 @@ async fn export_pdf(
     y: f64,
     width: f64,
     height: f64,
+    slices: Vec<(f64, f64)>,
 ) -> Result<String, String> {
     use std::time::Duration;
 
@@ -124,7 +125,9 @@ async fn export_pdf(
     window
         .with_webview(move |platform_webview| {
             // SAFETY: Tauri runs this closure on the main thread with the live WKWebView.
-            let result = unsafe { vector_pdf(platform_webview.inner(), x, y, width, height, &print_path) };
+            let result = unsafe {
+                vector_pdf(platform_webview.inner(), x, y, width, height, slices, &print_path)
+            };
             let _ = sender.send(result);
         })
         .map_err(|error| error.to_string())?;
@@ -149,16 +152,15 @@ unsafe fn vector_pdf(
     y: f64,
     width: f64,
     height: f64,
+    slices: Vec<(f64, f64)>,
     path: &str,
 ) -> Result<(), String> {
     use block2::RcBlock;
     use objc2::rc::Retained;
     use objc2_core_foundation::{CGPoint, CGRect, CGSize};
     use objc2_core_graphics::{
-        CGContextBeginPage, CGContextClipToRect, CGContextConcatCTM, CGContextDrawPDFPage,
-        CGContextEndPage, CGContextSaveGState, CGContextRestoreGState, CGDataProviderCreateWithCFData,
-        CGPDFContextClose, CGPDFContextCreateWithURL, CGPDFDocumentCreateWithProvider,
-        CGPDFDocumentGetPage, CGPDFPageGetBoxRect, CGPDFBox,
+        CGContext, CGDataProvider, CGPDFBox, CGPDFContextClose, CGPDFContextCreateWithURL,
+        CGPDFDocument, CGPDFPage,
     };
     use objc2_core_foundation::{CFData, CFURL};
     use objc2_foundation::{NSData, NSDate, NSDefaultRunLoopMode, NSError, NSRunLoop, NSString, NSURL};
@@ -199,17 +201,17 @@ unsafe fn vector_pdf(
         if std::time::Instant::now() > deadline {
             return Err("PDF 生成超时".into());
         }
-        let date = unsafe { NSDate::dateWithTimeIntervalSinceNow(0.02) };
+        let date = NSDate::dateWithTimeIntervalSinceNow(0.02);
         let mode = unsafe { NSDefaultRunLoopMode };
-        unsafe { NSRunLoop::currentRunLoop().runMode_beforeDate(mode, &date) };
+        NSRunLoop::currentRunLoop().runMode_beforeDate(mode, &date);
     };
 
     // ---- repaginate into A4 ----
     let data = CFData::from_bytes(&source);
-    let provider = unsafe { CGDataProviderCreateWithCFData(Some(&data)) }.ok_or("无法读取 PDF 数据")?;
-    let document = unsafe { CGPDFDocumentCreateWithProvider(Some(&provider)) }.ok_or("无法解析 PDF")?;
-    let page = unsafe { CGPDFDocumentGetPage(Some(&document), 1) }.ok_or("PDF 没有页面")?;
-    let bounds = unsafe { CGPDFPageGetBoxRect(Some(&page), CGPDFBox::MediaBox) };
+    let provider = CGDataProvider::with_cf_data(Some(&data)).ok_or("无法读取 PDF 数据")?;
+    let document = CGPDFDocument::with_provider(Some(&provider)).ok_or("无法解析 PDF")?;
+    let page = CGPDFDocument::page(Some(&document), 1).ok_or("PDF 没有页面")?;
+    let bounds = CGPDFPage::box_rect(Some(&page), CGPDFBox::MediaBox);
     if bounds.size.height <= 1.0 {
         return Err("PDF 页面高度异常".into());
     }
@@ -222,7 +224,20 @@ unsafe fn vector_pdf(
     let content_width = page_width - margin_x * 2.0;
     let content_height = page_height - margin_y * 2.0;
     let scale = content_width / bounds.size.width;
-    let page_count = ((bounds.size.height * scale) / content_height).ceil().max(1.0) as u32;
+    // Each slice is (top, height) in source pixels; empty means "split evenly".
+    // The frontend breaks pages on block boundaries so images are never cut.
+    let ranges: Vec<(f64, f64)> = if slices.is_empty() {
+        let page_px = content_height / scale;
+        let count = (bounds.size.height / page_px).ceil().max(1.0) as usize;
+        (0..count)
+            .map(|index| {
+                let top = index as f64 * page_px;
+                (top, (bounds.size.height - top).min(page_px).max(1.0))
+            })
+            .collect()
+    } else {
+        slices
+    };
 
     let ns_url = NSURL::fileURLWithPath(&NSString::from_str(path));
     let url: &CFURL = unsafe { &*(Retained::as_ptr(&ns_url) as *const CFURL) };
@@ -232,9 +247,8 @@ unsafe fn vector_pdf(
     };
     let context = unsafe { CGPDFContextCreateWithURL(Some(url), &media, None) }.ok_or("无法创建 PDF 文件")?;
 
-    for index in 0..page_count {
-        let top = f64::from(index) * content_height;
-        let slice_height = (bounds.size.height * scale - top).min(content_height).max(1.0);
+    for (top_px, height_px) in ranges {
+        let slice_height = (height_px * scale).max(1.0);
         // Content sits inside the page margins: the top margin is where the slice ends.
         let slice = CGRect {
             origin: CGPoint {
@@ -243,10 +257,9 @@ unsafe fn vector_pdf(
             },
             size: CGSize { width: content_width, height: slice_height },
         };
-        // x' = margin_x + scale * x, y' = scale * y + offset, so the first slice's
-        // top lands on the top margin and every later slice continues downwards.
-        let offset = (page_height - margin_y) - scale * bounds.size.height
-            + f64::from(index) * content_height;
+        // x' = margin_x + scale * x, y' = scale * y + offset, placing this slice's
+        // top edge on the top margin.
+        let offset = (page_height - margin_y) - scale * (bounds.size.height - top_px);
         let transform = objc2_core_foundation::CGAffineTransform {
             a: scale,
             b: 0.0,
@@ -256,13 +269,13 @@ unsafe fn vector_pdf(
             ty: offset,
         };
         unsafe {
-            CGContextBeginPage(Some(&context), &slice);
-            CGContextSaveGState(Some(&context));
-            CGContextClipToRect(Some(&context), slice);
-            CGContextConcatCTM(Some(&context), transform);
-            CGContextDrawPDFPage(Some(&context), Some(&page));
-            CGContextRestoreGState(Some(&context));
-            CGContextEndPage(Some(&context));
+            CGContext::begin_page(Some(&context), &slice);
+            CGContext::save_g_state(Some(&context));
+            CGContext::clip_to_rect(Some(&context), slice);
+            CGContext::concat_ctm(Some(&context), transform);
+            CGContext::draw_pdf_page(Some(&context), Some(&page));
+            CGContext::restore_g_state(Some(&context));
+            CGContext::end_page(Some(&context));
         }
     }
     CGPDFContextClose(Some(&context));
@@ -297,6 +310,7 @@ async fn export_pdf(
     _y: f64,
     _width: f64,
     _height: f64,
+    _slices: Vec<(f64, f64)>,
 ) -> Result<String, String> {
     Err("当前平台暂不支持矢量 PDF，请使用图片版".into())
 }

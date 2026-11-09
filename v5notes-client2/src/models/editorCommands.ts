@@ -32,6 +32,8 @@ export interface EditorCommand {
   /** `state` renders as a pill; `meta` (file extension, size) renders as plain text. */
   badgeTone?: 'state' | 'meta'
   badge?: (context: CommandContext) => string | undefined
+  /** Repeatable adjustments keep the palette open so they can be tapped again. */
+  keepOpen?: boolean
   available: (context: CommandContext) => boolean
   run: () => void | Promise<void>
 }
@@ -122,6 +124,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       shortcut: '⌘+',
       keywords: '字号 放大 font',
       badge: context => `${context.fontSize} px`,
+      keepOpen: true,
       available: context => context.hasNote,
       run: () => actions.changeFontSize(1),
     },
@@ -132,6 +135,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       hint: '最小 13 px',
       shortcut: '⌘−',
       keywords: '字号 缩小 font',
+      keepOpen: true,
       available: context => context.hasNote,
       run: () => actions.changeFontSize(-1),
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildExportDocument, buildImagePdf, buildMarkdownDocument, exportFileName, resolveImageSource, rewriteImageSources, safeFileStem } from './exportFile'
+import { buildExportDocument, buildImagePdf, buildMarkdownDocument, computePdfSlices, exportFileName, resolveImageSource, rewriteImageSources, safeFileStem } from './exportFile'
 
 describe('export helpers', () => {
   it('strips characters that break desktop file names', () => {
@@ -47,6 +47,27 @@ describe('export helpers', () => {
     expect(rewriteImageSources(html, '')).toBe(html)
   })
 
+
+  it('splits pages evenly when there is nothing to protect', () => {
+    const slices = computePdfSlices(250, 100, [])
+    expect(slices.map(slice => [slice.top, slice.height])).toEqual([[0, 100], [100, 100], [200, 50]])
+  })
+
+  it('moves a page break above an image instead of cutting it', () => {
+    const slices = computePdfSlices(260, 100, [{ top: 80, bottom: 190, atomic: true }])
+    expect(slices[0]).toEqual({ top: 0, height: 80 })
+    expect(slices[1]).toEqual({ top: 80, height: 100 })
+  })
+
+  it('keeps a heading with the text that follows it', () => {
+    const slices = computePdfSlices(260, 100, [{ top: 88, bottom: 99, heading: true }])
+    expect(slices[0]).toEqual({ top: 0, height: 88 })
+  })
+
+  it('accepts a split when a block is taller than a page', () => {
+    const slices = computePdfSlices(200, 100, [{ top: 0, bottom: 150, atomic: true }])
+    expect(slices.map(slice => slice.height)).toEqual([100, 100])
+  })
 
   it('builds a valid image PDF with one page per slice', async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9])

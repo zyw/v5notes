@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
-import { toWechatHtml } from '@v5md/view'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
@@ -9,7 +8,7 @@ import { useWorkspaceContext } from '../hooks/workspaceContext'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
-import { buildExportDocument, buildMarkdownDocument, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources } from '../utils/exportFile'
+import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
 const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
@@ -111,14 +110,30 @@ async function exportVectorPdf(fileName: string): Promise<boolean> {
   try {
     await nextTick()
     await new Promise(resolve => setTimeout(resolve, 120))
-    const canvas = document.querySelector<HTMLElement>('.editor-mount')
+    // .v5-doc is the text column itself: it excludes the format strip above it.
+    const canvas = document.querySelector<HTMLElement>('.editor-pane .v5-doc')
+      ?? document.querySelector<HTMLElement>('.editor-mount')
     if (!canvas) throw new Error('找不到编辑器画布')
     const rect = canvas.getBoundingClientRect()
     const x = Math.round(rect.left + window.scrollX)
     const y = Math.round(rect.top + window.scrollY)
     const width = Math.ceil(rect.width)
     const height = Math.ceil(canvas.scrollHeight)
-    const path = await invoke<string>('export_pdf', { fileName, x, y, width, height })
+    // Break pages on block boundaries so an image is never cut in half.
+    const scale = PDF_CONTENT_WIDTH / width
+    const blocks: PdfBlock[] = []
+    canvas.querySelectorAll<HTMLElement>('img, figure, pre, table, blockquote, .v5-image, .v5-image-frame, .v5-mermaid, .v5-math')
+      .forEach(node => {
+        const box = node.getBoundingClientRect()
+        blocks.push({ top: box.top - rect.top, bottom: box.bottom - rect.top, atomic: true })
+      })
+    canvas.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6').forEach(node => {
+      const box = node.getBoundingClientRect()
+      blocks.push({ top: box.top - rect.top, bottom: box.bottom - rect.top, heading: true })
+    })
+    const slices = computePdfSlices(height, PDF_CONTENT_HEIGHT / scale, blocks)
+      .map(slice => [Math.round(slice.top), Math.round(slice.height)])
+    const path = await invoke<string>('export_pdf', { fileName, x, y, width, height, slices })
     showToast(`已导出矢量 PDF：${path}`)
     return true
   } catch (cause) {
@@ -127,6 +142,13 @@ async function exportVectorPdf(fileName: string): Promise<boolean> {
   } finally {
     document.body.classList.remove('is-exporting')
   }
+}
+
+/** Snapshot of the rendered note: KaTeX formulas, diagrams and images included. */
+function renderedBodyHtml(): string {
+  const element = editorInstance.value?.getContentElement()
+    ?? document.querySelector<HTMLElement>('.editor-pane .v5-doc')
+  return snapshotRenderedHtml(element)
 }
 
 async function exportNote(format: ExportFormat): Promise<void> {
@@ -141,18 +163,13 @@ async function exportNote(format: ExportFormat): Promise<void> {
         return
       }
     }
-    // The mounted editor owns the document currently on screen. Giving it the
-    // notes server as baseUrl resolves relative image paths (for example
-    // images/a.png) there instead of against the webview origin.
-    const exportBase = server.value ? `${server.value.replace(/\/+$/, '')}/` : undefined
-    const options = exportBase ? { baseUrl: exportBase } : undefined
-    const html = editorInstance.value?.getWechatHtml(options) ?? toWechatHtml(note.content, options)
+    // The live editor DOM already has KaTeX and Mermaid rendered; the wechat-HTML
+    // converter would degrade them back to source code. Relative image paths still
+    // have to be pointed at the notes server instead of the webview origin.
     const payload = {
       name: note.name,
       markdown: note.content,
-      // baseUrl leaves absolute URLs alone, so webview-local images
-      // (tauri://localhost/...) still have to be pointed at the notes server.
-      html: rewriteImageSources(html, server.value),
+      html: rewriteImageSources(renderedBodyHtml(), server.value),
     }
     if (format === 'markdown') {
       const fileName = exportFileName(note.name, 'md')
@@ -160,7 +177,7 @@ async function exportNote(format: ExportFormat): Promise<void> {
       showToast(`已导出 ${fileName}`)
     } else if (format === 'html') {
       const fileName = exportFileName(note.name, 'html')
-      downloadText(fileName, buildExportDocument(payload), 'text/html')
+      downloadText(fileName, buildRenderedDocument(note.name, payload.html), 'text/html')
       showToast(`已导出 ${fileName}`)
     } else if (format === 'pdf' || format === 'pdf-image') {
       const fileName = exportFileName(note.name, 'pdf')
@@ -214,7 +231,8 @@ const commandActions: CommandActions = {
 const commands = buildEditorCommands(commandActions)
 
 function runCommand(command: EditorCommand): void {
-  paletteOpen.value = false
+  // Repeatable commands (font size) stay in the palette so they can be repeated.
+  if (!command.keepOpen) paletteOpen.value = false
   void command.run()
 }
 

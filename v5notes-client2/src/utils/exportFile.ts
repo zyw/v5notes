@@ -1,3 +1,16 @@
+import themeCss from '@v5md/view/theme.css?raw'
+import katexCss from 'katex/dist/katex.min.css?raw'
+
+// KaTeX ships its fonts next to the stylesheet; an exported file has no such
+// folder, so the font URLs are pointed at the CDN (falling back to system fonts
+// when the file is opened offline).
+const KATEX_FONT_BASE = 'https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/fonts/'
+
+function inlineStyles(): string {
+  const katex = katexCss.replace(/url\((['"]?)fonts\//g, `url($1${KATEX_FONT_BASE}`)
+  return `${themeCss}\n${katex}`
+}
+
 export interface ExportNoteContent {
   name: string
   markdown: string
@@ -110,6 +123,48 @@ ${note.html}
 </html>`
 }
 
+/**
+ * Wraps the rendered editor DOM (the live document, where KaTeX and Mermaid are
+ * already rendered) in a standalone page. The v5md theme and KaTeX styles ride
+ * along, so formulas and diagrams survive outside the app.
+ */
+export function buildRenderedDocument(name: string, body: string): string {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(name)}</title>
+<style>
+${inlineStyles()}
+</style>
+<style>
+  :root { color-scheme: light; --doc-size: 17px; }
+  html, body { margin: 0; padding: 0; background: #f4f2ec; }
+  body { display: flex; justify-content: center; }
+  .page { box-sizing: border-box; width: 100%; max-width: 820px; min-height: 100vh; padding: 56px 64px 96px; background: #fffefa; }
+  .page .v5md { font-size: var(--doc-size); }
+  .page img, .page svg { max-width: 100%; height: auto; }
+  @media (max-width: 720px) { .page { padding: 32px 22px 64px; } }
+  @media print {
+    html, body { background: #fff; }
+    body { display: block; }
+    .page { max-width: none; min-height: 0; padding: 0; background: #fff; }
+    @page { margin: 18mm 16mm; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+<div class="v5md-host v5md">
+${body}
+</div>
+</main>
+</body>
+</html>`
+}
+
 export function downloadBlob(fileName: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -126,6 +181,73 @@ export function downloadText(fileName: string, text: string, mime: string): void
   downloadBlob(fileName, new Blob([text], { type: `${mime};charset=utf-8` }))
 }
 
+/** A4 body box, shared with the Rust side that draws the pages. */
+export const PDF_CONTENT_WIDTH = 595.28 - 51 * 2
+export const PDF_CONTENT_HEIGHT = 841.89 - 48 * 2
+
+export interface PdfBlock {
+  top: number
+  bottom: number
+  /** Images, code blocks, tables, diagrams: never split across pages. */
+  atomic?: boolean
+  /** Headings should not be left dangling at the bottom of a page. */
+  heading?: boolean
+}
+
+export interface PdfSlice {
+  top: number
+  height: number
+}
+
+/**
+ * Splits a tall capture into A4 pages without cutting through a block. When a
+ * block would straddle a page break the break moves above it and the page ends
+ * early, which is what a print engine would do for `break-inside: avoid`.
+ */
+export function computePdfSlices(heightPx: number, pageHeightPx: number, blocks: PdfBlock[] = []): PdfSlice[] {
+  if (!(heightPx > 0) || !(pageHeightPx > 40)) return []
+  const atomic = blocks.filter(block => block.atomic && block.bottom > block.top).sort((a, b) => a.top - b.top)
+  const headings = blocks.filter(block => block.heading && block.bottom > block.top).sort((a, b) => a.top - b.top)
+  const slices: PdfSlice[] = []
+  let top = 0
+  for (let guard = 0; guard < 2000; guard += 1) {
+    const remaining = heightPx - top
+    const ideal = top + pageHeightPx
+    if (remaining <= pageHeightPx) {
+      slices.push({ top, height: remaining })
+      return slices
+    }
+    let end = ideal
+    const straddling = atomic.find(block => block.top < ideal - 1 && block.bottom > ideal + 1)
+    if (straddling && straddling.top - top > pageHeightPx * 0.3) {
+      end = straddling.top
+    } else {
+      const dangling = headings.find(block => block.top >= top && block.bottom <= ideal + 1 && block.bottom > ideal - 72)
+      if (dangling && dangling.top - top > pageHeightPx * 0.3) end = dangling.top
+    }
+    if (end - top < pageHeightPx * 0.15) end = ideal
+    end = Math.min(end, heightPx)
+    slices.push({ top, height: end - top })
+    top = end
+  }
+  return slices
+}
+
+
+/**
+ * Clones the live editor content into standalone markup: KaTeX and Mermaid are
+ * already rendered there, and the editor-only chrome is stripped.
+ */
+export function snapshotRenderedHtml(element: HTMLElement | null | undefined): string {
+  if (!element) return ''
+  const clone = element.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('.v5-toolbar, .v5-slash-menu, .v5-block-menu, .v5-block-handle, .v5-tablebar, .v5-outline, .v5-findbar, .v5-image-resize, .v5-drop-line, .v5-marker')
+    .forEach(node => node.remove())
+  clone.querySelectorAll('[contenteditable]').forEach(node => node.removeAttribute('contenteditable'))
+  clone.removeAttribute('contenteditable')
+  clone.removeAttribute('data-empty')
+  return clone.outerHTML
+}
 export interface PdfPage {
   jpeg: Uint8Array
   /** Pixel size of the rendered page; used for the PDF aspect ratio. */
