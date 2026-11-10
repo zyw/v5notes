@@ -8,9 +8,10 @@ import TrashPane from '../components/TrashPane.vue'
 import WorkspaceDialogs from '../components/WorkspaceDialogs.vue'
 import NoteHistoryDialog from '../components/NoteHistoryDialog.vue'
 import SettingsDialog from '../components/SettingsDialog.vue'
+import UpdateDialog from '../components/UpdateDialog.vue'
 const state = useWorkspace()
 provideWorkspace(state)
-const { server, useOfficialServer, saveServerSettings, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible, trashOpen } = state
+const { server, useOfficialServer, saveServerSettings, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible, trashOpen, updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload } = state
 </script>
 
 <template>
@@ -23,5 +24,6 @@ const { server, useOfficialServer, saveServerSettings, username, password, token
     <WorkspaceDialogs />
     <NoteHistoryDialog />
   </div>
-  <SettingsDialog v-if="settingsDialogOpen" :server="server" :use-official="useOfficialServer" :default-directory-visible="defaultDirectoryVisible" :default-tree-expanded="defaultTreeExpanded" :default-outline-visible="defaultOutlineVisible" @save-server="saveServerSettings" @set-default-directory-visible="setDefaultDirectoryVisible" @set-default-tree-expanded="setDefaultTreeExpanded" @set-default-outline-visible="setDefaultOutlineVisible" @close="settingsDialogOpen = false" />
+  <SettingsDialog v-if="settingsDialogOpen" :server="server" :use-official="useOfficialServer" :default-directory-visible="defaultDirectoryVisible" :default-tree-expanded="defaultTreeExpanded" :default-outline-visible="defaultOutlineVisible" :update-checking="updateChecking" :offered-version="offeredVersion" :release-notes-available="releaseNotesAvailable" @save-server="saveServerSettings" @set-default-directory-visible="setDefaultDirectoryVisible" @set-default-tree-expanded="setDefaultTreeExpanded" @set-default-outline-visible="setDefaultOutlineVisible" @check-update="requestUpdateCheck" @show-release-notes="showInstalledNotes" @close="settingsDialogOpen = false" />
+  <UpdateDialog v-if="updateState.visible" :phase="updateState.phase" :current-version="currentVersion" @download="downloadUpdate" @install="installReadyUpdate" @retry="retryUpdate" @later="dismissUpdateLater" @close="closeUpdate" @cancel="cancelUpdateDownload" />
 </template>

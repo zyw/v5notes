@@ -434,7 +434,24 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .about-app img { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; }
 .about-app div { display: grid; gap: 2px; min-width: 0; }
 .about-app strong { color: #35483b; font-size: 13.5px; }
-.about-app span { color: #89958b; font-size: 11px; }
+.about-app span { display: flex; flex-wrap: wrap; gap: 4px 8px; color: #89958b; font-size: 11px; }
+.update-check { padding: 0; color: #315b4a; font-size: 11px; font-weight: 650; }
+.update-check:hover:not(:disabled) { text-decoration: underline; }
+.update-check:disabled { color: #9aa49c; cursor: wait; }
+.update-backdrop { z-index: 110; }
+.update-dialog { width: min(560px, calc(100vw - 40px)); }
+.update-meta { display: flex; gap: 10px; margin: 8px 0 0; color: #89958b; font-size: 12px; }
+.update-notes { max-height: 280px; margin-top: 14px; overflow: auto; color: #526355; font-size: 13px; line-height: 1.7; }
+.update-notes h3 { margin: 12px 0 4px; color: #35483b; font-size: 15px; }
+.update-notes p, .update-notes ul { margin: 0 0 8px; }
+.update-notes ul { padding-left: 1.2em; }
+.update-notes code { padding: 0 4px; border-radius: 4px; background: #f3f6f1; font-size: 12px; }
+.update-notes a { color: #315b4a; }
+.update-progress { height: 6px; margin-top: 16px; overflow: hidden; border-radius: 99px; background: #e6ebe3; }
+.update-progress span { display: block; height: 100%; background: #4d8060; }
+.update-progress.is-indeterminate span { width: 35%; animation: update-slide 1.1s ease-in-out infinite; }
+.workspace .modal-backdrop { z-index: 130; }
+@keyframes update-slide { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
 .project-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e7dd; border-radius: 8px; color: #3d6350; background: #fffefa; font-size: 11px; }
 .project-link:hover { border-color: #cfdad1; color: #315b4a; background: #f4f8f1; text-decoration: none; }
 .project-link svg { width: 13px; height: 13px; flex: 0 0 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -540,7 +557,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tree-disclosure svg, .tree-expand-enter-active, .tree-expand-leave-active { transition-duration: .01ms; }
+  .tree-disclosure svg, .tree-expand-enter-active, .tree-expand-leave-active, .update-progress.is-indeterminate span { transition-duration: .01ms; animation: none; }
 }
 
 /* ============================================================

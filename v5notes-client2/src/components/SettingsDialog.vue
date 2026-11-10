@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import brandIcon from '../assets/brand-icon.png'
+import { settingsActionLabel } from '../models/appUpdate'
 import { OFFICIAL_SERVER, normalizeServer } from '../models/serverSettings'
 
 const props = defineProps<{
@@ -11,6 +12,9 @@ const props = defineProps<{
   defaultTreeExpanded: boolean
   server: string
   useOfficial: boolean
+  updateChecking?: boolean
+  offeredVersion?: string | null
+  releaseNotesAvailable?: boolean
 }>()
 const emit = defineEmits<{
   close: []
@@ -18,7 +22,10 @@ const emit = defineEmits<{
   'set-default-directory-visible': [visible: boolean]
   'set-default-tree-expanded': [expanded: boolean]
   'save-server': [address: string, official: boolean]
+  'check-update': []
+  'show-release-notes': []
 }>()
+const updateLabel = computed(() => settingsActionLabel(props.updateChecking === true, props.offeredVersion ?? null))
 const version = ref('读取中…')
 /** 官方地址只在代码里，勾选官方时输入框不显示 URL。 */
 const serverDraft = ref(props.useOfficial ? '' : props.server)
@@ -215,7 +222,7 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
           <img :src="brandIcon" alt="" />
           <div>
             <strong>v5notes</strong>
-            <span>版本 {{ version }}</span>
+            <span>版本 {{ version }}<button class="update-check" type="button" :disabled="updateChecking" @click="emit('check-update')">{{ updateLabel }}</button><button v-if="releaseNotesAvailable" class="update-check" type="button" @click="emit('show-release-notes')">查看本版更新说明</button></span>
           </div>
         </div>
         <a class="project-link" href="https://github.com/zyw/v5notes" target="_blank" rel="noopener noreferrer" aria-label="项目主页（GitHub）" @click="openProjectLink">

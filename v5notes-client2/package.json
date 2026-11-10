@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "@v5md/core": "file:vendor/v5md/v5md-core-0.0.2.tgz",
     "@v5md/view": "file:vendor/v5md/v5md-view-0.0.2.tgz",
     "@v5md/vue": "file:vendor/v5md/v5md-vue-0.0.2.tgz",

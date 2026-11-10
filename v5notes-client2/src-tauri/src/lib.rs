@@ -1,4 +1,6 @@
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
@@ -8,7 +10,214 @@ use tauri::{
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 
+const UPDATE_FEED: &str = "https://github.com/zyw/v5notes/releases/latest/download/latest.json";
+
 const PROJECT_URL: &str = "https://github.com/zyw/v5notes";
+
+/// 只接受 https 清单地址。非法或空值回退到内置的 GitHub Release 地址。
+fn https_update_feed(value: &str) -> Option<&str> {
+    let target = value.trim();
+    let rest = target.strip_prefix("https://")?;
+    if rest.is_empty() || rest.chars().any(|ch| ch.is_whitespace() || ch.is_control()) {
+        return None;
+    }
+    Some(target)
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[derive(Default)]
+struct HeldUpdate {
+    update: Mutex<Option<tauri_plugin_updater::Update>>,
+    bytes: Mutex<Option<Vec<u8>>>,
+    generation: AtomicU64,
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+impl HeldUpdate {
+    fn store(&self, update: tauri_plugin_updater::Update) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
+        *self.bytes.lock().expect("update bytes") = None;
+        *self.update.lock().expect("update") = Some(update);
+    }
+
+    fn clone_update(&self) -> Option<tauri_plugin_updater::Update> {
+        self.update.lock().expect("update").clone()
+    }
+
+    fn store_bytes(&self, bytes: Vec<u8>) {
+        *self.bytes.lock().expect("update bytes") = Some(bytes);
+    }
+
+    fn take_bytes(&self) -> Option<Vec<u8>> {
+        self.bytes.lock().expect("update bytes").take()
+    }
+
+    fn clear(&self) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
+        *self.update.lock().expect("update") = None;
+        *self.bytes.lock().expect("update bytes") = None;
+    }
+
+    fn cancel_download(&self) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
+        *self.bytes.lock().expect("update bytes") = None;
+    }
+
+    fn current_generation(&self) -> u64 {
+        self.generation.load(Ordering::SeqCst)
+    }
+}
+
+#[derive(serde::Serialize)]
+struct UpdateOffer {
+    version: String,
+    notes: String,
+    date: Option<String>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct UpdateProgress {
+    received: usize,
+    total: Option<u64>,
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn feed_override() -> Option<String> {
+    let value = std::env::var("V5NOTES_UPDATE_FEED").ok()?;
+    let endpoint = https_update_feed(&value)?;
+    if endpoint == UPDATE_FEED {
+        return None;
+    }
+    Some(endpoint.to_string())
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[tauri::command]
+async fn app_update_check(app: tauri::AppHandle) -> Result<Option<UpdateOffer>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let mut builder = app.updater_builder();
+    if let Some(endpoint) = feed_override() {
+        let url = endpoint
+            .parse()
+            .map_err(|_| "更新地址无效".to_string())?;
+        builder = builder
+            .endpoints(vec![url])
+            .map_err(|error| error.to_string())?;
+    }
+    let update = builder
+        .build()
+        .map_err(|error| error.to_string())?
+        .check()
+        .await
+        .map_err(|error| error.to_string())?;
+    let Some(update) = update else {
+        app.state::<HeldUpdate>().clear();
+        return Ok(None);
+    };
+    let date = update
+        .raw_json
+        .get("pub_date")
+        .and_then(|value| value.as_str())
+        .map(str::to_string);
+    let offer = UpdateOffer {
+        version: update.version.clone(),
+        notes: update.body.clone().unwrap_or_default(),
+        date,
+    };
+    app.state::<HeldUpdate>().store(update);
+    Ok(Some(offer))
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[tauri::command]
+async fn app_update_download(app: tauri::AppHandle) -> Result<(), String> {
+    let (generation, update) = {
+        let held = app.state::<HeldUpdate>();
+        (held.current_generation(), held.clone_update())
+    };
+    let update = update.ok_or("没有待下载的更新")?;
+    let progress = app.clone();
+    let bytes = update
+        .download(
+            move |chunk, total| {
+                let _ = progress.emit(
+                    "update-download-progress",
+                    UpdateProgress {
+                        received: chunk,
+                        total,
+                    },
+                );
+            },
+            || {},
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+    let held = app.state::<HeldUpdate>();
+    if held.current_generation() != generation {
+        return Err("下载已取消".into());
+    }
+    held.store_bytes(bytes);
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[tauri::command]
+fn app_update_install(app: tauri::AppHandle) -> Result<(), String> {
+    let held = app.state::<HeldUpdate>();
+    let update = held.clone_update().ok_or("没有待安装的更新")?;
+    let bytes = held.take_bytes().ok_or("更新包还没有下载完成")?;
+    update.install(bytes).map_err(|error| error.to_string())
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[tauri::command]
+fn app_update_close(app: tauri::AppHandle) {
+    app.state::<HeldUpdate>().clear();
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[tauri::command]
+fn app_update_cancel(app: tauri::AppHandle) {
+    app.state::<HeldUpdate>().cancel_download();
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+async fn app_update_check() -> Result<Option<UpdateOffer>, String> {
+    Err("此平台不支持应用内更新".into())
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+async fn app_update_download() -> Result<(), String> {
+    Err("此平台不支持应用内更新".into())
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+fn app_update_install() -> Result<(), String> {
+    Err("此平台不支持应用内更新".into())
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+fn app_update_close() {}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+fn app_update_cancel() {}
+
+#[tauri::command]
+fn update_host_os() -> &'static str {
+    if cfg!(windows) {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
+    }
+}
 
 #[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
@@ -428,11 +637,14 @@ fn sniff_image_mime(bytes: &[u8]) -> &'static str {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    let builder = tauri::Builder::default().plugin(
-        tauri_plugin_autostart::Builder::new()
-            .app_name("v5notes")
-            .build(),
-    );
+    let builder = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name("v5notes")
+                .build(),
+        )
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let builder = tauri::Builder::default();
@@ -446,7 +658,13 @@ pub fn run() {
             fetch_image_data_url,
             autostart_is_supported,
             autostart_is_enabled,
-            set_autostart_enabled
+            set_autostart_enabled,
+            update_host_os,
+            app_update_check,
+            app_update_download,
+            app_update_install,
+            app_update_close,
+            app_update_cancel
         ])
         .setup(|app| {
             let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
@@ -475,6 +693,8 @@ pub fn run() {
                 .build(app)?;
 
             app.manage(tray);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            app.manage(HeldUpdate::default());
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -483,7 +703,18 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::openable_external_url;
+    use super::{https_update_feed, openable_external_url};
+
+    #[test]
+    fn accepts_only_https_update_feeds() {
+        assert_eq!(
+            https_update_feed(" https://github.com/zyw/v5notes/releases/latest/download/latest.json "),
+            Some("https://github.com/zyw/v5notes/releases/latest/download/latest.json")
+        );
+        assert_eq!(https_update_feed("http://example.com/latest.json"), None);
+        assert_eq!(https_update_feed("https://"), None);
+        assert_eq!(https_update_feed("https://example.com/a b.json"), None);
+    }
 
     #[test]
     fn accepts_web_and_mail_links() {
