@@ -1,7 +1,0 @@
-package controller
-
-var CtrGroupApp = new(CtrGroup)
-
-type CtrGroup struct {
-    ${ClassName}Ctr
-}
