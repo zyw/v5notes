@@ -103,7 +103,7 @@ public class AuthController {
                 PushPayloadDTO.of(
                     PushTypeEnum.MESSAGE,
                     PushSourceEnum.BACKEND,
-                    DateUtils.getTodayHour(new Date()) + "好，欢迎登录 RuoYi-Vue-Plus 后台管理系统",
+                    DateUtils.getTodayHour(new Date()) + "好，欢迎登录 V5Notes",
                     null
                 )
             );

@@ -1,6 +1,6 @@
 # v5notes-admin2 管理后台
 
-基于 **plus-ui-v6.1.0-Vue**（Vue 3.5 + Element Plus 2.14 + Vite 8）重建的 V5Notes 管理后台，对接 `v5notes2` 后端。
+V5Notes 管理后台，使用 Vue 3.5、Element Plus 2.14 和 Vite 8，对接 `v5notes2` 后端。
 
 ## 开发
 

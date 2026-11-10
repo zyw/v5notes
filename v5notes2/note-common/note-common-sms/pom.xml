@@ -23,7 +23,7 @@
             <artifactId>sms4j-spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- RuoYi Common Redis-->
+        <!-- note-common-redis -->
         <dependency>
             <groupId>xin.v5ai</groupId>
             <artifactId>note-common-redis</artifactId>

@@ -1,72 +1,54 @@
-# 1. 项目介绍
+# V5Notes
 
-这是一个简单好用私有部署的云笔记项目。
+[简体中文](README.md) · [繁體中文](README.zh-TW.md) · [English](README.en.md)
 
-项目分为一下几部分：
+私有部署的云笔记。笔记以 Markdown 保存，可在管理后台和桌面客户端中阅读、编辑，并在同一台服务器上同步。
 
-1. `v5notes`后端`API`服务，使用`Java`语言开发，基于`RuoYi-Vue-Plus`快速脚手架开发。
-2. `v5notes-admin`后端管理前端页面，也是基于的`RuoYi-Vue-Plus`前端部分开发的。
-3. `v5notes-client`云笔记客户端部分，是基于`electron`和`electron-egg`开发。
+## 项目组成
 
-# 2. 开发原由
+| 目录 | 作用 |
+| --- | --- |
+| `v5notes2` | 后端 API。Java 21、Spring Boot 4.1，提供登录、笔记、目录、回收站、文件和管理接口。 |
+| `v5notes-admin2` | 管理后台。Vue 3、TypeScript、Element Plus、Vite。 |
+| `v5notes-client2` | 桌面客户端。Vue 3 与 Tauri，在线读写 Markdown 笔记。 |
 
-其一：我经常会在电脑上创建一个Markdown文档来保存一些敏感信息，比如秘密、开放平台的API Key。不想保存到像有道云笔记这样的非私有部署的云笔记上。但是这些信息在公司电脑上有一份，家里笔记本，台式机上都有一份。这样就导致了信息碎片化不能同步。
+三端界面均支持简体中文、繁体中文和英文。客户端请求会带上 `Content-Language`，后端按该语言返回提示。
 
-其二：家里有一台闲置的Mac mini电脑。最近在家把它折腾成了一台服务器（PVE+OpenWRT+Lucky+FnOS），使用IPv6地址和DDNS绑定域名。所以可以不买云服务部署一个私有云笔记了。
+## 本地运行
 
-# 3. 部署
+先准备 MySQL 与 Redis，并按 `v5notes2/note-admin/src/main/resources/application-dev.yml` 填写连接。
 
-1. 后端API服务和后端管理页面部署可以参考`RuoYi-Vue-Plus`的部署方法[RuoYi-Vue-Plus部署](https://plus-doc.dromara.org/#/ruoyi-vue-plus/home)
-2. 下载`v5notes-client`客户端连接上就可以使用了。
+```bash
+# 后端，默认端口 8080。数据库结构在启动时迁移。
+cd v5notes2
+mvn -DskipTests package
+java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
+```
 
-# 4. 项目地址
+```bash
+# 管理后台
+cd v5notes-admin2
+pnpm install
+pnpm dev
+```
 
-Github: https://github.com/zyw/v5notes
+```bash
+# 桌面客户端
+cd v5notes-client2
+npm install
+npm run dev
+npm run tauri dev
+```
 
-Gitee: https://gitee.com/zyw/v5notes.git
+## 使用
 
-均可下载客户端安装文件和免安装压缩包。
+1. 启动后端。
+2. 打开管理后台，创建可登录的用户。
+3. 在客户端填入服务器地址、用户名和密码。
 
-# 5. Docker安装
+客户端需要与服务端一致的 `clientid`。若不一致，构建前设置 `VITE_CLIENT_ID`。若服务器更换了登录用 RSA 公钥，设置 `VITE_API_PUBLIC_KEY`。
 
-1. 第一步
+## 仓库
 
-   ```bash
-   git clone https://gitee.com/zyw/v5notes.git
-   或者
-   git clone https://github.com/zyw/v5notes.git
-   ```
-
-2. 第二步
-
-   ```bash
-   cd v5notes/docker
-   # 使用docker compose安装
-   docker compose --env-file ./env/v5notes.env up -d
-   # 查看启动状态
-   docker compose --env-file ./env/v5notes.env ps
-   ```
-
-3.  第三步
-
-   如果安装完成访问http://localhost:8988访问后端管理页面
-
-# 6. 创建用户
-![](./images/admin1.png)
-
-创建客户端用户时，用户类型一定要选择【客户端用户】
-
-![](./images/admin2.png)
-
-# 7. 截图
-![login](./images/login.png)
-
-![index1](./images/index1.png)
-
-![index2](./images/index2.png)
-
-![index3](./images/index3.png)
-
-![index4](./images/index4.png)
-
-![index5](./images/index5.png)
+- GitHub: https://github.com/zyw/v5notes
+- Gitee: https://gitee.com/zyw/v5notes

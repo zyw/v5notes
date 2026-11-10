@@ -62,7 +62,7 @@
 
         <div class="scene-foot">
           <span>V5NOTES · ADMIN CONSOLE</span>
-          <span>v6.1.0</span>
+          <span>v2.0.0</span>
         </div>
       </div>
     </section>
@@ -192,7 +192,7 @@
 
       <div class="panel-foot">
         <span>Copyright © 2018-{{ currentYear }} V5科技 All Rights Reserved.</span>
-        <span class="ver">v6.1.0</span>
+        <span class="ver">v2.0.0</span>
       </div>
     </section>
   </div>

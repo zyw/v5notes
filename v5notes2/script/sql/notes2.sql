@@ -1,5 +1,5 @@
 -- =============================================================================
--- v5notes2 业务脚本：云笔记 + 基础文件模块（适配 RuoYi-Vue-Plus 6.1.0 表结构）
+-- v5notes2 业务脚本：云笔记 + 基础文件模块
 -- -----------------------------------------------------------------------------
 -- 执行前置：已导入 script/sql/ry_vue.sql（6.1.0 初始化脚本）
 -- 执行顺序：ry_vue.sql -> ry_job.sql(可选) -> note2.sql(本脚本，位于 script/sql/notes2.sql)
@@ -344,7 +344,7 @@ INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, de
 VALUES (1851635079091687426, 'd9df3c0228c05e5c61db46348bcadf6e', 'client', 'client123', 'clientPassword', 'pc_client',
         NULL, NULL, -1, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
 
--- 5.2 管理端 PC 客户端（password / pc）：plus-ui v6 管理后台使用
+-- 5.2 管理端 PC 客户端（password / pc）：v5notes-admin2 使用
 INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
                         active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
 VALUES (1762000000000000001, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'pc',

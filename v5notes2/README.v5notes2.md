@@ -1,6 +1,6 @@
 # v5notes2 后端
 
-基于 **RuoYi-Vue-Plus 6.1.0**（Java 21 / Spring Boot 4.1）重建的 V5Notes 后端，保留原 v5notes 的笔记业务、客户端密码登录与本地文件服务。
+V5Notes 后端，使用 Java 21 与 Spring Boot 4.1，提供笔记、目录、客户端密码登录和本地文件服务。
 
 ## 模块
 
@@ -42,7 +42,15 @@ java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
 
 ## 部署
 
-见 `docker/docker-compose.yml`（mysql + redis + v5notes2-api + v5notes2-admin），构建前先 `mvn package` 与 `pnpm build`。
+`docker/docker-compose.yml` 启动 MySQL、Redis、API 和管理后台。库表在 API 启动时由 Flyway 创建，不要再手工执行 `script/sql`。
+
+```bash
+cd v5notes2 && mvn -DskipTests package
+cd ../v5notes-admin2 && pnpm install && pnpm build
+cd ../v5notes2/docker && docker compose up -d --build
+```
+
+管理后台默认端口 8988，API 默认端口 8080。密码见 `docker/env.example`，需要修改时复制为 `docker/.env`。上传文件保存在 `docker/uploadfile`。
 
 ## 与旧 v5notes 的差异
 
@@ -56,7 +64,7 @@ java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
 项目已集成 Flyway，应用启动时自动执行 `note-admin/src/main/resources/db/migration` 下的迁移脚本，无需再手工执行建表 SQL：
 
 - **全新库**：`spring.flyway.enabled=true`，启动即按版本顺序执行迁移：
-  - `V1__base_schema.sql`：RuoYi-Vue-Plus 6.1.0 基础 schema（`script/sql/ry_vue.sql` / `script/sql/postgres/postgres_ry_vue.sql`，已去除 `CREATE DATABASE` / `USE`）。
+  - `V1__base_schema.sql`：基础 schema（`script/sql/ry_vue.sql` / `script/sql/postgres/postgres_ry_vue.sql`，已去除 `CREATE DATABASE` / `USE`）。
   - `V2__v5notes_schema.sql`：笔记/文件表、菜单、字典、`sys_client`、`basics_file_config`（由 `script/sql/notes2.sql` 派生）。
   - 历史表固定为 `flyway_schema_history`。
 - **已存在的库**：已开启 `baseline-on-migrate: true`，首次启动会以当前状态建立 baseline，避免对已有表重复执行 V1，随后仅执行尚未应用的版本。
@@ -73,7 +81,7 @@ java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
 ## 模块与包名
 - Maven 模块统一以 `note-` 前缀（如 `note-admin`、`note-common-core`、`note-modules/note-notes`），groupId 为 `xin.v5ai`。
 - Java 包名为 `xin.v5ai.*`。
-- 已裁剪 RuoYi 默认的 ai/demo/workflow/gen/job、monitor-admin/snailai-server，以及 common-ai/liteflow/elasticsearch/mcp/mqtt。
+- 未包含 ai/demo/workflow/gen/job、monitor-admin/snailai-server，以及 common-ai/liteflow/elasticsearch/mcp/mqtt。
 
 
 ## 刷新令牌

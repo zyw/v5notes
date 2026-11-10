@@ -1,14 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "v5notes-admin2",
-  "version": "6.1.0",
+  "version": "2.0.0",
   "description": "V5Notes2 云笔记后台管理",
   "license": "MIT",
   "author": "LionLi",
-  "repository": {
-    "type": "git",
-    "url": "https://gitee.com/JavaLionLi/plus-ui.git"
-  },
   "type": "module",
   "scripts": {
     "build": "vite build --mode production",

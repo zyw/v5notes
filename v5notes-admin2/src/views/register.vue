@@ -2,12 +2,10 @@
   <div class="register">
     <div class="register-shell">
       <section class="register-brand">
-        <span class="brand-pill">Plus UI Workspace</span>
-        <h1 class="brand-title">企业级后台管理系统</h1>
+        <span class="brand-pill">V5Notes</span>
+        <h1 class="brand-title">云笔记管理后台</h1>
         <p class="brand-desc">
-          真正面向企业级的应用框架 组件化 模块化 轻耦合 高扩展 针对企业痛点 业界一流技术栈
-          <br />
-          重写 RuoYi-Vue 所有功能 集成 Sa-Token、Mybatis-Plus、WarmFlow、SpringDoc、Hutool、OSS 定期同步。
+          管理笔记、目录、文件和账号。界面支持简体中文、繁体中文和英文。
         </p>
         <div class="brand-highlights">
           <span v-for="item in highlights" :key="item" class="highlight-chip">{{ item }}</span>

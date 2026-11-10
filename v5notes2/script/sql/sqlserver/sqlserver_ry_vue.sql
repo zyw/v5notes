@@ -905,9 +905,9 @@ EXEC sys.sp_addextendedproperty
     'TABLE', N'sys_notice'
 GO
 
-INSERT sys_notice VALUES (1761800000000000001, N'温馨提醒：2018-07-01 若依新版本发布啦', N'2', N'新版本内容', N'0', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'管理员')
+INSERT sys_notice VALUES (1761800000000000001, N'温馨提醒：2018-07-01 V5Notes 新版本发布啦', N'2', N'新版本内容', N'0', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'管理员')
 GO
-INSERT sys_notice VALUES (1761800000000000002, N'维护通知：2018-07-01 若依系统凌晨维护', N'1', N'维护内容', N'0', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'管理员')
+INSERT sys_notice VALUES (1761800000000000002, N'维护通知：2018-07-01 V5Notes 系统凌晨维护', N'1', N'维护内容', N'0', 1761000000000000103, 1761100000000000001, getdate(), NULL, NULL, N'管理员')
 GO
 
 CREATE TABLE sys_message

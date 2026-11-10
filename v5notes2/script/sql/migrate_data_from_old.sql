@@ -97,7 +97,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SELECT (SELECT COUNT(*) FROM sys_user) AS users_new, (SELECT COUNT(*) FROM `v5notes-prod`.sys_user) AS users_old;
 -- SELECT (SELECT COUNT(*) FROM basics_file) AS files_new, (SELECT COUNT(*) FROM `v5notes-prod`.basics_file) AS files_old;
 --
--- 说明：不迁移旧 sys_menu。因为 6.1.0 的 plus-ui 组件路径、权限标识、菜单列（active_menu/ext）
+-- 说明：不迁移旧 sys_menu。因为 6.1.0 的管理后台组件路径、权限标识、菜单列（active_menu/ext）
 -- 与 5.2.2 不同，旧菜单会导致新管理前端路由/页面 404。保留 target 的 ry_vue.sql 种子菜单，
 -- 再由 notes2.sql 插入与 v6 兼容的笔记/文件菜单；超级管理员(role_id=1)默认拥有全部菜单。
 -- 如需把笔记/文件菜单授权给特定非超级管理员角色，请在 notes2.sql 或此处追加 sys_role_menu。

@@ -26,7 +26,7 @@ class EncryptFunctionTest {
     @Test
     @DisplayName("常用对称算法加解密往返")
     void shouldRoundTripCommonSymmetricAlgorithms() {
-        String text = "RuoYi-Vue-Plus";
+        String text = "V5Notes";
         String aesKey = "1234567890abcdef";
         String sm4Key = "abcdef1234567890";
 
