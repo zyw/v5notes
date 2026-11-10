@@ -18,6 +18,7 @@ This document covers three directories: [`v5notes2`](v5notes2/), [`v5notes-admin
 
 - [What it solves](#what-it-solves)
 - [How the three apps fit](#how-the-three-apps-fit)
+- [Screenshots](#screenshots)
 - [What you can do](#what-you-can-do)
 - [Stack](#stack)
 - [Requirements](#requirements)
@@ -60,6 +61,58 @@ flowchart LR
 | [`v5notes-client2`](v5notes-client2/) | Reading and editing Markdown on Windows, macOS, and Linux | Vue 3.5, TypeScript, Tauri 2 |
 
 The desktop client calls `/client/notes/**`. The admin console calls `/notes/**`, `/system/**`, and `/basics/**`. One note service backs both. Snowflake IDs stay strings from the API response through every page.
+
+## Screenshots
+
+These screenshots come from the running apps. The desktop client is where you write. The admin console covers people, notes, and system status.
+
+### Desktop client
+
+| Sign-in (light) | Sign-in (dark) |
+|:---:|:---:|
+| ![Desktop client sign-in: server, username, and password, light theme](images/client/登录-浅.png) | ![Desktop client sign-in, dark theme](images/client/登录-深.png) |
+
+| Workspace | Dark theme |
+|:---:|:---:|
+| ![Workspace with the folder tree and a new-note action](images/client/home-img.png) | ![Reading view in the dark theme](images/client/home-dark.png) |
+
+| Edit mode | Preview mode |
+|:---:|:---:|
+| ![What-you-see-is-what-you-get edit mode with the toolbar and saved state](images/client/编辑模式.png) | ![Read-only preview with an Edit action in the corner](images/client/预览模式.png) |
+
+| Source mode | Find |
+|:---:|:---:|
+| ![Source mode for editing raw Markdown](images/client/源码模式.png) | ![Find panel on the right with matching lines](images/client/查找.png) |
+
+| Outline | Command palette |
+|:---:|:---:|
+| ![Outline panel that jumps by heading](images/client/大纲操作.png) | ![Command palette for display mode, view, typography, and export](images/client/命令面板.png) |
+
+| Trash | History |
+|:---:|:---:|
+| ![Trash with 30 days left, restore, and permanent delete](images/client/回收站.png) | ![History with a version list, body preview, and restore](images/client/历史版本.png) |
+
+| Settings |
+|:---:|
+| ![Settings for server, language, theme, and workspace](images/client/设置.png) |
+
+### Admin console
+
+| Sign-in (light) | Sign-in (dark) |
+|:---:|:---:|
+| ![Admin sign-in with account, password, and captcha, light theme](images/admin/login-light.png) | ![Admin sign-in, dark theme](images/admin/login-dark.png) |
+
+| Dashboard (light) | Dashboard (dark) |
+|:---:|:---:|
+| ![Dashboard with note, user, edit, and storage totals](images/admin/home-light.png) | ![Dashboard in the dark theme](images/admin/home-dark.png) |
+
+| Notes | Members |
+|:---:|:---:|
+| ![Notes admin with folder tree, filters, and note list](images/admin/notes-light.png) | ![Member admin with departments, roles, and access scope](images/admin/user-light.png) |
+
+| Note history |
+|:---:|
+| ![Note history opened from the admin console, with restore](images/admin/his-light.png) |
 
 ## What you can do
 

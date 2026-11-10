@@ -1,0 +1,19 @@
+{
+  "name": "v5notes-website",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5176 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4175 --strictPort",
+    "check": "node --check src/main.js"
+  },
+  "devDependencies": {
+    "vite": "8.0.12"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.24.0"
+}

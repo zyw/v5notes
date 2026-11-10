@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V5Notes · 可私有部署的 Markdown 云笔记</title>
+<meta name="description" content="V5Notes 是一套可以私有部署的 Markdown 云笔记：桌面端写作、管理后台管人和权限，正文、目录、历史与文件都落在自己的 MySQL 或 PostgreSQL 里。">
+<meta name="theme-color" content="#fbf9f3">
+<link rel="icon" href="../assets/brand/brand-icon.png">
+<style>
+  :root{
+    --paper:#fbf9f3;
+    --canvas:#f4f1e8;
+    --white:#fffefa;
+    --ink:#26332c;
+    --ink-2:#40514a;
+    --muted:#5d6d63;
+    --line:#e3e0d6;
+    --line-soft:#edeade;
+    --accent:#315b4a;
+    --accent-hover:#244636;
+    --mint:#2fa9a4;
+    --serif:'Songti SC','Noto Serif SC','Source Han Serif SC',serif;
+    --sans:'PingFang SC','Hiragino Sans GB','Noto Sans SC',sans-serif;
+    --mono:'SF Mono',ui-monospace,Menlo,monospace;
+    --sec-pad:140px;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:17px;line-height:1.9;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:#e4eae2;color:var(--ink)}
+  h1,h2,h3,p,dl,dd,figure,ol{margin:0}
+  img{display:block;max-width:100%}
+  a{color:inherit}
+  .wrap{width:1120px;max-width:calc(100% - 64px);margin:0 auto}
+
+  /* ---------- nav ---------- */
+  .site-nav{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
+  .nav-inner{height:92px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+  .brand{justify-self:start}
+  .brand{display:inline-flex;align-items:center;gap:12px;min-height:44px;text-decoration:none;color:var(--ink)}
+  .brand img{width:28px;height:28px;border-radius:7px}
+  .brand span{font-size:17px;letter-spacing:.01em}
+  .nav-collapse{display:contents}
+  .nav-links{display:flex;justify-content:center;gap:32px}
+  .nav-links a{
+    position:relative;display:inline-flex;align-items:center;justify-content:center;
+    min-height:44px;min-width:44px;padding:0 4px;
+    font-size:15px;color:var(--ink-2);text-decoration:none;
+  }
+  .nav-links a::after{
+    content:"";position:absolute;left:4px;right:4px;bottom:12px;height:1px;background:var(--ink);
+    transform:scaleX(0);transform-origin:left;transition:transform .18s ease;
+  }
+  .nav-links a:hover{color:var(--ink)}
+  .nav-links a:hover::after,.nav-links a[aria-current="true"]::after{transform:scaleX(1)}
+  .nav-links a[aria-current="true"]{color:var(--ink)}
+  .nav-actions{display:flex;align-items:center;gap:26px;justify-self:end}
+  .hero-band>*, .write-grid>*, .deploy-grid>*, .tech-grid>*, .nodes>*, .trio>*, .admin-grid>*, .compare-row>*, .footer-grid>*, .defs>*, .deploy-lower>*, .sec-head>*{min-width:0}
+  .nav-actions .gh{
+    display:inline-flex;align-items:center;min-height:44px;font-size:15px;color:var(--ink-2);
+    text-decoration:none;border-bottom:1px solid transparent;transition:border-color .18s ease,color .18s ease;
+  }
+  .nav-actions .gh:hover{color:var(--ink);border-bottom-color:var(--line)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 26px;
+    border-radius:999px;font-size:16px;text-decoration:none;border:1px solid transparent;
+    transition:background-color .18s ease,color .18s ease,border-color .18s ease;
+  }
+  .btn-primary{background:var(--accent);color:#fdfcf6}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-ghost{border-color:var(--accent);color:var(--accent);min-height:44px;padding:0 22px;font-size:15px}
+  .btn-ghost:hover{background:var(--accent);color:#fdfcf6}
+  .menu-toggle{
+    display:none;width:44px;height:44px;align-items:center;justify-content:center;
+    background:transparent;border:0;padding:0;color:var(--ink);cursor:pointer;margin-left:8px;
+  }
+  .icon-close{display:none}
+  .menu-toggle[aria-expanded="true"] .icon-open{display:none}
+  .menu-toggle[aria-expanded="true"] .icon-close{display:block}
+
+  /* ---------- hero ---------- */
+  .hero{padding:104px 0 104px}
+  .hero h1{
+    font-family:var(--serif);font-weight:400;font-size:clamp(36px,4.72vw,68px);
+    line-height:1.22;letter-spacing:.01em;max-width:720px;color:var(--ink);
+  }
+  .hero-band{display:grid;grid-template-columns:480px 596px;gap:0 44px;margin-top:48px;align-items:start}
+  .lede{font-size:20px;line-height:1.95;color:var(--ink-2)}
+  .hero-actions{display:flex;align-items:center;gap:28px;margin-top:36px;flex-wrap:wrap}
+  .link-plain{
+    display:inline-flex;align-items:center;min-height:44px;font-size:16px;color:var(--ink);
+    text-decoration:underline;text-decoration-color:#c3c9bf;text-decoration-thickness:1px;
+    text-underline-offset:6px;transition:text-decoration-color .18s ease,color .18s ease;
+  }
+  .link-plain:hover{text-decoration-color:var(--ink)}
+  .hero-facts{
+    margin-top:28px;font-family:var(--mono);font-size:14px;line-height:1.8;
+    color:var(--muted);letter-spacing:.01em;
+  }
+
+  /* ---------- plate ---------- */
+  .plate{margin:0}
+  .plate .mat{background:var(--white);border:1px solid var(--line);padding:8px;border-radius:4px}
+  .plate .mat img{width:100%;height:auto;border-radius:2px}
+  .plate figcaption{
+    margin-top:14px;font-family:var(--mono);font-size:13px;line-height:1.7;
+    color:var(--muted);letter-spacing:.02em;
+  }
+  .plate-lg{width:980px;max-width:100%;margin:0 auto}
+  .plate-lg figcaption{margin-top:16px}
+
+  /* ---------- section frame ---------- */
+  .section{padding:var(--sec-pad) 0;border-top:1px solid var(--line);scroll-margin-top:92px}
+  .sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 96px;align-items:start}
+  .sec-head h2{
+    font-family:var(--serif);font-weight:400;font-size:clamp(30px,3.4vw,42px);
+    line-height:1.35;letter-spacing:.01em;max-width:520px;color:var(--ink);
+  }
+  .sec-lede{font-size:20px;line-height:1.95;color:var(--ink-2);max-width:520px;padding-top:6px}
+
+  /* ---------- compare ---------- */
+  .compare{margin-top:84px;border-top:1px solid var(--line)}
+  .compare-head,.compare-row{display:grid;grid-template-columns:1fr 1fr}
+  .compare-head{padding:16px 0}
+  .compare-head span{font-size:14px;color:var(--muted)}
+  .compare-head span:last-child{color:var(--ink);padding-left:48px;border-left:1px solid var(--line)}
+  .compare-row{padding:28px 0;border-top:1px solid var(--line-soft)}
+  .compare-row p{font-size:17px;line-height:1.85}
+  .compare-row .was{color:var(--muted);padding-right:48px}
+  .compare-row .now{color:var(--ink);padding-left:48px;border-left:1px solid var(--line)}
+  .compare-close{
+    width:min(560px,100%);margin:64px 0 0 auto;padding-top:28px;border-top:1px solid var(--line-soft);
+    font-size:17px;line-height:1.95;color:var(--ink-2);
+  }
+
+  /* ---------- writing ---------- */
+  .write-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:0 72px;margin-top:96px;align-items:end}
+  .defs{display:grid;grid-template-columns:1fr 1fr;gap:0 48px;border-bottom:1px solid var(--line)}
+  .def{padding:24px 0 28px;border-top:1px solid var(--line)}
+  .def h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:8px}
+  .def p{font-size:16px;line-height:1.85;color:var(--muted)}
+
+  /* ---------- editor ---------- */
+  .editor-defs{margin-top:96px}
+  .support-line{margin-top:26px;max-width:880px;font-size:16px;line-height:1.9;color:var(--muted)}
+  .oss-band{margin-top:44px;padding-top:24px;border-top:1px solid var(--line);max-width:900px}
+  .oss-band p{font-size:16px;line-height:1.9;color:var(--muted)}
+  .oss-band p + p{margin-top:6px}
+  .oss-band a{color:var(--ink-2);text-decoration:underline;text-decoration-color:#c3c9bf;text-underline-offset:4px;transition:text-decoration-color .18s ease,color .18s ease}
+  .oss-band a:hover{color:var(--ink);text-decoration-color:var(--ink)}
+  .oss-band .mono{font-family:var(--mono);font-size:15px;line-height:1.8;color:var(--ink-2);letter-spacing:.01em}
+
+  /* ---------- rollback ---------- */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:0 56px;margin-top:88px}
+  .trio .item{padding-top:22px;border-top:1px solid var(--line)}
+  .trio h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:8px}
+  .trio p{font-size:16px;line-height:1.85;color:var(--muted)}
+
+  /* ---------- admin ---------- */
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;margin-top:88px;border-top:1px solid var(--line)}
+  .admin-cell{padding:34px 56px 34px 0;border-bottom:1px solid var(--line-soft)}
+  .admin-cell:nth-child(even){padding:34px 0 34px 56px;border-left:1px solid var(--line-soft)}
+  .admin-cell h3{font-family:var(--serif);font-weight:400;font-size:18px;line-height:1.5;margin-bottom:6px}
+  .admin-cell p{font-size:16px;line-height:1.85;color:var(--muted)}
+
+  /* ---------- three ends ---------- */
+  .nodes{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:0 56px;margin-top:96px}
+  .nodes::before{content:"";position:absolute;left:0;right:0;top:4px;height:1px;background:var(--line)}
+  .node{position:relative;padding-top:40px}
+  .node .dot{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+  .node:nth-child(2) .dot{background:var(--mint)}
+  .node h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:4px}
+  .node p{font-family:var(--mono);font-size:14px;line-height:1.8;color:var(--muted);letter-spacing:.01em}
+  .meta-line{
+    margin-top:64px;padding-top:22px;border-top:1px solid var(--line);
+    font-size:15px;line-height:1.9;color:var(--muted);letter-spacing:.01em;
+  }
+
+  /* ---------- deploy ---------- */
+  .deploy-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:0 72px;margin-top:96px;align-items:start}
+  .code{
+    max-width:100%;background:var(--canvas);border:1px solid var(--line);border-radius:4px;padding:24px;
+    font-family:var(--mono);font-size:14px;line-height:2.1;color:var(--ink);
+    overflow-x:auto;white-space:pre;
+  }
+  .code code{font-family:inherit;font-size:inherit}
+  .addr{margin-top:20px;font-family:var(--mono);font-size:14px;line-height:1.9;color:var(--muted)}
+  .aside-block h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:0}
+  .aside-item{padding:22px 0;border-top:1px solid var(--line)}
+  .aside-block > .aside-item:first-of-type{border-top:1px solid var(--line)}
+  .aside-item h3{margin-bottom:4px}
+  .aside-item p{font-size:16px;line-height:1.8;color:var(--muted)}
+  .deploy-lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 72px;margin-top:84px}
+  .lower-block h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:0}
+  .paths{border-top:1px solid var(--line);margin-top:18px}
+  .paths > div{display:grid;grid-template-columns:72px 1fr;gap:24px;padding:16px 0;border-bottom:1px solid var(--line-soft)}
+  .paths dt{font-size:15px;color:var(--muted)}
+  .paths dd{margin:0;font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink);overflow-wrap:anywhere}
+  .steps{list-style:none;counter-reset:s;border-top:1px solid var(--line);margin-top:18px;padding:0}
+  .steps li{
+    counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:16px;
+    padding:16px 0;border-bottom:1px solid var(--line-soft);font-size:16px;line-height:1.8;
+  }
+  .steps li::before{content:counter(s);font-family:var(--mono);font-size:13px;color:var(--muted);padding-top:4px}
+
+  /* ---------- stack ---------- */
+  .tech-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 88px;margin-top:96px;align-items:start}
+  .tech-rows{border-top:1px solid var(--line)}
+  .tech-row{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:20px 0;border-bottom:1px solid var(--line-soft)}
+  .tech-row dt{font-size:15px;color:var(--muted)}
+  .tech-row dd{margin:0;font-size:16px;line-height:1.8;color:var(--ink)}
+  .stack-item{padding:22px 0;border-top:1px solid var(--line)}
+  .stack-item:last-child{border-bottom:1px solid var(--line-soft)}
+  .stack-item h3{font-family:var(--serif);font-weight:400;font-size:19px;line-height:1.5;margin-bottom:4px}
+  .stack-item p{font-size:16px;line-height:1.85;color:var(--muted)}
+
+  /* ---------- cta ---------- */
+  .cta{padding:170px 0 180px;border-top:1px solid var(--line);text-align:center}
+  .cta .mark{width:26px;height:1px;background:var(--mint);margin:0 auto 48px}
+  .cta h2{
+    font-family:var(--serif);font-weight:400;font-size:clamp(30px,3.5vw,50px);line-height:1.4;
+    letter-spacing:.01em;max-width:940px;margin:0 auto;
+  }
+  .cta-actions{display:flex;align-items:center;justify-content:center;gap:32px;margin-top:56px;flex-wrap:wrap}
+
+  /* ---------- footer ---------- */
+  .site-footer{border-top:1px solid var(--line);padding:64px 0 36px}
+  .footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:40px;align-items:start}
+  .footer-brand{display:flex;align-items:flex-start;gap:14px}
+  .footer-brand img{width:30px;height:30px;border-radius:8px;margin-top:4px}
+  .footer-brand .name{font-size:17px;letter-spacing:.01em}
+  .footer-brand .tag{margin-top:2px;font-size:15px;color:var(--muted);line-height:1.7}
+  .footer-nav{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px}
+  .footer-nav a{
+    display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;
+    font-size:15px;color:var(--ink-2);text-decoration:none;
+  }
+  .footer-nav a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:5px}
+  .footer-nav .sep{color:#a9b1a6;font-size:14px}
+  .footer-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:0 8px;font-size:15px;color:var(--muted)}
+  .footer-meta a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:var(--ink-2);text-decoration:none}
+  .footer-meta a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:5px}
+  .footer-meta .sep{color:#a9b1a6;font-size:14px}
+  .footer-bottom{margin-top:44px;padding-top:24px;border-top:1px solid var(--line-soft)}
+  .footer-bottom p{font-size:13px;color:var(--muted);letter-spacing:.01em}
+
+  /* ---------- entrance ---------- */
+  @media (prefers-reduced-motion:no-preference){
+    .rise{opacity:0;transform:translateY(12px);animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}
+    .rise.d1{animation-delay:.05s}
+    .rise.d2{animation-delay:.11s}
+    .rise.d3{animation-delay:.17s}
+    .rise.d4{animation-delay:.23s}
+  }
+  @keyframes rise{
+    0%{opacity:0;transform:translateY(12px)}
+    40%{opacity:1}
+    100%{opacity:1;transform:translateY(0)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .rise{opacity:1;transform:none}
+  }
+  .nw{white-space:nowrap}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1240px){
+    .hero-band{grid-template-columns:minmax(0,1fr) 520px}
+    .deploy-grid{grid-template-columns:minmax(0,1fr) 300px}
+  }
+  @media (max-width:1080px){
+    .hero-band{grid-template-columns:1fr;gap:52px}
+    .hero-band .plate{max-width:596px}
+    .write-grid{grid-template-columns:1fr;gap:56px}
+    .write-grid .plate{max-width:420px}
+    .deploy-grid{grid-template-columns:1fr;gap:56px}
+    .tech-grid{grid-template-columns:1fr;gap:56px}
+    .sec-head{gap:0 64px}
+  }
+  @media (max-width:900px){
+    :root{--sec-pad:96px}
+    .section{scroll-margin-top:76px}
+    .sec-head{grid-template-columns:1fr;gap:24px}
+    .sec-head h2{max-width:560px}
+    .sec-lede{padding-top:0;max-width:600px}
+    .compare{margin-top:56px}
+    .compare-head{display:none}
+    .compare-row{grid-template-columns:1fr;padding:24px 0}
+    .compare-row .was{padding-right:0}
+    .compare-row .now{padding-left:16px;border-left:1px solid var(--line);margin-top:12px}
+    .compare-close{margin-top:44px;width:100%}
+    .write-grid{margin-top:56px}
+    .defs{grid-template-columns:1fr;border-bottom:0}
+    .def:last-child{border-bottom:1px solid var(--line)}
+    .trio{grid-template-columns:1fr;gap:0;margin-top:56px}
+    .trio .item{padding:22px 0 26px}
+    .admin-grid{grid-template-columns:1fr;margin-top:56px}
+    .admin-cell{padding:26px 0}
+    .admin-cell:nth-child(even){padding:26px 0;border-left:0}
+    .nodes{grid-template-columns:1fr;gap:0;margin-top:56px}
+    .nodes::before{display:none}
+    .node{padding:22px 0 22px 26px;border-top:1px solid var(--line)}
+    .node:first-child{border-top:0;padding-top:8px}
+    .node .dot{top:30px}
+    .node:first-child .dot{top:16px}
+    .meta-line{margin-top:40px}
+    .deploy-lower{grid-template-columns:1fr;gap:44px;margin-top:56px}
+    .cta{padding:96px 0 104px}
+    .cta .mark{margin-bottom:34px}
+    .cta-actions{margin-top:40px;gap:22px}
+    .footer-grid{grid-template-columns:1fr;gap:28px}
+    .footer-meta{justify-content:flex-start}
+  }
+  @media (max-width:860px){
+    .wrap{max-width:calc(100% - 48px)}
+    .nav-inner{height:68px}
+    .nav-collapse{
+      display:none;position:absolute;top:68px;left:0;right:0;
+      background:var(--paper);border-bottom:1px solid var(--line);
+      padding:6px 24px 30px;flex-direction:column;max-height:calc(100dvh - 68px);overflow-y:auto;
+    }
+    .nav-collapse.is-open{display:flex}
+    .nav-links{flex-direction:column;gap:0;justify-content:flex-start}
+    .nav-links a{min-height:52px;width:100%;justify-content:flex-start;font-size:16px;border-bottom:1px solid var(--line-soft)}
+    .nav-links a::after{display:none}
+    .nav-actions{flex-direction:column;align-items:stretch;gap:14px;margin-top:22px;justify-self:stretch}
+    .nav-actions .gh{justify-content:flex-start;border-bottom:0;min-height:44px;font-size:16px}
+    .nav-actions .btn-ghost{min-height:48px;font-size:16px}
+    .menu-toggle{display:inline-flex;grid-column:3;justify-self:end}
+    .brand{font-size:16px}
+    .hero{padding:56px 0 64px}
+    .hero h1{font-size:clamp(32px,8.4vw,46px);max-width:100%}
+    .hero-band{margin-top:32px;gap:40px}
+    .lede{font-size:18px;line-height:1.9}
+    .hero-actions{margin-top:28px;gap:18px}
+    .hero-actions .btn{width:100%}
+    .link-plain{width:100%;justify-content:center}
+    .hero-facts{margin-top:22px;font-size:14px;line-height:1.9}
+    .plate .mat{padding:6px}
+    .plate figcaption{margin-top:12px}
+    .cta h2{font-size:clamp(28px,7.4vw,36px);line-height:1.45}
+    .cta-actions .btn{width:100%}
+    .cta-actions .link-plain{width:auto}
+    .code{font-size:14px;padding:18px 16px;line-height:2;white-space:pre-wrap;overflow-wrap:anywhere}
+  }
+  @media (max-width:420px){
+    .wrap{max-width:calc(100% - 40px)}
+    .nav-collapse{padding-left:20px;padding-right:20px}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="V5Notes 首页">
+      <img src="../assets/brand/brand-icon.png" alt="" width="28" height="28">
+      <span>V5Notes</span>
+    </a>
+    <nav class="nav-collapse" id="nav-panel" aria-label="主导航">
+      <div class="nav-links">
+        <a href="#writing">写作</a>
+        <a href="#editor">编辑器</a>
+        <a href="#rollback">回退</a>
+        <a href="#admin">管理</a>
+        <a href="#deploy">部署</a>
+        <a href="#stack">技术栈</a>
+      </div>
+      <div class="nav-actions">
+        <a class="gh" href="https://github.com/zyw/v5notes">GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/zyw/v5notes/releases">下载桌面端</a>
+      </div>
+    </nav>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="打开导航菜单">
+      <svg class="icon-open" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8.5h17M3.5 15.5h17"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- 首屏 -->
+  <section class="hero">
+    <div class="wrap">
+      <h1 class="rise">把想法，<br>留在自己的服务器上。</h1>
+      <div class="hero-band">
+        <div class="hero-copy">
+          <p class="lede rise d1">V5Notes 是一套可以私有部署的 Markdown 云笔记。桌面端负责写作，管理后台负责人和权限，正文、目录、历史与文件都落在你自己的 MySQL 或 PostgreSQL 里。</p>
+          <div class="hero-actions rise d2">
+            <a class="btn btn-primary" href="https://github.com/zyw/v5notes/releases">下载桌面端</a>
+            <a class="link-plain" href="https://github.com/zyw/v5notes">在 GitHub 看源码</a>
+          </div>
+          <p class="hero-facts rise d3">Windows · macOS · Linux ｜ Apache 2.0 ｜ v2.0.0</p>
+        </div>
+        <figure class="plate rise d4">
+          <div class="mat">
+            <img src="../assets/screens/client-home.jpg" alt="V5Notes 桌面客户端：左侧是一棵目录树，右侧是等待打开的空白纸面" width="2200" height="1236">
+          </div>
+          <figcaption>图版 01 · 客户端的空白页</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 为什么自托管 -->
+  <section class="section" id="why">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>云笔记很好用，<br>直到你想把数据拿回来。</h2>
+        <p class="sec-lede">本地 Markdown 很自由，但目录、搜索、误删和多设备会把事情变乱。V5Notes 把这两件事合成一套你能自己装、自己备份、自己改的系统。</p>
+      </div>
+
+      <div class="compare">
+        <div class="compare-head">
+          <span>原来的麻烦</span>
+          <span>V5Notes 的做法</span>
+        </div>
+        <div class="compare-row">
+          <p class="was">笔记散在聊天记录、网盘和本地文件夹里</p>
+          <p class="now">一篇笔记就是一份 Markdown，按目录归好，按标题搜索。</p>
+        </div>
+        <div class="compare-row">
+          <p class="was">内容存在别人的服务器上</p>
+          <p class="now">API、数据库、Redis 和上传文件都由你部署，备份就是拷走三个目录。</p>
+        </div>
+        <div class="compare-row">
+          <p class="was">写作界面被管理功能塞满</p>
+          <p class="now">桌面端只留目录、正文和写作工具；用户、角色、审计放在管理后台。</p>
+        </div>
+        <div class="compare-row">
+          <p class="was">改乱了，或删错了一整棵目录</p>
+          <p class="now">正文保留历史版本；删除先进回收站，保留 30 天。</p>
+        </div>
+      </div>
+
+      <p class="compare-close">适合想自己托管笔记的个人、需要给家人或小团队开通账号的人，以及希望在一套现成的用户、权限和笔记 API 上继续做产品的开发者。</p>
+    </div>
+  </section>
+
+  <!-- 写作 -->
+  <section class="section" id="writing">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>打开电脑就能写，<br>换一台接着写。</h2>
+        <p class="sec-lede">桌面端只有一个目标：让你尽快进入正文。左侧一棵树，右侧一张纸，中间不放大按钮。</p>
+      </div>
+
+      <div class="write-grid">
+        <div class="defs">
+          <div class="def">
+            <h3>目录与笔记同屏</h3>
+            <p>搜索、新建、重命名、删除都在同一棵树里完成，不用在页面之间跳。</p>
+          </div>
+          <div class="def">
+            <h3>三种模式</h3>
+            <p>所见即所得、源码、预览，⌘1 / ⌘2 / ⌘3 直接切；共用同一个编辑器实例，Markdown 状态和撤销历史都还在。</p>
+          </div>
+          <div class="def">
+            <h3>专注写作</h3>
+            <p>收起侧栏，编辑器占满窗口；想回来时，侧栏还在原来的位置。</p>
+          </div>
+          <div class="def">
+            <h3>大纲与查找</h3>
+            <p>长文用右侧大纲定位，⌘F 在当前笔记里查找，不离开正文。</p>
+          </div>
+          <div class="def">
+            <h3>命令面板</h3>
+            <p>⌘K 打开全部命令：切换模式、调整字号、导出 HTML / PDF / Markdown / 长图。</p>
+          </div>
+          <div class="def">
+            <h3>草稿不丢</h3>
+            <p>断网或刷新，未保存的内容还在；切换笔记或关窗口之前会先问你。</p>
+          </div>
+        </div>
+
+        <figure class="plate">
+          <div class="mat">
+            <img src="../assets/screens/client-source.jpg" alt="V5Notes 源码模式：左侧目录树，右侧是带行号的 Markdown 原文" width="2200" height="1236">
+          </div>
+          <figcaption>图版 02 · 源码模式</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 核心编辑器 -->
+  <section class="section" id="editor">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>正文下面，<br>是一套自己写的编辑器。</h2>
+        <p class="sec-lede">V5Notes 的写作体验来自 v5md——一套开源的所见即所得 Markdown 编辑器。它不发明私有格式：Markdown 字符串是唯一数据源，输入、粘贴和工具条命令都只改这段字符串，再重新解析、重绘。</p>
+      </div>
+
+      <div class="defs editor-defs">
+        <div class="def">
+          <h3>数据就是 Markdown</h3>
+          <p>拿到的不是私有 JSON 或 HTML，而是可以直接入库、走 diff、交给任何 Markdown 渲染器的字符串。</p>
+        </div>
+        <div class="def">
+          <h3>标记按需显形</h3>
+          <p>平时看到的是排版结果；光标落在标题、粗体、代码块上，才露出 #、**、围栏，改完自动收回。</p>
+        </div>
+        <div class="def">
+          <h3>中文输入法友好</h3>
+          <p>组合输入期间不重绘 DOM，候选框不错位，拼音上屏不丢字。</p>
+        </div>
+        <div class="def">
+          <h3>粘贴即转换</h3>
+          <p>从网页、Word、飞书复制来的富文本，先转成 Markdown 再写入文档。</p>
+        </div>
+        <div class="def">
+          <h3>不锁死框架</h3>
+          <p>@v5md/vue 与 @v5md/react 只是薄壳，核心是 @v5md/view 的 Editor 类，也能挂到任意 DOM。</p>
+        </div>
+        <div class="def">
+          <h3>可插拔</h3>
+          <p>工具条、命令、对外 API 都能由插件提供；字号和导出是官方插件。</p>
+        </div>
+      </div>
+
+      <p class="support-line">标题、粗体、斜体、下划线、删除线、高亮、行内代码、链接、列表、任务列表、引用、带语法高亮的代码块、表格、分割线、图片（可拖拽缩放）、KaTeX 公式、Mermaid 图表、YAML frontmatter；以及撤销重做、查找替换（正则 / 全词）、整篇源码模式、大纲跳转、表格行列编辑、导出 Markdown / HTML / PDF / 图片。</p>
+
+      <div class="oss-band">
+        <p>v5md 以 MIT 许可开源，可以单独用在别的项目里。</p>
+        <p>GitHub <a href="https://github.com/zyw/v5md">github.com/zyw/v5md</a> ｜ npm <span class="mono">@v5md/vue · @v5md/react · @v5md/view</span> ｜ 当前 <span class="mono">v0.0.3</span></p>
+      </div>
+
+      <figure class="plate plate-lg" style="margin-top:88px">
+        <div class="mat">
+          <img src="../assets/screens/v5md-editor.png" alt="v5md 编辑器：左侧是带大纲的排版结果，右侧是同一份 Markdown 源码" width="1440" height="770">
+        </div>
+        <figcaption>v5md 编辑器：左边是排版结果，右边是同一份 Markdown 源码。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 回退 -->
+  <section class="section" id="rollback">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>删得安心，改得回去。</h2>
+        <p class="sec-lede">写作里最贵的不是打字，是「刚才那一版去哪了」。</p>
+      </div>
+
+      <figure class="plate plate-lg" style="margin-top:84px">
+        <div class="mat">
+          <img src="../assets/screens/client-history.jpg" alt="V5Notes 历史版本弹窗：左侧是带时间戳的版本列表，右侧是该版本正文的预览" width="2200" height="1199">
+        </div>
+        <figcaption>图版 03 · 历史版本</figcaption>
+      </figure>
+
+      <div class="trio">
+        <div class="item">
+          <h3>历史版本</h3>
+          <p>正文每次保存留一份快照，可以逐版预览，也可以把任意一版恢复成当前正文。</p>
+        </div>
+        <div class="item">
+          <h3>回收站</h3>
+          <p>笔记和目录先进入回收站，保留 30 天；删除目录时，子目录和笔记一起进去，恢复也是一起回来。</p>
+        </div>
+        <div class="item">
+          <h3>本地草稿</h3>
+          <p>刷新、断网、换一台设备，未保存的内容不会凭空消失。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 管理后台 -->
+  <section class="section" id="admin">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>写作之外的事，<br>交给管理后台。</h2>
+        <p class="sec-lede">管理后台和桌面端共用同一套笔记服务。写的人只管写，管的人在另一个入口。</p>
+      </div>
+
+      <figure class="plate plate-lg" style="margin-top:84px">
+        <div class="mat">
+          <img src="../assets/screens/admin-home.jpg" alt="V5Notes 管理后台工作台：内容资产、内容增长、最近更新与系统脉搏" width="2200" height="1244">
+        </div>
+        <figcaption>图版 04 · 管理后台工作台</figcaption>
+      </figure>
+
+      <div class="admin-grid">
+        <div class="admin-cell">
+          <h3>用户与组织</h3>
+          <p>用户、部门、岗位、角色、菜单、字典、参数、通知，一套系统管理里配齐。</p>
+        </div>
+        <div class="admin-cell">
+          <h3>笔记与目录</h3>
+          <p>在后台查看、检索、导出、管理所有人的笔记与目录。</p>
+        </div>
+        <div class="admin-cell">
+          <h3>客户端接入</h3>
+          <p>控制哪些客户端可以接入，用哪对公钥完成登录加密。</p>
+        </div>
+        <div class="admin-cell">
+          <h3>审计</h3>
+          <p>在线用户、登录日志、操作日志：谁在什么时候做了什么。</p>
+        </div>
+        <div class="admin-cell">
+          <h3>系统监控</h3>
+          <p>缓存、接口和运行状态，出问题先看见。</p>
+        </div>
+        <div class="admin-cell">
+          <h3>文件</h3>
+          <p>上传内容跟数据库放在一起，备份时一起拷走。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 三端 -->
+  <section class="section" id="three">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>一套笔记服务，同时服务<br>桌面端和管理后台。</h2>
+        <p class="sec-lede">客户端走 /client/notes，管理后台走 /notes、/system 和 /basics；雪花 ID 从接口到页面始终按字符串处理。</p>
+      </div>
+
+      <div class="nodes">
+        <div class="node">
+          <span class="dot" aria-hidden="true"></span>
+          <h3>桌面客户端</h3>
+          <p>Vue 3.5 · Tauri 2</p>
+        </div>
+        <div class="node">
+          <span class="dot" aria-hidden="true"></span>
+          <h3>API</h3>
+          <p>Java 21 · Spring Boot 4.1</p>
+        </div>
+        <div class="node">
+          <span class="dot" aria-hidden="true"></span>
+          <h3>管理后台</h3>
+          <p>Vue 3.5 · Element Plus</p>
+        </div>
+      </div>
+
+      <p class="meta-line">MySQL 8.4 或 PostgreSQL ｜ Redis 7.4 ｜ 本地文件存储 ｜ Flyway 建表</p>
+    </div>
+  </section>
+
+  <!-- 部署 -->
+  <section class="section" id="deploy">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>装在自己的机器上，<br>三种方式。</h2>
+        <p class="sec-lede">数据库表由 API 启动时的 Flyway 创建。选一种方式，把整套系统跑起来。</p>
+      </div>
+
+      <div class="deploy-grid">
+        <div>
+          <pre class="code"><code>cd v5notes2 &amp;&amp; mvn -DskipTests package
+cd ../v5notes-admin2 &amp;&amp; pnpm install &amp;&amp; pnpm build
+cd ../v5notes2/docker &amp;&amp; cp env.example .env
+docker compose up -d --build</code></pre>
+          <p class="addr">管理后台 http://localhost:8988 ｜ API http://localhost:8080</p>
+        </div>
+
+        <div class="aside-block">
+          <div class="aside-item">
+            <h3>Docker Compose</h3>
+            <p>上面四行，把 API、管理后台、MySQL 和 Redis 一起跑起来。</p>
+          </div>
+          <div class="aside-item">
+            <h3>Jar + Nginx</h3>
+            <p>已有 MySQL / Redis 时</p>
+          </div>
+          <div class="aside-item">
+            <h3>PostgreSQL</h3>
+            <p>同一个开关切方言和 Flyway 目录。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="deploy-lower">
+        <div class="lower-block">
+          <h3>备份</h3>
+          <dl class="paths">
+            <div><dt>数据库</dt><dd>v5notes2/docker/mysql/data</dd></div>
+            <div><dt>缓存</dt><dd>v5notes2/docker/redis/data</dd></div>
+            <div><dt>文件</dt><dd>v5notes2/docker/uploadfile</dd></div>
+          </dl>
+        </div>
+        <div class="lower-block">
+          <h3>第一次打开</h3>
+          <ol class="steps">
+            <li>用 admin / admin123 登录后台并改密码</li>
+            <li>新建「客户端用户」</li>
+            <li>在桌面端填服务器地址登录</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 技术栈与开源 -->
+  <section class="section" id="stack">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>一套能读、能改、<br>能自己维护的栈。</h2>
+      </div>
+
+      <div class="tech-grid">
+        <dl class="tech-rows">
+          <div class="tech-row">
+            <dt>后端</dt>
+            <dd>Java 21 / Spring Boot 4.1.2 / <span class="nw">MyBatis-Plus</span> / <span class="nw">Sa-Token</span> / Flyway / Redisson</dd>
+          </div>
+          <div class="tech-row">
+            <dt>前端</dt>
+            <dd>Vue 3.5 / TypeScript / Vite / Element Plus / Pinia / UnoCSS</dd>
+          </div>
+          <div class="tech-row">
+            <dt>桌面</dt>
+            <dd>Tauri 2</dd>
+          </div>
+          <div class="tech-row">
+            <dt>编辑器</dt>
+            <dd>v5md（@v5md/vue，MIT）</dd>
+          </div>
+        </dl>
+
+        <div class="stack-list">
+          <div class="stack-item">
+            <h3>登录</h3>
+            <p>访问令牌只在内存，刷新令牌默认 30 天、一次性轮换；客户端不保存密码。</p>
+          </div>
+          <div class="stack-item">
+            <h3>三语</h3>
+            <p>简体中文、繁體中文、English，三端都能切；后端按 <span class="nw">Content-Language</span> 返回提示。</p>
+          </div>
+          <div class="stack-item">
+            <h3>开源</h3>
+            <p>Apache 2.0，三个目录可以分开改；接口、表结构和 i18n 都有明确入口。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结尾 -->
+  <section class="cta">
+    <div class="wrap">
+      <div class="mark" aria-hidden="true"></div>
+      <h2>把下一段想法，写在自己的服务器上。</h2>
+      <div class="cta-actions">
+        <a class="btn btn-primary" href="https://github.com/zyw/v5notes/releases">下载桌面端</a>
+        <a class="link-plain" href="https://github.com/zyw/v5notes/blob/main/README.md">阅读部署文档</a>
+        <a class="link-plain" href="https://github.com/zyw/v5notes">GitHub</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <img src="../assets/brand/brand-icon.png" alt="" width="30" height="30">
+      <div>
+        <div class="name">V5Notes</div>
+        <div class="tag">可私有部署的 Markdown 云笔记</div>
+      </div>
+    </div>
+    <nav class="footer-nav" aria-label="页脚导航">
+      <a href="#writing">写作</a><span class="sep" aria-hidden="true">·</span>
+      <a href="#rollback">回退</a><span class="sep" aria-hidden="true">·</span>
+      <a href="#admin">管理</a><span class="sep" aria-hidden="true">·</span>
+      <a href="#deploy">部署</a><span class="sep" aria-hidden="true">·</span>
+      <a href="#stack">技术栈</a>
+    </nav>
+    <div class="footer-meta">
+      <a href="https://github.com/zyw/v5notes">GitHub</a>
+      <span class="sep" aria-hidden="true">｜</span>
+      <span>Apache 2.0</span>
+      <span class="sep" aria-hidden="true">｜</span>
+      <span>v2.0.0</span>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <p>© 2026 V5Notes · Java 21 · Vue 3.5 · Tauri 2</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var toggle = document.querySelector('.menu-toggle');
+    var panel = document.getElementById('nav-panel');
+    if (!toggle || !panel) return;
+
+    function setOpen(open) {
+      panel.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? '关闭导航菜单' : '打开导航菜单');
+    }
+
+    toggle.addEventListener('click', function () {
+      setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+
+    panel.addEventListener('click', function (e) {
+      if (e.target.closest('a')) setOpen(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && panel.classList.contains('is-open')) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+
+    var wide = window.matchMedia('(min-width: 861px)');
+    var onChange = function (e) { if (e.matches) setOpen(false); };
+    if (wide.addEventListener) wide.addEventListener('change', onChange);
+    else wide.addListener(onChange);
+
+    // 当前区块的导航高亮
+    var links = Array.prototype.slice.call(panel.querySelectorAll('.nav-links a'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var sec = document.getElementById(id);
+      if (sec) map[id] = a;
+    });
+    if ('IntersectionObserver' in window) {
+      var seen = {};
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          seen[en.target.id] = en.isIntersecting;
+          if (en.isIntersecting) {
+            links.forEach(function (l) { l.removeAttribute('aria-current'); });
+            var a = map[en.target.id];
+            if (a) a.setAttribute('aria-current', 'true');
+          }
+        });
+      }, { rootMargin: '-45% 0px -50% 0px' });
+      Object.keys(map).forEach(function (id) {
+        io.observe(document.getElementById(id));
+      });
+    }
+  })();
+</script>
+</body>
+</html>

@@ -71,10 +71,14 @@
           </template>
         </el-table-column>
         <el-table-column :label="$t('notes.trash.daysLeft')" align="center" prop="daysLeft" width="100" />
-        <el-table-column :label="$t('common.operate')" align="center" width="160" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" width="100" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button v-hasPermi="['notes:trash:restore']" link type="primary" @click="handleRestore(scope.row)">{{ $t('notes.trash.restore') }}</el-button>
-            <el-button v-hasPermi="['notes:trash:remove']" link type="danger" @click="handlePurge(scope.row)">{{ $t('notes.trash.purge') }}</el-button>
+            <el-tooltip :content="$t('notes.trash.restore')" placement="top">
+              <el-button v-hasPermi="['notes:trash:restore']" link type="primary" icon="RefreshLeft" @click="handleRestore(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip :content="$t('notes.trash.purge')" placement="top">
+              <el-button v-hasPermi="['notes:trash:remove']" link type="danger" icon="Delete" @click="handlePurge(scope.row)"></el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>

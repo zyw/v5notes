@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>V5Notes 官网 · 六张缩略图</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#d8d7cf;padding:22px;font-family:'PingFang SC','Hiragino Sans GB',sans-serif}
+  .grid{display:grid;grid-template-columns:repeat(3,460px);gap:20px}
+  .cell{width:460px}
+  .shot{width:460px;height:290px;overflow:hidden;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.18);position:relative}
+  .cap{margin-top:8px;font-size:12px;color:#4b4b45;display:flex;gap:8px}
+  .cap b{font-weight:600;color:#1c1c18}
+  .cap span{color:#6d6d64}
+  /* shared */
+  .serif{font-family:'Songti SC','Noto Serif SC',serif}
+  .mono{font-family:'SF Mono',ui-monospace,Menlo,monospace}
+  .t1{background:#fbf9f3;color:#26332c;padding:14px 18px}
+  .t1 .nav{display:flex;justify-content:space-between;align-items:center;font-size:7px;letter-spacing:.06em;color:#6b7b70;border-bottom:1px solid #e3e0d6;padding-bottom:7px}
+  .t1 .nav i{width:11px;height:11px;background:#0b4a52;border-radius:3px;display:inline-block;vertical-align:-2px;margin-right:3px}
+  .t1 h1{font-size:27px;line-height:1.28;margin-top:30px;font-weight:400;letter-spacing:.02em;width:250px}
+  .t1 p{font-size:8px;color:#6b7b70;margin-top:9px;width:190px;line-height:1.8}
+  .t1 .plate{position:absolute;right:18px;bottom:26px;width:150px;height:92px;background:#fffefa;border:1px solid #e3e0d6;padding:5px}
+  .t1 .plate div{width:100%;height:100%;background:#f4f2ec;display:flex;align-items:center;justify-content:center;font-size:6px;color:#8a958c}
+  .t1 .cap2{position:absolute;right:18px;bottom:12px;font-size:6px;color:#8a958c;letter-spacing:.06em}
+  .t1 .btns{display:flex;gap:6px;margin-top:12px}
+  .t1 .btn{font-size:7px;padding:4px 9px;border-radius:999px;background:#315b4a;color:#fbf9f3}
+  .t1 .btn.ghost{background:transparent;border:1px solid #b8bfb5;color:#315b4a}
+
+  .t2{background:#f0e9d8;color:#1d1d18;display:flex}
+  .t2 .page{width:50%;height:100%;padding:14px 12px;position:relative}
+  .t2 .page.left{border-right:1px solid rgba(0,0,0,.12)}
+  .t2 .block{position:absolute;left:0;bottom:0;width:100%;height:64px;background:#c8553d}
+  .t2 .block span{position:absolute;left:12px;bottom:6px;font:600 9px 'PingFang SC';color:#f0e9d8;letter-spacing:.1em}
+  .t2 h1{font-size:25px;line-height:1.06;font-weight:800;letter-spacing:-.02em}
+  .t2 .small{font-size:7px;line-height:1.7;margin-top:8px;width:150px;color:#44443c}
+  .t2 .imgs{display:flex;gap:3px;margin-top:10px}
+  .t2 .imgs i{flex:1;height:52px;background:#fff;border:1px solid rgba(0,0,0,.15);display:block}
+  .t2 .folio{position:absolute;top:12px;right:12px;font:7px 'SF Mono';letter-spacing:.08em;color:#6a6a5c}
+
+  .t3{background:#0b1411;color:#eef2ec;padding:14px 18px;position:relative}
+  .t3 .nav{display:flex;justify-content:space-between;font-size:7px;color:#9fb0a6;padding-bottom:7px;border-bottom:1px solid rgba(233,238,232,.10)}
+  .t3 h1{font-size:25px;line-height:1.12;font-weight:600;letter-spacing:-.02em;margin-top:26px;width:260px}
+  .t3 p{font-size:7px;color:#9fb0a6;margin-top:7px;width:190px;line-height:1.8}
+  .t3 .btn{display:inline-block;margin-top:9px;font-size:7px;padding:4px 10px;border-radius:999px;background:#4fbf94;color:#08120e;font-weight:600}
+  .t3 .win{position:absolute;left:18px;right:18px;bottom:14px;height:96px;border:1px solid rgba(233,238,232,.18);border-radius:6px;background:#101d18;overflow:hidden}
+  .t3 .win .bar{height:14px;background:#0d1815;border-bottom:1px solid rgba(233,238,232,.10);display:flex;align-items:center;gap:3px;padding-left:7px}
+  .t3 .win .bar i{width:4px;height:4px;border-radius:50%;background:#3a4a42}
+  .t3 .win .body{display:flex;height:82px}
+  .t3 .win .side{width:70px;background:#0f1c18;border-right:1px solid rgba(233,238,232,.08);padding:7px;font-size:5px;color:#7f9188;line-height:2.1}
+  .t3 .win .main{flex:1;padding:7px 10px;font-size:5px;color:#9fb0a6;line-height:1.9}
+  .t3 .win .main b{display:block;color:#eef2ec;font-size:7px;margin-bottom:3px}
+
+  .t4{background:#fff;color:#2b2b2b;padding:14px 18px;text-align:center;position:relative}
+  .t4 .nav{display:flex;justify-content:space-between;font-size:7px;color:#6b6b6b;padding-bottom:8px}
+  .t4 h1{font-size:23px;font-weight:700;margin-top:22px;letter-spacing:-.01em}
+  .t4 h1 u{text-decoration:none;border-bottom:3px solid #9fd8e6}
+  .t4 p{font-size:7px;color:#777;margin-top:6px}
+  .t4 .plats{display:flex;justify-content:center;gap:14px;font-size:7px;color:#555;margin-top:10px}
+  .t4 .win{position:absolute;left:26px;right:26px;bottom:12px;height:92px;border:1px solid #e6e6e6;border-radius:5px;background:#fafafa;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+  .t4 .win .top{height:12px;background:#f2f2f2;border-bottom:1px solid #e6e6e6}
+  .t4 .win .cols{display:flex;height:80px}
+  .t4 .win .c1{width:56px;background:#f7f7f7;border-right:1px solid #ececec;font-size:5px;color:#999;padding:6px;line-height:2}
+  .t4 .win .c2{width:90px;border-right:1px solid #ececec;font-size:5px;color:#aaa;padding:6px;line-height:2}
+  .t4 .win .c3{flex:1;padding:6px 8px;font-size:5px;color:#bbb;line-height:1.9;text-align:left}
+
+  .t5{background:#0a192f;color:#e6f1ff;padding:14px 18px;position:relative;display:flex;gap:14px}
+  .t5 .rail{width:64px;font-size:6px;color:#8892b0;line-height:2.4;border-right:1px solid #1e3a5f;padding-right:8px}
+  .t5 .rail b{color:#64ffda;font-weight:400}
+  .t5 .rail i{display:block;width:16px;height:1px;background:#64ffda;margin-bottom:6px}
+  .t5 .main{flex:1}
+  .t5 .eyebrow{font:6px 'SF Mono';color:#64ffda;letter-spacing:.1em}
+  .t5 h1{font-size:24px;line-height:1.12;font-weight:600;letter-spacing:-.02em;margin-top:8px;width:220px}
+  .t5 p{font-size:7px;color:#8892b0;margin-top:7px;width:190px;line-height:1.8}
+  .t5 .win{position:absolute;right:14px;bottom:12px;width:196px;height:96px;border:1px solid #1e3a5f;border-radius:5px;background:#112240;overflow:hidden}
+  .t5 .win .top{height:11px;background:#0d1f38;border-bottom:1px solid #1e3a5f}
+  .t5 .win .b{padding:7px;font-size:5px;color:#8892b0;line-height:1.9}
+  .t5 .win .b b{color:#e6f1ff}
+
+  .t6{background:#f7f5ee;display:flex;position:relative;color:#17352c}
+  .t6 .left{width:52%;background:#17352c;position:relative;overflow:hidden}
+  .t6 .left .char{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-family:'Songti SC','Noto Serif SC',serif;font-size:190px;line-height:.78;color:#f7f5ee;font-weight:900}
+  .t6 .left .tag{position:absolute;left:12px;top:12px;font:6px 'SF Mono';letter-spacing:.16em;color:rgba(247,245,238,.6)}
+  .t6 .left .seal{position:absolute;right:12px;bottom:12px;width:7px;height:7px;background:#a7483d}
+  .t6 .right{flex:1;padding:16px 14px}
+  .t6 .nav{font-size:6px;color:#6b7b70;display:flex;gap:8px;margin-bottom:26px}
+  .t6 h1{font-size:20px;line-height:1.22;font-weight:700}
+  .t6 p{font-size:6.5px;color:#4c5b53;margin-top:7px;line-height:1.85}
+  .t6 .btn{display:inline-block;margin-top:10px;font-size:6.5px;padding:4px 9px;background:#17352c;color:#f7f5ee}
+  .t6 .facts{position:absolute;left:12px;bottom:10px;font:5.5px 'SF Mono';letter-spacing:.08em;color:rgba(247,245,238,.55)}
+</style></head><body>
+<div class="grid">
+
+  <div class="cell"><div class="shot t1">
+    <div class="nav"><span><i></i>V5NOTES</span><span>写作　回退　管理　部署</span></div>
+    <h1>把想法，<br>留在自己的服务器上。</h1>
+    <p>可私有部署的 Markdown 云笔记。桌面端写作，管理后台管人和权限。</p>
+    <div class="btns"><span class="btn">下载桌面端</span><span class="btn ghost">GitHub</span></div>
+    <div class="plate"><div>客户端 · 空白页</div></div>
+    <div class="cap2">图版 01 · CLIENT</div>
+  </div><div class="cap"><b>1 白</b><span>原研哉 / 极空 · 图版</span></div></div>
+
+  <div class="cell"><div class="shot t2">
+    <div class="page left"><div class="folio">V5NOTES · 01</div>
+      <h1>把想法，<br>留在自己的<br>服务器上。</h1>
+      <div class="small">一套可私有部署的 Markdown 云笔记。桌面端写作，后台管人。</div>
+      <div class="imgs"><i></i><i></i><i></i></div>
+      <div class="block"><span>PRIVATE NOTES</span></div>
+    </div>
+    <div class="page right"><div class="folio">FIG. 2</div>
+      <div class="small" style="width:auto">正文、目录、历史版本和文件都存在你自己的数据库里。备份就是拷走三个目录。</div>
+      <div class="imgs" style="flex-direction:column;gap:4px;margin-top:12px"><i style="height:54px"></i><i style="height:72px"></i><i style="height:40px"></i></div>
+      <div class="block" style="height:34px;background:#315b4a"><span>MARKDOWN · 30 DAYS</span></div>
+    </div>
+  </div><div class="cap"><b>2 书作为物</b><span>Irma Boom / 跨页 · 备选</span></div></div>
+
+  <div class="cell"><div class="shot t3">
+    <div class="nav"><span>V5Notes</span><span>写作　回退　管理　部署</span></div>
+    <h1>把想法，留在<br>自己的服务器上。</h1>
+    <p>可私有部署的 Markdown 云笔记。数据库、文件和历史都在你自己的机器上。</p>
+    <span class="btn">下载桌面端</span>
+    <div class="win"><div class="bar"><i></i><i></i><i></i></div>
+      <div class="body"><div class="side">笔记<br>目录<br>回收站</div><div class="main"><b>选择一篇笔记开始阅读</b>从左侧目录树打开笔记，预览模式阅读，需要修改时再进入编辑。</div></div>
+    </div>
+  </div><div class="cap"><b>3 深墨工程</b><span>Linear.app / 产品优先</span></div></div>
+
+  <div class="cell"><div class="shot t4">
+    <div class="nav"><span>V5Notes</span><span>功能　部署　技术栈</span></div>
+    <h1>Markdown notes<br>you keep <u>yourself</u></h1>
+    <p>可私有部署的云笔记 · Windows / macOS / Linux</p>
+    <div class="plats"><span>◻ Windows</span><span>◻ macOS</span><span>◻ Linux</span></div>
+    <div class="win"><div class="top"></div><div class="cols"><div class="c1">笔记<br>目录<br>回收站</div><div class="c2">笔记 4<br>笔记 1<br>目录 3</div><div class="c3">欢迎使用 Markdown 笔记<br>这是首次使用自动生成的内容……</div></div></div>
+  </div><div class="cap"><b>4 温暖</b><span>Bear.app / 居中 · 备选</span></div></div>
+
+  <div class="cell"><div class="shot t5">
+    <div class="rail"><i></i>写作<br><b>回退</b><br>管理<br>部署<br>技术栈</div>
+    <div class="main"><div class="eyebrow">01 · SELF-HOSTED</div>
+      <h1>把想法留在自己的服务器上。</h1>
+      <p>可私有部署的 Markdown 云笔记，数据不经过第三方。</p>
+    </div>
+    <div class="win"><div class="top"></div><div class="b"><b>选择一篇笔记开始阅读</b><br>预览模式阅读，需要修改时再进入编辑。<br><br><b>回收站</b> · 30 天</div></div>
+  </div><div class="cap"><b>5 Dark Editorial</b><span>秒数轮盘 #11 / 备选</span></div></div>
+
+  <div class="cell"><div class="shot t6">
+    <div class="left"><div class="tag">V5NOTES</div><div class="char">留</div><div class="seal"></div></div>
+    <div class="right"><div class="nav"><span>写作</span><span>回退</span><span>管理</span></div>
+      <h1>把想法，<br>留在自己的<br>服务器上。</h1>
+      <p>可私有部署的 Markdown 云笔记。桌面端写作，后台管人，正文与历史都在你自己的数据库里。</p>
+      <span class="btn">下载桌面端</span>
+    </div>
+    <div class="facts">WINDOWS · MACOS · LINUX　APACHE 2.0　V2.0.0</div>
+  </div><div class="cap"><b>6 留</b><span>佐藤可士和 / 巨字</span></div></div>
+
+</div></body></html>

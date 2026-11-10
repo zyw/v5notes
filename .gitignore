@@ -51,3 +51,4 @@ nbdist/
 
 v5notes-admin2/.shot
 v5notes-client2/design-demos/.chrome-profile
+v5notes-website/node_modules
