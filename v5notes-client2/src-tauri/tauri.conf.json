@@ -38,7 +38,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVCMzNFOTBGQTlGQUU0OEM\nUldTTTVQcXBEK2t6Njgzc3d1MThLMUNNSVBxNmtCMTZ0UEtxeXZISmtFUHkzeCt0MTg0V1gycG0K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVCMzNFOTBGQTlGQUU0OEMKUldTTTVQcXBEK2t6Njgzc3d1MThLMUNNSVBxNmtCMTZ0UEtxeXZISmtFUHkzeCt0MTg0V1gycG0K",
       "endpoints": [
         "https://github.com/zyw/v5notes/releases/latest/download/latest.json"
       ],

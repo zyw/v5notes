@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Note } from '../service/api'
 import { Draft } from './draft'
 
 const note = { id: '934509293439939393', dirId: '0', name: '笔记', content: '原文' }
