@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>首页方向 · 六格缩略图</title>
+<style>
+  :root{
+    --shell:#f4f7f5; --surface:#ffffff; --border:#e6ebe7; --title:#15241e; --body:#2b3a32;
+    --muted:#5f7067; --primary:#1c5a48; --soft:#e8f2ec; --success:#2f9e6b; --warning:#d9a33b; --info:#64748b;
+    --d-shell:#0c1411; --d-surface:#111a16; --d-border:rgba(255,255,255,.08); --d-title:#e9f2ec;
+    --d-body:#cdd9d2; --d-muted:#8ea79b; --d-primary:#4fbf94;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#dfe5e1;font-family:"PingFang SC","HarmonyOS Sans SC","MiSans",-apple-system,sans-serif;
+       -webkit-font-smoothing:antialiased;padding:10px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:1420px}
+  .cell{position:relative;height:300px;border-radius:10px;overflow:hidden;background:var(--shell);
+        border:1px solid #cfd8d2;box-shadow:0 1px 2px rgba(20,40,30,.06)}
+  .tag{position:absolute;left:8px;bottom:8px;z-index:9;font:600 9px/1 ui-monospace,monospace;letter-spacing:.08em;
+       color:var(--muted);background:rgba(255,255,255,.92);padding:4px 6px;border-radius:4px;
+       border:1px solid rgba(20,40,30,.08)}
+  .cell.dark .tag{background:rgba(255,255,255,.1);color:var(--d-muted)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+  /* mini sidebar */
+  .side{position:absolute;left:0;top:0;bottom:0;width:104px;background:#fff;border-right:1px solid var(--border);padding:10px 8px}
+  .side.d{background:#0f1714;border-color:var(--d-border)}
+  .brand{display:flex;align-items:center;gap:5px;margin-bottom:12px}
+  .dotlogo{width:13px;height:13px;border-radius:4px;background:#f5793b}
+  .brand b{font-size:8px;color:var(--title);letter-spacing:-.02em}
+  .side.d .brand b{color:var(--d-title)}
+  .nav{display:grid;gap:3px}
+  .nav i{display:block;height:9px;border-radius:3px;background:#eef2ef}
+  .nav i.on{background:var(--soft)}
+  .side.d .nav i{background:rgba(255,255,255,.06)}
+  .side.d .nav i.on{background:rgba(79,191,148,.18)}
+  .main{position:absolute;left:104px;right:0;top:0;bottom:0;padding:12px}
+  /* A1 cockpit */
+  .a1-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:9px}
+  .a1-head h3{margin:0;font-size:17px;letter-spacing:-.03em;color:var(--title)}
+  .a1-head p{margin:2px 0 0;font-size:8px;color:var(--muted)}
+  .band{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .band > div{padding:8px 9px;border-right:1px solid var(--border)}
+  .band > div:last-child{border-right:0}
+  .band .lab{font-size:7px;letter-spacing:.08em;color:var(--muted);font-family:ui-monospace,monospace}
+  .band .v{font-size:19px;font-weight:650;color:var(--title);margin-top:3px;display:flex;align-items:baseline;gap:2px}
+  .band .v small{font-size:8px;font-weight:500;color:var(--muted)}
+  .band svg{display:block;margin-top:4px}
+  .a1-body{display:grid;grid-template-columns:2.1fr 1fr;gap:8px;margin-top:8px;height:150px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px}
+  .ct{font-size:7px;letter-spacing:.08em;color:var(--muted);font-family:ui-monospace,monospace;margin-bottom:5px}
+  .area{width:100%;height:112px}
+  .ring{width:74px;height:74px;margin:2px auto 0}
+  .legend{display:grid;gap:4px;margin-top:4px}
+  .legend span{display:flex;align-items:center;gap:4px;font-size:7px;color:var(--muted)}
+  .legend em{width:5px;height:5px;border-radius:1px;font-style:normal}
+  /* A2 quiet */
+  .a2{position:absolute;inset:0;background:#fbfcfb;display:flex;flex-direction:column;justify-content:center;padding:0 46px}
+  .a2 h4{margin:0 0 18px;font-size:10px;letter-spacing:.14em;color:var(--muted);font-family:ui-monospace,monospace}
+  .a2row{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eef1ee}
+  .a2row b{font-size:26px;font-weight:600;color:var(--title);letter-spacing:-.04em}
+  .a2row span{font-size:8px;color:var(--muted)}
+  .a2line{position:absolute;left:46px;right:46px;bottom:26px;height:1px;background:#d5ded8}
+  /* B1 atlas */
+  .b1{display:grid;grid-template-columns:96px 1fr;gap:8px;height:100%}
+  .b1l{display:flex;flex-direction:column}
+  .b1l .big{font-size:34px;font-weight:650;color:var(--title);letter-spacing:-.05em;line-height:.95}
+  .b1l .cap{font-size:7px;color:var(--muted);margin-top:2px}
+  .b1l ul{list-style:none;margin:9px 0 0;padding:0;display:grid;gap:5px}
+  .b1l li{font-size:7px;color:var(--body);display:grid;gap:2px}
+  .b1l li i{display:block;height:3px;border-radius:2px;background:var(--primary);opacity:.7}
+  .tree{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(4,1fr);gap:2px;border-radius:7px;overflow:hidden;height:100%}
+  .tree div{border-radius:2px;position:relative}
+  .tree span{position:absolute;left:3px;top:2px;font-size:6.5px;color:#fff;opacity:.92}
+  /* B2 bento */
+  .bento{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);gap:6px;height:100%}
+  .bento > div{background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px}
+  .bento .big{grid-column:span 2;grid-row:span 2}
+  .bento .wide{grid-column:span 2}
+  .bento .k{font-size:16px;font-weight:650;color:var(--title);letter-spacing:-.03em}
+  .bento .l{font-size:6.5px;color:var(--muted);letter-spacing:.06em;font-family:ui-monospace,monospace}
+  /* C1 signal */
+  .c1 .main{color:var(--d-body)}
+  .c1head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .c1head h3{margin:0;font-size:15px;color:var(--d-title);letter-spacing:-.02em}
+  .live{display:flex;align-items:center;gap:4px;font:7px ui-monospace,monospace;color:var(--d-primary);letter-spacing:.1em}
+  .live em{width:4px;height:4px;border-radius:50%;background:var(--d-primary);font-style:normal}
+  .wave{display:flex;align-items:flex-end;gap:2px;height:70px;padding:6px 0}
+  .wave i{flex:1;background:var(--d-primary);opacity:.55;border-radius:1px}
+  .c1grid{display:grid;grid-template-columns:1.6fr 1fr;gap:8px;margin-top:6px}
+  .dpanel{background:var(--d-surface);border:1px solid var(--d-border);border-radius:8px;padding:7px}
+  .dpanel .ct{color:var(--d-muted)}
+  .ev{display:grid;gap:4px}
+  .ev div{display:grid;grid-template-columns:26px 1fr;gap:4px;font-size:6.5px;color:var(--d-body)}
+  .ev b{font-family:ui-monospace,monospace;color:var(--d-muted);font-weight:400}
+  .dring{width:56px;height:56px;margin:0 auto}
+  /* C2 briefing */
+  .c2{display:grid;grid-template-columns:1fr 2fr;gap:14px;height:100%;padding:4px 0}
+  .c2l{border-right:1px solid #dde5df;padding-right:12px;display:flex;flex-direction:column;justify-content:space-between}
+  .c2l h2{margin:0;font-size:22px;line-height:1.05;letter-spacing:-.04em;color:var(--title);white-space:nowrap}
+  .c2l p{margin:6px 0 0;font-size:7px;color:var(--muted);line-height:1.7}
+  .c2r{display:grid;gap:9px;align-content:start}
+  .c2r p{margin:0;font-size:8px;line-height:1.75;color:var(--body)}
+  .c2r p b{color:var(--title)}
+  .c2r .mini{height:34px;display:flex;align-items:flex-end;gap:2px}
+  .c2r .mini i{flex:1;background:#cfe0d6;border-radius:1px}
+  .c2r .mini i.hi{background:var(--primary)}
+</style>
+</head>
+<body>
+<div class="grid">
+
+  <!-- A1 -->
+  <div class="cell">
+    <div class="tag">A1 · 指挥带 COCKPIT</div>
+    <div class="side">
+      <div class="brand"><span class="dotlogo"></span><b>V5Notes2</b></div>
+      <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="main">
+      <div class="a1-head">
+        <div><h3>工作台</h3><p>内容资产、用户活跃与系统脉搏 · 截至 10:24</p></div>
+        <div class="mono" style="font-size:7px;color:var(--muted)">近 30 天 ▾</div>
+      </div>
+      <div class="band">
+        <div><div class="lab">笔记总数</div><div class="v num">12,486<small>篇</small></div>
+          <svg width="100%" height="14" viewBox="0 0 60 14" preserveAspectRatio="none"><path d="M0 12 L8 10 L16 11 L24 8 L32 9 L40 6 L48 7 L60 3" fill="none" stroke="#1c5a48" stroke-width="1.2"/></svg></div>
+        <div><div class="lab">本周新增</div><div class="v num">412<small>篇</small></div>
+          <svg width="100%" height="14" viewBox="0 0 60 14" preserveAspectRatio="none"><path d="M0 11 L10 12 L20 9 L30 10 L40 6 L50 7 L60 4" fill="none" stroke="#2f9e6b" stroke-width="1.2"/></svg></div>
+        <div><div class="lab">活跃用户</div><div class="v num">486<small>人</small></div>
+          <svg width="100%" height="14" viewBox="0 0 60 14" preserveAspectRatio="none"><path d="M0 9 L10 8 L20 10 L30 7 L40 8 L50 5 L60 4" fill="none" stroke="#64748b" stroke-width="1.2"/></svg></div>
+        <div><div class="lab">在线</div><div class="v num">42<small>人</small></div>
+          <svg width="100%" height="14" viewBox="0 0 60 14" preserveAspectRatio="none"><path d="M0 7 L10 9 L20 6 L30 8 L40 7 L50 9 L60 8" fill="none" stroke="#d9a33b" stroke-width="1.2"/></svg></div>
+      </div>
+      <div class="a1-body">
+        <div class="card">
+          <div class="ct">近 30 天 · 新增 / 编辑</div>
+          <svg class="area" viewBox="0 0 260 112" preserveAspectRatio="none">
+            <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c5a48" stop-opacity=".18"/><stop offset="1" stop-color="#1c5a48" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 92 L20 86 L40 88 L60 74 L80 78 L100 62 L120 66 L140 52 L160 56 L180 42 L200 46 L220 34 L240 38 L260 26 L260 112 L0 112 Z" fill="url(#g1)"/>
+            <path d="M0 92 L20 86 L40 88 L60 74 L80 78 L100 62 L120 66 L140 52 L160 56 L180 42 L200 46 L220 34 L240 38 L260 26" fill="none" stroke="#1c5a48" stroke-width="1.6"/>
+            <path d="M0 104 L20 100 L40 102 L60 96 L80 98 L100 90 L120 92 L140 86 L160 88 L180 80 L200 82 L220 76 L240 78 L260 70" fill="none" stroke="#9db8ac" stroke-width="1.2" stroke-dasharray="3 3"/>
+          </svg>
+        </div>
+        <div class="card">
+          <div class="ct">内容构成</div>
+          <svg class="ring" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="15" fill="none" stroke="#eef2ef" stroke-width="6"/>
+            <circle cx="20" cy="20" r="15" fill="none" stroke="#1c5a48" stroke-width="6" stroke-dasharray="58 94" stroke-linecap="butt" transform="rotate(-90 20 20)"/>
+            <circle cx="20" cy="20" r="15" fill="none" stroke="#7fb39c" stroke-width="6" stroke-dasharray="28 94" stroke-dashoffset="-58" transform="rotate(-90 20 20)"/>
+            <text x="20" y="21.5" text-anchor="middle" font-size="6" fill="#15241e" font-family="ui-monospace">12,486</text>
+          </svg>
+          <div class="legend"><span><em style="background:#1c5a48"></em>产品设计 1,862</span><span><em style="background:#7fb39c"></em>技术文档 1,488</span><span><em style="background:#cfe0d6"></em>其他 9,136</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A2 -->
+  <div class="cell">
+    <div class="tag">A2 · 留白工作台 QUIET（备选）</div>
+    <div class="a2">
+      <h4>WORKSPACE · 2026.11.07</h4>
+      <div class="a2row"><b class="num">12,486</b><span>篇笔记</span></div>
+      <div class="a2row"><b class="num">412</b><span>本周新增</span></div>
+      <div class="a2row"><b class="num">486</b><span>7 日活跃用户</span></div>
+      <div class="a2row"><b class="num">18.6</b><span>GB 附件</span></div>
+      <div class="a2line"></div>
+    </div>
+  </div>
+
+  <!-- B1 -->
+  <div class="cell">
+    <div class="tag">B1 · 内容地图 ATLAS</div>
+    <div class="side">
+      <div class="brand"><span class="dotlogo"></span><b>V5Notes2</b></div>
+      <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="main">
+      <div class="b1">
+        <div class="b1l">
+          <div class="big num">12,486</div>
+          <div class="cap">篇笔记 · 328 个目录</div>
+          <ul>
+            <li>产品设计<i style="width:96%"></i></li>
+            <li>技术文档<i style="width:78%"></i></li>
+            <li>会议纪要<i style="width:64%"></i></li>
+            <li>运营素材<i style="width:52%"></i></li>
+            <li>客户跟进<i style="width:39%"></i></li>
+          </ul>
+        </div>
+        <div class="tree">
+          <div style="grid-column:span 3;grid-row:span 2;background:#1c5a48"><span>产品设计 1,862</span></div>
+          <div style="grid-column:span 2;grid-row:span 2;background:#2b6f58"><span>技术文档 1,488</span></div>
+          <div style="grid-column:span 1;grid-row:span 1;background:#3f8770"></div>
+          <div style="grid-column:span 1;grid-row:span 1;background:#5d9c86"></div>
+          <div style="grid-column:span 2;grid-row:span 1;background:#7fb39c"><span>运营素材</span></div>
+          <div style="grid-column:span 1;grid-row:span 1;background:#a8c9ba"></div>
+          <div style="grid-column:span 1;grid-row:span 1;background:#c4dace"></div>
+          <div style="grid-column:span 2;grid-row:span 1;background:#dfe9e3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B2 -->
+  <div class="cell">
+    <div class="tag">B2 · BENTO 网格（备选）</div>
+    <div class="side">
+      <div class="brand"><span class="dotlogo"></span><b>V5Notes2</b></div>
+      <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="main">
+      <div class="bento">
+        <div class="big"><div class="l">NOTES</div><div class="k num">12,486</div>
+          <svg width="100%" height="52" viewBox="0 0 140 52" preserveAspectRatio="none" style="margin-top:6px"><path d="M0 46 L14 40 L28 43 L42 32 L56 36 L70 26 L84 30 L98 20 L112 24 L126 14 L140 18" fill="none" stroke="#1c5a48" stroke-width="1.5"/></svg></div>
+        <div><div class="l">WEEK +</div><div class="k num" style="font-size:14px">412</div></div>
+        <div><div class="l">ONLINE</div><div class="k num" style="font-size:14px">42</div></div>
+        <div class="wide"><div class="l">7×24 活跃</div>
+          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1.5px;margin-top:5px">
+            <i style="height:5px;background:#e6efe9;display:block"></i><i style="height:5px;background:#cfe0d6;display:block"></i><i style="height:5px;background:#a8c9ba;display:block"></i><i style="height:5px;background:#7fb39c;display:block"></i><i style="height:5px;background:#5d9c86;display:block"></i><i style="height:5px;background:#3f8770;display:block"></i><i style="height:5px;background:#2b6f58;display:block"></i><i style="height:5px;background:#1c5a48;display:block"></i><i style="height:5px;background:#2b6f58;display:block"></i><i style="height:5px;background:#5d9c86;display:block"></i><i style="height:5px;background:#a8c9ba;display:block"></i><i style="height:5px;background:#e6efe9;display:block"></i>
+          </div></div>
+        <div><div class="l">SUCCESS</div><div class="k num" style="font-size:13px">99.97%</div></div>
+        <div><div class="l">STORAGE</div><div class="k num" style="font-size:13px">18.6G</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C1 -->
+  <div class="cell dark c1" style="background:var(--d-shell)">
+    <div class="tag">C1 · 值班室 SIGNAL</div>
+    <div class="side d">
+      <div class="brand"><span class="dotlogo"></span><b>V5Notes2</b></div>
+      <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="main">
+      <div class="c1head"><h3>值班室</h3><div class="live"><em></em>LIVE 10:24:07</div></div>
+      <div class="wave">
+        <i style="height:18%"></i><i style="height:21%"></i><i style="height:24%"></i><i style="height:27%"></i><i style="height:30%"></i><i style="height:24%"></i><i style="height:27%"></i><i style="height:31%"></i><i style="height:34%"></i><i style="height:38%"></i><i style="height:32%"></i><i style="height:36%"></i><i style="height:40%"></i><i style="height:44%"></i><i style="height:48%"></i><i style="height:42%"></i><i style="height:46%"></i><i style="height:50%"></i><i style="height:54%"></i><i style="height:58%"></i><i style="height:51%"></i><i style="height:55%"></i><i style="height:58%"></i><i style="height:61%"></i><i style="height:64%"></i><i style="height:56%"></i><i style="height:59%"></i><i style="height:61%"></i><i style="height:63%"></i><i style="height:65%"></i><i style="height:56%"></i><i style="height:58%"></i><i style="height:60%"></i><i style="height:61%"></i><i style="height:63%"></i><i style="height:54%"></i><i style="height:56%"></i><i style="height:57%"></i><i style="height:59%"></i><i style="height:61%"></i><i style="height:52%"></i><i style="height:54%"></i><i style="height:55%"></i><i style="height:56%"></i><i style="height:58%"></i><i style="height:48%"></i><i style="height:49%"></i><i style="height:49%"></i><i style="height:50%"></i><i style="height:50%"></i><i style="height:39%"></i><i style="height:39%"></i><i style="height:39%"></i><i style="height:38%"></i><i style="height:38%"></i><i style="height:28%"></i><i style="height:28%"></i><i style="height:28%"></i>
+      </div>
+      <div class="c1grid">
+        <div class="dpanel">
+          <div class="ct">实时事件</div>
+          <div class="ev">
+            <div><b>10:24</b><span>林知远 新建《Q4 产品路线图评审纪要》</span></div>
+            <div><b>10:21</b><span>沈亦清 更新《笔记同步冲突处理方案》</span></div>
+            <div><b>10:18</b><span>周砚 App 客户端登录（上海）</span></div>
+            <div><b>09:58</b><span style="color:#e0b25a">系统 对象存储同步延迟 2.4s</span></div>
+            <div><b>09:51</b><span>顾南枝 新建《客户 A 需求变更记录》</span></div>
+          </div>
+        </div>
+        <div class="dpanel">
+          <div class="ct">健康度</div>
+          <svg class="dring" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="15" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/>
+            <circle cx="20" cy="20" r="15" fill="none" stroke="#4fbf94" stroke-width="3" stroke-dasharray="94 94" transform="rotate(-90 20 20)"/>
+            <text x="20" y="22" text-anchor="middle" font-size="6.5" fill="#e9f2ec" font-family="ui-monospace">99.97</text>
+          </svg>
+          <div style="display:grid;gap:3px;margin-top:5px;font-size:6.5px;color:#8ea79b">
+            <span style="display:flex;justify-content:space-between"><span>P95</span><span style="color:#cdd9d2">86 ms</span></span>
+            <span style="display:flex;justify-content:space-between"><span>缓存命中</span><span style="color:#cdd9d2">96.4%</span></span>
+            <span style="display:flex;justify-content:space-between"><span>在线</span><span style="color:#cdd9d2">42</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C2 -->
+  <div class="cell">
+    <div class="tag">C2 · 周报简报 BRIEFING（备选）</div>
+    <div class="side">
+      <div class="brand"><span class="dotlogo"></span><b>V5Notes2</b></div>
+      <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="main">
+      <div class="c2">
+        <div class="c2l">
+          <div><h2>第 45 周</h2><p>2026.11.02 — 11.08<br/>数据截至 11.07 10:24</p></div>
+          <p style="color:var(--primary)">本周简报</p>
+        </div>
+        <div class="c2r">
+          <p><b>412 篇</b>新笔记进入内容库，比上周多 3.4%，其中 <b>61%</b> 落在「产品设计」与「技术文档」两个目录。</p>
+          <div class="mini"><i style="height:40%"></i><i style="height:52%"></i><i style="height:48%"></i><i style="height:64%"></i><i style="height:58%"></i><i style="height:76%"></i><i class="hi" style="height:92%"></i><i style="height:70%"></i></div>
+          <p>活跃用户 <b>486 人</b>，晚间 21 点后仍有一次写入高峰；PC 端占登录量 <b>68%</b>。</p>
+          <p>系统 24 小时成功率 <b>99.97%</b>，对象存储出现 1 次 2.4s 同步延迟，已恢复。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<template>
+  <div class="p-2 app-container profile-page">
+    <el-row :gutter="20" class="profile-grid">
+      <el-col :span="6" :xs="24">
+        <el-card shadow="hover" class="side-panel profile-summary-card">
+          <template #header>
+            <div class="panel-heading">
+              <div><h3>{{ $t('system.profile.infoTitle') }}</h3></div>
+            </div>
+          </template>
+          <div class="profile-summary">
+            <div class="text-center profile-avatar">
+              <userAvatar />
+            </div>
+            <ul class="list-group list-group-striped">
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="user" />
+                  <span>{{ $t('system.user.userName') }}</span>
+                </div>
+                <span class="profile-item-value">{{ state.user.userName || '-' }}</span>
+              </li>
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="phone" />
+                  <span>{{ $t('system.user.phone') }}</span>
+                </div>
+                <span class="profile-item-value">{{ state.user.phoneNumber || '-' }}</span>
+              </li>
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="email" />
+                  <span>{{ $t('system.profile.userEmail') }}</span>
+                </div>
+                <span class="profile-item-value">{{ state.user.email || '-' }}</span>
+              </li>
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="tree" />
+                  <span>{{ $t('system.profile.belongDept') }}</span>
+                </div>
+                <span v-if="state.user.deptName" class="profile-item-value">
+                  {{ state.user.deptName }} / {{ state.postGroup }}
+                </span>
+                <span v-else class="profile-item-value">-</span>
+              </li>
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="peoples" />
+                  <span>{{ $t('system.profile.belongRole') }}</span>
+                </div>
+                <span class="profile-item-value">{{ state.roleGroup || '-' }}</span>
+              </li>
+              <li class="list-group-item">
+                <div class="profile-item-label">
+                  <svg-icon icon-class="date" />
+                  <span>{{ $t('system.profile.createDate') }}</span>
+                </div>
+                <span class="profile-item-value">{{ state.user.createTime || '-' }}</span>
+              </li>
+            </ul>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="18" :xs="24">
+        <el-card shadow="hover" class="table-panel profile-main-card">
+          <template #header>
+            <div class="toolbar-shell">
+              <div class="table-heading">
+                <h3>{{ $t('system.profile.settings') }}</h3>
+                <p>{{ $t('system.profile.settingsDesc') }}</p>
+              </div>
+            </div>
+          </template>
+          <el-tabs v-model="activeTab" class="profile-tabs">
+            <el-tab-pane :label="$t('system.profile.basic')" name="userinfo">
+              <userInfo :user="userForm" />
+            </el-tab-pane>
+            <el-tab-pane :label="$t('system.profile.changePwd')" name="resetPwd">
+              <resetPwd />
+            </el-tab-pane>
+            <el-tab-pane :label="$t('system.profile.thirdParty')" name="thirdParty">
+              <thirdParty :auths="state.auths" />
+            </el-tab-pane>
+            <el-tab-pane :label="$t('system.profile.online')" name="onlineDevice">
+              <onlineDevice :devices="state.devices" />
+            </el-tab-pane>
+          </el-tabs>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup name="Profile" lang="ts">
+import { getOnline } from '@/api/monitor/online';
+import { getAuthList } from '@/api/system/social/auth';
+import { getUserProfile } from '@/api/system/user';
+import { UserVO } from '@/api/system/user/types';
+import OnlineDevice from './onlineDevice.vue';
+import ResetPwd from './resetPwd.vue';
+import ThirdParty from './thirdParty.vue';
+import UserAvatar from './userAvatar.vue';
+import UserInfo from './userInfo.vue';
+
+const activeTab = ref('userinfo');
+interface State {
+  user: Partial<UserVO>;
+  roleGroup: string;
+  postGroup: string;
+  auths: any;
+  devices: any;
+}
+const state = ref<State>({
+  user: {},
+  roleGroup: '',
+  postGroup: '',
+  auths: [],
+  devices: []
+});
+
+const userForm = ref({});
+
+const getUser = async () => {
+  const res = await getUserProfile();
+  state.value.user = res.data.user;
+  userForm.value = { ...res.data.user };
+  state.value.roleGroup = res.data.roleGroup;
+  state.value.postGroup = res.data.postGroup;
+};
+
+const getAuths = async () => {
+  const res = await getAuthList();
+  state.value.auths = res.data;
+};
+const getOnlines = async () => {
+  const res = await getOnline();
+  state.value.devices = res.data?.rows;
+};
+
+onMounted(() => {
+  getUser();
+  getAuths();
+  getOnlines();
+});
+</script>
+
+<style lang="scss" scoped>
+.profile-grid {
+  row-gap: 12px;
+}
+
+.profile-summary-card,
+.profile-main-card {
+  height: 100%;
+}
+
+.profile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profile-avatar {
+  margin-bottom: 4px;
+}
+
+.profile-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.profile-item-value {
+  max-width: 58%;
+  text-align: right;
+  color: var(--el-text-color-secondary);
+  word-break: break-word;
+}
+
+.profile-summary :deep(.list-group-item) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.profile-tabs :deep(.el-tabs__header) {
+  margin-bottom: 18px;
+}
+
+.profile-tabs :deep(.el-tabs__nav-wrap::after),
+.profile-tabs :deep(.el-tabs__active-bar) {
+  display: none;
+}
+
+.profile-tabs :deep(.el-tabs__nav) {
+  gap: 8px;
+}
+
+.profile-tabs :deep(.el-tabs__item) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 88px;
+  padding: 0 16px;
+  border-radius: 10px;
+  color: var(--el-text-color-regular);
+}
+
+.profile-tabs :deep(.el-tabs__item:nth-child(2)),
+.profile-tabs :deep(.el-tabs__item.is-top:first-child),
+.profile-tabs :deep(.el-tabs__item.is-top:last-child) {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.profile-tabs :deep(.el-tabs__item.is-active) {
+  background: rgba(28, 90, 72, 0.1);
+  color: var(--el-color-primary);
+}
+
+@media (max-width: 768px) {
+  .profile-item-value {
+    max-width: 50%;
+  }
+}
+
+.list-group-striped > .list-group-item {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.list-group {
+  padding-left: 0px;
+  list-style: none;
+}
+
+.list-group-item {
+  border-bottom: 1px solid #e7eaec;
+  border-top: 1px solid #e7eaec;
+  margin-bottom: -1px;
+  padding: 11px 0px;
+  font-size: 13px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* ===== 个人设置：整页撑满，各标签页内容铺满显示区域 ===== */
+.profile-page {
+  height: calc(100vh - 76px - 24px - 8px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.app-main.with-tags-view .profile-page {
+  height: calc(100vh - 111px - 24px - 8px);
+}
+.profile-page .profile-grid {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.profile-page .profile-grid > .el-col {
+  height: 100%;
+  min-height: 0;
+}
+.profile-summary-card,
+.profile-main-card {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.profile-summary-card :deep(.el-card__header),
+.profile-main-card :deep(.el-card__header) {
+  flex: none;
+}
+.profile-summary-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.profile-main-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* tabs 铺满卡片剩余高度 */
+.profile-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.profile-tabs :deep(.el-tabs__header) {
+  flex: none;
+}
+.profile-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.profile-tabs :deep(.el-tab-pane) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

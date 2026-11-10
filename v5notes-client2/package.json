@@ -1,0 +1,34 @@
+{
+  "name": "v5notes-client2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vitest run",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
+    "@v5md/core": "file:vendor/v5md/v5md-core-0.0.2.tgz",
+    "@v5md/view": "file:vendor/v5md/v5md-view-0.0.2.tgz",
+    "@v5md/vue": "file:vendor/v5md/v5md-vue-0.0.2.tgz",
+    "crypto-js": "^4.2.0",
+    "jsencrypt": "^3.5.4",
+    "vue": "^3.5.0",
+    "vue-i18n": "^11.4.18"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^26.6.6",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.2.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

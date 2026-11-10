@@ -1,0 +1,145 @@
+package xin.v5ai.notes.controller.admin;
+
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.core.validate.AddGroup;
+import xin.v5ai.common.core.validate.EditGroup;
+import xin.v5ai.common.excel.utils.ExcelBuilder;
+import xin.v5ai.common.redis.annotation.RepeatSubmit;
+import xin.v5ai.common.log.annotation.Log;
+import xin.v5ai.common.log.enums.BusinessType;
+import xin.v5ai.common.mybatis.core.page.PageQuery;
+import xin.v5ai.common.core.domain.PageResult;
+import xin.v5ai.common.web.core.BaseController;
+import xin.v5ai.notes.domain.bo.NoteNotesBo;
+import xin.v5ai.notes.domain.vo.NoteNotesVo;
+import xin.v5ai.notes.domain.vo.NoteRestoreVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionDetailVo;
+import xin.v5ai.notes.domain.vo.NoteRevisionItemVo;
+import xin.v5ai.notes.domain.vo.NotesContentVo;
+import xin.v5ai.notes.service.INoteNotesService;
+import xin.v5ai.notes.service.INoteRevisionService;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 笔记
+ *
+ * @author Lion Li
+ * @date 2024-10-25
+ */
+@Validated
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/notes/notes")
+public class NoteNotesController extends BaseController {
+
+    private final INoteNotesService noteNotesService;
+
+    private final INoteRevisionService noteRevisionService;
+
+    /**
+     * 查询笔记列表
+     */
+    @SaCheckPermission("notes:notes:list")
+    @GetMapping("/list")
+    public R<PageResult<NoteNotesVo>> list(NoteNotesBo bo, PageQuery pageQuery) {
+        return R.ok(noteNotesService.queryPageList(bo, pageQuery));
+    }
+
+    /**
+     * 导出笔记列表
+     */
+    @SaCheckPermission("notes:notes:export")
+    @Log(title = "笔记", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(NoteNotesBo bo, HttpServletResponse response) {
+        List<NoteNotesVo> list = noteNotesService.queryList(bo);
+        ExcelBuilder.of(list, NoteNotesVo.class).sheetName("笔记").toResponse(response);
+    }
+
+    /**
+     * 获取笔记详细信息
+     *
+     * @param id 主键
+     */
+    @SaCheckPermission("notes:notes:query")
+    @GetMapping("/{id}")
+    public R<NotesContentVo> getInfo(@NotNull(message = "{id.not.null}")
+                                     @PathVariable Long id) {
+        return R.ok(noteNotesService.queryById(id));
+    }
+
+    /**
+     * 新增笔记
+     */
+    @SaCheckPermission("notes:notes:add")
+    @Log(title = "笔记", businessType = BusinessType.INSERT)
+    @RepeatSubmit()
+    @PostMapping()
+    public R<Void> add(@Validated(AddGroup.class) @RequestBody NoteNotesBo bo) {
+        return toAjax(noteNotesService.insertByBo(bo));
+    }
+
+    /**
+     * 修改笔记
+     */
+    @SaCheckPermission("notes:notes:edit")
+    @Log(title = "笔记", businessType = BusinessType.UPDATE)
+    @RepeatSubmit(message = "{note.save.repeat}")
+    @PutMapping()
+    public R<Void> edit(@Validated(EditGroup.class) @RequestBody NoteNotesBo bo) {
+        return toAjax(noteNotesService.updateByBo(bo));
+    }
+
+    /**
+     * 删除笔记
+     *
+     * @param ids 主键串
+     */
+    @SaCheckPermission("notes:notes:remove")
+    @Log(title = "笔记", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{ids}")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
+                          @PathVariable Long[] ids) {
+        return toAjax(noteNotesService.deleteWithValidByIds(List.of(ids), true));
+    }
+
+    /**
+     * 历史版本列表，不含正文。
+     */
+    @SaCheckPermission("notes:notes:query")
+    @GetMapping("/{id}/revisions")
+    public R<PageResult<NoteRevisionItemVo>> revisions(@NotNull(message = "{id.not.null}") @PathVariable Long id,
+                                                       PageQuery pageQuery) {
+        return R.ok(noteRevisionService.listForAdmin(id, pageQuery));
+    }
+
+    /**
+     * 某一版的全文。
+     */
+    @SaCheckPermission("notes:notes:query")
+    @GetMapping("/{id}/revisions/{revisionId}")
+    public R<NoteRevisionDetailVo> revision(@NotNull(message = "{id.not.null}") @PathVariable Long id,
+                                            @NotNull(message = "{note.revision.required}") @PathVariable Long revisionId) {
+        return R.ok(noteRevisionService.detailForAdmin(id, revisionId));
+    }
+
+    /**
+     * 把选中版本恢复为最新正文。当前正文不同时会先留在历史里。
+     */
+    @SaCheckPermission("notes:notes:edit")
+    @Log(title = "笔记历史", businessType = BusinessType.UPDATE)
+    @RepeatSubmit(message = "{note.restore.repeat}")
+    @PostMapping("/{id}/revisions/{revisionId}/restore")
+    public R<NoteRestoreVo> restore(@NotNull(message = "{id.not.null}") @PathVariable Long id,
+                                    @NotNull(message = "{note.revision.required}") @PathVariable Long revisionId) {
+        return R.ok(noteRevisionService.restoreForAdmin(id, revisionId));
+    }
+}

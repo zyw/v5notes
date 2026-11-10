@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>服务器设置 · 六个初稿</title>
+<link rel="stylesheet" href="../../src/styles/style.css">
+<style>
+  body { margin: 0; height: 100vh; background: linear-gradient(120deg, #edf0e8 0%, #f9f7f1 72%); overflow: hidden; }
+  .proto-bg { position: fixed; inset: 0; padding: 34px 40px; color: #7d8a80; font: 14px/1.9 'PingFang SC', sans-serif; }
+  .proto-bg h1 { font: 700 30px/1.3 'Noto Serif SC', serif; color: #244c3b; margin: 0 0 8px; }
+  .proto-badge { position: fixed; left: 40px; bottom: 28px; z-index: 5; padding: 7px 12px; border-radius: 8px; background: #20342a; color: #eaf2e7; font: 600 11.5px/1.4 'DM Sans', sans-serif; letter-spacing: .04em; }
+  .modal-backdrop { position: fixed; }
+
+/* ===== 原型专用：服务器设置控件的六种排布 ===== */
+.conn-input {
+  width: 100%; min-width: 0; height: 34px; padding: 0 10px;
+  border: 1px solid #dfe4dc; border-radius: 8px; background: #fff;
+  color: #27342d; font: 12px/1 'DM Sans', 'PingFang SC', sans-serif;
+}
+.conn-input::placeholder { color: #9aa49c; }
+.conn-input:disabled { border-color: #e5e9e1; background: #f5f6f1; color: #9aa49c; }
+.conn-save {
+  flex: none; padding: 8px 14px; border-radius: 7px; color: #fff;
+  background: #315b4a; font-size: 11.5px; font-weight: 600;
+}
+.conn-save[aria-disabled="true"] { color: #9aa49c; background: #edf0e9; cursor: default; }
+.conn-check { display: inline-flex; align-items: center; gap: 7px; color: #526355; font-size: 11.5px; cursor: pointer; }
+.conn-box {
+  position: relative; width: 15px; height: 15px; flex: 0 0 15px;
+  border: 1px solid #c9d2c6; border-radius: 4px; background: #fffefa;
+}
+.conn-check.is-checked .conn-box { border-color: #315b4a; background: #315b4a; }
+.conn-check.is-checked .conn-box::after {
+  content: ''; position: absolute; left: 3px; top: 1px; width: 7px; height: 4px;
+  border-left: 1.6px solid #fff; border-bottom: 1.6px solid #fff;
+  transform: rotate(-45deg);
+}
+.conn-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #4d8060; box-shadow: 0 0 0 3px #4d806026; }
+.conn-dot.is-custom { background: #c08a4a; box-shadow: 0 0 0 3px #c08a4a26; }
+.conn-hint { color: #9aa49c; font-size: 10.5px; line-height: 1.5; }
+.conn-error { color: #ad453b; font-size: 10.5px; line-height: 1.5; }
+.conn-label { color: #6d7c71; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+
+/* 1a · 连接行 */
+.conn-1a .conn-row { display: flex; align-items: center; gap: 12px; padding: 6px 0 10px; }
+.conn-1a .conn-copy { display: grid; gap: 2px; min-width: 0; }
+.conn-1a .conn-copy strong { color: #35483b; font-size: 13px; font-weight: 550; }
+.conn-1a .conn-copy span { color: #8b978d; font-size: 11px; }
+.conn-1a .conn-tools { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.conn-1a .conn-change { color: #315b4a; font-size: 11.5px; font-weight: 600; padding: 4px 2px; }
+.conn-1a .conn-editor { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.conn-1a .conn-editor .conn-input { flex: 1; }
+
+/* 1b · 顶部连接卡 */
+.conn-card {
+  margin-top: 16px; padding: 14px 16px 15px; border-radius: 12px;
+  border: 1px solid #e3e9de; background: #f8faf4;
+}
+.conn-card-head { display: flex; align-items: center; gap: 9px; }
+.conn-card-head strong { color: #35483b; font-size: 12.5px; font-weight: 650; }
+.conn-card-state { margin-left: 4px; color: #8b978d; font-size: 11px; }
+.conn-card-body { display: flex; align-items: center; gap: 12px; margin-top: 11px; }
+.conn-card-body .conn-input { flex: 1; }
+
+/* 2a · 同构设置行 */
+.conn-2a .conn-setting { display: flex; align-items: center; gap: 16px; padding: 10px 0; }
+.conn-2a .conn-setting + .conn-setting { border-top: 1px solid #f1f3ee; }
+.conn-2a .conn-setting-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.conn-2a strong { color: #35483b; font-size: 13px; font-weight: 550; }
+.conn-2a span { color: #8b978d; font-size: 11px; }
+.conn-2a .conn-inline { display: flex; align-items: center; gap: 8px; flex: 0 0 320px; }
+
+/* 2b · 两行表单 */
+.conn-2b .conn-field-label { display: block; color: #35483b; font-size: 12.5px; font-weight: 550; margin-bottom: 7px; }
+.conn-2b .conn-line { display: flex; align-items: center; gap: 10px; }
+.conn-2b .conn-line .conn-input { flex: 1; }
+.conn-2b .conn-check-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+
+/* 3a · 凭据条 */
+.conn-3a .conn-cred {
+  display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px;
+  border: 1px solid #dfe4dc; border-radius: 9px; background: #fff;
+}
+.conn-3a .conn-cred.is-locked { border-color: #e5e9e1; background: #f6f7f2; }
+.conn-3a .conn-cred svg { width: 14px; height: 14px; flex: 0 0 14px; stroke: #7b8b7f; fill: none; stroke-width: 1.6; }
+.conn-3a .conn-cred-value { color: #27342d; font-size: 12px; }
+.conn-3a .conn-cred.is-locked .conn-cred-value { color: #9aa49c; }
+.conn-3a .conn-pill { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: #eaf0e6; color: #315b4a; font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+.conn-3a .conn-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 9px; }
+.conn-3a .conn-cred-input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; border: 1px solid #dfe4dc; border-radius: 6px; background: #fff; color: #27342d; font: 12px/1 'DM Sans','PingFang SC',sans-serif; }
+
+/* 3b · 标签 + 控件两列 */
+.conn-3b .conn-grid { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 12px 16px; align-items: center; }
+.conn-3b .conn-grid > .conn-hint, .conn-3b .conn-grid > .conn-error { grid-column: 2; margin-top: -4px; }
+.conn-3b .conn-controls { display: flex; align-items: center; gap: 10px; }
+.conn-3b .conn-controls .conn-input { flex: 1; }
+
+</style>
+</head>
+<body>
+<div class="proto-bg">
+  <h1>笔记</h1>
+  <p>工作区背景，用来看设置弹窗的遮罩与比例。</p>
+</div>
+<div class="modal-backdrop settings-backdrop">
+  <section class="modal settings-dialog" id="dlg" role="dialog" aria-modal="true">
+    <header class="settings-header">
+      <div><span class="eyebrow">PREFERENCES</span><h2>设置</h2></div>
+      <button class="settings-close" type="button" aria-label="关闭设置">×</button>
+    </header>
+
+    <div id="conn-top"></div>
+
+    <section class="settings-section">
+      <h3>通用</h3>
+      <div class="settings-preference-row">
+        <div class="settings-preference-copy"><strong>登录系统后自动启动 v5notes</strong><span>开启后应用会在你登录系统后自动启动；默认关闭。</span></div>
+        <button class="settings-switch" type="button" role="switch" aria-checked="false"><span></span></button>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h3>工作区</h3>
+      <div class="settings-preference-list">
+        <div class="settings-preference-row">
+          <div class="settings-preference-copy"><strong>启动时显示左侧栏</strong><span>应用启动时默认显示左侧目录栏；工具栏可临时收起。</span></div>
+          <button class="settings-switch is-on" type="button" role="switch" aria-checked="true"><span></span></button>
+        </div>
+        <div class="settings-preference-row">
+          <div class="settings-preference-copy"><strong>默认展开目录树</strong><span>展开全部目录并记住此选择；关闭后只自动展开当前笔记所在路径。</span></div>
+          <button class="settings-switch is-on" type="button" role="switch" aria-checked="true"><span></span></button>
+        </div>
+        <div class="settings-preference-row">
+          <div class="settings-preference-copy"><strong>默认显示大纲</strong><span>应用启动时默认显示右侧大纲；工具栏可临时切换。</span></div>
+          <button class="settings-switch" type="button" role="switch" aria-checked="false"><span></span></button>
+        </div>
+      </div>
+    </section>
+
+    <div id="conn-after"></div>
+
+    <footer class="settings-footer">
+      <div class="about-app"><img src="../../src/assets/brand-icon.png" alt="" /><div><strong>v5notes</strong><span>版本 0.1.0</span></div></div>
+      <a class="project-link" href="#">github.com/zyw/v5notes
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4h9v9M16 4 8 12M14 11v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg>
+      </a>
+      <button class="primary" type="button">完成</button>
+    </footer>
+  </section>
+</div>
+<div class="proto-badge" id="badge"></div>
+<script>
+const params = new URLSearchParams(location.search);
+const variant = params.get('v') || '1a';
+const state = params.get('state') || 'official';   // official | custom
+const checked = state === 'official';
+const dotClass = checked ? 'conn-dot' : 'conn-dot is-custom';
+const stateWord = checked ? '官方服务器' : '自定义服务器';
+
+const input = `<input class="conn-input" type="url" value="${checked ? '' : 'https://notes.internal.example.com'}" placeholder="${checked ? '官方服务器 · 不可编辑' : 'https://notes.example.com'}" ${checked ? 'disabled' : ''}>`;
+
+const check = `<label class="conn-check ${checked ? 'is-checked' : ''}"><span class="conn-box"></span>使用官方地址</label>`;
+
+const VARIANTS = {
+  '1a': {
+    mount: 'after',
+    html: `<section class="settings-section conn-1a">
+      <h3>服务器</h3>
+      <div class="conn-row">
+        <span class="${dotClass}"></span>
+        <div class="conn-copy"><strong>${stateWord}</strong><span>${checked ? '由 v5ai 统一维护，登录后自动连接' : '私有部署地址，仅本机保存'}</span></div>
+        <div class="conn-tools">${check}</div>
+      </div>
+      <div class="conn-editor">${input}<button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button></div>
+      <p class="conn-hint" style="margin:6px 0 0">勾选「使用官方地址」后地址不可编辑；保存后需要重新登录。</p>
+    </section>`,
+  },
+  '1b': {
+    mount: 'top',
+    html: `<section class="conn-card">
+      <div class="conn-card-head"><span class="${dotClass}"></span><strong>连接</strong><span class="conn-card-state">${stateWord}</span></div>
+      <div class="conn-card-body">${input}${check}<button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button></div>
+      <p class="conn-hint" style="margin:8px 0 0 16px">保存连接设置后，需要用该服务器上的账号重新登录。</p>
+    </section>`,
+  },
+  '2a': {
+    mount: 'after',
+    html: `<section class="settings-section conn-2a">
+      <h3>服务器</h3>
+      <div class="conn-setting">
+        <div class="conn-setting-copy"><strong>使用官方地址</strong><span>勾选后服务器地址不可编辑。</span></div>
+        ${check}
+      </div>
+      <div class="conn-setting">
+        <div class="conn-setting-copy"><strong>服务器地址</strong><span>官方地址由 v5ai 提供；自定义地址只用于私有部署。</span></div>
+        <div class="conn-inline">${input}<button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button></div>
+      </div>
+      <p class="conn-hint" style="margin:2px 0 0">保存后需要重新登录。</p>
+    </section>`,
+  },
+  '2b': {
+    mount: 'after',
+    html: `<section class="settings-section conn-2b">
+      <h3>服务器</h3>
+      <label class="conn-field-label">服务器地址</label>
+      <div class="conn-line">${input}<button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button></div>
+      <div class="conn-check-row">${check}<span class="conn-hint">勾选后地址不可编辑，保存后需重新登录</span></div>
+    </section>`,
+  },
+  '3a': {
+    mount: 'after',
+    html: `<section class="settings-section conn-3a">
+      <h3>服务器</h3>
+      <div class="conn-cred ${checked ? 'is-locked' : ''}">
+        ${checked
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg><span class="conn-cred-value">官方服务器 · v5ai</span>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c2.4 2.3 3.6 5.2 3.6 8.4s-1.2 6.1-3.6 8.4c-2.4-2.3-3.6-5.2-3.6-8.4S9.6 5.9 12 3.6Z"/></svg><input class="conn-cred-input" type="url" value="https://notes.internal.example.com">'}
+        <span class="conn-pill">${checked ? '官方' : '自定义'}</span>
+      </div>
+      <div class="conn-foot">${check}<button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button></div>
+      <p class="conn-hint" style="margin:7px 0 0">取消勾选后可填入私有部署地址；保存后需要重新登录。</p>
+    </section>`,
+  },
+  '3b': {
+    mount: 'after',
+    html: `<section class="settings-section conn-3b">
+      <h3>服务器</h3>
+      <div class="conn-grid">
+        <span class="conn-label">连接</span>
+        <span class="conn-hint" style="margin-top:-6px">${checked ? '官方服务器由 v5ai 统一维护' : '当前使用私有部署地址'}</span>
+        <span class="conn-label">地址</span>
+        <div class="conn-controls">${input}</div>
+        <span class="conn-label">官方地址</span>
+        <div class="conn-controls">${check}<span class="conn-hint">勾选后地址不可编辑</span></div>
+        <span></span>
+        <div class="conn-controls"><button class="conn-save" type="button" ${checked ? 'aria-disabled="true"' : ''}>保存</button><span class="conn-hint">保存后需要重新登录</span></div>
+      </div>
+    </section>`,
+  },
+};
+
+const conf = VARIANTS[variant] || VARIANTS['1a'];
+document.getElementById(conf.mount === 'top' ? 'conn-top' : 'conn-after').innerHTML = conf.html;
+document.getElementById('dlg')?.classList.add('conn-' + variant);
+document.getElementById('badge').textContent = '方向 ' + variant + ' · ' + (checked ? '使用官方地址（勾选）' : '自定义地址（未勾选）');
+</script>
+</body>
+</html>

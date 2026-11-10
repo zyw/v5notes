@@ -1,7 +1,0 @@
-package router
-
-import "${packageName}/controller"
-
-var (
-    ${ClassName}Router            = controller.CtrGroupApp.${ClassName}Ctr
-)

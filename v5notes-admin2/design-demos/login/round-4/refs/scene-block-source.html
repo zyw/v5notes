@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>V5Notes2 工作台画块（可复用）</title>
+<!--
+  SCENE BLOCK · 1440 × 900 设计尺寸，原生像素
+  用法：复制 <style id="v5scene-css"> ... </style> 与 <div class="v5sc"> ... </div> 到你的页面。
+  - 主题：容器加 class="v5sc"（浅色）或 class="v5sc dark"（深色）。
+  - 缩放：外层容器 transform: scale()；transform-origin 左上。
+  - 裁剪：用外层 overflow:hidden 裁切，像看真实产品的局部。
+  - Logo：<img> 的 src 写占位符，最后跑 round-3/inject-logo.py 注入。
+-->
+<style id="v5scene-css">
+.v5sc{
+  --s-canvas:#f4f7f5; --s-surface:#fff; --s-line:#e6ebe7; --s-hair:#edf1ee;
+  --s-title:#15241e; --s-body:#2b3a32; --s-muted:#5f7067; --s-faint:#8a9991; --s-icon:#7c8c84;
+  --s-ink:#1c5a48; --s-soft:#e8f2ec; --s-softink:#17624a;
+  --s-search:#fbfcfb; --s-btn:#fff;
+  --s-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  width:1440px;height:900px;background:var(--s-canvas);color:var(--s-body);
+  font:14px/1.5 MiSans,"HarmonyOS Sans SC","PingFang SC","Noto Sans SC",sans-serif;
+  -webkit-font-smoothing:antialiased;position:relative;overflow:hidden;
+  display:flex;
+}
+.v5sc.dark{
+  --s-canvas:#0c1411; --s-surface:#111a16; --s-line:rgba(255,255,255,.09); --s-hair:rgba(255,255,255,.06);
+  --s-title:#e9f2ec; --s-body:#cdd9d2; --s-muted:#8ea79b; --s-faint:#6f8579; --s-icon:#7f978b;
+  --s-ink:#4fbf94; --s-soft:rgba(79,191,148,.16); --s-softink:#8fe0bc;
+  --s-search:#0e1714; --s-btn:#16211d;
+}
+.v5sc *{box-sizing:border-box}
+.v5sc .side{
+  position:absolute;left:12px;top:12px;bottom:12px;width:240px;background:var(--s-surface);
+  border:1px solid var(--s-line);border-radius:16px;display:flex;flex-direction:column;padding:18px 14px 14px;
+}
+.v5sc .brand{display:flex;align-items:center;gap:10px;padding:0 6px 18px}
+.v5sc .brand img{width:32px;height:32px}
+.v5sc .brand b{display:block;font-size:14px;color:var(--s-title);line-height:1.2;font-weight:600}
+.v5sc .brand span{display:block;font-size:11px;color:var(--s-faint);margin-top:2px}
+.v5sc .cap{font:10px/1 var(--s-mono);letter-spacing:.14em;color:var(--s-faint);padding:10px 8px 8px}
+.v5sc .nav{display:flex;flex-direction:column;gap:2px}
+.v5sc .nav a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:9px;color:var(--s-body);text-decoration:none;font-size:13.5px}
+.v5sc .nav a svg{width:16px;height:16px;stroke:var(--s-icon);stroke-width:1.6;fill:none;flex:0 0 16px}
+.v5sc .nav a.on{background:var(--s-soft);color:var(--s-softink);font-weight:600}
+.v5sc .nav a.on svg{stroke:var(--s-softink)}
+.v5sc .grow{flex:1}
+.v5sc .foot{border-top:1px solid var(--s-hair);padding-top:12px}
+.v5sc .foot a{display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;border-radius:8px;color:var(--s-muted);font-size:12.5px;text-decoration:none}
+.v5sc .foot a svg{width:15px;height:15px;stroke:var(--s-icon);stroke-width:1.6;fill:none}
+.v5sc .main{margin-left:264px;flex:1;min-width:0;display:flex;flex-direction:column}
+.v5sc .top{height:56px;display:flex;align-items:center;gap:16px;padding:0 20px;background:var(--s-surface);border-bottom:1px solid var(--s-line)}
+.v5sc .crumb{font-size:13px;color:var(--s-muted);display:flex;gap:8px;align-items:center}
+.v5sc .crumb b{color:var(--s-title);font-weight:600}
+.v5sc .crumb i{color:var(--s-line);font-style:normal}
+.v5sc .search{margin-left:6px;width:280px;height:34px;border:1px solid var(--s-line);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--s-faint);font-size:12.5px;background:var(--s-search)}
+.v5sc .search svg{width:14px;height:14px;stroke:var(--s-faint);stroke-width:1.8;fill:none}
+.v5sc .top .ico{width:32px;height:32px;border-radius:8px;display:grid;place-items:center}
+.v5sc .top .ico svg{width:16px;height:16px;stroke:var(--s-muted);stroke-width:1.6;fill:none}
+.v5sc .who{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid var(--s-hair)}
+.v5sc .who .av{width:28px;height:28px;border-radius:50%;background:var(--s-soft);color:var(--s-softink);display:grid;place-items:center;font-size:12px;font-weight:600}
+.v5sc .who span{font-size:12.5px;color:var(--s-body)}
+.v5sc .canvas{flex:1;padding:16px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:12px;min-height:0}
+.v5sc .tree{background:var(--s-surface);border:1px solid var(--s-line);border-radius:12px;padding:14px 12px}
+.v5sc .tree .s{height:32px;border:1px solid var(--s-line);border-radius:8px;display:flex;align-items:center;gap:7px;padding:0 9px;color:var(--s-faint);font-size:12px;margin-bottom:12px}
+.v5sc .tree .s svg{width:13px;height:13px;stroke:var(--s-faint);stroke-width:1.8;fill:none}
+.v5sc .tree ul{list-style:none;margin:0;padding:0;font-size:13px}
+.v5sc .tree li{padding:7px 8px;border-radius:7px;display:flex;align-items:center;gap:8px;color:var(--s-body)}
+.v5sc .tree li.sub{padding-left:26px;color:var(--s-muted)}
+.v5sc .tree li.on{background:var(--s-soft);color:var(--s-softink);font-weight:600}
+.v5sc .tree li svg{width:14px;height:14px;stroke:var(--s-icon);stroke-width:1.6;fill:none;flex:0 0 14px}
+.v5sc .editor{background:var(--s-surface);border:1px solid var(--s-line);border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.v5sc .ed-top{height:44px;border-bottom:1px solid var(--s-hair);display:flex;align-items:center;gap:10px;padding:0 18px;color:var(--s-muted);font-size:12px}
+.v5sc .ed-top .dot{width:6px;height:6px;border-radius:50%;background:#2f9e6b}
+.v5sc .ed-top .btn{height:28px;padding:0 10px;border:1px solid var(--s-line);border-radius:7px;font-size:12px;color:var(--s-body);display:flex;align-items:center;gap:6px;background:var(--s-btn);margin-left:auto}
+.v5sc .ed-top .btn svg{width:13px;height:13px;stroke:var(--s-muted);stroke-width:1.7;fill:none}
+.v5sc .prose{padding:36px 48px 40px;max-width:820px}
+.v5sc .prose h1{font-size:28px;line-height:1.35;letter-spacing:-.01em;color:var(--s-title);margin:0 0 10px;font-weight:700}
+.v5sc .meta{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--s-faint);margin-bottom:26px}
+.v5sc .prose p{font-size:15px;line-height:1.95;color:var(--s-body);margin:0 0 16px}
+.v5sc .prose h2{font-size:16px;color:var(--s-title);margin:28px 0 10px;font-weight:600}
+.v5sc .prose blockquote{margin:22px 0;padding:2px 0 2px 16px;border-left:2px solid var(--s-ink);color:var(--s-body);font-size:15px;line-height:1.9}
+.v5sc .prose ul{margin:0;padding-left:18px}
+.v5sc .prose li{font-size:15px;line-height:1.9;margin:0 0 6px}
+.v5sc .caret{display:inline-block;width:1px;height:17px;background:var(--s-ink);vertical-align:-3px;margin-left:2px;animation:v5blink 1.2s steps(1) infinite}
+@keyframes v5blink{50%{opacity:0}}
+</style>
+</head>
+<body style="margin:0;background:#e9eeeb;padding:24px">
+<div class="v5sc">
+  <aside class="side">
+    <div class="brand"><img src="__LOGO_DATA_URI__" alt=""><div><b>V5Notes2</b><span>云笔记 · 管理控制台</span></div></div>
+    <div class="cap">WORKSPACE</div>
+    <nav class="nav">
+      <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>工作台</a>
+      <a class="on" href="#"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h5"/></svg>笔记管理</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>目录管理</a>
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.6.3 4.5 2.2 4.5 5.4"/></svg>成员管理</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"/></svg>角色权限</a>
+    </nav>
+    <div class="cap" style="padding-top:16px">CONTENT</div>
+    <nav class="nav">
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>客户端账号</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>文件管理</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 3.5 12 2.5-6H21"/></svg>系统监控</a>
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></svg>系统设置</a>
+    </nav>
+    <div class="grow"></div>
+    <div class="foot">
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 1 1 3.6 2.7c-.6.2-.8.6-.8 1.2v.4"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/></svg>帮助中心</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="M15 8l4 4-4 4"/></svg>退出登录</a>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="crumb">笔记管理 <i>/</i> <b>编辑器</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>搜索笔记、目录或成员…</div>
+      <div class="grow" style="flex:1"></div>
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></div>
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5 2 6H4c.5-1 2-2 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg></div>
+      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.5.2-.7.6-.7 1.1v.3"/><circle cx="12" cy="16.6" r=".8" fill="currentColor" stroke="none"/></svg></div>
+      <div class="who"><div class="av">林</div><span>林知远</span></div>
+    </header>
+    <div class="canvas">
+      <aside class="tree">
+        <div class="s"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>搜索目录或笔记</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/></svg>产品设计</li>
+          <li class="sub on"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>开始之前：三件小事</li>
+          <li class="sub"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Q4 路线图评审纪要</li>
+          <li class="sub"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>客户端 3.2 灰度观察</li>
+          <li><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>技术文档</li>
+          <li class="sub"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>笔记同步冲突处理方案</li>
+          <li><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>运营素材</li>
+          <li><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>会议纪要</li>
+        </ul>
+      </aside>
+      <section class="editor">
+        <div class="ed-top"><span class="dot"></span>已保存<span>·</span><span>产品设计 / 开始之前：三件小事</span><div class="btn"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v6h8V4"/><path d="M8 15h8"/></svg>保存</div></div>
+        <div class="prose">
+          <h1>开始之前：三件小事</h1>
+          <div class="meta"><span>产品设计</span><span>·</span><span>示例笔记</span><span>·</span><span>约 3 分钟读完</span></div>
+          <p>这是一篇示例笔记，登录后它会出现在「产品设计」目录里。你可以直接改它，也可以删掉——它存在的意义，是让第一次进入工作台的人知道从这里开始。</p>
+          <h2>一、用目录组织内容</h2>
+          <p>目录是笔记的骨架。把同一件事的笔记放在同一个目录下，之后就靠它找到上下文。目录可以随时改名、移动，笔记会跟着走。</p>
+          <h2>二、先写下来，再整理</h2>
+          <p>正式写之前，先留一页给还没想清楚的东西。等想清楚了，再把它挪进应该去的目录。</p>
+          <blockquote>把想法先写下来，再决定它长成什么样子。<span class="caret"></span></blockquote>
+          <h2>三、让合适的人看见</h2>
+          <ul><li>目录权限决定谁可以进入某个目录</li><li>笔记权限决定谁可以查看、编辑或只读</li><li>成员加入之后，权限会随角色继承</li></ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>V5Notes2 · 成员管理 · 墨绿画屏</title>
+<style>
+  :root{
+    --shell0:#0b120f;      /* 左栏近黑墨绿 */
+    --shell1:#0e1a15;      /* 画布 */
+    --shell2:#102019;
+    --mint:#6fe3b0;        /* 单一荧光青绿 accent */
+    --mint-dim:#4fc294;
+    --mint-soft:rgba(111,227,176,.13);
+    --card:#f4f1ea;        /* 暖白工作卡 */
+    --card2:#fbf9f4;
+    --white:#ffffff;
+    --ink:#0f2019;         /* 卡上主文字 */
+    --ink2:#243a30;
+    --muted:#58665d;       /* 卡上正文/标签（对比度达标） */
+    --muted2:#66756b;
+    --hair:#ddd6c7;        /* 发丝线 */
+    --hair2:#e6e0d2;
+    --deep:#0f3d33;        /* 已批准深墨绿 */
+    --deep2:#14614a;
+    --line-dark:rgba(150,205,180,.10);
+    --txt-dark:#c8d6cf;
+    --txt-dark-dim:#8ba396;
+    --danger:#b4553f;
+    --amber:#b07a2e;
+    --mono:'SFMono-Regular','SF Mono','JetBrains Mono','Roboto Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:'PingFang SC','MiSans','HarmonyOS Sans SC','Microsoft YaHei',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    width:1440px;height:1024px;overflow:hidden;position:relative;
+    font-family:var(--sans);color:var(--ink);
+    background:var(--shell1);
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+
+  /* ================= 深色外壳背景（画布 + 极淡网格） ================= */
+  .stage{position:absolute;inset:0;background:
+      radial-gradient(1200px 700px at 78% -10%, #12241c 0%, transparent 55%),
+      radial-gradient(900px 600px at 20% 120%, #10201a 0%, transparent 60%),
+      var(--shell1);}
+  .stage::before{content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(to right, var(--line-dark) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line-dark) 1px, transparent 1px);
+    background-size:44px 44px;
+    mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), rgba(0,0,0,.35));
+    -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), rgba(0,0,0,.35));
+    opacity:.5;pointer-events:none;}
+
+  /* ================= 左栏导航 ================= */
+  .sidebar{position:absolute;left:0;top:0;width:240px;height:1024px;
+    background:linear-gradient(180deg,#0b120f 0%,#0a100d 100%);
+    border-right:1px solid rgba(150,205,180,.10);z-index:20;display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:11px;padding:26px 22px 0;}
+  .brand img{width:32px;height:32px;display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+  .brand .bt{display:flex;flex-direction:column;line-height:1.15;}
+  .brand .bt b{color:#f2f7f4;font-size:17px;font-weight:700;letter-spacing:.2px;}
+  .brand .bt span{color:var(--txt-dark-dim);font-size:11px;margin-top:2px;letter-spacing:.3px;}
+
+  .nav{margin-top:30px;padding:0 14px;display:flex;flex-direction:column;gap:3px;}
+  .nav .sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:#5f7469;
+    padding:0 12px 10px;text-transform:uppercase;}
+  .nav a{display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:9px;
+    color:var(--txt-dark);text-decoration:none;font-size:14.5px;letter-spacing:.2px;position:relative;
+    transition:background .15s,color .15s;}
+  .nav a svg{width:18px;height:18px;stroke:#7d958a;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
+  .nav a:hover{background:rgba(255,255,255,.04);color:#e9f4ee;}
+  .nav a.active{background:var(--mint-soft);color:#eafff5;box-shadow:inset 0 0 0 1px rgba(111,227,176,.22);}
+  .nav a.active svg{stroke:var(--mint);}
+  .nav a.active::before{content:"";position:absolute;left:-14px;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:var(--mint);}
+  .nav a .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:#2c443a;}
+  .nav a.active .dot{background:var(--mint);box-shadow:0 0 8px var(--mint);}
+
+  .side-foot{margin-top:auto;padding:16px 14px 22px;border-top:1px solid rgba(150,205,180,.08);}
+  .side-foot a{display:flex;align-items:center;gap:11px;height:40px;padding:0 12px;border-radius:8px;
+    color:var(--txt-dark-dim);text-decoration:none;font-size:13.5px;}
+  .side-foot a svg{width:17px;height:17px;stroke:#7d958a;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .side-foot a:hover{background:rgba(255,255,255,.04);color:#dfeae4;}
+
+  /* ================= 顶栏 ================= */
+  .topbar{position:absolute;left:240px;top:0;width:1200px;height:66px;z-index:15;
+    display:flex;align-items:center;padding:0 34px 0 32px;
+    border-bottom:1px solid rgba(150,205,180,.09);
+    background:linear-gradient(180deg, rgba(13,26,20,.65), rgba(13,26,20,0));}
+  .crumb{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--txt-dark-dim);}
+  .crumb .sep{color:#4b5f55;}
+  .crumb .cur{color:#eef7f1;font-weight:600;}
+  .crumb .home{color:var(--txt-dark-dim);}
+
+  .tsearch{margin-left:26px;display:flex;align-items:center;gap:9px;width:322px;height:38px;padding:0 13px;
+    border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(150,205,180,.14);}
+  .tsearch svg{width:16px;height:16px;stroke:#7d958a;fill:none;stroke-width:1.8;stroke-linecap:round;}
+  .tsearch input{flex:1;background:transparent;border:0;outline:0;color:#dbe7e0;font-size:13px;font-family:var(--sans);}
+  .tsearch input::placeholder{color:#71877b;}
+  .tsearch .kbd{font-family:var(--mono);font-size:10.5px;color:#7d958a;border:1px solid rgba(150,205,180,.2);
+    border-radius:5px;padding:1px 5px;letter-spacing:.05em;}
+
+  .tright{margin-left:auto;display:flex;align-items:center;gap:6px;}
+  .iconbtn{position:relative;width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:0;cursor:pointer;transition:background .15s;}
+  .iconbtn:hover{background:rgba(255,255,255,.06);}
+  .iconbtn svg{width:18px;height:18px;stroke:#b7c8bf;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .iconbtn .badge{position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;
+    background:var(--mint);color:#08150f;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);}
+  .tdivider{width:1px;height:26px;background:rgba(150,205,180,.14);margin:0 8px;}
+  .who{display:flex;align-items:center;gap:10px;padding:4px 8px 4px 4px;border-radius:10px;cursor:pointer;}
+  .who:hover{background:rgba(255,255,255,.05);}
+  .who .av{width:36px;height:36px;border-radius:50%;background:var(--mint);color:#08251a;font-weight:700;font-size:15px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(111,227,176,.25);}
+  .who .meta{display:flex;flex-direction:column;line-height:1.25;}
+  .who .meta b{color:#eef7f1;font-size:13px;font-weight:600;}
+  .who .meta span{color:var(--txt-dark-dim);font-size:11.5px;}
+  .who .caret{stroke:#7d958a;width:14px;height:14px;fill:none;stroke-width:2;}
+
+  /* ================= 中央暖白工作卡 ================= */
+  .card{position:absolute;left:270px;top:88px;width:1140px;height:906px;z-index:10;
+    background:linear-gradient(180deg,#f6f3ec 0%,var(--card) 60%);
+    border-radius:20px;padding:34px 44px 26px;
+    box-shadow:0 30px 70px -30px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.6) inset, 0 0 0 1px rgba(255,255,255,.5) inset;
+    display:flex;flex-direction:column;}
+  .card::after{content:"";position:absolute;inset:0;border-radius:20px;pointer-events:none;
+    box-shadow:0 0 0 1px rgba(15,61,51,.06);}
+
+  /* 卡片头部 */
+  .eyebrow-row{display:flex;align-items:center;justify-content:space-between;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;}
+  .eyebrow .sl{color:#9aa89e;}
+  .live{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--muted);
+    border:1px solid var(--hair);border-radius:999px;padding:5px 11px;background:rgba(255,255,255,.4);}
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--deep2);box-shadow:0 0 0 3px rgba(20,97,74,.14);}
+
+  .kick{margin-top:18px;display:flex;align-items:center;gap:9px;color:var(--deep2);font-size:13px;font-weight:600;letter-spacing:.08em;}
+  .kick::before{content:"";width:22px;height:2px;background:var(--deep2);display:inline-block;border-radius:2px;}
+  .h1{margin:8px 0 0;font-size:45px;line-height:1.06;letter-spacing:-.5px;color:var(--ink);font-weight:800;}
+  .sub{margin:12px 0 0;font-size:14.5px;color:var(--muted);letter-spacing:.1px;}
+  .sub b{color:var(--deep2);font-weight:700;font-family:var(--mono);font-size:14px;}
+  .sub .add{color:var(--deep2);font-weight:700;}
+
+  /* 指标 */
+  .metrics{margin-top:23px;display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);}
+  .metric{padding:15px 22px 15px 0;position:relative;}
+  .metric + .metric{padding-left:22px;border-left:1px solid var(--hair);}
+  .metric .lab{font-size:12px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-family:var(--mono);}
+  .metric .val{margin-top:7px;display:flex;align-items:baseline;gap:7px;}
+  .metric .num{font-family:var(--mono);font-size:32px;font-weight:600;color:var(--ink);letter-spacing:-1px;line-height:1;}
+  .metric.hl .num{color:var(--deep2);}
+  .metric .unit{font-size:12px;color:var(--muted);}
+  .metric .bar{position:absolute;left:0;bottom:-1px;width:34px;height:2px;background:var(--mint);border-radius:2px;}
+  .metric:first-child .bar{left:0;}
+  .metric + .metric .bar{left:22px;}
+
+  /* 工具栏 */
+  .toolbar{margin-top:20px;display:flex;align-items:center;gap:8px;}
+  .fsearch{display:flex;align-items:center;gap:9px;width:210px;height:42px;padding:0 12px;border-radius:10px;
+    background:var(--white);border:1px solid var(--hair);}
+  .fsearch svg{width:16px;height:16px;stroke:#8a978f;fill:none;stroke-width:1.8;stroke-linecap:round;}
+  .fsearch input{flex:1;border:0;outline:0;background:transparent;font-size:13.5px;color:var(--ink);font-family:var(--sans);}
+  .fsearch input::placeholder{color:#93a099;}
+  .filter{display:flex;align-items:center;gap:6px;height:42px;padding:0 10px;border-radius:10px;
+    background:var(--white);border:1px solid var(--hair);font-size:13.5px;color:var(--ink2);cursor:pointer;white-space:nowrap;}
+  .filter label{color:var(--muted);font-size:12px;letter-spacing:.04em;}
+  .filter svg{width:13px;height:13px;stroke:#8a978f;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .tactions{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .ghost{display:flex;align-items:center;gap:6px;height:40px;padding:0 9px;border-radius:9px;background:transparent;white-space:nowrap;
+    border:1px solid transparent;color:var(--muted);font-size:13.5px;cursor:pointer;}
+  .ghost:hover{background:rgba(15,61,51,.05);color:var(--ink);}
+  .ghost svg{width:15px;height:15px;stroke:#7d8a80;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .btn-primary{display:flex;align-items:center;gap:7px;height:42px;padding:0 14px;border-radius:10px;border:0;cursor:pointer;white-space:nowrap;
+    background:var(--mint);color:#08251a;font-weight:700;font-size:13.5px;font-family:var(--sans);
+    box-shadow:0 8px 18px -8px rgba(79,194,148,.8), 0 0 0 1px rgba(20,97,74,.12) inset;}
+  .btn-primary:hover{background:#7cf0be;}
+  .btn-primary svg{width:15px;height:15px;stroke:#08251a;fill:none;stroke-width:2.2;stroke-linecap:round;}
+
+  /* 表格 */
+  .table-wrap{margin-top:16px;flex:1;min-height:0;}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;}
+  thead th{font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;text-align:left;padding:0 10px 11px;border-bottom:1.5px solid #cfc7b6;}
+  thead th.num{text-align:center;}
+  tbody td{padding:0 10px;height:48px;border-bottom:1px solid var(--hair2);vertical-align:middle;font-size:13.5px;color:var(--ink2);}
+  tbody tr:last-child td{border-bottom:1px solid var(--hair);}
+  tbody tr.sel{background:linear-gradient(90deg, rgba(111,227,176,.10), rgba(111,227,176,.02));}
+  tbody tr:hover{background:rgba(15,61,51,.028);}
+
+  .idx{font-family:var(--mono);font-size:12px;color:#91a096;text-align:center;letter-spacing:.05em;}
+  .ck{width:15px;height:15px;border-radius:4px;border:1.5px solid #b9b2a2;background:transparent;display:inline-block;vertical-align:middle;}
+  .ck.on{background:var(--deep2);border-color:var(--deep2);position:relative;}
+  .ck.on::after{content:"";position:absolute;left:4px;top:1px;width:5px;height:9px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(42deg);}
+
+  .member{display:flex;align-items:center;gap:11px;}
+  .mav{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(15,61,51,.06);}
+  .mmeta{display:flex;flex-direction:column;line-height:1.28;min-width:0;}
+  .mmeta b{font-size:14px;font-weight:600;color:var(--ink);letter-spacing:.1px;}
+  .mmeta span{font-family:var(--mono);font-size:12.5px;color:#8b988f;margin-top:1px;}
+
+  .dept{font-size:14px;color:var(--ink2);}
+  .tag{display:inline-block;padding:3px 9px;border-radius:999px;background:#e4f3ea;color:var(--deep2);
+    font-size:12px;font-weight:600;letter-spacing:.02em;line-height:1.55;white-space:nowrap;}
+  .tag.alt{background:#eef0e6;color:#5b6b48;}
+  .tag.mono{background:#e7ede7;color:#3f5a4c;}
+  .tagrow{display:flex;gap:5px;flex-wrap:nowrap;}
+
+  .sw{display:inline-flex;align-items:center;gap:8px;}
+  .track{width:34px;height:19px;border-radius:999px;background:#d6d1c3;position:relative;transition:.15s;flex:0 0 auto;}
+  .track::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:.15s;}
+  .track.on{background:var(--mint);}
+  .track.on::after{left:17px;background:#0c2a1c;}
+  .sw .st{font-size:13.5px;font-weight:600;color:var(--deep2);}
+  .sw .st.off{color:#8a978f;font-weight:500;}
+  .pending{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--amber);font-weight:600;}
+  .pending i{width:8px;height:8px;border-radius:50%;border:1.6px solid var(--amber);background:transparent;}
+
+  .meta2{font-family:var(--mono);font-size:13px;color:#66746b;letter-spacing:.02em;}
+  .act{display:flex;align-items:center;gap:2px;}
+  .act button{width:27px;height:27px;border-radius:7px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .act button:hover{background:rgba(15,61,51,.07);}
+  .act svg{width:15px;height:15px;stroke:#8a978f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .act button:hover svg{stroke:var(--deep2);}
+  .act button.del:hover svg{stroke:var(--danger);}
+
+  /* 分页 */
+  .pager{margin-top:14px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;}
+  .pager .info{font-size:13px;color:var(--muted);}
+  .pager .info b{font-family:var(--mono);color:var(--ink);font-weight:600;}
+  .pages{display:flex;align-items:center;gap:5px;}
+  .pg{min-width:32px;height:32px;padding:0 9px;border-radius:8px;border:1px solid var(--hair);background:var(--white);
+    color:var(--ink2);font-size:12.5px;font-family:var(--mono);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .pg:hover{border-color:#b9c7bc;}
+  .pg.active{background:var(--deep);border-color:var(--deep);color:#eafff5;font-weight:700;}
+  .pg.dots{border:0;background:transparent;color:#9aa79f;cursor:default;}
+  .pg svg{width:13px;height:13px;stroke:#8a978f;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ================= 右侧编辑抽屉 ================= */
+  .scrim{position:fixed;inset:0;background:rgba(6,13,10,.30);opacity:0;visibility:hidden;transition:opacity .28s ease;z-index:90;}
+  .drawer{position:fixed;top:0;right:0;width:610px;height:1024px;background:var(--card2);
+    transform:translateX(640px);transition:transform .34s cubic-bezier(.4,.0,.15,1);z-index:100;
+    display:flex;flex-direction:column;box-shadow:-30px 0 80px -30px rgba(0,0,0,.55);}
+  body.show-drawer .scrim{opacity:1;visibility:visible;}
+  body.show-drawer .drawer{transform:translateX(0);}
+
+  .dw-head{position:relative;padding:24px 30px 26px;color:#eafff5;overflow:hidden;
+    background:linear-gradient(135deg,#0f3d33 0%,#1c5a48 100%);}
+  .dw-head::before,.dw-head::after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.12);pointer-events:none;}
+  .dw-head::before{width:340px;height:340px;right:-120px;top:-170px;}
+  .dw-head::after{width:220px;height:220px;right:-70px;top:-110px;border-color:rgba(111,227,176,.22);}
+  .dw-htop{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;}
+  .dw-brand{display:flex;align-items:center;gap:9px;font-size:13px;color:#cfe9dd;letter-spacing:.4px;}
+  .dw-brand img{width:22px;height:22px;}
+  .dw-brand b{color:#fff;font-weight:600;}
+  .dw-close{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:transparent;
+    color:#eafff5;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .dw-close:hover{background:rgba(255,255,255,.12);}
+  .dw-id{display:flex;align-items:center;gap:16px;margin-top:18px;position:relative;z-index:2;}
+  .dw-av{width:58px;height:58px;border-radius:14px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
+    display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex:0 0 auto;}
+  .dw-idt{display:flex;flex-direction:column;gap:5px;}
+  .dw-name{font-size:21px;font-weight:700;color:#fff;letter-spacing:.3px;}
+  .dw-idline{display:flex;align-items:center;gap:8px;}
+  .dw-tag{display:inline-block;background:rgba(111,227,176,.20);border:1px solid rgba(111,227,176,.45);
+    color:#bff3dc;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;}
+  .dw-sub{font-size:12.5px;color:#a9c9bb;letter-spacing:.2px;}
+
+  .dw-body{flex:1;overflow-y:auto;padding:22px 30px 18px;}
+  .dw-body::-webkit-scrollbar{width:8px;}
+  .dw-body::-webkit-scrollbar-thumb{background:#d8d2c4;border-radius:8px;}
+  .dsec{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #e8e4d8;}
+  .dsec:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0;}
+  .dsec h4{margin:0 0 13px;display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);font-weight:700;letter-spacing:.3px;}
+  .dsec h4 .n{font-family:var(--mono);font-size:11px;color:var(--deep2);background:#e4f3ea;border-radius:5px;padding:2px 6px;letter-spacing:.05em;}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px 16px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:12px;color:var(--muted);letter-spacing:.04em;}
+  .field label .req{color:var(--danger);margin-right:2px;}
+  .inp{height:40px;border:1px solid #e0dbcf;border-radius:9px;background:#fff;padding:0 12px;display:flex;align-items:center;
+    font-size:14px;color:var(--ink);}
+  .inp.ph{color:#a3aea7;}
+  .inp.select{justify-content:space-between;}
+  .inp.select svg{width:13px;height:13px;stroke:#98a49c;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .radios{display:flex;align-items:center;gap:22px;height:40px;}
+  .radio{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink2);cursor:pointer;}
+  .radio i{width:16px;height:16px;border-radius:50%;border:1.5px solid #c3bcac;display:inline-flex;align-items:center;justify-content:center;}
+  .radio.on i{border-color:var(--deep2);}
+  .radio.on i::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--deep2);}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:#e4f3ea;color:var(--deep2);border-radius:8px;
+    padding:0 10px;height:40px;font-size:13.5px;font-weight:600;width:100%;justify-content:space-between;border:1px solid #d3e9dd;}
+  .chip span.x{color:#79a894;font-size:14px;}
+  .ta{min-height:82px;border:1px solid #e0dbcf;border-radius:9px;background:#fff;padding:11px 12px;font-size:14px;color:#a3aea7;}
+
+  .dw-foot{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:16px 30px 20px;border-top:1px solid #e6e1d5;background:#fdfcf8;}
+  .dirty{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);}
+  .dirty i{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 3px rgba(176,122,46,.14);}
+  .dw-foot .spacer{margin-left:auto;}
+  .btn-cancel{height:42px;padding:0 20px;border-radius:9px;background:#fff;border:1px solid #dcd6c8;color:var(--ink2);
+    font-size:13.5px;cursor:pointer;font-family:var(--sans);}
+  .btn-cancel:hover{border-color:#c3bdae;}
+  .btn-save{height:42px;padding:0 22px;border-radius:9px;border:0;background:var(--deep);color:#eafff5;font-size:13.5px;
+    font-weight:700;cursor:pointer;font-family:var(--sans);box-shadow:0 10px 22px -12px rgba(15,61,51,.9);}
+  .btn-save:hover{background:#0d3529;}
+</style>
+</head>
+<body>
+<div class="stage"></div>
+
+<!-- ========== 左侧导航 ========== -->
+<aside class="sidebar">
+  <div class="brand">
+    <img src="logo.png" alt="V5Notes2">
+    <div class="bt"><b>V5Notes2</b><span>云笔记 · 管理控制台</span></div>
+  </div>
+  <nav class="nav">
+    <div class="sec">导航 / Navigation</div>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>工作台<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>笔记管理<span class="dot"></span></a>
+    <a href="#" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>成员管理<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.6 8.6-8 11-4.4-2.4-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg>角色权限<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="5" rx="1"/><rect x="2.5" y="16" width="6" height="5" rx="1"/><rect x="15.5" y="16" width="6" height="5" rx="1"/><path d="M12 7.5v4M5.5 16v-2.5h13V16"/></svg>部门组织<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10.5 18.5h3"/></svg>客户端账号<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg>文件管理<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M2 12h4l2.5-7 5 14 2.5-7H22"/></svg>系统监控<span class="dot"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>系统设置<span class="dot"></span></a>
+  </nav>
+  <div class="side-foot">
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3M12 17h.01"/></svg>帮助中心</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h12"/></svg>退出登录</a>
+  </div>
+</aside>
+
+<!-- ========== 顶栏 ========== -->
+<header class="topbar">
+  <div class="crumb"><span class="home">系统</span><span class="sep">/</span><span class="cur">成员管理</span></div>
+  <div class="tsearch">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input placeholder="搜索成员、角色或操作…">
+    <span class="kbd">⌘K</span>
+  </div>
+  <div class="tright">
+    <button class="iconbtn" title="主题切换"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
+    <button class="iconbtn" title="通知"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="badge">3</span></button>
+    <button class="iconbtn" title="帮助"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3M12 17h.01"/></svg></button>
+    <button class="iconbtn" title="全屏"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <div class="tdivider"></div>
+    <div class="who">
+      <div class="av">林</div>
+      <div class="meta"><b>林知远</b><span>超级管理员</span></div>
+      <svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </div>
+</header>
+
+<!-- ========== 暖白工作卡 ========== -->
+<main class="card">
+  <div class="eyebrow-row">
+    <div class="eyebrow">01 <span class="sl">SYSTEM / MEMBERS</span></div>
+    <div class="live"><i></i>LIVE · 128 RECORDS</div>
+  </div>
+
+  <div class="kick">成员与权限</div>
+  <h1 class="h1">成员管理</h1>
+  <p class="sub">统一管理工作空间成员、角色与访问范围，共 <b>128</b> 位成员，本周<span class="add">新增 6 位</span>。</p>
+
+  <div class="metrics">
+    <div class="metric hl"><div class="lab">全部成员</div><div class="val"><span class="num">128</span><span class="unit">人</span></div><div class="bar"></div></div>
+    <div class="metric"><div class="lab">在线</div><div class="val"><span class="num">42</span><span class="unit">人</span></div></div>
+    <div class="metric"><div class="lab">待审核</div><div class="val"><span class="num">5</span><span class="unit">人</span></div></div>
+    <div class="metric"><div class="lab">已停用</div><div class="val"><span class="num">9</span><span class="unit">人</span></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="fsearch">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input placeholder="搜索姓名、账号或部门">
+    </div>
+    <div class="filter"><label>部门</label>全部部门<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="filter"><label>状态</label>全部状态<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="filter"><label>角色</label>全部角色<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="tactions">
+      <button class="ghost"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>批量导入</button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>导出</button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="1.6" fill="#7d8a80" stroke="none"/><circle cx="15" cy="12" r="1.6" fill="#7d8a80" stroke="none"/><circle cx="10" cy="18" r="1.6" fill="#7d8a80" stroke="none"/></svg>列设置</button>
+      <button class="btn-primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新增成员</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <colgroup>
+        <col style="width:38px"><col style="width:32px"><col style="width:236px"><col style="width:104px">
+        <col style="width:170px"><col style="width:120px"><col style="width:104px"><col style="width:112px"><col style="width:96px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="num"><span class="ck on"></span></th>
+          <th class="num">#</th>
+          <th>成员</th><th>部门</th><th>角色</th><th>状态</th><th>最后活跃</th><th>加入时间</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="sel">
+          <td class="num"><span class="ck on"></span></td>
+          <td class="idx">01</td>
+          <td><div class="member"><div class="mav" style="background:#dfeee6;color:#1c5a48">林</div><div class="mmeta"><b>林知远</b><span>linzhiyuan</span></div></div></td>
+          <td class="dept">产品与设计</td>
+          <td><div class="tagrow"><span class="tag">超级管理员</span><span class="tag mono">管理员</span></div></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">2 分钟前</span></td>
+          <td><span class="meta2">2023-04-12</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">02</td>
+          <td><div class="member"><div class="mav" style="background:#e9e3d3;color:#6b5a2e">沈</div><div class="mmeta"><b>沈亦清</b><span>shenyq</span></div></div></td>
+          <td class="dept">内容运营</td>
+          <td><span class="tag">内容编辑</span></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">18 分钟前</span></td>
+          <td><span class="meta2">2023-06-08</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">03</td>
+          <td><div class="member"><div class="mav" style="background:#e4ead9;color:#4b5f3a">周</div><div class="mmeta"><b>周砚</b><span>zhouyan</span></div></div></td>
+          <td class="dept">工程研发</td>
+          <td><span class="tag alt">开发者</span></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">1 小时前</span></td>
+          <td><span class="meta2">2023-09-21</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">04</td>
+          <td><div class="member"><div class="mav" style="background:#e7ece4;color:#45624f">苏</div><div class="mmeta"><b>苏晚照</b><span>suwanzhao</span></div></div></td>
+          <td class="dept">市场增长</td>
+          <td><span class="tag alt">运营</span></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">3 小时前</span></td>
+          <td><span class="meta2">2024-01-05</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">05</td>
+          <td><div class="member"><div class="mav" style="background:#ece5e0;color:#7a5a48">陈</div><div class="mmeta"><b>陈默</b><span>chenmo</span></div></div></td>
+          <td class="dept">客户成功</td>
+          <td><span class="tag mono">只读访客</span></td>
+          <td><div class="sw"><span class="track"></span><span class="st off">停用</span></div></td>
+          <td><span class="meta2">5 天前</span></td>
+          <td><span class="meta2">2024-02-18</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">06</td>
+          <td><div class="member"><div class="mav" style="background:#e6eadf;color:#5a6640">顾</div><div class="mmeta"><b>顾南枝</b><span>gunanzhi</span></div></div></td>
+          <td class="dept">财务</td>
+          <td><span class="tag mono">财务审计</span></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">昨天</span></td>
+          <td><span class="meta2">2024-03-02</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">07</td>
+          <td><div class="member"><div class="mav" style="background:#e2ece5;color:#3d6a52">江</div><div class="mmeta"><b>江望</b><span>jiangwang</span></div></div></td>
+          <td class="dept">工程研发</td>
+          <td><span class="tag alt">开发者</span></td>
+          <td><div class="sw"><span class="track on"></span><span class="st">正常</span></div></td>
+          <td><span class="meta2">6 小时前</span></td>
+          <td><span class="meta2">2024-04-11</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+        <tr>
+          <td class="num"><span class="ck"></span></td>
+          <td class="idx">08</td>
+          <td><div class="member"><div class="mav" style="background:#eae6dc;color:#6d6046">白</div><div class="mmeta"><b>白露</b><span>bailu</span></div></div></td>
+          <td class="dept">内容运营</td>
+          <td><span class="tag">内容编辑</span></td>
+          <td><span class="pending"><i></i>待审核</span></td>
+          <td><span class="meta2">—</span></td>
+          <td><span class="meta2">2024-05-06</span></td>
+          <td><div class="act"><button title="编辑"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" title="删除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button><button title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="#8a978f" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="#8a978f" stroke="none"/></svg></button></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <div class="info">共 <b>128</b> 条 · 每页 <b>10</b> 条 · <b>1/13</b> 页</div>
+    <div class="pages">
+      <button class="pg"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="pg active">1</button>
+      <button class="pg">2</button>
+      <button class="pg">3</button>
+      <button class="pg dots">…</button>
+      <button class="pg">13</button>
+      <button class="pg"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+  </div>
+</main>
+
+<!-- ========== 右侧编辑抽屉 ========== -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dw-head">
+    <div class="dw-htop">
+      <div class="dw-brand"><img src="logo.png" alt=""><b>V5Notes</b> 成员 · 编辑成员</div>
+      <button class="dw-close" id="dwClose">×</button>
+    </div>
+    <div class="dw-id">
+      <div class="dw-av">沈</div>
+      <div class="dw-idt">
+        <div class="dw-name">沈亦清</div>
+        <div class="dw-idline"><span class="dw-tag">内容编辑</span></div>
+        <div class="dw-sub">内容运营 · 内容团队</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dw-body">
+    <section class="dsec">
+      <h4><span class="n">01</span>基本信息</h4>
+      <div class="fgrid">
+        <div class="field"><label><span class="req">*</span>用户昵称</label><div class="inp">沈亦清</div></div>
+        <div class="field"><label>用户性别</label><div class="inp select">男<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div></div>
+        <div class="field"><label>手机号码</label><div class="inp">13800001234</div></div>
+        <div class="field"><label>邮箱</label><div class="inp">shenyq@v5notes.com</div></div>
+      </div>
+    </section>
+
+    <section class="dsec">
+      <h4><span class="n">02</span>组织与身份</h4>
+      <div class="fgrid">
+        <div class="field"><label><span class="req">*</span>归属部门</label><div class="inp select">内容运营<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div></div>
+        <div class="field"><label><span class="req">*</span>用户类型</label><div class="inp select">PC 管理端用户<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div></div>
+        <div class="field full"><label>账号状态</label>
+          <div class="radios">
+            <span class="radio on"><i></i>正常</span>
+            <span class="radio"><i></i>停用</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dsec">
+      <h4><span class="n">03</span>角色与岗位</h4>
+      <div class="fgrid">
+        <div class="field"><label>岗位</label><div class="chip">内容编辑<span class="x">×</span></div></div>
+        <div class="field"><label><span class="req">*</span>角色</label><div class="chip">内容团队<span class="x">×</span></div></div>
+      </div>
+    </section>
+
+    <section class="dsec">
+      <h4><span class="n">04</span>备注</h4>
+      <div class="ta">请输入内容</div>
+    </section>
+  </div>
+
+  <div class="dw-foot">
+    <span class="dirty"><i></i>有未保存的修改</span>
+    <div class="spacer"></div>
+    <button class="btn-cancel" id="dwCancel">取消</button>
+    <button class="btn-save">保存修改</button>
+  </div>
+</aside>
+
+<script>
+  if(location.hash==='#drawer'){document.body.classList.add('show-drawer');}
+  var drawer=document.getElementById('drawer');
+  document.getElementById('dwClose').addEventListener('click',function(){document.body.classList.remove('show-drawer');});
+  document.getElementById('dwCancel').addEventListener('click',function(){document.body.classList.remove('show-drawer');});
+  document.getElementById('scrim').addEventListener('click',function(){document.body.classList.remove('show-drawer');});
+</script>
+</body>
+</html>

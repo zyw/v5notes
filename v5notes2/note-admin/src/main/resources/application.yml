@@ -1,0 +1,242 @@
+# 开发环境配置
+server:
+  # 服务器的HTTP端口，默认为8080
+  port: ${V5NOTES_SERVER_PORT:8080}
+  servlet:
+    # 应用的访问路径
+    context-path: /
+  # jetty 配置
+  jetty:
+    # HTTP post内容的最大大小。当值为-1时，默认值为大小是无限的
+    max-http-form-post-size: -1
+    threads:
+      # 开启虚拟线程后，该值表示最大并发任务数，而非平台线程池大小
+      # SSE 等长连接会持续占用任务槽位，请根据在线用户量和请求峰值调整
+      max: 20000
+
+captcha:
+  # 是否启用验证码校验
+  enable: true
+  # 验证码类型 math 数组计算 char 字符验证
+  type: math
+  # 数字验证码位数
+  numberLength: 1
+  # 字符验证码长度
+  charLength: 4
+
+# 日志配置
+logging:
+  level:
+    xin.v5ai: @logging.level@
+    org.springframework: warn
+    org.mybatis.spring.mapper: error
+    org.apache.fury: warn
+    com.yomahub.liteflow: warn
+    org.anyline: warn
+  config: classpath:logback-plus.xml
+
+# 用户配置
+user:
+  password:
+    # 密码最大错误次数
+    maxRetryCount: 5
+    # 密码锁定时间（默认10分钟）
+    lockTime: 10
+
+# v5notes 自定义配置
+v5notes:
+  # 数据库方言：mysql | postgresql
+  # 一个开关管两处：Flyway 迁移目录（spring.flyway.locations）与 master 数据源取哪组连接参数
+  # （v5notes.datasource.<方言>.*，定义在 application-dev.yml 与 application-prod.yml）。未被选中的方言不建池、不连接。
+  # 可用环境变量 V5NOTES_DB_DIALECT 覆盖，默认 mysql
+  db-dialect: ${V5NOTES_DB_DIALECT:mysql}
+
+# Spring配置
+spring:
+  application:
+    name: V5Notes2
+  threads:
+    # 开启虚拟线程 仅jdk21可用
+    virtual:
+      enabled: false
+  task:
+    execution:
+      # 从 springboot 3.5 开始 spring自带线程池
+      # 不再需要 AsyncConfig与ThreadPoolConfig 可直接注入线程池使用
+      thread-name-prefix: async-
+      # 由spring自己初始化线程池
+      mode: force
+  # 资源信息
+  messages:
+    # 国际化资源文件路径
+    basename: i18n/messages
+  profiles:
+    active: @profiles.active@
+  # 文件上传
+  servlet:
+    multipart:
+      # 单个文件大小
+      max-file-size: 10MB
+      # 设置总上传的文件大小
+      max-request-size: 20MB
+  mvc:
+    # 设置静态资源路径 防止所有请求都去查静态资源
+    static-path-pattern: /static/**
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  jackson:
+    serialization:
+      # 格式化输出
+      indent_output: false
+      # 忽略无法转换的对象
+      fail_on_empty_beans: false
+    deserialization:
+      # 允许对象忽略json中不存在的属性
+      fail_on_unknown_properties: false
+  flyway:
+    enabled: true
+    # 迁移脚本按方言分目录：common/ 放两方言通用的迁移，${v5notes.db-dialect} 放方言专用迁移。
+    # 同一版本号在任一方言下只能出现一次（要么只在 common/，要么在两个方言目录各一份）。
+    locations: classpath:db/migration/common,classpath:db/migration/${v5notes.db-dialect}
+    table: flyway_schema_history
+    # 已存在的库（已有业务表但无 flyway 历史表）首次启动时自动 baseline，避免重复执行 V1 建表
+    baseline-on-migrate: true
+
+# Sa-Token配置
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: false
+  # jwt秘钥
+  jwt-secret-key: ${V5NOTES_JWT_SECRET:abcdefghijklmnopqrstuvwxyz}
+
+# security配置
+security:
+  # 排除路径
+  excludes:
+    - /*.html
+    - /**/*.html
+    - /**/*.css
+    - /**/*.js
+    - /favicon.ico
+    - /error
+    - /*/api-docs
+    - /*/api-docs/**
+
+# MyBatisPlus配置
+# https://baomidou.com/config/
+mybatis-plus:
+  # 自定义配置 是否全局开启逻辑删除 关闭后 所有逻辑删除功能将失效
+  enableLogicDelete: true
+  # 多包名使用 例如 xin.v5ai.**.mapper,org.xxx.**.mapper
+  mapperPackage: xin.v5ai.**.mapper
+  # 对应的 XML 文件位置
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  # 实体扫描，多个package用逗号或者分号分隔
+  typeAliasesPackage: xin.v5ai.**.domain
+  global-config:
+    dbConfig:
+      # 主键类型
+      # AUTO 自增 NONE 空 INPUT 用户输入 ASSIGN_ID 雪花 ASSIGN_UUID 唯一 UUID
+      # 如需改为自增 需要将数据库表全部设置为自增
+      idType: ASSIGN_ID
+
+# 数据加密
+mybatis-encryptor:
+  # 是否开启加密
+  enable: false
+  # 默认加密算法
+  algorithm: BASE64
+  # 编码方式 BASE64/HEX。默认BASE64
+  encode: BASE64
+  # 安全秘钥 对称算法的秘钥 如：AES，SM4
+  password: ${V5NOTES_MYBATIS_ENCRYPTOR_PASSWORD:}
+  # 公私钥 非对称算法的公私钥 如：SM2，RSA
+  publicKey: ${V5NOTES_MYBATIS_ENCRYPTOR_PUBLIC_KEY:}
+  privateKey: ${V5NOTES_MYBATIS_ENCRYPTOR_PRIVATE_KEY:}
+
+# api接口加密
+api-decrypt:
+  # 是否开启全局接口加密
+  enabled: true
+  # AES 加密头标识
+  headerFlag: encrypt-key
+  # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+  # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
+  publicKey: ${V5NOTES_API_DECRYPT_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu0QumTTAkPSiGQ75RZqpCvpJDWDspRoacrIHdWUbj5SGRcPfHh3QcGh7cQ1nm40sWwfb3jdO1g7yP/smEx4vXn4mjqpztrt5RbYoZlZ2AAAxI6Uxj522NUEWYVBpWqzqxnGw/w2wtfKTd/HSyZi/zXeRONF4G4aH4zCLxsFYKjeemz1y0eLKg8Cfx2dqUffU3yxNf4N7tilthgxw6XSKABjB488CpJMYelDWrtw6W+5c6HaBAYMQfJM2PJqjTnndGokJDS3mGp33Laba+lZeZtf8vt0bYW6rKuLtoqY0pQ0yLvmgty7JvhacInYUQzI7RleMXSGXhVKmK/MFA2dpvwIDAQAB}
+  # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+  # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
+  privateKey: ${V5NOTES_API_DECRYPT_PRIVATE_KEY:MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7RC6ZNMCQ9KIZDvlFmqkK+kkNYOylGhpysgd1ZRuPlIZFw98eHdBwaHtxDWebjSxbB9veN07WDvI/+yYTHi9efiaOqnO2u3lFtihmVnYAADEjpTGPnbY1QRZhUGlarOrGcbD/DbC18pN38dLJmL/Nd5E40XgbhofjMIvGwVgqN56bPXLR4sqDwJ/HZ2pR99TfLE1/g3u2KW2GDHDpdIoAGMHjzwKkkxh6UNau3Dpb7lzodoEBgxB8kzY8mqNOed0aiQkNLeYanfctptr6Vl5m1/y+3Rthbqsq4u2ipjSlDTIu+aC3Lsm+FpwidhRDMjtGV4xdIZeFUqYr8wUDZ2m/AgMBAAECggEAQH3otmaOct1s/chEXI447Ujo46yfkvR8a0eYffuGFFqIK3qbWlnWMQAqkvKU3eMuhWMde1f81IdtMk+h+y+IDLjROozFMQc7aqCjJStdk/587dO0T8t2trxlorn4rnuilxkMZaonU2HpG4Oyni72zyIAZ1rsTD52ie1sFdT8Mf1CJ4eiOJltCTW7PJqkeBWCX4v9mJiCajqGik0UUAITxhruHwuBEUmumtBxXApygLWthYjdII7UYulhsU5LGam/YW4QL64DsKVnxWx5H48qyillkU1CP5itHArQ5bsC89lsJ78zU7Zl5IKWSZ+0YGUX+tLXf4qALnTSbRwxftaCMQKBgQDw9D1gC35kGWkwc3xT+sBJn7Zhn1Oahn/vGmV/xxyufQh+VAeZmh5/Ty17Pqt1RhlF3rTWSRjuhXegjYhVb3bw13EswVkWTqpMSSWBZOZFP/j6kL1++uDpoQ0B94UbcMdRCzI4VuXQsr5Un+Fc+ii7z5ioe36OcLr6a+VP2xmwjQKBgQDG9bg1zEWHqhPfumNCl0HFCYjIRr6f75D8PqZBIbntVx1fjiCPnndpl6yCM45FbHypTA9yN/kDwHZXKAFamRBizOkoESSaGAZa8PqviWlbWq53OgvhTtCT9MYB+/rGmTG2Y1Ot8MqfOWPRIzDPsXZKczKOpkr/irl2JXiXp79uewKBgQCY+uiQtxtq4DtJuLjB9NzqoY1A09BXtnc5TnAMvVT3b4jZ8+3TVudv+swsiHCBh5z6IFh+CHDc1z5JYDKj054XcSF4wdUW9aDnyDUYvv/4DZK9OvIk0ZHEoyzIB+epsWPKj6o13O4SH7n5rnx99JGyFC6fIbELLIV6AtDXb4sS7QKBgHq2+AWGlqQUjOmDZtGdxZ0oQkt1BwJSmtRaN+UYTjtLbfyQBxlOHkzsliRAdFHxlfo9xZEnYNmljdg3/o3ItsiZpn1mBXNduh3BYH2AfZExH0a+cLFpEVEQukhjCMwRlQ3vuZ8hU3hdx2kpEWQpCtLktpwxiTSQdc+fUQAJIROdAoGBAM7pskuAYFl6TC3+Je4BRvWeZu3rylpPv9rmOVDQKA5mF9vGFwFDJbtHmdpzlciSMrCjPdTdtX0c/BYAFqVQodPA/9UPuzlUwUqFIB8vwq8PswwAaHCaoDGu1+E4/c7hF3Isvnln1/PDxKKIwwOpj37xqxfuJs1hLGPEHZlnyy6m}
+
+springdoc:
+  api-docs:
+    # 是否开启接口文档
+    enabled: true
+  info:
+    # 标题
+    title: '标题：V5Notes2 云笔记接口文档'
+    # 描述
+    description: '描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...'
+    # 版本
+    version: '版本号: ${project.version}'
+    # 作者信息
+    contact:
+      name: ZYW
+      email: zyw090111@163.com
+      url: https://github.com/zyw/v5notes
+  #这里定义了两个分组，可定义多个，也可以不定义
+  group-configs:
+    - group: 1.通用模块
+      packages-to-scan: xin.v5ai.web
+    - group: 2.系统模块
+      packages-to-scan: xin.v5ai.system
+    - group: 3.云笔记
+      packages-to-scan: xin.v5ai.notes
+
+# 防止XSS攻击
+xss:
+  # 过滤开关
+  enabled: true
+  # 排除链接
+  excludeUrls:
+    - /system/notice
+
+--- # 分布式锁 lock4j 全局配置
+lock4j:
+  # 获取分布式锁超时时间，默认为 3000 毫秒
+  acquire-timeout: 3000
+  # 分布式锁的超时时间，默认为 30 秒
+  expire: 30000
+
+--- # Actuator 监控端点的配置项
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: ALWAYS
+    logfile:
+      external-file: ./logs/sys-console.log
+
+--- # 统一消息推送配置
+message:
+  enabled: true
+  # sse / websocket
+  transport: sse
+  # 统一访问路径
+  path: /resource/message
+  # websocket 允许的跨域来源
+  allowedOrigins: '*'
+  # SSE 连接超时时间，单位毫秒
+  sse-timeout: 86400000
+  # 本地连接心跳检测间隔，单位秒
+  heartbeat-interval: 60
+  # WebSocket 单次发送超时时间，单位毫秒
+  web-socket-send-time-limit: 10000
+  # WebSocket 发送缓冲区大小
+  web-socket-buffer-size-limit: 64000

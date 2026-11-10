@@ -1,0 +1,98 @@
+# v5notes2 部署：MySQL + Redis + API + 管理后台。
+# 库表由 API 启动时的 Flyway 创建，不要再手工导入 script/sql。
+#
+# 构建产物：
+#   cd v5notes2 && mvn -DskipTests package
+#   cd v5notes-admin2 && pnpm install && pnpm build
+# 启动：
+#   cd v5notes2/docker && docker compose up -d --build
+# 可选：复制 env.example 为 .env 后修改密码。
+
+services:
+  mysql:
+    container_name: v5notes2-mysql
+    image: mysql:8.4.0
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root123#}"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-v5notes2}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --explicit_defaults_for_timestamp=true
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    container_name: v5notes2-redis
+    image: redis:7.4.1
+    environment:
+      TZ: Asia/Shanghai
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:-ruoyi123}
+      - --appendonly
+      - "yes"
+    volumes:
+      - ./redis/data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  v5notes2-api:
+    container_name: v5notes2-server
+    build:
+      context: ..
+      dockerfile: docker/server/Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - ./uploadfile:/root/v5notes/upload
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: prod
+      V5NOTES_DB_DIALECT: ${V5NOTES_DB_DIALECT:-mysql}
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_URL: "${MASTER_DATASOURCE_URL:-jdbc:mysql://mysql:3306/v5notes2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}"
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_USERNAME: ${MASTER_DATASOURCE_USERNAME:-root}
+      SPRING_DATASOURCE_DYNAMIC_DATASOURCE_MASTER_PASSWORD: "${MASTER_DATASOURCE_PASSWORD:-root123#}"
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${REDIS_CONTAINER_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-ruoyi123}
+      JAVA_OPTS: "${JAVA_OPTS:--Xms512m -Xmx512m}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  v5notes2-admin:
+    container_name: v5notes2-admin
+    build:
+      context: ../../v5notes-admin2
+      dockerfile: Dockerfile
+    ports:
+      - "${ADMIN_PORT:-8988}:8988"
+    environment:
+      V5NOTES_SERVER_HOST: v5notes2-api
+      V5NOTES_SERVER_PORT: "8080"
+    depends_on:
+      - v5notes2-api
+    restart: unless-stopped

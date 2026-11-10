@@ -1,0 +1,56 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>预览 / 编辑 切换 · 颜值版 G/H/I</title>
+<style>
+:root{--ink:#27342d;--ink2:#364c3b;--muted:#748177;--muted2:#89958b;--line:#e4e6df;--accent:#315b4a;}
+*{box-sizing:border-box}body{margin:0;background:#eef0ea;color:var(--ink);font-family:'DM Sans','PingFang SC',-apple-system,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:44px 28px 80px}
+h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em;color:#24382c}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.sub{margin:0 0 10px;color:var(--muted);font-size:13.5px;line-height:1.7;max-width:800px}
+.fix{background:#eaf1ea;border:1px solid #cfe0d2;border-radius:12px;padding:14px 18px;margin:18px 0 34px;font-size:12.5px;line-height:1.75;color:#2f4b3b}
+.fix b{color:#1f3d2c}.fix ul{margin:6px 0 0;padding-left:18px}
+.dir{margin:0 0 44px}
+.dir-head{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+.dir-head .tag{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+.dir-head h2{margin:0;font-size:18px;color:#24382c}
+.dir-head .why{color:var(--muted);font-size:12.5px}
+.frames{display:flex;gap:16px}
+.frame{position:relative;flex:1;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 10px 26px #27342d10}
+.frame .vp{width:100%;aspect-ratio:1440/900;overflow:hidden}
+.frame iframe{width:1440px;height:900px;border:0;transform:scale(.343);transform-origin:top left}
+.frame .tag{position:absolute;top:8px;left:8px;z-index:2;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:#20342ae6;color:#eaf1ea}
+.note{margin:12px 0 0;display:flex;gap:18px;color:var(--muted);font-size:12px;line-height:1.65}
+.note div{flex:1}.note b{color:var(--ink2);font-weight:600}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+</style></head><body><div class="wrap">
+<p class="kicker">V5NOTES · 预览 / 编辑切换 · 颜值版</p>
+<h1>把 A / B / C 的好看留下，把两个坑填掉</h1>
+<p class="sub">这一轮保留前三版被认可的「悬浮胶囊 / 分段开关 / 纸角轻标签」质感，同时满足上一轮的两条硬要求：①不占底部，避开与提示气泡叠压；②不动正文上边距，工具条到首行恢复原间距。</p>
+<div class="fix"><b>三版都满足</b><ul><li>底部不出现任何悬浮控件；</li><li>不为控件给正文加 padding；</li><li>继续复用同一个 V5Editor、保留 ⌘1/2/3 与命令面板。</li></ul></div>
+
+<section class="dir"><div class="dir-head"><span class="tag">G</span><h2>滑轨分段</h2><span class="why">墨绿滑块在顶栏正中滑动</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="g-glide-segmented.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="g-glide-segmented.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>顶栏正中一枚玻璃质感的分段开关，选中项是一块滑动的高光墨绿滑块，切换时滑块 260ms 滑过去。</div>
+<div><b>优点：</b>状态最清楚、动作最顺，居中锚点永不搬家。<br><a href="g-glide-segmented.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<section class="dir"><div class="dir-head"><span class="tag">H</span><h2>悬浮玻璃胶囊</h2><span class="why">右上角就地展开，B 的质感上移</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="h-glass-capsule.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="h-glass-capsule.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>顶栏右角一枚带高光与投影的玻璃胶囊：预览是「✎ 编辑」，编辑态在同一位置展开为「✓ 完成 · 已保存」。</div>
+<div><b>优点：</b>保留 B 的悬浮手感，但不在底部、不压正文。<br><a href="h-glass-capsule.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<section class="dir"><div class="dir-head"><span class="tag">I</span><h2>纸角轻标签</h2><span class="why">C 的纸角悬浮，去掉多余上边距</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="i-paper-chip.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="i-paper-chip.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>正文右上角一枚轻盈的「✎ 编辑」胶囊；编辑时原地变成「● 编辑中 · ✓ 完成」。点击「完成」= 保存并回到阅读。</div>
+<div><b>已修：</b>①「完成」之前没接处理函数、点了没反应，已接上；②正文右侧留 176px 专用页边距，浮标永远落在空白里、不压字（实测浮标左缘 1271 > 正文右缘 1249）。代价是正文列略窄。<br><a href="i-paper-chip.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<section class="dir"><div class="dir-head"><span class="tag">J</span><h2>可拖动纸角标签（满宽版）</h2><span class="why">正文满宽 · 贴右悬浮 · 拖动记位置 · 双击归位</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="j-fullwidth.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="j-fullwidth.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>J 的方案原样，只去掉正文右侧的预留留白——正文满宽；标签贴右悬浮，可在右侧范围内拖动、松手记住位置、双击回到右上角。</div>
+<div><b>说明：</b>默认停在右上空白区；拖到正文行尾时可能压到一两个字符，但可随时拖开（按你的判断，不再强制留安全栏）。<br><a href="j-fullwidth.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<p class="sub" style="margin-top:4px">可继续在任一版基础上做微调（颜色、圆角、动效时长、是否显示「已保存」文案）。</p>
+</div></body></html>

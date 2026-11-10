@@ -1,0 +1,72 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V5Notes2 管理端 · 重设计三方向</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','MiSans','HarmonyOS Sans SC','Microsoft YaHei',sans-serif;background:#eceae5;color:#1b211e;-webkit-font-smoothing:antialiased;padding:44px 40px 80px}
+.wrap{max-width:1560px;margin:0 auto}
+.head h1{font-size:30px;font-weight:800;letter-spacing:-.01em}
+.head p{margin-top:12px;font-size:15px;color:#5c665f;line-height:1.7;max-width:900px}
+.tagline{margin-top:10px;font-size:13px;color:#7c857e}
+section.dir{margin-top:52px;background:#fff;border:1px solid #e0dcd2;border-radius:18px;padding:26px 26px 30px;box-shadow:0 16px 40px rgba(30,40,35,.07)}
+.dirhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.dirhead h2{font-size:22px;font-weight:800}
+.dirhead .k{font-size:12.5px;color:#1c5a48;background:#e7efe9;border:1px solid #d8e7dd;padding:3px 10px;border-radius:999px;font-weight:700}
+.dirhead .en{font-size:13px;color:#98a29b;font-family:ui-monospace,monospace}
+.desc{margin:12px 0 20px;font-size:14.5px;color:#3f4a44;line-height:1.75;max-width:1000px}
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.shot{border:1px solid #e6e2d8;border-radius:12px;overflow:hidden;background:#f6f4ee}
+.shot img{display:block;width:100%;height:auto}
+.shot .cap{font-size:12px;color:#7c857e;padding:8px 12px;border-top:1px solid #e6e2d8;background:#fbfaf6}
+.points{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 26px}
+.points div{font-size:13.5px;color:#3f4a44;line-height:1.6}
+.points b{color:#1c5a48}
+.alts{margin-top:52px;background:#fff;border:1px solid #e0dcd2;border-radius:18px;padding:26px}
+.alts h2{font-size:20px;font-weight:800;margin-bottom:8px}
+.alts p{font-size:14px;color:#5c665f;margin-bottom:18px}
+.alts img{width:100%;border-radius:12px;border:1px solid #e6e2d8}
+.foot{margin-top:40px;font-size:13px;color:#7c857e}
+</style></head><body><div class="wrap">
+<div class="head">
+<h1>V5Notes2 管理端 · 整体风格与主题 · 三方向</h1>
+<p>把已批准的「用户新增/编辑侧滑抽屉」（墨绿 × 暖白）扩展成整个后台的统一主题。以下三版内容与尺寸完全一致（1440×1024），只换设计与骨架；每版都附「默认态 + 打开编辑抽屉态」两图。请在三个方向中选定一个（或混搭），我再进入主题令牌与组件落地。</p>
+<div class="tagline">共 3 个完整方向 + 3 个备选 · 截图 1440×1024 · 自包含 HTML</div>
+</div>
+
+<section class="dir">
+  <div class="dirhead"><h2>方向 1 · 深绿书斋</h2><span class="k">暖 · 安静</span><span class="en">Forest Study</span></div>
+  <p class="desc">原研哉的留白 × Vignelli 网格；把抽屉的深绿身份头升级为整条左侧导航。暖象牙画布 + 衬线大标题 + 发丝账册表；绿色只做激活/主按钮/状态点。</p>
+  <div class="shots">
+    <div class="shot"><img src="dir-1.png" alt="方向1 默认态"><div class="cap">默认态 · 成员管理</div></div>
+    <div class="shot"><img src="dir-1-drawer.png" alt="方向1 抽屉态"><div class="cap">打开编辑抽屉态</div></div>
+  </div>
+  <div class="points"><div><b>骨架</b>：深绿左栏 + 暖象牙主区 + 统计带 + 账册表</div><div><b>胆量</b>：整条深绿导航压在暖纸画布上</div></div>
+</section>
+
+<section class="dir">
+  <div class="dirhead"><h2>方向 2 · 薄荷工作台</h2><span class="k">中性 · 清爽</span><span class="en">Mint Workspace</span></div>
+  <p class="desc">Linear / Notion 式浅色精密 SaaS：白 + 薄荷墨绿单点，4 个扁平白指标卡，高密度数据表 + 柔和三色状态 pill + 等宽小标签；几乎不装饰，靠密度与对齐取胜。</p>
+  <div class="shots">
+    <div class="shot"><img src="dir-2.png" alt="方向2 默认态"><div class="cap">默认态 · 成员管理</div></div>
+    <div class="shot"><img src="dir-2-drawer.png" alt="方向2 抽屉态"><div class="cap">打开编辑抽屉态</div></div>
+  </div>
+  <div class="points"><div><b>骨架</b>：浅色左栏 + 指标卡 + 工具栏 + 密集表 + 分页</div><div><b>胆量</b>：几乎不装饰，效率与密度即风格</div></div>
+</section>
+
+<section class="dir">
+  <div class="dirhead"><h2>方向 3 · 墨绿画屏</h2><span class="k">大胆 · 深色</span><span class="en">Grove Dark</span></div>
+  <p class="desc">秒数轮盘·网页 #11 Dark Editorial：深墨绿近黑外壳里浮起一张暖白工作卡，单一荧光青绿只落在激活/主按钮/关键数字；等宽编号串起编辑气质。高对比但不刺眼。</p>
+  <div class="shots">
+    <div class="shot"><img src="dir-3.png" alt="方向3 默认态"><div class="cap">默认态 · 成员管理</div></div>
+    <div class="shot"><img src="dir-3-drawer.png" alt="方向3 抽屉态"><div class="cap">打开编辑抽屉态</div></div>
+  </div>
+  <div class="points"><div><b>骨架</b>：深色左栏 + 深色画布 + 中央暖白工作卡</div><div><b>胆量</b>：整屏深色外壳 + 暖白卡，一个「画屏/暗房」姿态</div></div>
+</section>
+
+<section class="alts">
+  <h2>另外三张备选</h2>
+  <p>A2 · 暖纸账房（吕敬人书籍设计 × 账册排印）· B2 · 晨雾控制台（Vercel/Resend 发丝线）· C2 · 竹影双栏（民国书衣）。看中哪张我做成完整版。</p>
+  <img src="thumbs.png" alt="六方向缩略图">
+</section>
+
+<div class="foot">详细设计说明见「设计方案.md」；每版 HTML 为自包含单文件（原生 HTML/CSS + 内联 SVG，logo 用同目录 logo.png）。</div>
+</div></body></html>

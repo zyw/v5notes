@@ -1,0 +1,40 @@
+import type { PageResult } from '@/api/types';
+import type { AxiosPromise } from '@/utils/api-types';
+import request from '@/utils/request';
+import type { FileQuery, FileUploadVO, FileVO } from './types';
+
+const baseUrl = '/basics/admin/file';
+
+// 查询文件对象存储列表
+export function listFile(query: FileQuery): AxiosPromise<PageResult<FileVO>> {
+  return request({
+    url: baseUrl + '/list',
+    method: 'get',
+    params: query
+  });
+}
+
+// 查询文件对象基于id串
+export function listByIds(fileId: string | number): AxiosPromise<FileVO[]> {
+  return request({
+    url: baseUrl + '/listByIds/' + fileId,
+    method: 'get'
+  });
+}
+
+// 上传文件对象存储
+export function uploadFile(data: FormData): AxiosPromise<FileUploadVO> {
+  return request({
+    url: baseUrl + '/upload',
+    method: 'post',
+    data
+  });
+}
+
+// 删除文件对象存储
+export function delFile(fileId: string | number | Array<string | number>) {
+  return request({
+    url: baseUrl + '/' + fileId,
+    method: 'delete'
+  });
+}

@@ -1,0 +1,259 @@
+# 发布 v5notes 桌面端更新清单 latest.json 到 GitHub Releases。
+#
+# 触发：推送 v* tag、发布 Release、或手动运行（Actions → Run workflow）。
+# 产物：把 latest.json 作为附件挂到目标 Release。客户端固定拉取
+#   https://github.com/zyw/v5notes/releases/latest/download/latest.json
+#
+# 和 v5xs 的 publish-update-feed 一样：安装包由构建机先上传，CI 只根据
+# Release 里真实存在的更新包现算清单，再上传。latest.json 不入库。
+# 客户端只发布 macOS（Apple 芯片、Intel）和 Windows x64。三份更新包缺一份、
+# 或缺 .sig 时直接失败，避免一份不完整的清单换掉另一个系统的更新入口。
+#
+# Tauri 的签名打在更新包上，不打在清单上。signature 字段是构建时生成的
+# .sig 全文。这个工作流不保存、也不使用 minisign 私钥。
+
+name: Publish update feed
+
+on:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "目标 Release tag（如 v0.2.0）；留空则使用最新 Release"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+# latest.json 是单一入口，同一时间只允许一个发版写它。
+concurrency:
+  group: publish-update-feed
+  cancel-in-progress: false
+
+jobs:
+  publish-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Resolve target release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          tag="$EVENT_RELEASE_TAG"
+          if [ -z "$tag" ] && [ "$EVENT_NAME" = "push" ]; then
+            tag="$REF_NAME"
+          fi
+          if [ -z "$tag" ]; then
+            tag="${INPUT_TAG:-}"
+          fi
+          if [ -z "$tag" ]; then
+            tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)"
+            echo "未指定 tag，使用最新 Release: $tag"
+          fi
+
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null 2>&1; then
+            echo "Release '$tag' 不存在。" >&2
+            echo "请先创建 Release，并上传带架构名的更新包和同名 .sig：" >&2
+            echo "  gh release create '$tag' v5notes-client2/releases/<version>.md --title 'v5notes <version>' --notes-file v5notes-client2/releases/<version>.md" >&2
+            echo "  gh release upload '$tag' v5notes_aarch64.app.tar.gz v5notes_aarch64.app.tar.gz.sig --clobber" >&2
+            exit 1
+          fi
+
+          assets="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')"
+          echo "Release $tag 的附件："
+          printf '%s\n' "$assets" | sed 's/^/  - /'
+
+          if ! printf '%s\n' "$assets" | grep -Eq '(app\.tar\.gz|nsis\.zip|AppImage\.tar\.gz)$'; then
+            echo "Release '$tag' 没有 Tauri 更新包，无法生成清单。" >&2
+            echo "需要同时有 macOS Apple 芯片、macOS Intel 和 Windows x64 的更新包，以及同名 .sig：" >&2
+            echo "  v5notes_aarch64.app.tar.gz、v5notes_x64.app.tar.gz、v5notes_<version>_x64-setup.nsis.zip" >&2
+            exit 1
+          fi
+
+          version="${tag#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "tag '$tag' 不是 v<主.次.修订> 形式，无法推导 version。" >&2
+            exit 1
+          fi
+
+          published_at="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json publishedAt -q .publishedAt)"
+          if [ -z "$published_at" ] || [ "$published_at" = "null" ]; then
+            published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          fi
+
+          is_draft="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft)"
+          is_prerelease="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isPrerelease -q .isPrerelease)"
+          if [ "$is_draft" = "true" ]; then
+            echo "警告: '$tag' 是 draft Release，客户端拉不到它；发布后需重跑本工作流。" >&2
+          fi
+          if [ "$is_prerelease" = "true" ]; then
+            echo "警告: '$tag' 是预发布。releases/latest 不会指向它，已安装的客户端不会检查到这个版本。" >&2
+          fi
+
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "published_at=$published_at"
+            echo "is_draft=$is_draft"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check tag version matches the client
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          git fetch --depth 1 origin "refs/tags/${TAG}:refs/tags/${TAG}"
+
+          python3 - "$TAG" "$VERSION" <<'PY'
+          import json
+          import pathlib
+          import subprocess
+          import sys
+
+          tag, version = sys.argv[1], sys.argv[2]
+
+          def show(path: str) -> str:
+              return subprocess.check_output(["git", "show", f"{tag}:{path}"], text=True)
+
+          conf = json.loads(show("v5notes-client2/src-tauri/tauri.conf.json"))
+          package = json.loads(show("v5notes-client2/package.json"))
+          cargo = show("v5notes-client2/src-tauri/Cargo.toml")
+          cargo_version = ""
+          in_package = False
+          for line in cargo.splitlines():
+              stripped = line.strip()
+              if stripped.startswith("[") and stripped.endswith("]"):
+                  in_package = stripped == "[package]"
+                  continue
+              if in_package and stripped.startswith("version"):
+                  cargo_version = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                  break
+
+          found = {
+              "tauri.conf.json": conf.get("version", ""),
+              "package.json": package.get("version", ""),
+              "Cargo.toml": cargo_version,
+          }
+          mismatched = [f"{name}={value}" for name, value in found.items() if value != version]
+          if mismatched:
+              print(f"tag {tag} 的版本是 {version}，与该提交里的版本不一致：{', '.join(mismatched)}", file=sys.stderr)
+              sys.exit(1)
+
+          notes_path = f"v5notes-client2/releases/{version}.md"
+          try:
+              notes = show(notes_path)
+          except subprocess.CalledProcessError:
+              print(f"警告: {tag} 上没有 {notes_path}，清单说明将改用 Release 正文。", file=sys.stderr)
+          else:
+              heading = next((line.strip() for line in notes.splitlines() if line.strip()), "")
+              if heading not in {f"# {version}", f"# v{version}"}:
+                  print(f"{notes_path} 的第一行标题必须是 '# {version}'。当前是：{heading or '（空）'}", file=sys.stderr)
+                  sys.exit(1)
+              pathlib.Path("release-notes.md").write_text(notes, encoding="utf-8")
+          print(f"版本核对通过：{version}")
+          PY
+
+      - name: Use release body when the repo has no notes file
+        if: hashFiles('release-notes.md') == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          body="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body)"
+          if [ "$body" = "null" ]; then
+            body=""
+          fi
+          printf '%s\n' "$body" > release-notes.md
+
+      - name: Download updater assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist --clobber \
+            --pattern '*.app.tar.gz' \
+            --pattern '*.app.tar.gz.sig' \
+            --pattern '*.nsis.zip' \
+            --pattern '*.nsis.zip.sig'
+          find dist -maxdepth 1 -type f -print
+
+      - name: Generate latest.json
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+          PUBLISHED_AT: ${{ steps.release.outputs.published_at }}
+        run: |
+          set -euo pipefail
+          python3 v5notes-client2/scripts/make-latest-json.py \
+            --assets-dir dist \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file release-notes.md \
+            --pub-date "$PUBLISHED_AT" \
+            --out dist/latest.json
+          echo '--- dist/latest.json ---'
+          cat dist/latest.json
+
+      - name: Upload latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/latest.json --clobber --repo "$GITHUB_REPOSITORY"
+          echo "已上传 latest.json 到 Release $TAG"
+
+      - name: Verify feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          IS_DRAFT: ${{ steps.release.outputs.is_draft }}
+        run: |
+          set -euo pipefail
+
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "draft Release 的附件不对外公开，跳过线上校验。"
+            exit 0
+          fi
+
+          asset_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/latest.json"
+          echo "校验附件地址: $asset_url"
+          curl -fsSL "$asset_url" -o /tmp/remote-latest.json
+          if ! diff -u dist/latest.json /tmp/remote-latest.json; then
+            echo "线上附件与本地生成的清单不一致。" >&2
+            exit 1
+          fi
+          echo "Release 附件校验通过。"
+
+          latest="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isPrerelease == false and .isDraft == false)][0].tagName')"
+          feed="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/latest.json"
+          if [ "$latest" = "$TAG" ]; then
+            echo "校验客户端 feed: $feed"
+            curl -fsSL "$feed" -o /tmp/feed.json
+            diff -u dist/latest.json /tmp/feed.json
+            echo "feed 校验通过，客户端可拉到 $TAG 的清单。"
+          else
+            echo "注意：${TAG} 不是当前最新正式 Release（最新为 ${latest}）。"
+            echo "$feed 仍指向 ${latest} 的清单，属预期行为。"
+          fi

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>登录页 · 服务器收进设置后的样子</title>
+<link rel="stylesheet" href="../../src/styles/style.css">
+<style>
+  /* 登录卡片里的「当前服务器」一行，替代原来的服务器地址输入框 */
+  .login-server {
+    display: flex; align-items: center; gap: 9px; padding: 10px 12px;
+    border: 1px solid #e6eae1; border-radius: 9px; background: #f6f7f2;
+    color: #526355; font-size: 12px;
+  }
+  .login-server .conn-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #4d8060; box-shadow: 0 0 0 3px #4d806026; }
+  .login-server.is-custom .conn-dot { background: #c08a4a; box-shadow: 0 0 0 3px #c08a4a26; }
+  .login-server strong { color: #35483b; font-weight: 600; }
+  .login-server-change { margin-left: auto; color: #315b4a; font-size: 11.5px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="login-screen">
+  <button class="login-settings-trigger" type="button" aria-label="设置" title="设置">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+  <div class="login-copy">
+    <span class="eyebrow">V5 / NOTES</span>
+    <h1>把想法<br>留在这里。</h1>
+    <p>连接你的笔记空间，继续写作。</p>
+  </div>
+  <form class="login-card" onsubmit="return false">
+    <span class="eyebrow">连接工作区</span>
+    <div class="login-server" id="server-row">
+      <span class="conn-dot"></span>
+      <span>服务器 · <strong id="server-name">官方服务器</strong></span>
+      <button class="login-server-change" type="button">更改</button>
+    </div>
+    <label>用户名<input type="text" autocomplete="username" value="jingyuan"></label>
+    <label>密码<input type="password" autocomplete="current-password" value="password"></label>
+    <button class="primary" type="button">进入笔记</button>
+  </form>
+</div>
+<script>
+  const custom = new URLSearchParams(location.search).get('state') === 'custom';
+  if (custom) {
+    document.getElementById('server-row').classList.add('is-custom');
+    document.getElementById('server-name').textContent = 'notes.internal.example.com';
+  }
+</script>
+</body>
+</html>

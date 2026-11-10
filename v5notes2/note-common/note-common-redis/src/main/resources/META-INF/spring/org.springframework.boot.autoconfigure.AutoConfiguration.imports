@@ -1,0 +1,5 @@
+xin.v5ai.common.redis.config.RedisConfig
+xin.v5ai.common.redis.config.CacheConfig
+xin.v5ai.common.redis.config.IdempotentConfig
+xin.v5ai.common.redis.config.RateLimiterConfig
+xin.v5ai.common.redis.config.Lock4jConfig

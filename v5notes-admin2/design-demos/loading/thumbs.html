@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>V5Notes2 加载体验 · 六方向缩略图</title>
+<style>
+:root{
+  --primary:#1c5a48;--primary-d:#0f3d33;--mint:#4fbf94;--soft:#e8f2ec;
+  --canvas:#f4f7f5;--card:#fff;--line:#e6ebe7;--ink:#15241e;--muted:#5f7067;
+  --amber:#d9a33b;--danger:#b4534b;
+  --sans:'PingFang SC','MiSans','HarmonyOS Sans SC','Microsoft YaHei',sans-serif;
+  --mono:'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e9efeb;font-family:var(--sans);color:var(--ink);padding:26px 30px;-webkit-font-smoothing:antialiased}
+h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px}
+.wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1500px}
+.tile{border:1px solid #d5ded8;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 1px 3px rgba(16,40,32,.06)}
+.frame{height:258px;position:relative;overflow:hidden;background:#fff}
+.meta{padding:11px 13px 12px;border-top:1px solid #eef1ef}
+.meta .code{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--primary);letter-spacing:.08em}
+.meta .name{font-size:13.5px;font-weight:700;margin:3px 0 2px}
+.meta .src{font-size:11.5px;color:var(--muted);line-height:1.4}
+.darkbg{background:radial-gradient(120% 90% at 50% 0%,#123a2f 0%,#0f332b 55%,#0b2922 100%)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;color:#5f7067;text-transform:uppercase;display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.eyebrow::before{content:"";width:13px;height:2px;border-radius:2px;background:var(--primary);opacity:.5}
+</style></head><body>
+<h1>V5Notes2 · 加载体验 —— 六方向缩略图</h1>
+<div class="sub">候选 6 → 挑 3 做完整版（A1 / B1 / C1 为主，A2 / B2 / C2 备选）。三版同 spec · 同品牌令牌，差异在骨架与节奏。</div>
+<div class="wrap">
+
+  <!-- A1 同步进度舱 -->
+  <div class="tile"><div class="frame darkbg">
+    <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;padding-top:22px">
+      <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(145deg,#ff8b3d,#e85d2a);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:800"></div>
+      <div style="width:120px;height:120px;border-radius:50%;margin-top:18px;background:conic-gradient(#4fbf94 0 62%, rgba(79,191,148,.18) 62% 100%);display:grid;place-items:center"><div style="width:102px;height:102px;border-radius:50%;background:#0f332b"></div></div>
+      <div style="margin-top:14px;color:#dff1e8;font-size:12.5px;font-weight:600">正在载入应用脚本</div>
+      <div style="font-family:var(--mono);font-size:11px;color:#7fb8a2;margin-top:5px">已用 1.8s · 步骤 2/5</div>
+    </div>
+  </div><div class="meta"><div class="code">A1 · 主版</div><div class="name">同步进度舱</div><div class="src">最佳设计师 · 线性式真实阶段清单 + 精确读秒</div></div></div>
+
+  <!-- A2 薄荷时钟 -->
+  <div class="tile"><div class="frame" style="background:#f4f7f5">
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4fbf94,#1c5a48);opacity:.85;animation:none"></div>
+      <div style="font-size:12px;color:var(--primary);font-weight:700;margin-top:16px">正在载入脚本</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px">00:02.4</div>
+    </div>
+  </div><div class="meta"><div class="code">A2 · 备选</div><div class="name">薄荷时钟</div><div class="src">最佳设计师 · 原研哉式单点呼吸 + 极端留白</div></div></div>
+
+  <!-- B1 梅花的重量 -->
+  <div class="tile"><div class="frame" style="background:#f4f7f5">
+    <div style="position:absolute;left:0;top:0;right:0;height:3px;background:#e4ebe6"><div style="height:100%;width:58%;background:var(--primary)"></div></div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;padding:20px 22px">
+      <div style="display:flex;gap:9px"><div style="width:34px;height:34px;border-radius:9px;background:#e8f2ec"></div><div style="flex:1"><div style="height:10px;width:80%;background:#dbe3de;border-radius:4px"></div><div style="height:8px;width:45%;background:#e7ece9;border-radius:4px;margin-top:6px"></div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:4px"><div style="height:52px;border:1px solid #e6ebe7;border-radius:9px;background:#fff"></div><div style="height:52px;border:1px solid #e6ebe7;border-radius:9px;background:#fff"></div><div style="height:52px;border:1px solid #e6ebe7;border-radius:9px;background:#fff"></div></div>
+      <div style="height:56px;border-radius:9px;border:1px solid #e6ebe7;background:#fff;display:flex;align-items:center;padding:0 12px;gap:8px">
+        <div style="width:22px;height:22px;border-radius:6px;background:#e8f2ec"></div><div style="height:9px;width:35%;background:#e2e8e4;border-radius:4px"></div>
+      </div>
+      <div style="flex:1;border:1px solid #e6ebe7;border-radius:9px;background:#fff"></div>
+    </div>
+  </div><div class="meta"><div class="code">B1 · 主版</div><div class="name">梅花的重量</div><div class="src">现实参照 · Linear/Vercel 骨架先长内容再长数据</div></div></div>
+
+  <!-- B2 会失效的安全网 -->
+  <div class="tile"><div class="frame" style="background:#f4f7f5">
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="width:60px;height:60px;border-radius:14px;background:#fbf2dd;border:1px solid #e7d7a8;display:grid;place-items:center;font-size:22px">!</div>
+      <div style="font-size:14px;font-weight:700;margin-top:14px;color:#8a5a1a">加载时间超出预期</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:5px">仍可查看已加载的部分</div>
+      <div style="display:flex;gap:8px;margin-top:13px">
+        <div style="height:28px;padding:0 12px;border-radius:7px;background:var(--primary);color:#fff;font-size:11.5px;display:flex;align-items:center;font-weight:600">重新加载</div>
+        <div style="height:28px;padding:0 12px;border-radius:7px;border:1px solid #d5ded8;color:var(--ink);font-size:11.5px;display:flex;align-items:center">查看诊断</div>
+      </div>
+    </div>
+  </div><div class="meta"><div class="code">B2 · 备选</div><div class="name">会失效的安全网</div><div class="src">现实参照 · Stripe 式失败/重试剧本（同骨一格的失败态）</div></div></div>
+
+  <!-- C1 会呼吸的墨 -->
+  <div class="tile"><div class="frame">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:52%;background:linear-gradient(148deg,#0f3d33,#1c5a48);display:flex;align-items:center;justify-content:center">
+      <div style="font-size:110px;font-weight:800;color:#fff;font-family:var(--sans);letter-spacing:-.02em">等</div>
+    </div>
+    <div style="position:absolute;right:0;top:0;bottom:0;width:48%;background:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 18px">
+      <div style="display:flex;align-items:center;gap:7px"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(145deg,#ff8b3d,#e85d2a)"></div><span style="font-size:12px;font-weight:700">V5Notes2</span></div>
+      <div style="font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:12px">PARSING MODULES</div>
+      <div style="font-size:12px;color:var(--ink);font-weight:600;margin-top:4px">载入应用脚本</div>
+      <div style="font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:5px">已用 1.8s · 2/5</div>
+      <div style="margin-top:14px;height:24px;width:70%;border-radius:6px;background:var(--soft);display:flex;align-items:center;padding:0 9px;font-size:10px;color:var(--primary);font-weight:600">重新加载</div>
+    </div>
+  </div><div class="meta"><div class="code">C1 · 主版</div><div class="name">会呼吸的墨</div><div class="src">轮盘 · 佐藤可士和式 单字满铺 + 三色信息区</div></div></div>
+
+  <!-- C2 行动的静物 -->
+  <div class="tile"><div class="frame darkbg">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+      <div style="width:78%;height:190px;background:radial-gradient(circle at 50% 0%,rgba(79,191,148,.35),transparent 65%)"></div>
+    </div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+      <div style="width:70%;padding:12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(4px)">
+        <div style="height:8px;width:40%;background:rgba(79,191,148,.5);border-radius:4px"></div>
+        <div style="height:7px;width:80%;background:rgba(255,255,255,.15);border-radius:4px;margin-top:7px"></div>
+      </div>
+      <div style="width:70%;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="height:52px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:52px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+    </div>
+  </div><div class="meta"><div class="code">C2 · 备选</div><div class="name">行动的静物</div><div class="src">轮盘 · Glassmorphism Bento 式加载仪表盘（深底薄荷光晕）</div></div></div>
+
+</div>
+</body></html>

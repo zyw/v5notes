@@ -1,0 +1,3 @@
+xin.v5ai.common.push.config.MessageAutoConfiguration
+xin.v5ai.common.push.config.MessageSseConfiguration
+xin.v5ai.common.push.config.MessageWebSocketConfiguration

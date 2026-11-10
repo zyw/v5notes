@@ -1,0 +1,4 @@
+# 与 v5notes2/docker/docker-compose.yml 使用同一套部署：
+# MySQL、Redis、v5notes2 API、v5notes-admin2。
+include:
+  - path: ../../docker/docker-compose.yml

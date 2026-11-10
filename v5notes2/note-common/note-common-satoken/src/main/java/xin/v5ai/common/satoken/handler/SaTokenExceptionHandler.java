@@ -1,0 +1,67 @@
+package xin.v5ai.common.satoken.handler;
+
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
+import cn.hutool.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.core.utils.MessageUtils;
+import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * SaToken异常处理器
+ *
+ * @author Lion Li
+ */
+@Slf4j
+@RestControllerAdvice
+public class SaTokenExceptionHandler {
+
+    @Value("${message.path:/resource/message}")
+    private String messagePath = "/resource/message";
+
+    /**
+     * 处理权限码校验失败异常。
+     *
+     * @param e       异常信息
+     * @param request 当前请求
+     * @return 统一失败响应
+     */
+    @ExceptionHandler({NotPermissionException.class, NotRoleException.class})
+    public R<Void> handleNotAccessException(RuntimeException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        String reason = e instanceof NotRoleException ? "角色权限校验失败" : "权限码校验失败";
+        log.error("请求地址'{}',{}'{}'", requestURI, reason, e.getMessage());
+        return R.fail(HttpStatus.HTTP_FORBIDDEN, MessageUtils.message("auth.forbidden"));
+    }
+
+    /**
+     * 处理未登录或登录态失效异常。
+     *
+     * @param e       异常信息
+     * @param request 当前请求
+     * @return 统一失败响应
+     */
+    @ExceptionHandler(NotLoginException.class)
+    public ResponseEntity<?> handleNotLoginException(NotLoginException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        log.warn("请求地址'{}',认证失败,类型'{}'", requestURI, e.getType());
+        if (request.getServletPath().equals(messagePath)) {
+            return ResponseEntity.status(HttpStatus.HTTP_UNAUTHORIZED).build();
+        }
+        String msg = switch (e.getType()) {
+            case NotLoginException.TOKEN_TIMEOUT,
+                 NotLoginException.TOKEN_FREEZE -> MessageUtils.message("auth.session.expired");
+            case NotLoginException.BE_REPLACED -> MessageUtils.message("auth.session.replaced");
+            case NotLoginException.KICK_OUT -> MessageUtils.message("auth.session.kicked");
+            default -> MessageUtils.message("auth.session.invalid");
+        };
+        return ResponseEntity.ok(R.fail(HttpStatus.HTTP_UNAUTHORIZED, msg));
+    }
+
+}

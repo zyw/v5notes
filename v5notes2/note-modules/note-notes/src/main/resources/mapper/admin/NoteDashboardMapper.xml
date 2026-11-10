@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.notes.mapper.NoteDashboardMapper">
+
+    <!--
+        首页聚合统计 SQL。
+        注意：
+        1. 本 Mapper 不带 @DataPermission，统计的是全平台口径；
+        2. 手写 SQL 不会被 MyBatis-Plus 自动补逻辑删除，del_flag 必须自己写；
+           note_notes / note_directory / basics_file 用 '0'，sys_user 用 '0'（删除为 '1'）；
+        3. 时间边界一律由 Java 侧按 Asia/Shanghai 算好后用 ? 绑定，不用 CURDATE()/NOW()，
+           避免数据库会话时区与业务时区不一致；
+        4. 所有聚合语句均已按 MySQL 8 + ONLY_FULL_GROUP_BY 校验：非聚合列都出现在 GROUP BY 中。
+    -->
+
+    <!-- 笔记规模：总数 / 近 7 天新增 / 今日新增 -->
+    <select id="selectNoteStat" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardKpiVo">
+        SELECT COUNT(*)                                      AS notes,
+               COALESCE(SUM(n.create_time >= #{d7}), 0)      AS notesDelta7d,
+               COALESCE(SUM(n.create_time >= #{today}), 0)   AS notesToday
+        FROM note_notes n
+        WHERE n.del_flag = '0'
+    </select>
+
+    <!-- 目录规模：目录总数 / 空目录数（不递归子目录） -->
+    <select id="selectDirStat" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardKpiVo">
+        SELECT COUNT(*)                                                      AS dirs,
+               COALESCE(SUM(CASE WHEN c.cnt IS NULL THEN 1 ELSE 0 END), 0)   AS emptyDirs
+        FROM note_directory d
+                 LEFT JOIN (SELECT dir_id, COUNT(*) AS cnt
+                            FROM note_notes
+                            WHERE del_flag = '0'
+                            GROUP BY dir_id) c ON c.dir_id = d.id
+        WHERE d.del_flag = '0'
+    </select>
+
+    <!-- 笔记编辑动作次数：只能来自 sys_oper_log，不能拿 note_notes.update_time 顶替 -->
+    <select id="selectEditCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_oper_log o
+        WHERE o.title = '笔记'
+          AND o.business_type = 2
+          AND o.oper_time >= #{from}
+          AND o.oper_time &lt; #{to}
+    </select>
+
+    <!-- 用户规模：注意 sys_user 的 del_flag 是 '0' 存在、'1' 删除 -->
+    <select id="selectUserStat" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardKpiVo">
+        SELECT COUNT(*)                                        AS users,
+               COALESCE(SUM(u.create_time >= #{weekStart}), 0)  AS usersNewWeek
+        FROM sys_user u
+        WHERE u.del_flag = '0'
+    </select>
+
+    <!-- 近 7 天编辑过笔记的去重用户数 -->
+    <select id="selectActiveUserCount" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT n.update_by)
+        FROM note_notes n
+        WHERE n.del_flag = '0'
+          AND n.update_by IS NOT NULL
+          AND n.update_time >= #{from}
+          AND n.update_time &lt; #{to}
+    </select>
+
+    <!-- 成功登录次数：登录日志表是 sys_login_info -->
+    <select id="selectLoginCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_login_info l
+        WHERE l.login_time >= #{from}
+          AND l.login_time &lt; #{to}
+          AND l.status = '0'
+    </select>
+
+    <!-- 文件规模：size 单位字节；容量 GB 与平均 MB 均保留 1 位小数 -->
+    <select id="selectFileStat" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardKpiVo">
+        SELECT COUNT(*)                                                                AS files,
+               COALESCE(ROUND(SUM(f.size) / 1024 / 1024 / 1024, 1), 0)                 AS storageGB,
+               COALESCE(ROUND(SUM(f.size) / 1024 / 1024 / NULLIF(COUNT(*), 0), 1), 0)  AS avgFileMB
+        FROM basics_file f
+        WHERE f.del_flag = '0'
+    </select>
+
+    <!-- 操作日志条数 -->
+    <select id="selectOperLogCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_oper_log o
+        WHERE o.oper_time >= #{from}
+          AND o.oper_time &lt; #{to}
+    </select>
+
+    <!-- 操作成功率（%）：sys_oper_log.status 0 正常 / 1 异常 -->
+    <select id="selectOperLogSuccessRate" resultType="java.lang.Double">
+        SELECT COALESCE(ROUND(100 * SUM(o.status = 0) / NULLIF(COUNT(*), 0), 2), 0)
+        FROM sys_oper_log o
+        WHERE o.oper_time >= #{from}
+          AND o.oper_time &lt; #{to}
+    </select>
+
+    <!-- 操作耗时 P95：MySQL 8 无 PERCENTILE_CONT，用窗口函数取第 95 百分位 -->
+    <select id="selectOperLogP95" resultType="java.lang.Long">
+        SELECT t.cost_time
+        FROM (SELECT o.cost_time,
+                     ROW_NUMBER() OVER (ORDER BY o.cost_time) AS rn,
+                     COUNT(*) OVER ()                         AS cnt
+              FROM sys_oper_log o
+              WHERE o.oper_time >= #{from}
+                AND o.oper_time &lt; #{to}
+                AND o.cost_time IS NOT NULL) t
+        WHERE t.rn = CEIL(t.cnt * 0.95)
+        LIMIT 1
+    </select>
+
+    <!-- 每日新增（note_notes）/ 每日编辑动作次数（sys_oper_log）合成一张表 -->
+    <select id="selectTrend" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardTrendVo">
+        SELECT DATE_FORMAT(t.d, '%Y-%m-%d') AS date,
+               SUM(t.created)               AS created,
+               SUM(t.edited)                AS edited
+        FROM (SELECT DATE(n.create_time) AS d,
+                     COUNT(*)            AS created,
+                     0                   AS edited
+              FROM note_notes n
+              WHERE n.del_flag = '0'
+                AND n.create_time >= #{from}
+                AND n.create_time &lt; #{to}
+              GROUP BY DATE(n.create_time)
+              UNION ALL
+              SELECT DATE(o.oper_time) AS d,
+                     0                 AS created,
+                     COUNT(*)          AS edited
+              FROM sys_oper_log o
+              WHERE o.oper_time >= #{from}
+                AND o.oper_time &lt; #{to}
+                AND o.business_type = 2
+                AND o.title = '笔记'
+              GROUP BY DATE(o.oper_time)) t
+        GROUP BY t.d
+        ORDER BY t.d
+    </select>
+
+    <!-- 目录分布：按直属目录分组，不递归子目录；dir_id=0 或目录已删归入「未归类」 -->
+    <select id="selectDirDistribution" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardDirVo">
+        SELECT COALESCE(NULLIF(d.name, ''), '未归类')  AS name,
+               COUNT(*)                                AS notes,
+               COALESCE(SUM(n.update_time >= #{d7}), 0) AS active7d
+        FROM note_notes n
+                 LEFT JOIN note_directory d ON d.id = n.dir_id AND d.del_flag = '0'
+        WHERE n.del_flag = '0'
+        GROUP BY n.dir_id, d.name
+        ORDER BY notes DESC
+    </select>
+
+    <!-- 设备构成：近 7 天成功登录按 client_key 分组 -->
+    <select id="selectDeviceDistribution" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardNameValueVo">
+        SELECT CASE l.client_key
+                   WHEN 'pc' THEN 'PC 客户端'
+                   WHEN 'app' THEN 'App 客户端'
+                   ELSE CONCAT('其他（', COALESCE(NULLIF(l.client_key, ''), '未知'), '）')
+                   END    AS name,
+               COUNT(*)   AS value
+        FROM sys_login_info l
+        WHERE l.login_time >= #{from}
+          AND l.login_time &lt; #{to}
+          AND l.status = '0'
+        GROUP BY l.client_key
+        ORDER BY COUNT(*) DESC
+    </select>
+
+    <!--
+        存储构成：basics_file.type 是 MIME 类型，不是扩展名。
+        注意：basics_file 本身有 name / size 列，GROUP BY 别名会优先绑定真实列，
+        导致 ONLY_FULL_GROUP_BY 报「SELECT 列表包含非聚合列 f.type」。故先派生出分类列再聚合。
+    -->
+    <select id="selectStorageDistribution" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardStorageVo">
+        SELECT t.name,
+               SUM(t.bytes) / 1024 / 1024 / 1024 AS size,
+               COUNT(*)                          AS `count`
+        FROM (SELECT CASE
+                         WHEN f.type LIKE 'image/%' THEN '图片'
+                         WHEN f.type LIKE 'video/%' THEN '视频'
+                         WHEN f.type LIKE 'audio/%' THEN '音频'
+                         WHEN f.type LIKE 'application/%'
+                             AND (f.type LIKE '%zip%' OR f.type LIKE '%rar%' OR f.type LIKE '%7z%'
+                                 OR f.type LIKE '%gzip%' OR f.type LIKE '%tar%') THEN '压缩包'
+                         WHEN f.type LIKE 'text/%' OR f.type LIKE 'application/%' THEN '文档'
+                         ELSE '其他'
+                         END AS name,
+                     f.size AS bytes
+              FROM basics_file f
+              WHERE f.del_flag = '0') t
+        GROUP BY t.name
+        ORDER BY size DESC
+    </select>
+
+    <!-- 最近笔记：先 LIMIT 取主键，再回表读 content 算字符数，避免整表拉 mediumtext -->
+    <select id="selectRecentNotes" resultType="xin.v5ai.notes.domain.vo.dashboard.DashboardRecentNoteVo">
+        SELECT t.id                                                AS id,
+               t.name                                              AS name,
+               COALESCE(NULLIF(d.name, ''), '未归类')                AS dirName,
+               COALESCE(NULLIF(u.nick_name, ''), u.user_name, '未知') AS authorName,
+               CHAR_LENGTH(n2.content)                             AS chars,
+               DATE_FORMAT(t.update_time, '%Y-%m-%dT%H:%i:%s+08:00') AS updatedAt
+        FROM (SELECT n.id, n.name, n.dir_id, n.update_by, n.update_time
+              FROM note_notes n
+              WHERE n.del_flag = '0'
+              ORDER BY n.update_time DESC
+              LIMIT #{limit}) t
+                 LEFT JOIN note_notes n2 ON n2.id = t.id
+                 LEFT JOIN note_directory d ON d.id = t.dir_id AND d.del_flag = '0'
+                 LEFT JOIN sys_user u ON u.user_id = t.update_by
+        ORDER BY t.update_time DESC
+    </select>
+
+</mapper>

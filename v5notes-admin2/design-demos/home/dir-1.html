@@ -1,0 +1,596 @@
+<!doctype html>
+<!-- ============================================================
+     首页设计稿共用外壳（复制这个文件改内容区，不要改外壳）
+     已批准外壳：薄荷工作台 · 白底侧栏 232px / 顶栏 56px / 画布 #f4f7f5
+     ============================================================ -->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>V5Notes2 · 工作台</title>
+<style>
+  :root{
+    --shell:#f4f7f5; --surface:#ffffff; --surface-2:#fafcfb; --border:#e6ebe7; --border-strong:#d8e2db;
+    --title:#15241e; --body:#2b3a32; --muted:#5f7067; --faint:#66756d;
+    --primary:#1c5a48; --primary-hover:#236a55; --soft:#e8f2ec; --soft-2:#f0f5f2;
+    --success:#2f9e6b; --warning:#d9a33b; --danger:#b4534b; --info:#64748b;
+    --radius-sm:8px; --radius:12px; --radius-lg:14px;
+    --shadow-sm:0 1px 2px rgba(20,40,30,.05); --shadow-md:0 10px 24px rgba(20,40,30,.06);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+    --sans:"PingFang SC","HarmonyOS Sans SC","MiSans",-apple-system,"Helvetica Neue",sans-serif;
+  }
+  html[data-theme="dark"]{
+    --shell:#0c1411; --surface:#111a16; --surface-2:#0f1714; --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.14);
+    --title:#e9f2ec; --body:#cdd9d2; --muted:#8ea79b; --faint:#6b8279;
+    --primary:#4fbf94; --primary-hover:#63cda3; --soft:rgba(79,191,148,.16); --soft-2:rgba(255,255,255,.04);
+    --success:#3ec08a; --warning:#e0b25a; --danger:#d16060; --info:#8ea0bd;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 10px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--shell);color:var(--body);font-family:var(--sans);
+       -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  .app{display:flex;min-height:100vh}
+
+  /* ---------- 侧栏 ---------- */
+  .sidebar{width:232px;flex:0 0 232px;background:var(--surface);border-right:1px solid var(--border);
+           display:flex;flex-direction:column;padding:14px 12px 12px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+  .brand img{width:30px;height:30px;border-radius:8px;display:block}
+  .brand b{display:block;font-size:14px;font-weight:650;letter-spacing:-.02em;color:var(--title);line-height:1.2}
+  .brand span{display:block;font-size:10.5px;color:var(--faint);margin-top:1px}
+  .nav-group{margin-top:14px}
+  .nav-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);
+             padding:0 10px 7px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:9px;
+            color:var(--body);font-size:13.5px;transition:background .15s,color .15s;position:relative}
+  .nav-item svg{width:16px;height:16px;flex:0 0 16px;stroke:currentColor;stroke-width:1.6;fill:none;
+                stroke-linecap:round;stroke-linejoin:round;opacity:.72}
+  .nav-item:hover{background:var(--soft-2)}
+  .nav-item.active{background:var(--soft);color:#17624a;font-weight:600}
+  html[data-theme="dark"] .nav-item.active{color:var(--primary)}
+  .nav-item.active svg{opacity:1}
+  .nav-badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);
+             background:var(--soft-2);border-radius:20px;padding:1px 6px}
+  .nav-item.active .nav-badge{background:rgba(28,90,72,.12);color:#17624a}
+  .sidebar-foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--border);display:grid;gap:2px}
+
+  /* ---------- 顶栏 ---------- */
+  .main-wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--border);
+          display:flex;align-items:center;gap:16px;padding:0 22px;position:sticky;top:0;z-index:20}
+  .crumb{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .crumb b{color:var(--title);font-weight:600}
+  .crumb .sep{color:var(--border-strong)}
+  .search{flex:0 1 340px;height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;
+          background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--faint)}
+  .search input{border:0;background:transparent;outline:none;flex:1;font-size:13px;color:var(--body);font-family:inherit}
+  .search input::placeholder{color:var(--faint)}
+  .search kbd{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--border);
+              border-radius:4px;padding:1px 4px;background:var(--surface)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .icon-btn{width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--muted);
+            display:grid;place-items:center;position:relative}
+  .icon-btn:hover{background:var(--soft-2);color:var(--title)}
+  .icon-btn svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .badge-dot{position:absolute;top:5px;right:5px;min-width:14px;height:14px;border-radius:8px;background:var(--danger);
+             color:#fff;font-family:var(--mono);font-size:9px;line-height:14px;text-align:center;padding:0 3px;border:1.5px solid var(--surface)}
+  .avatar{display:flex;align-items:center;gap:8px;padding:3px 6px 3px 3px;border-radius:20px;border:0;background:transparent}
+  .avatar:hover{background:var(--soft-2)}
+  .avatar .pic{width:28px;height:28px;border-radius:50%;background:var(--soft);color:#17624a;
+               display:grid;place-items:center;font-size:12px;font-weight:650}
+  .avatar .who{text-align:left;line-height:1.15}
+  .avatar .who b{display:block;font-size:12.5px;color:var(--title);font-weight:600}
+  .avatar .who span{display:block;font-size:10.5px;color:var(--faint)}
+
+  /* ---------- 内容区 ---------- */
+  .page{flex:1;min-width:0;padding:20px 22px 26px;display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+
+  /* ================= 方向 A1 · 指挥带 Cockpit ================= */
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:2px}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;margin-bottom:7px}
+  .page-head h1{margin:0;font-size:26px;line-height:1.1;letter-spacing:-.035em;color:var(--title);font-weight:650}
+  .page-head p{margin:7px 0 0;font-size:13px;color:var(--muted);max-width:640px}
+  .page-head p b{color:var(--body);font-weight:600}
+  .head-tools{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  .seg{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:2px;box-shadow:var(--shadow-sm)}
+  .seg button{border:0;background:transparent;height:28px;padding:0 12px;border-radius:7px;font-size:12px;color:var(--muted)}
+  .seg button.on{background:var(--soft);color:#17624a;font-weight:600}
+  .ghost-btn{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);
+             color:var(--body);font-size:12.5px;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow-sm)}
+  .ghost-btn:hover{border-color:var(--border-strong)}
+  .ghost-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round}
+
+  /* 数据带：四段指标压成一条连续带子 */
+  .band{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1.15fr;background:var(--surface);
+        border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+  .band-cell{padding:15px 18px 14px;border-right:1px solid var(--border);position:relative;min-width:0}
+  .band-cell:last-child{border-right:0;background:var(--surface-2)}
+  .band-cell .lab{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;
+                  display:flex;align-items:center;gap:6px}
+  .band-cell .lab i{width:5px;height:5px;border-radius:50%;display:block}
+  .band-row{display:flex;align-items:flex-end;gap:8px;margin-top:8px}
+  .band-cell .v{font-size:29px;line-height:1;font-weight:640;color:var(--title);letter-spacing:-.045em;
+                font-variant-numeric:tabular-nums}
+  .band-cell .u{font-size:11.5px;color:var(--faint);padding-bottom:3px}
+  .band-meta{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11.5px;color:var(--muted)}
+  .delta{font-family:var(--mono);font-size:10.5px;padding:1px 5px;border-radius:4px;background:rgba(47,158,107,.10);color:#24805a}
+  .delta.down{background:rgba(180,83,75,.10);color:#a8483f}
+  .spark{position:absolute;right:15px;top:36px;width:58px;height:20px;opacity:.85}
+  .spark path{fill:none;stroke-width:1.3;vector-effect:non-scaling-stroke}
+  /* 系统状态段 */
+  .status-cell{display:flex;flex-direction:column;justify-content:center;gap:9px}
+  .status-top{display:flex;align-items:baseline;gap:8px}
+  .status-top .v{font-size:23px;font-weight:640;color:var(--title);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .status-top .u{font-size:11px;color:var(--faint)}
+  .pulse-list{display:grid;gap:6px}
+  .pulse-list div{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .pulse-list b{font-family:var(--mono);font-weight:500;color:var(--body)}
+
+  /* 网格 */
+  .row{display:grid;gap:16px}
+  .row-a{grid-template-columns:minmax(0,2.05fr) minmax(0,1fr)}
+  .row-b{grid-template-columns:minmax(0,1.55fr) minmax(0,.78fr) minmax(0,.78fr)}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+         box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px 0}
+  .panel-head .t{display:flex;align-items:baseline;gap:9px;min-width:0}
+  .panel-head h2{margin:0;font-size:13.5px;font-weight:620;color:var(--title);letter-spacing:-.01em;white-space:nowrap}
+  .panel-head .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .panel-head .r{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .panel-head .r a{color:var(--primary);font-weight:600}
+  .legend-inline{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted)}
+  .legend-inline span{display:flex;align-items:center;gap:5px}
+  .legend-inline i{width:8px;height:2px;border-radius:2px;display:block}
+
+  /* 最近笔记表 */
+  .table{width:100%;border-collapse:collapse;table-layout:fixed}
+  .table th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+            color:var(--faint);font-weight:500;padding:9px 16px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .table td{padding:0 16px;height:42px;font-size:12.8px;color:var(--body);border-bottom:1px solid var(--border);
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .table tr:last-child td{border-bottom:0}
+  .table tbody tr:hover{background:var(--soft-2)}
+  .table .name{color:var(--title);font-weight:550;display:flex;align-items:center;gap:8px}
+  .table .name svg{width:13px;height:13px;stroke:var(--faint);stroke-width:1.6;fill:none;flex:0 0 13px}
+  .table .dir{color:var(--muted)}
+  .table .num{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .table .upd{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right}
+
+  /* 系统脉搏 */
+  .pulse{padding:4px 16px 12px;display:grid;gap:11px}
+  .pulse-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:baseline}
+  .pulse-row .n{font-size:11.5px;color:var(--muted)}
+  .pulse-row .v{font-family:var(--mono);font-size:12.5px;color:var(--title);font-weight:550}
+  .pulse-bar{grid-column:1/-1;height:3px;border-radius:3px;background:var(--soft-2);overflow:hidden}
+  .pulse-bar i{display:block;height:100%;border-radius:3px;background:var(--primary);opacity:.75}
+  .quick{padding:2px 16px 14px;display:flex;gap:8px;flex-wrap:wrap}
+  .quick a{font-size:11.5px;color:var(--body);border:1px solid var(--border);border-radius:7px;
+           padding:5px 9px;background:var(--surface)}
+  .quick a:hover{border-color:var(--border-strong);color:var(--primary)}
+
+  /* 设备构成 */
+  .device{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;padding:0 12px 8px}
+  .device-legend{width:100%;display:grid;gap:7px;margin-top:6px}
+  .device-legend div{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+  .device-legend i{width:7px;height:7px;border-radius:2px;display:block;flex:0 0 7px}
+  .device-legend b{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--body);font-weight:500}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="assets/logo.png" alt="V5Notes2" />
+      <div><b>V5Notes2</b><span>云笔记 · 管理控制台</span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        工作台
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Content</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        目录管理
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+        笔记管理<span class="nav-badge">12,486</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Resources</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M8 14h8"/></svg>
+        文件管理
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        客户端账号
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">System</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M19 19v-1.5a3.5 3.5 0 0 0-2.6-3.4"/></svg>
+        用户与权限
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5 6L14 6l2.5 6H21"/></svg>
+        系统监控
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4z"/></svg>
+        系统设置
+      </a>
+    </div>
+
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.7-.9 1.3v.4"/><path d="M12 17h.01"/></svg>
+        帮助中心
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        退出登录
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="crumb"><span>系统</span><span class="sep">/</span><b>工作台</b></div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input placeholder="搜索笔记、目录或成员…" />
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="top-right">
+        <button class="icon-btn" aria-label="通知">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="badge-dot">3</span>
+        </button>
+        <button class="icon-btn" aria-label="帮助"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.7-.9 1.3v.4"/><path d="M12 17h.01"/></svg></button>
+        <button class="icon-btn" aria-label="全屏"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg></button>
+        <button class="avatar">
+          <span class="pic">林</span>
+          <span class="who"><b>林知远</b><span>超级管理员</span></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Workspace overview · 2026.11.07</div>
+          <h1>工作台</h1>
+          <p>内容资产、用户活跃与系统脉搏。今日新增 <b id="h-today">86</b> 篇笔记，<b id="h-edit">1,842</b> 次编辑，数据截至 10:24。</p>
+        </div>
+        <div class="head-tools">
+          <div class="seg" id="range">
+            <button data-d="7">近 7 天</button>
+            <button data-d="30" class="on">近 30 天</button>
+            <button data-d="90">近 90 天</button>
+          </div>
+          <button class="ghost-btn" id="refresh">
+            <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
+            刷新
+          </button>
+        </div>
+      </div>
+
+      <!-- 数据带 -->
+      <section class="band" aria-label="核心指标">
+        <div class="band-cell">
+          <div class="lab"><i style="background:var(--primary)"></i>笔记总数</div>
+          <div class="band-row"><span class="v" data-v="notes">12,486</span><span class="u">篇</span></div>
+          <div class="band-meta"><span class="delta">+412</span> 近 7 天 · <span id="b-pct">+3.4%</span></div>
+          <svg class="spark" viewBox="0 0 62 22" preserveAspectRatio="none"><path stroke="var(--primary)" d=""/></svg>
+        </div>
+        <div class="band-cell">
+          <div class="lab"><i style="background:var(--success)"></i>活跃用户</div>
+          <div class="band-row"><span class="v" data-v="active">486</span><span class="u">人</span></div>
+          <div class="band-meta">今日登录 <b style="color:var(--body);font-weight:600">312</b> · 在线 42</div>
+          <svg class="spark" viewBox="0 0 62 22" preserveAspectRatio="none"><path stroke="var(--success)" d=""/></svg>
+        </div>
+        <div class="band-cell">
+          <div class="lab"><i style="background:var(--info)"></i>今日编辑</div>
+          <div class="band-row"><span class="v" data-v="edits">1,842</span><span class="u">次</span></div>
+          <div class="band-meta">人均 <b style="color:var(--body);font-weight:600">3.8</b> 次 · 较昨日 <span class="delta">+6.1%</span></div>
+          <svg class="spark" viewBox="0 0 62 22" preserveAspectRatio="none"><path stroke="var(--info)" d=""/></svg>
+        </div>
+        <div class="band-cell">
+          <div class="lab"><i style="background:var(--warning)"></i>存储占用</div>
+          <div class="band-row"><span class="v" data-v="storage">18.6</span><span class="u">GB</span></div>
+          <div class="band-meta">3,612 个文件 · 平均 5.3 MB</div>
+          <svg class="spark" viewBox="0 0 62 22" preserveAspectRatio="none"><path stroke="var(--warning)" d=""/></svg>
+        </div>
+        <div class="band-cell status-cell">
+          <div class="lab"><i style="background:var(--primary);box-shadow:0 0 0 3px rgba(28,90,72,.14)"></i>系统状态</div>
+          <div class="status-top"><span class="v" data-v="success">99.97</span><span class="u">% 成功率 · 24h</span></div>
+          <div class="pulse-list">
+            <div><span>P95 响应</span><b>86 ms</b></div>
+            <div><span>缓存命中</span><b>96.4%</b></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 趋势 + 目录 -->
+      <div class="row row-a">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="t"><h2>内容增长</h2><span class="k">Last 30 days</span></div>
+            <div class="r">
+              <div class="legend-inline">
+                <span><i style="background:var(--primary)"></i>新增笔记</span>
+                <span><i style="background:var(--faint)"></i>编辑次数</span>
+              </div>
+            </div>
+          </div>
+          <div id="chart-trend" style="height:196px;margin-top:4px"></div>
+          <div id="chart-edits" style="height:64px"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="t"><h2>目录分布</h2><span class="k">Top 6</span></div>
+            <div class="r"><a href="#">全部 328 个</a></div>
+          </div>
+          <div id="chart-dirs" style="flex:1;min-height:250px;margin:2px 4px 0 0"></div>
+        </section>
+      </div>
+
+      <!-- 最近笔记 + 设备 + 脉搏 -->
+      <div class="row row-b">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="t"><h2>最近更新</h2><span class="k">Latest notes</span></div>
+            <div class="r"><a href="#">进入笔记管理</a></div>
+          </div>
+          <table class="table">
+            <thead><tr><th style="width:40%">笔记</th><th style="width:15%">目录</th><th style="width:13%">作者</th><th style="width:12%">字数</th><th style="width:20%;text-align:right">更新</th></tr></thead>
+            <tbody id="notes-body"></tbody>
+          </table>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div class="t"><h2>登录设备</h2><span class="k">7d</span></div></div>
+          <div class="device">
+            <div id="chart-device" style="width:132px;height:132px"></div>
+            <div class="device-legend" id="device-legend"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div class="t"><h2>系统脉搏</h2><span class="k">Live</span></div></div>
+          <div class="pulse" id="pulse"></div>
+          <div class="quick">
+            <a href="#">在线用户</a><a href="#">操作日志</a><a href="#">缓存监控</a>
+          </div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="data/mock-data.js"></script>
+<script src="assets/echarts.min.js"></script>
+<script src="kit/charts.js"></script>
+
+<script>
+(function(){
+  var M = window.V5_MOCK;
+  var C = window.V5C;
+  var $ = function(s){ return document.querySelector(s); };
+  var fmt = function(n){ return n.toLocaleString('en-US'); };
+
+  /* ---------- 数据带 ---------- */
+  $('#h-today').textContent = M.kpi.notesToday;
+  $('#h-edit').textContent = fmt(M.kpi.editsToday);
+  $('#b-pct').textContent = '+' + M.kpi.notesDeltaPct + '%';
+
+  function spark(el, values, invert){
+    var w = 62, h = 22, min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    var span = (max - min) || 1;
+    var d = values.map(function(v, i){
+      var x = i / (values.length - 1) * w;
+      var y = h - 2 - (v - min) / span * (h - 5);
+      return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+    el.setAttribute('d', d);
+  }
+  var created = M.trend30.map(function(d){ return d.created; });
+  var edited  = M.trend30.map(function(d){ return d.edited; });
+  var sparks = document.querySelectorAll('.spark path');
+  spark(sparks[0], created);
+  spark(sparks[1], created.map(function(v, i){ return v * (0.82 + (i % 5) * 0.03); }));
+  spark(sparks[2], edited);
+  spark(sparks[3], [3.1, 3.6, 4.4, 5.2, 6.9, 8.1, 9.4, 11.2, 12.6, 14.3, 16.1, 18.6]);
+
+  /* ---------- 最近笔记 ---------- */
+  var iconNote = '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+  $('#notes-body').innerHTML = M.recentNotes.map(function(n){
+    return '<tr><td class="name">' + iconNote + n.name + '</td>' +
+      '<td class="dir">' + n.dir + '</td>' +
+      '<td>' + n.author + '</td>' +
+      '<td class="num">' + fmt(n.words) + '</td>' +
+      '<td class="upd">' + n.updated + '</td></tr>';
+  }).join('');
+
+  /* ---------- 设备构成 ---------- */
+  var total = M.device.reduce(function(a, b){ return a + b.value; }, 0);
+  $('#device-legend').innerHTML = M.device.map(function(d, i){
+    var pct = Math.round(d.value / total * 100);
+    var color = i === 0 ? 'var(--primary)' : '#9dc4b2';
+    return '<div><i style="background:' + color + '"></i>' + d.name +
+      '<b>' + pct + '%</b></div>';
+  }).join('');
+
+  /* ---------- 系统脉搏 ---------- */
+  var pulse = [
+    { n: '接口成功率', v: '99.97%', w: 99.97 },
+    { n: 'P95 响应', v: '86 ms', w: 43 },
+    { n: '缓存命中率', v: '96.4%', w: 96.4 },
+    { n: '当前在线', v: '42 人', w: 70 },
+    { n: '今日操作', v: '2,418 次', w: 62 }
+  ];
+  $('#pulse').innerHTML = pulse.map(function(p){
+    return '<div class="pulse-row"><span class="n">' + p.n + '</span><span class="v">' + p.v + '</span>' +
+      '<span class="pulse-bar"><i style="width:' + p.w + '%"></i></span></div>';
+  }).join('');
+
+  /* ---------- 图表 ---------- */
+  var dates = M.trend30.map(function(d){ return d.date; });
+
+  var trend = echarts.init($('#chart-trend'));
+  trend.setOption({
+    animationDuration: 700,
+    grid: { left: 6, right: 52, top: 14, bottom: 4, containLabel: true },
+    tooltip: Object.assign(C.tooltip(), {
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: C.c('border-strong', '#d8e2db'), width: 1 } },
+      formatter: function(ps){
+        var i = ps[0].dataIndex;
+        return '<div style="font-family:var(--mono);font-size:11px;color:#8a9a92;margin-bottom:4px">' + dates[i] + '</div>' +
+          '<div style="font-size:12px">新增 <b>' + created[i] + '</b> 篇</div>' +
+          '<div style="font-size:12px">编辑 <b>' + fmt(edited[i]) + '</b> 次</div>';
+      }
+    }),
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: false,
+      axisLine: { lineStyle: { color: C.c('border', '#e6ebe7') } },
+      axisTick: { show: false },
+      axisLabel: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: C.split(),
+      axisLabel: Object.assign(C.axisLabel(), { formatter: '{value}' })
+    },
+    series: [{
+      name: '新增笔记', type: 'line', data: created, smooth: 0.22, symbol: 'none',
+      lineStyle: { width: 2, color: C.c('primary', '#1c5a48') },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(28,90,72,.16)' },
+          { offset: 1, color: 'rgba(28,90,72,0)' }
+        ])
+      },
+      emphasis: { lineStyle: { width: 2.4 } },
+      endLabel: {
+        show: true, distance: 6,
+        formatter: function(p){ return p.value + ' 篇'; },
+        color: C.c('primary', '#1c5a48'), fontSize: 11, fontWeight: 600,
+        fontFamily: 'ui-monospace,monospace'
+      }
+    }]
+  });
+
+  var edits = echarts.init($('#chart-edits'));
+  edits.setOption({
+    animationDuration: 700,
+    grid: { left: 6, right: 16, top: 4, bottom: 2, containLabel: true },
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: false,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: Object.assign(C.axisLabel(), { interval: 5 })
+    },
+    yAxis: { type: 'value', show: false, min: 0 },
+    series: [{
+      name: '编辑次数', type: 'line', data: edited, smooth: 0.22, symbol: 'none',
+      lineStyle: { width: 1.2, color: C.c('faint', '#8a9a92') }
+    }]
+  });
+
+  var dirs = echarts.init($('#chart-dirs'));
+  var top = M.dirTop.slice(0, 6).slice().sort(function(a, b){ return a.notes - b.notes; });
+  dirs.setOption({
+    animationDuration: 700,
+    grid: { left: 4, right: 54, top: 10, bottom: 8, containLabel: true },
+    tooltip: Object.assign(C.tooltip(), { trigger: 'item', formatter: '{b}<br/>笔记 {c} 篇' }),
+    xAxis: { type: 'value', show: false, max: function(v){ return v.max * 1.05; } },
+    yAxis: {
+      type: 'category',
+      data: top.map(function(d){ return d.name; }),
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: C.c('body', '#2b3a32'), fontSize: 12 }
+    },
+    series: [{
+      type: 'bar', data: top.map(function(d){ return d.notes; }),
+      barWidth: 12,
+      itemStyle: {
+        borderRadius: [0, 3, 3, 0],
+        color: function(p){ return p.dataIndex >= top.length - 1 ? C.c('primary', '#1c5a48') : 'rgba(28,90,72,.26)'; }
+      },
+      emphasis: { itemStyle: { color: C.c('primary', '#1c5a48') } },
+      label: {
+        show: true, position: 'right', distance: 8,
+        formatter: function(p){ return p.value.toLocaleString('en-US'); },
+        color: C.c('muted', '#5f7067'), fontSize: 11, fontFamily: 'ui-monospace,monospace'
+      }
+    }]
+  });
+
+  var device = echarts.init($('#chart-device'));
+  device.setOption({
+    animationDuration: 700,
+    tooltip: Object.assign(C.tooltip(), { trigger: 'item', formatter: '{b} {c} 次（{d}%）' }),
+    series: [{
+      type: 'pie', radius: ['64%', '88%'], center: ['50%', '50%'], avoidLabelOverlap: true,
+      itemStyle: { borderColor: C.c('surface', '#fff'), borderWidth: 2 },
+      label: {
+        show: true, position: 'center',
+        formatter: [ '{a|' + total.toLocaleString('en-US') + '}', '{b|次登录}' ].join('\n'),
+        rich: {
+          a: { fontSize: 17, fontWeight: 640, color: C.c('title', '#15241e'), fontFamily: 'ui-monospace,monospace', lineHeight: 22 },
+          b: { fontSize: 10, color: C.c('faint', '#8a9a92'), lineHeight: 14 }
+        }
+      },
+      labelLine: { show: false },
+      data: [
+        { value: M.device[0].value, name: 'PC 客户端', itemStyle: { color: C.c('primary', '#1c5a48') } },
+        { value: M.device[1].value, name: 'App 客户端', itemStyle: { color: '#9dc4b2' } }
+      ]
+    }]
+  });
+
+  window.addEventListener('resize', function(){
+    trend.resize(); edits.resize(); dirs.resize(); device.resize();
+  });
+
+  /* ---------- 交互 ---------- */
+  $('#range').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    trend.resize(); edits.resize();
+  });
+  $('#refresh').addEventListener('click', function(){
+    this.style.opacity = '.5';
+    var self = this;
+    setTimeout(function(){ self.style.opacity = '1'; }, 320);
+  });
+})();
+</script>
+
+</body>
+</html>

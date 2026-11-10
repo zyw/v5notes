@@ -1,0 +1,55 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>预览 / 编辑 切换 · 修正版 D/E/F</title>
+<style>
+:root{--ink:#27342d;--ink2:#364c3b;--muted:#748177;--muted2:#89958b;--line:#e4e6df;--accent:#315b4a;}
+*{box-sizing:border-box}body{margin:0;background:#eef0ea;color:var(--ink);font-family:'DM Sans','PingFang SC',-apple-system,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:44px 28px 80px}
+h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em;color:#24382c}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.sub{margin:0 0 10px;color:var(--muted);font-size:13.5px;line-height:1.7;max-width:780px}
+.fix{background:#eaf1ea;border:1px solid #cfe0d2;border-radius:12px;padding:14px 18px;margin:18px 0 34px;font-size:12.5px;line-height:1.75;color:#2f4b3b}
+.fix b{color:#1f3d2c}
+.fix ul{margin:6px 0 0;padding-left:18px}
+.dir{margin:0 0 44px}
+.dir-head{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+.dir-head .tag{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+.dir-head h2{margin:0;font-size:18px;color:#24382c}
+.dir-head .why{color:var(--muted);font-size:12.5px}
+.frames{display:flex;gap:16px}
+.frame{position:relative;flex:1;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 10px 26px #27342d10}
+.frame .vp{width:100%;aspect-ratio:1440/900;overflow:hidden}
+.frame iframe{width:1440px;height:900px;border:0;transform:scale(.343);transform-origin:top left}
+.frame .tag{position:absolute;top:8px;left:8px;z-index:2;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:#20342ae6;color:#eaf1ea}
+.note{margin:12px 0 0;display:flex;gap:18px;color:var(--muted);font-size:12px;line-height:1.65}
+.note div{flex:1}.note b{color:var(--ink2);font-weight:600}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+</style></head><body><div class="wrap">
+<p class="kicker">V5NOTES · 预览 / 编辑切换 · 修正版</p>
+<h1>把切换收回顶部，两个问题一起消失</h1>
+<p class="sub">针对上一轮的反馈重做三版：①B 的底部胶囊会和底部提示气泡抢同一个位置（切模式时气泡直接盖住胶囊）；②C 为了让浮动的状态条不压正文，给正文多加了上边距，导致工具条和首行之间空了一截。根因都是「把切换放在内容之上/之下」。这一轮三版统一把切换放回顶部稳定位置。</p>
+<div class="fix"><b>本轮两条硬约束（三版都满足）</b>
+<ul>
+<li><b>不占底部</b>：不再用底部悬浮胶囊，彻底避开与底部提示 / 弹窗的叠压。</li>
+<li><b>不动正文上边距</b>：不再为控件让位加 padding，工具条与首行的间距保持与原来一致。</li>
+</ul></div>
+
+<section class="dir"><div class="dir-head"><span class="tag">D</span><h2>居中定档</h2><span class="why">两段开关钉在顶栏正中</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="d-header-centered.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="d-header-centered.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>「预览 | 编辑」两段开关绝对居中于顶栏，两个选项常显、当前项实心。居中锚点不受两侧内容增减影响。</div>
+<div><b>优点：</b>永远在正中、绝不搬家；状态一眼可辨。<br><a href="d-header-centered.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<section class="dir"><div class="dir-head"><span class="tag">E</span><h2>单键驻留</h2><span class="why">一个按钮，原地换字</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="e-single-toggle.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="e-single-toggle.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>标题右侧固定一个按钮：预览态「✎ 编辑」，编辑态同一位置变成「✓ 完成」，尺寸与位置不变。</div>
+<div><b>优点：</b>最省控件、进出完全对称；一按就走。<br><a href="e-single-toggle.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<section class="dir"><div class="dir-head"><span class="tag">F</span><h2>工具条行内定档</h2><span class="why">开关并进工具条左端</span></div>
+<div class="frames"><div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="f-in-toolbar.html?mode=preview"></iframe></div></div>
+<div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="f-in-toolbar.html?mode=edit"></iframe></div></div></div>
+<div class="note"><div><b>做什么：</b>把「预览 | 编辑」放进编辑工具条的最左端；这一行两种模式都在，编辑时向右展开格式按钮，预览时只剩开关与字号。</div>
+<div><b>优点：</b>切换贴着格式工具，一行到底、不额外占高；间距与原来一致。<br><a href="f-in-toolbar.html" target="_blank">打开完整版 →</a></div></div></section>
+
+<p class="sub" style="margin-top:4px">三版都不再使用底部悬浮控件，也不改正文上边距；都复用同一个 V5Editor、保留 ⌘1/2/3 与命令面板。</p>
+</div></body></html>

@@ -1,0 +1,68 @@
+/* 浅色主题：仅声明 CSS 自定义属性，无具体选择器样式。
+ * 方向 2 · 薄荷工作台 Mint Workspace —— 薄荷墨绿 × 纯白卡 × 冷薄荷画布。 */
+
+:root {
+  // --- 侧栏与顶栏表格区域 ---
+  --menuBg: #ffffff;
+  --menuColor: #3a4a42;
+  --menuActiveText: #17624a;
+  --menuHover: rgba(28, 90, 72, 0.08);
+
+  --subMenuBg: #ffffff;
+  --subMenuActiveText: #17624a;
+  --subMenuHover: rgba(28, 90, 72, 0.08);
+  --subMenuTitleHover: rgba(28, 90, 72, 0.05);
+
+  --el-menu-base-level-padding: 12px;
+  --el-menu-level-padding: 8px;
+  --el-menu-item-height: 50px;
+
+  --fixedHeaderBg: #ffffff;
+  --tableHeaderBg: #f6f8f7;
+  --tableHeaderTextColor: #5f7067;
+
+  --brder-color: #e6ebe7;
+
+  --tags-view-active-bg: var(--el-color-primary);
+  --tags-view-active-border-color: var(--el-color-primary);
+
+  // --- 应用壳：圆角、阴影、表面、导航、强调色与文案色 ---
+  --app-radius-sm: max(0px, calc(var(--app-radius-base) - 8px));
+  --app-radius-md: max(0px, calc(var(--app-radius-base) - 4px));
+  --app-radius-lg: var(--app-radius-base);
+  --app-radius-base: 12px;
+
+  --app-space-base: 12px;
+
+  --app-shadow-sm: 0 1px 2px rgba(20, 40, 30, 0.05);
+  --app-shadow-md: 0 10px 26px rgba(20, 40, 30, 0.07);
+  --app-shadow-lg: 0 16px 40px rgba(20, 40, 30, 0.1);
+
+  --app-font-size-base: 14px;
+
+  --app-surface-bg: #ffffff;
+  --app-surface-border: #e6ebe7;
+  --app-shell-bg: #f4f7f5;
+  --app-shell-spot-1: rgba(28, 90, 72, 0.06);
+  --app-shell-spot-2: rgba(28, 90, 72, 0.03);
+  --app-sidebar-border: #e6ebe7;
+  --app-navbar-bg: #ffffff;
+  --app-navbar-border: #e6ebe7;
+  --app-navbar-shadow: 0 1px 2px rgba(20, 40, 30, 0.05);
+  --app-accent-soft: #e8f2ec;
+  --app-accent-strong: #1c5a48;
+  --app-text-title: #15241e;
+  --app-text-muted: #5f7067;
+  --app-overlay-mask: rgba(15, 32, 25, 0.28);
+  --app-elevated-soft-bg: #f5f8f6;
+  --app-elevated-close-bg: rgba(28, 90, 72, 0.08);
+  --app-elevated-close-hover-bg: rgba(28, 90, 72, 0.14);
+
+  // --- 与 Element Plus 主题变量的桥接（页面背景、默认圆角/阴影） ---
+  --el-border-radius-base: var(--app-radius-md);
+  --el-border-radius-small: var(--app-radius-sm);
+  --el-border-radius-round: 999px;
+  --el-box-shadow-light: var(--app-shadow-sm);
+  --el-box-shadow: var(--app-shadow-md);
+  --el-bg-color-page: var(--app-shell-bg);
+}

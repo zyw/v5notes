@@ -1,0 +1,1 @@
+export { translateRouteTitle } from '@/lang';
