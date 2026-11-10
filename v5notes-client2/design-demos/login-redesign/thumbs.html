@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>登录页重设计 · 六格缩略图</title>
+<style>
+  :root {
+    --paper:#fffefa; --canvas:#f4f2ec; --ink:#27342d; --muted:#6b7b70;
+    --accent:#315b4a; --line:#e4e6df; --teal:#0b4a52; --mint:#2fa9a4; --amber:#ad7640;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; }
+  body {
+    width:1440px; height:900px; overflow:hidden;
+    background:#e9e6dc; color:var(--ink);
+    font-family:'PingFang SC','Helvetica Neue',-apple-system,sans-serif;
+    padding:30px 40px 24px;
+  }
+  .head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; }
+  .head h1 { margin:0; font:400 20px/1 'Songti SC',serif; letter-spacing:.01em; }
+  .head p { margin:0; font-size:11px; letter-spacing:.16em; color:#8a958c; }
+  .grid { display:grid; grid-template-columns:repeat(3,460px); gap:26px 28px; }
+  .item { display:grid; gap:8px; }
+  .mini { position:relative; width:460px; height:288px; overflow:hidden; border-radius:6px;
+          box-shadow:0 1px 0 #ffffff80, 0 14px 30px #1f2e2410; }
+  .cap { display:flex; gap:8px; align-items:baseline; font-size:11px; color:#5d6a60; }
+  .cap b { font-size:12.5px; color:#2c3a31; font-weight:600; letter-spacing:.02em; }
+  .cap span { color:#8a958c; }
+  .eyebrow { font-family:'Avenir Next',sans-serif; font-size:7px; letter-spacing:.22em; color:#7d8a80; }
+  .rule { position:absolute; background:var(--line); }
+
+  /* ---------- K1 白 · 纸呼吸 ---------- */
+  .k1 { background:radial-gradient(120% 90% at 12% 18%, #fffdf7 0%, #f7f4ea 55%, #efede2 100%); }
+  .k1 .grain { position:absolute; inset:0; opacity:.5; background-image:radial-gradient(#8d9a8b22 .6px, transparent .7px); background-size:3px 3px; }
+  .k1 .leaf { position:absolute; left:38px; top:34px; width:250px; height:222px; background:#fffefa; box-shadow:0 1px 0 #d9ded3, 0 18px 40px #3b4a3f12; }
+  .k1 .leaf .t { font:400 30px/1.15 'Songti SC',serif; color:#244c3b; letter-spacing:-.02em; margin:24px 0 12px; }
+  .k1 .leaf .p { font:400 6.5px/2.1 'Songti SC',serif; color:#5f6f63; margin:0 0 4px; }
+  .k1 .leaf .m { position:absolute; right:14px; bottom:12px; font-size:5.5px; letter-spacing:.12em; color:#9aa49c; }
+  .k1 .margin { position:absolute; left:300px; top:52px; width:60px; font-size:5.5px; line-height:2; color:#93a095; letter-spacing:.06em; }
+  .k1 .split { position:absolute; left:372px; top:26px; bottom:26px; width:1px; background:#dbdfd4; }
+  .k1 .login { position:absolute; left:392px; top:44px; width:56px; }
+  .k1 .login .lb { font-size:5.5px; color:#7b887e; margin:7px 0 3px; }
+  .k1 .login .ip { height:14px; border:1px solid #e2e6da; background:#fbfbf4; }
+  .k1 .login .bt { margin-top:9px; height:18px; background:#315b4a; border-radius:3px; }
+  .k1 .eyebrow { position:absolute; left:38px; top:20px; }
+
+  /* ---------- K2 版 · 三次套印 ---------- */
+  .k2 { background:#f7f3e6; }
+  .k2 .dots { position:absolute; inset:0; opacity:.35; background-image:radial-gradient(#6b7b7022 .5px, transparent .6px); background-size:2.6px 2.6px; }
+  .k2 .title { position:absolute; left:30px; top:28px; font:400 29px/1.2 'Songti SC',serif; color:#27342d; letter-spacing:-.02em; text-shadow:2px 2px 0 #0b4a5222, -1px 1px 0 #2fa9a426; }
+  .k2 .plates { position:absolute; left:32px; top:92px; width:250px; height:160px; }
+  .k2 .plate { position:absolute; left:0; top:0; width:192px; height:128px; background:#fffdf5; border:1px solid #0b4a5230; padding:9px 10px; }
+  .k2 .plate.p3 { transform:translate(24px,18px); background:#f1f5f0; }
+  .k2 .plate.p2 { transform:translate(12px,9px); background:#f6f7ee; }
+  .k2 .plate.p1 { box-shadow:0 9px 20px #0b4a5214; }
+  .k2 .plate .tag { font-size:4.8px; letter-spacing:.16em; color:#8a958c; margin-bottom:5px; }
+  .k2 .plate b { font:400 8.5px/1.4 'Songti SC',serif; color:#244c3b; display:block; margin-bottom:5px; }
+  .k2 .plate i { display:block; height:2.6px; background:#e3e6da; margin-bottom:3.6px; }
+  .k2 .plate i:nth-of-type(2n) { width:74%; }
+  .k2 .plate pre { font:400 4.6px/1.7 'SF Mono',monospace; color:#6b7b70; margin:0; white-space:pre; }
+  .k2 .plate em { font-style:normal; font-size:4.6px; color:#9aa49c; letter-spacing:.1em; }
+  .k2 .info { position:absolute; left:32px; bottom:18px; display:grid; grid-template-columns:repeat(4,62px); border-top:1px solid #0b4a5255; }
+  .k2 .info div { padding:6px 6px 0 0; font-size:5px; line-height:1.6; color:#5a685e; border-right:1px solid #0b4a5222; }
+  .k2 .info b { display:block; font-size:6.5px; color:#27342d; font-weight:600; }
+  .k2 .card { position:absolute; right:22px; top:38px; width:106px; height:212px; background:#fffdf5; border:1px solid #0b4a5233; border-radius:4px; padding:11px 9px; }
+  .k2 .card .lb { font-size:5.5px; color:#7b887e; margin:8px 0 3px; }
+  .k2 .card .ip { height:15px; background:#f4f3e7; border:1px solid #e2e0d0; }
+  .k2 .card .bt { margin-top:10px; height:19px; background:#0b4a52; border-radius:2px; }
+  .k2 .card .eb { font-size:6px; color:#6b7b70; letter-spacing:.14em; }
+
+  /* ---------- K3 光 · 阅读带 ---------- */
+  .k3 { background:#fbfaf5; }
+  .k3 .col { position:absolute; left:44px; top:54px; width:280px; }
+  .k3 .col .t { font:400 26px/1.2 'Songti SC',serif; color:#244c3b; margin-bottom:16px; }
+  .k3 .col p { font:400 8px/2.1 'Songti SC',serif; color:#c6c8bd; margin:0 0 4px; }
+  .k3 .band { position:absolute; left:30px; width:308px; height:30px; background:linear-gradient(90deg,#f3e3b800,#f3e3b870 20%,#f3e3b870 80%,#f3e3b800); }
+  .k3 .band.on p { color:#3b4b40; }
+  .k3 .login { position:absolute; right:26px; bottom:26px; width:104px; padding-top:10px; border-top:1px solid #dfe2d6; }
+  .k3 .login .lb { font-size:5.5px; color:#8a958c; margin:7px 0 3px; }
+  .k3 .login .ip { height:14px; border-bottom:1px solid #d9ddd0; }
+  .k3 .login .bt { margin-top:9px; height:16px; border:1px solid #315b4a; }
+  .k3 .login .eb { font-size:5.5px; letter-spacing:.16em; color:#7d8a80; }
+
+  /* ---------- K4 架 · 笔记墙 ---------- */
+  .k4 { background:#f7f6f0; }
+  .k4 .wall { position:absolute; left:0; top:-30px; width:330px; height:360px; display:grid; grid-template-columns:repeat(3,1fr); gap:0; }
+  .k4 .cell { border-right:1px solid #e3e4da; border-bottom:1px solid #e3e4da; padding:9px 8px; }
+  .k4 .cell b { display:block; font:400 8.5px/1.4 'Songti SC',serif; color:#3c4b40; margin-bottom:5px; }
+  .k4 .cell i { display:block; height:3px; background:#e2e5db; margin-bottom:4px; }
+  .k4 .cell i:nth-child(3n) { width:70%; }
+  .k4 .cell em { display:block; font-size:4.6px; color:#a2aaa0; font-style:normal; letter-spacing:.08em; margin-top:5px; }
+  .k4 .veil { position:absolute; left:0; top:0; width:330px; height:288px; background:linear-gradient(90deg,#f7f6f000 55%,#f7f6f0 96%),linear-gradient(180deg,#f7f6f0 0%,#f7f6f000 14%,#f7f6f000 82%,#f7f6f0 100%); }
+  .k4 .card { position:absolute; right:26px; top:46px; width:106px; height:196px; background:#fffefa; border:1px solid #e2e4d8; border-radius:5px; padding:11px 10px; box-shadow:0 12px 26px #3b4a3f12; }
+  .k4 .card .lb { font-size:5.5px; color:#7b887e; margin:8px 0 3px; }
+  .k4 .card .ip { height:15px; background:#f5f6f1; border:1px solid #e5e8dd; }
+  .k4 .card .bt { margin-top:10px; height:18px; background:#315b4a; border-radius:3px; }
+  .k4 .card .eb { font-size:5.5px; color:#6b7b70; letter-spacing:.14em; }
+
+  /* ---------- K5 影 · 写作的波形 ---------- */
+  .k5 { background:radial-gradient(80% 60% at 18% 80%, #123c3a 0%, #0d2b26 55%, #0a221e 100%); }
+  .k5 .grain { position:absolute; inset:0; opacity:.25; background-image:radial-gradient(#ffffff10 .6px, transparent .7px); background-size:3px 3px; }
+  .k5 .eyebrow { position:absolute; left:36px; top:32px; color:#8fb3a6aa; }
+  .k5 .t { position:absolute; left:34px; top:64px; font:400 44px/1.18 'Songti SC',serif; color:#f7f3e6; letter-spacing:-.02em; }
+  .k5 .t span { color:#7fc9bf; }
+  .k5 .sub { position:absolute; left:36px; top:186px; font-size:6px; color:#a9bdb2; letter-spacing:.04em; }
+  .k5 .wave { position:absolute; left:0; right:0; bottom:52px; height:70px; }
+  .k5 .credits { position:absolute; left:36px; bottom:20px; display:flex; gap:18px; font-size:5.4px; letter-spacing:.14em; color:#93aca1; }
+  .k5 .panel { position:absolute; right:24px; top:30px; width:118px; height:228px; border:1px solid #ffffff1f; border-radius:6px; background:#ffffff0d; backdrop-filter:blur(2px); padding:12px 10px; }
+  .k5 .panel .eb { font-size:5.5px; color:#b9c9c0; letter-spacing:.14em; }
+  .k5 .panel .srv { margin-top:9px; font-size:5.2px; color:#c9d6ce; padding-bottom:6px; border-bottom:1px solid #ffffff1a; }
+  .k5 .panel .lb { font-size:5.2px; color:#aebfb5; margin:9px 0 3px; }
+  .k5 .panel .ip { height:15px; background:#ffffff0f; border:1px solid #ffffff1c; }
+  .k5 .panel .bt { margin-top:10px; height:19px; background:#f7f3e6; border-radius:3px; }
+
+  /* ---------- K6 册 · 一页解剖 ---------- */
+  .k6 { background:#fffdf6; }
+  .k6 .mast { position:absolute; left:30px; top:16px; right:26px; display:flex; justify-content:space-between; font-size:5px; letter-spacing:.2em; color:#8a958c; border-bottom:1px solid #2c3a3133; padding-bottom:6px; }
+  .k6 .t { position:absolute; left:30px; top:40px; width:250px; font:900 34px/1.15 'Songti SC',serif; color:#1f2b24; letter-spacing:-.03em; }
+  .k6 .t mark { background:linear-gradient(180deg,transparent 52%, #f2d774 52%, #f2d774 88%, transparent 88%); color:inherit; }
+  .k6 .note { position:absolute; left:32px; top:148px; font:400 7px/1.6 'Songti SC',serif; color:#a7483d; transform:rotate(-4deg); }
+  .k6 .cells { position:absolute; left:30px; bottom:26px; width:250px; display:grid; grid-template-columns:1fr 1fr; border:1.5px solid #22302a; }
+  .k6 .cells div { padding:7px 8px; border-right:1.5px solid #22302a; border-bottom:1.5px solid #22302a; }
+  .k6 .cells div:nth-child(2n) { border-right:0; }
+  .k6 .cells div:nth-child(3n), .k6 .cells div:nth-child(4n) { border-bottom:0; }
+  .k6 .cells b { display:block; font-size:7.5px; color:#22302a; margin-bottom:3px; }
+  .k6 .cells i { display:block; font-size:4.8px; color:#6f7b72; font-style:normal; line-height:1.5; }
+  .k6 .card { position:absolute; right:24px; top:62px; width:112px; height:180px; background:#fffefa; border:1px solid #22302a33; padding:12px 10px; }
+  .k6 .card .eb { font-size:5.5px; letter-spacing:.16em; color:#6b7b70; }
+  .k6 .card .lb { font-size:5.5px; color:#7b887e; margin:8px 0 3px; }
+  .k6 .card .ip { height:15px; background:#f6f4e9; border:1px solid #e2ddc9; }
+  .k6 .card .bt { margin-top:10px; height:19px; background:#22302a; }
+</style>
+</head>
+<body>
+<div class="head">
+  <h1>登录页重设计 · 六个方向</h1>
+  <p>V5 NOTES · 1440 × 900 · THUMBNAILS</p>
+</div>
+<div class="grid">
+
+  <div class="item"><div class="mini k1">
+    <div class="grain"></div>
+    <div class="eyebrow">V5 / NOTES</div>
+    <div class="leaf">
+      <div class="t">把想法，<br>留在这里。</div>
+      <p class="p">把窗子开到最大，让风经过桌面。</p>
+      <p class="p">写下来的东西，才算真正想过。</p>
+      <div class="m">第 3 稿 · 10 月 12 日</div>
+    </div>
+    <div class="margin">所见即所得<br>源码<br>预览<br><br>历史<br>草稿</div>
+    <div class="split"></div>
+    <div class="login">
+      <div class="eb" style="font-size:5px;letter-spacing:.16em;color:#7d8a80">连接工作区</div>
+      <div class="lb">用户名</div><div class="ip"></div>
+      <div class="lb">密码</div><div class="ip"></div>
+      <div class="bt"></div>
+    </div>
+  </div><div class="cap"><b>K1 · 白 / 纸呼吸</b><span>原研哉 · 登录去卡片化</span></div></div>
+
+  <div class="item"><div class="mini k2">
+    <div class="dots"></div>
+    <div class="title">把想法，留在这里。</div>
+    <div class="plates">
+      <div class="plate p3"><div class="tag">预览</div><b>十月的一个下午</b><i></i><i></i><i></i></div>
+      <div class="plate p2"><div class="tag">源码</div><pre># 十月的一个下午
+- 把窗子开到最大
+- 写完第三稿
+> 写下来的东西</pre></div>
+      <div class="plate p1"><div class="tag">所见即所得</div><b>十月的一个下午</b><i></i><i></i><i></i><em>第 3 稿 · 10 月 12 日</em></div>
+    </div>
+    <div class="info"><div><b>三种模式</b>所见即所得<br>源码 · 预览</div><div><b>目录树</b>一棵树<br>装下所有稿子</div><div><b>历史版本</b>每次保存<br>都能回退</div><div><b>专注写作</b>收起侧栏<br>只剩正文</div></div>
+    <div class="card"><div class="eb">连接工作区</div><div class="lb">用户名</div><div class="ip"></div><div class="lb">密码</div><div class="ip"></div><div class="bt"></div></div>
+  </div><div class="cap"><b>K2 · 版 / 三次套印</b><span>服部一成 · 巨字错位重影</span></div></div>
+
+  <div class="item"><div class="mini k3">
+    <div class="col">
+      <div class="t">把想法，<br>留在这里。</div>
+      <p>把窗子开到最大，让风经过桌面。</p>
+      <p>写下来的东西，才算真正想过。</p>
+      <p>回退到昨天那一版，只留第三段。</p>
+      <p>目录树收起来的时候，字会变大。</p>
+    </div>
+    <div class="band" style="top:128px"></div>
+    <div class="login"><div class="eb">连接工作区</div><div class="lb">用户名</div><div class="ip"></div><div class="lb">密码</div><div class="ip"></div><div class="bt"></div></div>
+  </div><div class="cap"><b>K3 · 光 / 阅读带</b><span>iA Writer Focus Mode · 一行亮</span></div></div>
+
+  <div class="item"><div class="mini k4">
+    <div class="wall">
+      <div class="cell"><b>会议之后的三条线索</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>读书笔记 · 缓慢的阅读</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>产品灵感：目录树</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>周记 · 第 44 周</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>写给自己的规则</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>采访速记</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>十月的一个下午</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>专注的两句话</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div><div class="cell"><b>旧稿备份</b><i></i><i></i><i></i><em>NOTE · 10/12</em></div>
+    </div>
+    <div class="veil"></div>
+    <div class="card"><div class="eb">连接工作区</div><div class="lb">用户名</div><div class="ip"></div><div class="lb">密码</div><div class="ip"></div><div class="bt"></div></div>
+  </div><div class="cap"><b>K4 · 架 / 笔记墙</b><span>Are.na · 块面与发丝线</span></div></div>
+
+  <div class="item"><div class="mini k5">
+    <div class="grain"></div>
+    <div class="eyebrow">V5 / NOTES</div>
+    <div class="t">把想法，<br><span>留在这里。</span></div>
+    <div class="sub">连接你的笔记空间，继续写作。</div>
+    <svg class="wave" viewBox="0 0 460 70" preserveAspectRatio="none">
+      <defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#7fc9bf" stop-opacity="0"/><stop offset=".35" stop-color="#7fc9bf" stop-opacity=".9"/><stop offset=".75" stop-color="#7fc9bf" stop-opacity=".55"/><stop offset="1" stop-color="#7fc9bf" stop-opacity="0"/></linearGradient></defs>
+      <path d="M0 45 C30 45 40 18 62 18 S92 52 118 52 150 30 176 30 208 58 236 58 268 22 296 22 328 46 356 46 392 34 420 34 448 45 460 45" fill="none" stroke="url(#wg)" stroke-width="1.2"/>
+      <path d="M0 45 H460" stroke="#ffffff14" stroke-width=".6"/>
+    </svg>
+    <div class="credits"><span>三种模式</span><span>目录与笔记同屏</span><span>草稿与版本</span></div>
+    <div class="panel"><div class="eb">连接工作区</div><div class="srv">● 服务器 · localhost:8080</div><div class="lb">用户名</div><div class="ip"></div><div class="lb">密码</div><div class="ip"></div><div class="bt"></div></div>
+  </div><div class="cap"><b>K5 · 影 / 写作的波形</b><span>电影感声波 · 深墨绿满幅</span></div></div>
+
+  <div class="item"><div class="mini k6">
+    <div class="mast"><span>V5 NOTES · 页面解剖</span><span>2026 / 11</span></div>
+    <div class="t">把想法，<br><mark>留在这里。</mark></div>
+    <div class="note">← 这里其实是三种模式</div>
+    <div class="cells">
+      <div><b>三种模式</b><i>所见即所得 / 源码 / 预览</i></div>
+      <div><b>目录与笔记</b><i>一棵树装下所有稿子</i></div>
+      <div><b>草稿与版本</b><i>断网不丢，可回退</i></div>
+      <div><b>专注写作</b><i>收起侧栏，只剩正文</i></div>
+    </div>
+    <div class="card"><div class="eb">连接工作区</div><div class="lb">用户名</div><div class="ip"></div><div class="lb">密码</div><div class="ip"></div><div class="bt"></div></div>
+  </div><div class="cap"><b>K6 · 册 / 一页解剖</b><span>日式杂志密排 · 马克笔</span></div></div>
+
+</div>
+</body>
+</html>

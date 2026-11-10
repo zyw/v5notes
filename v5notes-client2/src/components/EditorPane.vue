@@ -374,11 +374,57 @@ function onFindKeydown(event: KeyboardEvent): void {
   }
 }
 
+interface FindFieldCaret {
+  field: HTMLInputElement
+  start: number
+  end: number
+  value: string
+}
+
+function focusedFindField(): FindFieldCaret | null {
+  const field = document.activeElement
+  if (!(field instanceof HTMLInputElement) || !field.closest('.find-panel')) return null
+  return {
+    field,
+    start: field.selectionStart ?? field.value.length,
+    end: field.selectionEnd ?? field.value.length,
+    value: field.value,
+  }
+}
+
+function editorHoldsCaret(editor: { getContentElement(): HTMLElement }): boolean {
+  const surface = editor.getContentElement()
+  const active = document.activeElement
+  if (active === surface || (active instanceof Node && surface.contains(active))) return true
+  const node = document.getSelection()?.anchorNode
+  return !!node && (node === surface || surface.contains(node))
+}
+
+function restoreFindFieldCaret(editor: { getContentElement(): HTMLElement }, caret: FindFieldCaret): void {
+  const apply = () => {
+    const { field, start, end, value } = caret
+    if (!field.isConnected || field.value !== value || !editorHoldsCaret(editor)) return
+    field.focus({ preventScroll: true })
+    const max = field.value.length
+    field.setSelectionRange(Math.min(start, max), Math.min(end, max))
+  }
+  apply()
+  queueMicrotask(apply)
+  requestAnimationFrame(apply)
+}
+
+function onFindQueryInput(event: Event): void {
+  if (event instanceof InputEvent && event.isComposing) return
+  refreshFind(false)
+}
+
 function refreshFind(advance: boolean, direction: 1 | -1 = 1): void {
   const editor = editorInstance.value
   if (!editor) return
+  const caret = focusedFindField()
   const result = editor.findNextMatch(findQuery.value, findOptions.value, direction, advance)
   showFindResult(editor.getMarkdown(), result)
+  if (caret) restoreFindFieldCaret(editor, caret)
 }
 
 function showFindResult(doc: string, result: { hit: { from: number, to: number, index: number, total: number } | null, error: string | null }): void {
@@ -583,7 +629,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               <div class="find-fields">
                 <button type="button" class="find-expand" :aria-expanded="replaceExpanded" :aria-label="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" :title="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" @click="replaceExpanded = !replaceExpanded"><svg viewBox="0 0 20 20" aria-hidden="true"><path :d="replaceExpanded ? 'm5.5 7.5 4.5 4.5 4.5-4.5' : 'm7.5 5.5 4.5 4.5-4.5 4.5'"/></svg></button>
                 <div class="find-field-stack">
-                  <input ref="findInput" v-model="findQuery" type="search" :aria-label="t('editor.findLabel')" :placeholder="t('editor.findLabel')" @input="refreshFind(false)" />
+                  <input ref="findInput" v-model="findQuery" type="search" :aria-label="t('editor.findLabel')" :placeholder="t('editor.findLabel')" @input="onFindQueryInput" />
                   <div class="find-options">
                     <button type="button" class="find-toggle" :class="{ 'is-on': caseSensitive }" :aria-pressed="caseSensitive" :title="t('editor.matchCase')" :aria-label="t('editor.matchCase')" @click="toggleFindOption('case')">Aa</button>
                     <button type="button" class="find-toggle" :class="{ 'is-on': wholeWord }" :aria-pressed="wholeWord" :title="t('editor.wholeWord')" :aria-label="t('editor.wholeWord')" @click="toggleFindOption('word')">ab</button>

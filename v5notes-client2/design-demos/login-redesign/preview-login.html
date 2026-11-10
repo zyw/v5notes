@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录页主题预览</title>
+  <style>html, body, #app { height: 100%; margin: 0; }</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import '/src/styles/style.css'
+    import '/src/styles/login.css'
+    import { createApp, h } from 'vue'
+    import { i18n } from '/src/i18n/index.ts'
+    import LoginView from '/src/views/LoginView.vue'
+
+    const params = new URLSearchParams(location.search)
+    const theme = params.get('theme')
+    if (theme === 'light' || theme === 'dark' || theme === 'auto') {
+      localStorage.setItem('v5notes-login-theme', theme)
+    }
+    if (params.get('locale')) i18n.global.locale.value = params.get('locale')
+    const state = params.get('state')
+    if (params.get('motion') === 'off') {
+      const style = document.createElement('style')
+      style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'
+      document.head.appendChild(style)
+    }
+
+    createApp({
+      render() {
+        return h(LoginView, {
+          server: 'http://localhost:8080',
+          useOfficial: false,
+          username: 'zyw',
+          password: 'notes-2026',
+          busy: state === 'busy',
+          error: state === 'error' ? '用户不存在/密码错误' : '',
+        })
+      },
+    }).use(i18n).mount('#app')
+  </script>
+</body>
+</html>

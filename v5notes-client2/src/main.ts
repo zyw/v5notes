@@ -5,6 +5,7 @@ import '@v5md/view/theme.css'
 import App from './App.vue'
 import { i18n, installLocale } from './i18n'
 import './styles/style.css'
+import './styles/login.css'
 
 if (isTauri()) document.documentElement.classList.add('tauri-app')
 installLocale()

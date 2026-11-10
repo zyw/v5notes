@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>设置弹窗预览</title>
+  <link rel="stylesheet" href="/src/styles/style.css" />
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; background: #f4f2ec; }
+    .preview-stage { position: fixed; inset: 0; display: grid; grid-template-columns: 286px minmax(0, 1fr); background: #fffefa; }
+    .preview-sidebar { border-right: 1px solid #e4e6df; background: #f5f6f1; padding: 16px 12px; }
+    .preview-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px; color: #2f4f3e; font-weight: 700; font-size: 17px; letter-spacing: -.04em; }
+    .preview-brand img { width: 31px; height: 31px; border-radius: 9px; }
+    .preview-search { height: 38px; margin: 20px 3px 17px; border-radius: 9px; background: #eaede7; }
+    .preview-tree { display: grid; gap: 12px; padding: 0 10px; }
+    .preview-tree span { height: 11px; border-radius: 6px; background: #e7eae4; }
+    .preview-tree span:nth-child(2n) { width: 76%; }
+    .preview-main { padding: 46px 64px; }
+    .preview-toolbar { display: flex; gap: 8px; margin-bottom: 30px; }
+    .preview-toolbar span { height: 26px; width: 74px; border-radius: 7px; background: #f3f5f0; border: 1px solid #e7eae4; }
+    .preview-main h1 { margin: 0 0 18px; color: #244c3b; font: 700 42px/1.2 'Noto Serif SC', serif; letter-spacing: -.03em; }
+    .preview-main p { max-width: 620px; margin: 0 0 12px; color: #6b7b70; font-size: 14px; line-height: 1.9; }
+    .preview-note { margin-top: 26px; padding: 16px 18px; border: 1px solid #eceee6; border-radius: 12px; color: #8a958c; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="preview-stage" aria-hidden="true">
+    <aside class="preview-sidebar">
+      <div class="preview-brand"><img src="/src/assets/brand-icon.png" alt="" /><span>V5Notes</span></div>
+      <div class="preview-search"></div>
+      <div class="preview-tree"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    </aside>
+    <main class="preview-main">
+      <div class="preview-toolbar"><span></span><span></span><span></span></div>
+      <h1>笔记</h1>
+      <p>这里放一段工作区背景内容，包含 Markdown 正文、目录树和工具栏，用来观察设置弹窗的遮罩与尺寸。</p>
+      <p>遮罩应该足够安静，让弹窗成为唯一的焦点；弹窗本身要像一张被轻轻放下的纸。</p>
+      <div class="preview-note">背景占位 · 仅用于截图对照</div>
+    </main>
+  </div>
+  <div id="app"></div>
+  <script type="module">
+    import { createApp, h } from 'vue'
+    import { i18n } from '/src/i18n/index.ts'
+    import SettingsDialog from '/src/components/SettingsDialog.vue'
+
+    const params = new URLSearchParams(location.search)
+    if (params.get('locale')) i18n.global.locale.value = params.get('locale')
+    const official = params.get('official') === '1'
+
+    createApp({
+      render() {
+        return h(SettingsDialog, {
+          server: 'http://localhost:8080',
+          useOfficial: official,
+          defaultDirectoryVisible: true,
+          defaultTreeExpanded: true,
+          defaultOutlineVisible: false,
+        })
+      },
+    }).use(i18n).mount('#app')
+  </script>
+</body>
+</html>
