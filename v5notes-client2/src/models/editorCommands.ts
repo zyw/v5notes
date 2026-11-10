@@ -113,7 +113,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       hint: '查看与恢复旧版本',
       shortcut: '⌘Y',
       keywords: '历史 版本 history',
-      available: context => context.hasNote,
+      available: context => context.hasNote && context.mode !== 'preview',
       run: () => actions.openHistory(),
     },
     {
@@ -220,5 +220,12 @@ export function filterCommands(commands: EditorCommand[], query: string): Editor
 export function paletteModeLabel(context: CommandContext): string {
   if (context.mode === 'preview') return '预览 · 只读'
   if (context.mode === 'source') return '源码模式'
+  return '所见即所得'
+}
+
+/** Bottom toast copy shown after a mode switch; mirrors the v3 design wording. */
+export function modeSwitchLabel(mode: WorkspaceMode): string {
+  if (mode === 'preview') return '预览模式'
+  if (mode === 'source') return '源码模式'
   return '所见即所得'
 }

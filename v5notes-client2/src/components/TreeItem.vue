@@ -3,7 +3,13 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { TreeNode } from '../service/api'
 import TreeIcon from './TreeIcon.vue'
 
-const props = defineProps<{ node: TreeNode; selectedId: string; defaultTreeExpanded: boolean; depth?: number }>()
+const props = defineProps<{
+  node: TreeNode
+  selectedId: string
+  defaultTreeExpanded: boolean
+  depth?: number
+  hint?: string
+}>()
 defineOptions({ name: 'TreeItem' })
 const emit = defineEmits<{
   select: [id: string]
@@ -22,7 +28,7 @@ function containsSelectedNote(node: TreeNode): boolean {
   return node.id === props.selectedId || Boolean(node.children?.some(containsSelectedNote))
 }
 
-const expanded = ref(isDirectory.value && (props.defaultTreeExpanded || Boolean(props.node.children?.some(containsSelectedNote))))
+const expanded = ref(isDirectory.value && (props.defaultTreeExpanded || containsSelectedNote(props.node)))
 const menuOpen = ref(false)
 const menuRoot = ref<HTMLDetailsElement | null>(null)
 type MenuPosition = { top: string; left: string }
@@ -132,11 +138,11 @@ onBeforeUnmount(() => {
 
 watch(() => props.defaultTreeExpanded, (shouldExpand) => {
   if (!isDirectory.value) return
-  expanded.value = shouldExpand || Boolean(props.node.children?.some(containsSelectedNote))
+  expanded.value = shouldExpand || containsSelectedNote(props.node)
 })
 
 watch(() => props.selectedId, () => {
-  if (isDirectory.value && props.node.children?.some(containsSelectedNote)) expanded.value = true
+  if (isDirectory.value && containsSelectedNote(props.node)) expanded.value = true
 })
 
 function activate(): void {
@@ -163,9 +169,10 @@ function activate(): void {
           <path d="m5.75 3.5 4.5 4.5-4.5 4.5" />
         </svg>
       </button>
-      <button class="tree-label" type="button" :title="node.label" :aria-label="node.label" @click="activate">
+      <button class="tree-label" type="button" :title="hint ? `${node.label} · ${hint}` : node.label" :aria-label="hint ? `${node.label}，${hint}` : node.label" @click="activate">
         <TreeIcon :kind="isDirectory ? 'folder' : 'note'" :open="isDirectory && expanded" />
-        <span>{{ node.label }}</span>
+        <span class="tree-name">{{ node.label }}</span>
+        <span v-if="hint" class="tree-hint">{{ hint }}</span>
       </button>
       <div class="tree-actions">
         <details ref="menuRoot" class="tree-menu" :open="menuOpen" @toggle="onMenuToggle" @click.stop>

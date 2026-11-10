@@ -65,6 +65,7 @@ export interface TreeNode {
   pid: string
   label: string
   type: number
+  updateTime?: string
   children?: TreeNode[]
 }
 

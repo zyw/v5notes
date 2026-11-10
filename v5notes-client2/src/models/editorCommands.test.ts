@@ -4,6 +4,7 @@ import {
   filterCommands,
   groupCommands,
   matchesQuery,
+  modeSwitchLabel,
   paletteModeLabel,
   visibleCommands,
   type CommandActions,
@@ -52,7 +53,6 @@ describe('editor commands', () => {
     const ids = visibleCommands(buildEditorCommands(actions()), previewContext).map(command => command.id)
     expect(ids).toEqual([
       'mode.edit',
-      'view.history',
       'font.increase',
       'font.decrease',
       'export.html',
@@ -64,6 +64,14 @@ describe('editor commands', () => {
     expect(ids).not.toContain('view.focus')
     expect(ids).not.toContain('view.toolbar')
     expect(ids).not.toContain('mode.source')
+    expect(ids).not.toContain('view.history')
+  })
+
+  it('hides history in preview but keeps it while editing', () => {
+    const preview = visibleCommands(buildEditorCommands(actions()), previewContext).map(command => command.id)
+    const edit = visibleCommands(buildEditorCommands(actions()), editContext).map(command => command.id)
+    expect(preview).not.toContain('view.history')
+    expect(edit).toContain('view.history')
   })
 
   it('keeps focus and history in source mode but hides the formatting toolbar command', () => {
@@ -83,7 +91,7 @@ describe('editor commands', () => {
 
   it('keeps group order stable and never emits an empty group', () => {
     const groups = groupCommands(visibleCommands(buildEditorCommands(actions()), previewContext))
-    expect(groups.map(group => group.name)).toEqual(['显示模式', '视图', '排版', '导出'])
+    expect(groups.map(group => group.name)).toEqual(['显示模式', '排版', '导出'])
     for (const group of groups) expect(group.items.length).toBeGreaterThan(0)
   })
 
@@ -114,5 +122,11 @@ describe('editor commands', () => {
     expect(paletteModeLabel(editContext)).toBe('所见即所得')
     expect(paletteModeLabel(sourceContext)).toBe('源码模式')
     expect(paletteModeLabel(previewContext)).toBe('预览 · 只读')
+  })
+
+  it('labels each mode for the mode-switch toast', () => {
+    expect(modeSwitchLabel('preview')).toBe('预览模式')
+    expect(modeSwitchLabel('source')).toBe('源码模式')
+    expect(modeSwitchLabel('edit')).toBe('所见即所得')
   })
 })

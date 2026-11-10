@@ -2,12 +2,13 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import EditorModeDock from './EditorModeDock.vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
-import { buildEditorCommands, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
+import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
 const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
@@ -62,14 +63,25 @@ const commandContext = computed<CommandContext>(() => ({
   fontSize: fontSize.value,
 }))
 
-function setMode(mode: WorkspaceMode): void {
+/**
+ * Switch the workspace mode and echo the change with the design's bottom toast.
+ * Preview only reports success once `finishEditing` truly lands, so a failed
+ * save keeps the user in edit mode without a misleading toast.
+ */
+async function enterMode(mode: WorkspaceMode): Promise<void> {
   if (mode === 'preview') {
-    if (editorMode.value !== 'preview') void finishEditing()
+    if (editorMode.value === 'preview') return
+    if (await finishEditing()) showModeToast('preview')
     return
   }
   if (editorMode.value !== 'edit') editorMode.value = 'edit'
   if (mode === 'source' && !sourceMode.value) toggleSourceMode()
   if (mode === 'edit' && sourceMode.value) toggleSourceMode()
+  showModeToast(mode)
+}
+
+function setMode(mode: WorkspaceMode): void {
+  void enterMode(mode)
 }
 
 /**
@@ -96,6 +108,16 @@ function showToast(message: string, tone: 'ok' | 'warn' = 'ok'): void {
   toastTimer = window.setTimeout(() => { toast.value = null }, 4000)
 }
 onBeforeUnmount(() => { if (toastTimer !== undefined) window.clearTimeout(toastTimer) })
+
+// Mode switching is a user-facing state change; echo it with the design's bottom toast.
+const modeToast = ref<string | null>(null)
+let modeToastTimer: number | undefined
+function showModeToast(mode: WorkspaceMode): void {
+  modeToast.value = modeSwitchLabel(mode)
+  if (modeToastTimer !== undefined) window.clearTimeout(modeToastTimer)
+  modeToastTimer = window.setTimeout(() => { modeToast.value = null }, 2200)
+}
+onBeforeUnmount(() => { if (modeToastTimer !== undefined) window.clearTimeout(modeToastTimer) })
 
 /**
  * macOS: writes a vector, selectable PDF straight into ~/Downloads through
@@ -221,7 +243,7 @@ const commandActions: CommandActions = {
   setMode,
   toggleFocus: () => { focusMode.value = !focusMode.value },
   toggleToolbar,
-  openHistory: () => { void openHistory() },
+  openHistory: () => { if (editorMode.value !== 'preview') void openHistory() },
   changeFontSize: delta => applyFontSize(fontSize.value + delta),
   exportNote: format => { void exportNote(format) },
   renameNote,
@@ -263,6 +285,7 @@ function onGlobalKeydown(event: KeyboardEvent): void {
     return
   }
   if (key === 'y') {
+    if (editorMode.value === 'preview') return
     event.preventDefault()
     void openHistory()
   }
@@ -395,11 +418,6 @@ watch(selectedId, () => {
   if (sidebarView.value === 'find') void nextTick(() => refreshFind(false))
 })
 
-function switchEditorMode(): void {
-  if (editorMode.value === 'preview') editorMode.value = 'edit'
-  else void finishEditing()
-}
-
 function closeActionMenu(event: MouseEvent): void {
   const menu = (event.currentTarget as HTMLElement).closest('details')
   if (menu) menu.open = false
@@ -457,6 +475,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
             <button type="button" class="export-toast-close" aria-label="关闭提示" @click="toast = null">×</button>
           </div>
         </Transition>
+        <Transition name="mode-toast">
+          <div v-if="modeToast" class="mode-toast" role="status" aria-live="polite">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.4 3.4 7.6-7.6" /></svg>
+            <span>{{ modeToast }}</span>
+          </div>
+        </Transition>
       </Teleport>
       <template v-if="draft.note">
         <header class="editor-header">
@@ -475,16 +499,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
             <button class="command-trigger" type="button" aria-label="打开命令面板" title="命令面板（⌘K）" @click="paletteOpen = true">
               <span>命令</span><kbd>⌘K</kbd>
             </button>
-            <template v-if="editorMode === 'preview'">
-              <button class="toolbar-icon" type="button" aria-label="历史记录" title="历史记录" @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg></button>
-              <button class="primary mode-switch" type="button" aria-label="切换到编辑模式" title="切换到编辑模式" @click="switchEditorMode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>编辑</button>
-            </template>
-            <template v-else>
-              <button class="preview-switch" type="button" aria-label="切换到预览模式" title="切换到预览模式（⌘3）" @click="switchEditorMode"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览</button>
-              <button class="save-button" :class="{ 'is-clean': !draft.dirty }" type="button" :aria-label="draft.dirty ? '保存笔记' : '笔记已保存'" @click="save">
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h10l3.5 3.5v10A1.5 1.5 0 0 1 16 17.5H4A1.5 1.5 0 0 1 2.5 16V4A1.5 1.5 0 0 1 4 2.5Z"/><path d="M6 2.8v5h7v-5M6 17v-6h8v6"/></svg>
-                <span>{{ draft.dirty ? '保存' : '已保存' }}</span>
-              </button>
+            <template v-if="editorMode !== 'preview'">
               <details class="action-menu note-menu" data-action-menu="note" @toggle="syncActionMenu('note', $event)">
                 <summary aria-label="更多笔记操作" title="更多笔记操作"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></summary>
                 <div class="popover-menu" @click="closeActionMenu">
@@ -533,6 +548,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               </div>
             </div>
           </div>
+          <EditorModeDock
+            :mode="editorMode"
+            :source-mode="sourceMode"
+            :dirty="draft.dirty"
+            @edit="setMode('edit')"
+            @save="save"
+            @done="setMode('preview')"
+          />
         </div>
         <aside class="outline-sidebar" :class="{ 'is-hidden': !outlineVisible }" :aria-label="sidebarView === 'find' ? '查找' : '笔记大纲'">
           <header class="outline-header">
@@ -582,7 +605,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
       </template>
       <div v-else class="empty-editor">
         <span class="empty-mark">✳</span><p class="eyebrow">V5 NOTES</p><h2>选择一篇笔记开始阅读</h2><p>从左侧目录树打开笔记。笔记默认以预览模式显示，需要修改时再进入编辑。</p>
-        <div class="empty-actions"><button class="primary" @click="newNote">新建笔记</button><button class="secondary-action" @click="directoryVisible = true">显示目录</button></div>
+        <div class="empty-actions">
+          <button class="primary" type="button" @click="newNote">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" /></svg>
+            新建笔记
+          </button>
+          <button v-if="!directoryVisible || focusMode" class="secondary-action" type="button" @click="directoryVisible = true; focusMode = false">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M8 4v12" /></svg>
+            显示目录
+          </button>
+        </div>
       </div>
       <div v-if="focusMode" class="focus-hud">
         <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>

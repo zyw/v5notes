@@ -10,12 +10,12 @@ import NoteHistoryDialog from '../components/NoteHistoryDialog.vue'
 import SettingsDialog from '../components/SettingsDialog.vue'
 const state = useWorkspace()
 provideWorkspace(state)
-const { server, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible, trashOpen } = state
+const { server, useOfficialServer, saveServerSettings, username, password, token, busy, error, login, focusMode, directoryVisible, resizingSidebar, sidebarWidth, settingsDialogOpen, openSettings, defaultDirectoryVisible, setDefaultDirectoryVisible, defaultTreeExpanded, setDefaultTreeExpanded, defaultOutlineVisible, setDefaultOutlineVisible, trashOpen } = state
 </script>
 
 <template>
-  <LoginView v-if="!token" :server="server" :username="username" :password="password" :busy="busy" :error="error"
-    @update:server="server = $event" @update:username="username = $event" @update:password="password = $event" @submit="login" @settings="openSettings" />
+  <LoginView v-if="!token" :server="server" :use-official="useOfficialServer" :username="username" :password="password" :busy="busy" :error="error"
+    @update:username="username = $event" @update:password="password = $event" @submit="login" @settings="openSettings" />
   <div v-else class="workspace" :class="{ 'directory-hidden': focusMode, 'sidebar-collapsed': !directoryVisible && !focusMode, 'focus-mode': focusMode, 'is-resizing': resizingSidebar }" :style="{ '--sidebar-width': `${sidebarWidth}px` }">
     <WorkspaceSidebar />
     <TrashPane v-if="trashOpen" />
@@ -23,5 +23,5 @@ const { server, username, password, token, busy, error, login, focusMode, direct
     <WorkspaceDialogs />
     <NoteHistoryDialog />
   </div>
-  <SettingsDialog v-if="settingsDialogOpen" :default-directory-visible="defaultDirectoryVisible" :default-tree-expanded="defaultTreeExpanded" :default-outline-visible="defaultOutlineVisible" @set-default-directory-visible="setDefaultDirectoryVisible" @set-default-tree-expanded="setDefaultTreeExpanded" @set-default-outline-visible="setDefaultOutlineVisible" @close="settingsDialogOpen = false" />
+  <SettingsDialog v-if="settingsDialogOpen" :server="server" :use-official="useOfficialServer" :default-directory-visible="defaultDirectoryVisible" :default-tree-expanded="defaultTreeExpanded" :default-outline-visible="defaultOutlineVisible" @save-server="saveServerSettings" @set-default-directory-visible="setDefaultDirectoryVisible" @set-default-tree-expanded="setDefaultTreeExpanded" @set-default-outline-visible="setDefaultOutlineVisible" @close="settingsDialogOpen = false" />
 </template>

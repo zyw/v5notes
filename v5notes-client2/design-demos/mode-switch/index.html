@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>预览 / 编辑 切换 · 三方向</title>
+<style>
+  :root { --ink:#27342d; --ink2:#364c3b; --muted:#748177; --muted2:#89958b; --line:#e4e6df; --accent:#315b4a; --paper:#fffefa; --canvas:#f4f2ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#eef0ea; color:var(--ink); font-family:'DM Sans','PingFang SC',-apple-system,sans-serif; }
+  .wrap { max-width:1120px; margin:0 auto; padding:44px 28px 80px; }
+  h1 { margin:0 0 6px; font-size:26px; letter-spacing:-.02em; color:#24382c; }
+  .sub { margin:0 0 8px; color:var(--muted); font-size:13.5px; line-height:1.7; max-width:760px; }
+  .kicker { font-size:11px; font-weight:700; letter-spacing:.16em; color:var(--accent); margin:0 0 12px; }
+  .lead-card { background:linear-gradient(135deg,#fbe9e3,#f7efea); border:1px solid #ecd9d0; border-radius:14px; padding:16px 20px; margin:22px 0 34px; color:#7a4a3a; font-size:13px; line-height:1.75; }
+  .lead-card b { color:#8f3f2c; }
+  .before { display:flex; gap:14px; margin:10px 0 40px; }
+  .before .shot { flex:1; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
+  .before img { width:100%; display:block; }
+  .cap { display:flex; align-items:baseline; gap:8px; padding:8px 10px 0; }
+  .cap b { font-size:12.5px; color:var(--ink2); }
+  .cap span { font-size:11px; color:var(--muted2); }
+  .dir { margin:0 0 46px; }
+  .dir-head { display:flex; align-items:baseline; gap:12px; margin:0 0 12px; }
+  .dir-head .tag { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; background:var(--accent); color:#fff; font-weight:700; font-size:13px; }
+  .dir-head h2 { margin:0; font-size:18px; color:#24382c; }
+  .dir-head .why { color:var(--muted); font-size:12.5px; }
+  .frames { display:flex; gap:16px; }
+  .frame { position:relative; flex:1; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 10px 26px #27342d10; }
+  .frame .vp { width:100%; aspect-ratio:1440 / 900; overflow:hidden; }
+  .frame iframe { width:1440px; height:900px; border:0; transform:scale(var(--s,0.343)); transform-origin:top left; }
+  .frame .tag { position:absolute; top:8px; left:8px; z-index:2; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:600; background:#20342ae6; color:#eaf1ea; }
+  .dir .note { margin:12px 0 0; display:flex; gap:18px; color:var(--muted); font-size:12px; line-height:1.65; }
+  .dir .note div { flex:1; }
+  .dir .note b { color:var(--ink2); font-weight:600; }
+  .openlink { color:var(--accent); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">V5NOTES · 编辑器交互改版 · 第三轮</p>
+  <h1>预览 / 编辑 的切换方式</h1>
+  <p class="sub">目标只有一个：让「从读走到改，再走回来」这条动线更短、更直、更让人放心。三套逻辑各出一版真实原型，点开可交互（预览里能点「编辑」，编辑里可输入触发未保存），选定后再落到 Vue。</p>
+
+  <div class="lead-card">现状的问题：同一个「切换模式」动作，在预览态是一个<b>墨绿实心大按钮「编辑」</b>（顶栏最右），在编辑态却变成<b>描边小按钮「预览」</b>（挪到保存左边）。<b>形状、轻重、位置、甚至文案方向</b>每次都在变；进入编辑很显眼，退出编辑很安静。用户说的「别扭、动线不好」就是这个。</div>
+
+  <p class="kicker" style="margin-bottom:6px">现状（before）</p>
+  <div class="before">
+    <div class="shot"><img src="../editor-toolbar/shots/app-c-preview.png" alt="现状预览"><div class="cap"><b>预览态</b><span>右侧实心「编辑」</span></div></div>
+    <div class="shot"><img src="../editor-toolbar/shots/app-c-edit.png" alt="现状编辑"><div class="cap"><b>编辑态</b><span>描边「预览」+ 实心保存</span></div></div>
+  </div>
+
+  <section class="dir">
+    <div class="dir-head"><span class="tag">A</span><h2>定档分段</h2><span class="why">把切换做成一个不动的对象</span></div>
+    <div class="frames">
+      <div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="a-pinned-segmented.html?mode=preview"></iframe></div></div>
+      <div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="a-pinned-segmented.html?mode=edit"></iframe></div></div>
+    </div>
+    <div class="note">
+      <div><b>做什么：</b>在笔记名右侧放一个固定的两段开关「预览 | 编辑」，两个选项始终可见，当前模式实心高亮。它锚在左侧、永远不挪，右侧的保存 / 历史 / 更多怎么变都推不动它。</div>
+      <div><b>动线：</b>切换 = 在同一坐标点同一对象上一次点击。进入和退出形状、轻重完全对称，不再「换副面孔」。</div>
+      <div><b>风险：</b>状态靠分段高亮表达，需要保证选中态足够清晰。<br><a class="openlink" href="a-pinned-segmented.html" target="_blank">打开完整版 →</a></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head"><span class="tag">B</span><h2>悬浮双态胶囊</h2><span class="why">把切换放到手边，让它就地变身</span></div>
+    <div class="frames">
+      <div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="b-floating-dock.html?mode=preview"></iframe></div></div>
+      <div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="b-floating-dock.html?mode=edit"></iframe></div></div>
+    </div>
+    <div class="note">
+      <div><b>做什么：</b>顶栏不再放模式按钮。正文下方浮一枚胶囊：预览态是「✎ 编辑」，编辑态原地展开成「完成 · 保存」。同一个锚点，内容就地变形，不搬家。</div>
+      <div><b>动线：</b>控件贴着正文、靠近视线落点，读到底就能直接进入编辑；顶栏整条在两种模式下完全不变，减少「世界在闪」。</div>
+      <div><b>风险：</b>浮层会遮内容（已留 168px 底部安全区）；窄屏需要退化为贴边。<br><a class="openlink" href="b-floating-dock.html" target="_blank">打开完整版 →</a></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head"><span class="tag">C</span><h2>就地编辑 · 内容锚定</h2><span class="why">让切换长在文档上，而不是顶栏上</span></div>
+    <div class="frames">
+      <div class="frame"><span class="tag">预览</span><div class="vp"><iframe src="c-in-place.html?mode=preview"></iframe></div></div>
+      <div class="frame"><span class="tag">编辑</span><div class="vp"><iframe src="c-in-place.html?mode=edit"></iframe></div></div>
+    </div>
+    <div class="note">
+      <div><b>做什么：</b>模式控件不在顶栏，而在正文页面右上角。预览时是一枚安静的「✎ 编辑」小胶囊；编辑时同一位置变成「编辑中 · 完成」的状态条。<b>「完成」= 先保存再回到阅读</b>，把「退出」和「保存」合成一个动作。</div>
+      <div><b>动线：</b>控件跟着文档走，落在纸面、不落在 chrome；进出永远在同一个内容相对位置，阅读优先、最克制。</div>
+      <div><b>风险：</b>控件藏在正文区，弱于顶栏的可见性（已常显、非 hover 才出现）；实现上要把「完成」接 finishEditing。<br><a class="openlink" href="c-in-place.html" target="_blank">打开完整版 →</a></div>
+    </div>
+  </section>
+
+  <p class="sub" style="margin-top:6px">三版都复用同一个 V5Editor 实例、都保留 ⌘1/2/3 快捷键、都满足「切预览前先存成功、失败留编辑态」。选定后可单独做一版「B 的胶囊 + A 的分段高亮」的融合。</p>
+</div>
+</body>
+</html>

@@ -6,6 +6,8 @@ import type { Editor } from '@v5md/view'
 import { createApi, type Note, type NoteRevision, type NoteTrashItem, type TreeNode } from '../service/api'
 import { ConflictError } from '../service/request'
 import { Draft } from '../models/draft'
+import { readNoteGroup, readNoteSort, type NoteGroupMode, type NoteSortMode } from '../models/sidebarBrowse'
+import { OFFICIAL_SERVER, normalizeServer, readServerSettings, writeServerSettings } from '../models/serverSettings'
 import { resolveDirty, type DirtyChoice } from './useDirtyNavigation'
 import { setDirtyCheck, watchClose } from '../utils/window'
 import { useProfile } from './useProfile'
@@ -16,7 +18,10 @@ type DialogState =
   | { kind: 'confirm'; title: string; message: string; confirmLabel: string; danger: boolean; action: () => Promise<void> }
 
 const clientId = import.meta.env.VITE_CLIENT_ID || 'd9df3c0228c05e5c61db46348bcadf6e'
-const server = ref(localStorage.getItem('v5notes-server') || '')
+const storedServerSettings = readServerSettings()
+const server = ref(storedServerSettings.server)
+/** true 表示使用代码里的官方地址；页面上只显示"官方服务器"，不渲染 URL。 */
+const useOfficialServer = ref(storedServerSettings.official)
 const username = ref(localStorage.getItem('v5notes-username') || '')
 const password = ref('')
 const token = ref(localStorage.getItem('v5notes-token') || '')
@@ -37,6 +42,10 @@ const outlineVisible = ref(defaultOutlineVisible.value)
 const toolbarVisible = ref(localStorage.getItem('v5notes-toolbar-visible') !== 'false')
 const sidebarSearchVisible = ref(false)
 const workspaceMenuOpen = ref(false)
+const storedNoteGroup = localStorage.getItem('v5notes-note-group')
+const noteGroup = ref<NoteGroupMode>(readNoteGroup(storedNoteGroup))
+if (storedNoteGroup !== noteGroup.value) localStorage.setItem('v5notes-note-group', noteGroup.value)
+const noteSort = ref<NoteSortMode>(readNoteSort(localStorage.getItem('v5notes-note-sort')))
 const settingsDialogOpen = ref(false)
 const activeActionMenu = ref<'note' | 'view' | null>(null)
 const sidebarWidth = ref(Number(localStorage.getItem('v5notes-sidebar-width')) || 286)
@@ -89,7 +98,13 @@ const {
 } = useProfile(api)
 const content = computed({
   get: () => draft.note?.content ?? '',
-  set: (value: string) => draft.edit(value),
+  set: (value: string) => {
+    if (editorMode.value === 'preview') {
+      void commitPreviewChange(value)
+      return
+    }
+    draft.edit(value)
+  },
 })
 
 function report(cause: unknown): void {
@@ -142,6 +157,70 @@ function setDefaultDirectoryVisible(visible: boolean): void {
 function setDefaultTreeExpanded(expanded: boolean): void {
   defaultTreeExpanded.value = expanded
   localStorage.setItem('v5notes-default-tree-expanded', String(expanded))
+}
+
+/**
+ * 保存「服务器」设置。未登录时立即生效；已登录且地址变化时，
+ * 旧 token 在新服务器上一定无效，所以确认后退出登录重新来。
+ */
+function saveServerSettings(address: string, official: boolean): void {
+  let normalized: string
+  try {
+    normalized = official ? OFFICIAL_SERVER : normalizeServer(address)
+  } catch {
+    return
+  }
+  const changed = normalized !== server.value || official !== useOfficialServer.value
+  const apply = (): void => {
+    server.value = normalized
+    useOfficialServer.value = official
+    writeServerSettings({ server: normalized, official })
+  }
+  if (!changed || !token.value) {
+    apply()
+    return
+  }
+  settingsDialogOpen.value = false
+  requestDelete(
+    '更改服务器',
+    '保存后会退出当前账号，需要用新服务器上的账号重新登录；当前未保存的笔记草稿会被清除。',
+    '保存并重新登录',
+    async () => {
+      apply()
+      token.value = ''
+      refreshToken.value = ''
+      password.value = ''
+      sessionExpired.value = false
+      currentUser.value = null
+      localStorage.removeItem('v5notes-token')
+      localStorage.removeItem('v5notes-refresh-token')
+      localStorage.removeItem('v5notes-last-note')
+      localStorage.removeItem('v5notes-last-dir')
+      selectedId.value = ''
+      editorInstance.value = null
+      selectedDir.value = '0'
+      draft.clear()
+      notes.value = []
+      directories.value = []
+      trashOpen.value = false
+      trashRows.value = []
+      notice.value = ''
+      error.value = ''
+      directoryVisible.value = defaultDirectoryVisible.value
+      focusMode.value = false
+    },
+    false,
+  )
+}
+
+function setNoteGroup(mode: NoteGroupMode): void {
+  noteGroup.value = mode
+  localStorage.setItem('v5notes-note-group', mode)
+}
+
+function setNoteSort(mode: NoteSortMode): void {
+  noteSort.value = mode
+  localStorage.setItem('v5notes-note-sort', mode)
 }
 
 function syncActionMenu(name: 'note' | 'view', event: Event): void {
@@ -338,7 +417,7 @@ async function login(): Promise<void> {
     refreshToken.value = result.refresh_token || ''
     password.value = ''
     sessionExpired.value = false
-    localStorage.setItem('v5notes-server', server.value)
+    writeServerSettings({ server: server.value, official: useOfficialServer.value })
     localStorage.setItem('v5notes-username', username.value)
     localStorage.setItem('v5notes-token', result.access_token)
     if (result.refresh_token) localStorage.setItem('v5notes-refresh-token', result.refresh_token)
@@ -433,6 +512,17 @@ function showConflict(cause: unknown, action: 'save' | 'restore', revisionId?: s
   return true
 }
 
+async function commitPreviewChange(value: string): Promise<void> {
+  try {
+    await draft.commit(value, note => api.update(note))
+  } catch (cause) {
+    if (!showConflict(cause, 'save')) report(cause)
+    return
+  }
+  if (draft.dirty) return
+  try { await refreshDirectories() } catch (cause) { report(cause) }
+}
+
 async function persistDraft(force = false): Promise<boolean> {
   try {
     await draft.save(note => api.update(note, force))
@@ -450,12 +540,13 @@ async function save(): Promise<void> {
   }
 }
 
-async function finishEditing(): Promise<void> {
+async function finishEditing(): Promise<boolean> {
   if (draft.dirty) {
-    if (!(await persistDraft())) return
+    if (!(await persistDraft())) return false
     try { await refreshDirectories() } catch (cause) { report(cause) }
   }
   editorMode.value = 'preview'
+  return true
 }
 
 async function openHistory(): Promise<void> {
@@ -742,5 +833,5 @@ onBeforeUnmount(() => {
 })
 
 
-return { clientId, server, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { clientId, server, useOfficialServer, saveServerSettings, username, password, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, refreshProfile, openProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

@@ -44,6 +44,7 @@ public class NotesConvert {
         target.setPid(directory.getPid());
         target.setLabel(directory.getName());
         target.setType(1);
+        target.setUpdateTime(directory.getUpdateTime());
         return target;
     }
 
@@ -56,6 +57,7 @@ public class NotesConvert {
         target.setPid(note.getDirId());
         target.setLabel(note.getName());
         target.setType(2);
+        target.setUpdateTime(note.getUpdateTime());
         return target;
     }
 
@@ -80,6 +82,7 @@ public class NotesConvert {
         target.setPid(nnVo.getDirId());
         target.setLabel(nnVo.getName());
         target.setType(2);
+        target.setUpdateTime(nnVo.getUpdateTime());
         return target;
     }
 

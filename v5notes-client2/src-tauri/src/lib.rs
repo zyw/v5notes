@@ -17,31 +17,68 @@ fn exit_app(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn open_project_link() -> Result<(), String> {
+    open_with_system(PROJECT_URL).map_err(|error| format!("无法打开项目主页：{error}"))
+}
+
+/// v5md asks for this when a note link is opened inside the webview.
+/// The editor decides the gesture; this command only hands an http(s) or mailto URL to the OS.
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let Some(target) = openable_external_url(&url) else {
+        return Err("只能打开 http、https 或 mailto 链接".into());
+    };
+    open_with_system(target).map_err(|error| format!("无法打开链接：{error}"))
+}
+
+fn openable_external_url(url: &str) -> Option<&str> {
+    let target = url.trim();
+    if target.is_empty() || target.chars().any(|ch| ch.is_control() || ch.is_whitespace()) {
+        return None;
+    }
+    let lower = target.to_ascii_lowercase();
+    if let Some(address) = lower.strip_prefix("mailto:") {
+        if address.is_empty() {
+            return None;
+        }
+        return Some(target);
+    }
+    let scheme_len = if lower.starts_with("https://") {
+        "https://".len()
+    } else if lower.starts_with("http://") {
+        "http://".len()
+    } else {
+        return None;
+    };
+    let rest = &target[scheme_len..];
+    if rest.is_empty() || rest.starts_with('/') || rest.starts_with('.') {
+        return None;
+    }
+    Some(target)
+}
+
+fn open_with_system(url: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     let mut command = {
         let mut command = Command::new("open");
-        command.arg(PROJECT_URL);
+        command.arg(url);
         command
     };
 
     #[cfg(target_os = "windows")]
     let mut command = {
-        let mut command = Command::new("cmd");
-        command.args(["/C", "start", "", PROJECT_URL]);
+        let mut command = Command::new("rundll32");
+        command.args(["url.dll,FileProtocolHandler", url]);
         command
     };
 
     #[cfg(all(unix, not(target_os = "macos")))]
     let mut command = {
         let mut command = Command::new("xdg-open");
-        command.arg(PROJECT_URL);
+        command.arg(url);
         command
     };
 
-    command
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| format!("无法打开项目主页：{error}"))
+    command.spawn().map(|_| ()).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -404,6 +441,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             exit_app,
             open_project_link,
+            open_external_url,
             export_pdf,
             fetch_image_data_url,
             autostart_is_supported,
@@ -441,4 +479,31 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("failed to start v5notes client");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::openable_external_url;
+
+    #[test]
+    fn accepts_web_and_mail_links() {
+        assert_eq!(
+            openable_external_url(" https://example.com/a?b=1&c=2 "),
+            Some("https://example.com/a?b=1&c=2")
+        );
+        assert_eq!(
+            openable_external_url("mailto:hi@example.com"),
+            Some("mailto:hi@example.com")
+        );
+    }
+
+    #[test]
+    fn rejects_local_and_script_links() {
+        assert_eq!(openable_external_url("javascript:alert(1)"), None);
+        assert_eq!(openable_external_url("file:///etc/passwd"), None);
+        assert_eq!(openable_external_url("/notes/1"), None);
+        assert_eq!(openable_external_url("https://example.com/a b"), None);
+        assert_eq!(openable_external_url("http://"), None);
+        assert_eq!(openable_external_url("mailto:"), None);
+    }
 }

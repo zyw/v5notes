@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I · 纸角轻标签 — 预览 / 编辑切换</title>
+<link rel="stylesheet" href="../editor-toolbar/shared/harness.css">
+<style>
+.c-header { position: relative; min-height: 52px; padding: 0 18px 0 22px; gap: 12px; }
+.c-header .header-right { gap: 6px; }
+.c-identity { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.c-identity .note-name { max-width: 360px; font-weight: 600; }
+.c-cmd { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 7px 0 11px; border: 1px solid #e6eae1; border-radius: 8px; color: #6b7a6f; background: #fbfbf7; font-size: 11.5px; }
+.c-cmd:hover { border-color: #cfdad1; color: var(--accent); background: #f6f9f3; }
+.c-cmd kbd { padding: 2px 5px; border: 1px solid #e2e7dc; border-radius: 5px; color: #98a29a; background: #fff; font: 600 9.5px/1.4 var(--font-ui); }
+.c-save { min-width: 72px; }
+.c-save.is-clean { background: #eef2ec; color: #6c7f72; }
+.c-save.is-clean .ic { color: #8fa294; }
+.c-save.is-clean:hover { background: #e6ece3; color: var(--accent); }
+.c-strip { display: flex; align-items: center; gap: 2px; height: 38px; padding: 0 18px 0 37px; border-bottom: 1px solid #f2f2ec; background: var(--paper); }
+.c-strip .fmt-btn { width: 30px; height: 27px; border-radius: 6px; }
+.c-strip .fmt-btn:hover { background: #f2f4ee; }
+.c-strip .c-strip-tail { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.c-strip .c-aa { display: inline-flex; align-items: center; gap: 5px; height: 27px; padding: 0 8px; border-radius: 6px; color: #5f6f63; font-size: 11.5px; }
+.c-strip .c-aa:hover, .c-strip .c-aa[aria-expanded="true"] { background: #f2f4ee; color: var(--accent); }
+.c-strip .c-aa .aa { font-weight: 650; letter-spacing: -.02em; }
+.c-strip .c-aa .num { color: #94a096; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.c-strip .c-hide { display: inline-flex; align-items: center; gap: 5px; height: 27px; padding: 0 8px; border-radius: 6px; color: #98a29a; font-size: 10.5px; }
+.c-strip .c-hide:hover { background: #f2f4ee; color: var(--accent); }
+.c-strip .c-hide .ic { width: 13px; height: 13px; }
+.c-strip .font-panel { top: calc(100% + 9px); }
+.c-strip .menu-anchor { position: relative; }
+.c-reveal { display:none; position: absolute; z-index: 8; top: 8px; left: 40px; align-items: center; gap: 7px; height: 24px; padding: 0 9px; border: 1px solid #eceee6; border-radius: 6px; color: #a2aca3; background: #fdfdf9; font-size: 10.5px; }
+body[data-mode="edit"][data-fmt="off"] .c-reveal { display: inline-flex; }
+.c-reveal:hover { color: var(--accent); border-color: #dbe3d8; }
+body[data-fmt="on"] .c-reveal { display: none; }
+body[data-fmt="off"] .doc { padding-top: 40px; }
+body[data-fmt="off"] .source { padding-top: 34px; }
+.c-hud { position: fixed; z-index: 95; right: 18px; bottom: 18px; display: none; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border: 1px solid #e3e8de; border-radius: 999px; background: #fffefaf2; box-shadow: 0 10px 28px #27342d1f; backdrop-filter: blur(10px); }
+body.is-focus .c-hud { display: flex; }
+.c-hud .save-state { font-size: 11px; }
+.c-hud .vr { height: 15px; margin: 0 2px; }
+.c-hud button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; color: #526355; font-size: 11.5px; }
+.c-hud button:hover { background: #edf1eb; color: var(--accent); }
+body.is-focus .c-header { display: none; }
+.palette { width: min(620px, calc(100vw - 40px)); }
+.palette-group { padding-top: 9px; }
+.palette-group:first-child { padding-top: 4px; }
+.palette-list { padding: 6px 7px 8px; }
+.palette-item .pi-copy strong { color: #33463a; font-size: 12.5px; font-weight: 550; }
+.palette-item .pi-copy span { color: #94a096; font-size: 10.5px; }
+.palette-item .pi-check { padding: 2px 7px; border-radius: 999px; color: var(--accent); background: #eaf0e6; font-size: 10px; font-weight: 600; }
+
+.i-mode-anchor { position: absolute; z-index: 24; top: 16px; right: 30px; }
+.i-chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px 0 6px; border-radius: 999px; color: #5f6f63; background: #fffefaf5; border: 1px solid #e4e9df; box-shadow: 0 6px 16px #27342d12, 0 1px 2px #27342d0d; font-size: 12px; font-weight: 600; transition: color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.i-chip:hover { color: var(--accent); border-color: #cddacb; box-shadow: 0 8px 20px #27342d17; }
+.i-chip-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #eaf0e6; color: #3d6c57; }
+.i-bar { position: absolute; z-index: 24; top: 14px; right: 26px; display: flex; align-items: center; gap: 9px; height: 38px; padding: 0 5px 0 10px; border-radius: 999px; background: #fffefaf5; border: 1px solid #e3e8de; box-shadow: 0 8px 20px #27342d14, 0 1px 2px #27342d0d; backdrop-filter: blur(8px); }
+.i-bar-state { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 11.5px; font-weight: 650; letter-spacing: .01em; }
+.i-dot { width: 7px; height: 7px; border-radius: 50%; background: #4d8060; box-shadow: 0 0 0 3px #4d806026; }
+.i-bar .save-state { font-size: 11px; }
+.i-bar-sep { width: 1px; height: 16px; background: #e5eae0; }
+.i-done { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border-radius: 999px; color: #fff; background: linear-gradient(180deg, #3d6c57, #2f5644); box-shadow: 0 3px 9px #2446364d, inset 0 1px 0 #ffffff2b; font-size: 12px; font-weight: 600; }
+.i-done:hover { background: linear-gradient(180deg, #35614d, #244636); }
+.c-preview-label { display: inline-flex; align-items: center; gap: 6px; color: #a0aaa1; font-size: 11px; white-space: nowrap; }
+.doc { padding-right: 44px; }
+.source { padding-right: 44px; }
+.i-mode-anchor { right: 22px; }
+.i-bar { right: 14px; }
+.i-dock { position: absolute; z-index: 26; top: 16px; right: 24px; display: flex; align-items: center; gap: 6px; cursor: grab; touch-action: none; user-select: none; }
+.i-dock.is-dragging { cursor: grabbing; }
+.i-dock .i-mode-anchor, .i-dock .i-bar { position: static; top: auto; right: auto; }
+.i-grip { display: flex; flex-direction: column; gap: 2px; padding: 2px 1px; opacity: 0; transition: opacity .15s ease; }
+.i-dock:hover .i-grip, .i-dock.is-dragging .i-grip { opacity: .8; }
+.i-grip i { width: 3px; height: 3px; border-radius: 50%; background: #8ea093; }
+.i-rail { position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: 96px; border-left: 1px dashed #cddacb; background: linear-gradient(90deg, #edf2ea00, #edf2ea66); opacity: 0; pointer-events: none; transition: opacity .16s ease; }
+body.is-dock-drag .i-rail { opacity: 1; }
+</style>
+</head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9 4v16"/><path d="m15.2 9.4-2.8 2.6 2.8 2.6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m9 8-4 4 4 4M15 8l4 4-4 4"/></symbol>
+  <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3.5H3.5V8M16 3.5h4.5V8M20.5 16v4.5H16M8 20.5H3.5V16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6"/><path d="M12 7.8v4.5l2.9 1.8"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M4.5 3.5h9.6L19 8.4v11.1a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1z"/><path d="M8 3.8v5.4h6.6V3.8M6.8 20.5v-7h8.4v7"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m6.5 14.5 5.5-5.5 5.5 5.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M14.5 4v16"/><path d="m16.6 9.4 2.6 2.6-2.6 2.6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c2.4 2.3 3.6 5.2 3.6 8.4s-1.2 6.1-3.6 8.4c-2.4-2.3-3.6-5.2-3.6-8.4S9.6 5.9 12 3.6Z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3.2h7.6l4 4V20.8h-11.6z"/><path d="M14 3.4v4.2h4.1"/><path d="M9.2 12.6h6M9.2 16.2h6"/></symbol>
+  <symbol id="i-md" viewBox="0 0 24 24"><rect x="3.2" y="5.2" width="17.6" height="13.6" rx="2"/><path d="M6.6 15.6V9.2l2.4 3 2.4-3v6.4M15 9.2v4.6M15 9.2l-2 2.8M18.4 13.8l-2.2-2.4M18.4 11.4v4.2"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m4.4 17.2 4.6-4.6 3.1 3.1L15.6 12l4 4.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.6 12.4 4.6 4.6L19.4 6.6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.4" y="7.2" width="11" height="12" rx="1.6"/><path d="M15 7.2V5.2a1 1 0 0 0-1-1H5.2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1H8"/></symbol>
+  <symbol id="i-rename" viewBox="0 0 24 24"><path d="m14.4 4.4 4 4M4 20l1-4.4L16.4 4.2a1.6 1.6 0 0 1 2.3 2.3L7.4 17.8 4 20Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6.4h16M9.4 6.4V4.2h5.2v2.2M6.2 6.4l.9 13.2h9.8l.9-13.2M9.8 10v6.2M14.2 10v6.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.6 6.6a1.6 1.6 0 0 1 1.6-1.6h4l1.8 2.2h6.8a1.6 1.6 0 0 1 1.6 1.6v9.2a1.6 1.6 0 0 1-1.6 1.6H5.2a1.6 1.6 0 0 1-1.6-1.6z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3.6h7.4l4 4v12.8H6z"/><path d="M13.2 3.8v4h3.8M9 12.4h5.6M9 16h5.6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9.5 6.5 5.5 5.5-5.5 5.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4 4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.6a7.6 7.6 0 0 0 0-3.2l1.8-1.3-1.8-3.2-2.1.8a7.5 7.5 0 0 0-2.8-1.6L14.2 2.8h-4.4l-.3 2.3a7.5 7.5 0 0 0-2.8 1.6l-2.1-.8L2.8 9.1l1.8 1.3a7.6 7.6 0 0 0 0 3.2l-1.8 1.3 1.8 3.2 2.1-.8a7.5 7.5 0 0 0 2.8 1.6l.3 2.3h4.4l.3-2.3a7.5 7.5 0 0 0 2.8-1.6l2.1.8 1.8-3.2z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-font" viewBox="0 0 24 24"><path d="M4 20 10.2 4h1.6L18 20M7.1 14.2h7.8"/></symbol>
+  <symbol id="i-toolbar" viewBox="0 0 24 24"><rect x="3.2" y="6.4" width="17.6" height="11.2" rx="2.2"/><path d="M7 10.2v3.6M10.2 10.2v3.6M13.4 10.2v3.6M16.6 10.2v3.6"/></symbol>
+</svg>
+<div class="app">
+  <aside class="sidebar" aria-label="笔记目录">
+  <div class="brand"><img src="../../src/assets/brand-icon.png" alt=""><span>V5Notes</span></div>
+  <label class="search"><svg class="ic ic-16" aria-hidden="true"><use href="#i-search"/></svg><input placeholder="搜索笔记" aria-label="搜索笔记"><kbd>⌘K</kbd></label>
+  <div class="tree-heading"><span>笔记</span><div class="ctl"><button title="新建笔记" aria-label="新建笔记"><svg class="ic ic-16"><use href="#i-plus"/></svg></button><button title="新建目录" aria-label="新建目录"><svg class="ic ic-16"><use href="#i-folder"/></svg></button></div></div>
+  <nav class="tree">
+    <div class="dir-row"><span class="caret"><svg class="ic"><use href="#i-chev-right"/></svg></span><svg class="tree-ic"><use href="#i-folder"/></svg><span class="tree-label">随笔</span></div>
+    <div class="note-row active"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">春分 · 阅读与编辑的动线</span></div>
+    <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">秋分的留白</span></div>
+    <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">读《一日三秋》</span></div>
+    <div class="dir-row"><span class="caret"><svg class="ic"><use href="#i-chev-right"/></svg></span><svg class="tree-ic"><use href="#i-folder"/></svg><span class="tree-label">产品笔记</span></div>
+    <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">编辑器工具条改版</span></div>
+    <div class="note-row"><svg class="tree-ic"><use href="#i-note"/></svg><span class="tree-label">同步策略与冲突</span></div>
+  </nav>
+  <div class="tree-side"><button><svg class="ic ic-16"><use href="#i-trash"/></svg>回收站</button><button><svg class="ic ic-16"><use href="#i-settings"/></svg>设置</button></div>
+</aside>
+  <main class="pane">
+    <div class="pane-top"><header class="header c-header">
+  <div class="header-left">
+    <button class="btn btn-icon is-quiet" aria-label="收起侧栏" title="收起侧栏"><svg class="ic ic-18"><use href="#i-sidebar"/></svg></button>
+    <div class="c-identity"><span class="note-name" contenteditable="true" spellcheck="false" aria-label="笔记名">春分 · 阅读与编辑的动线</span><span class="c-preview-label" data-only="preview"><svg class="ic ic-14"><use href="#i-eye"/></svg>预览中</span></div>
+  </div>
+  <div class="header-right">
+    <button class="c-cmd" data-act="palette" aria-label="打开命令面板"><span>命令</span><kbd>⌘K</kbd></button>
+    <div class="menu-anchor">
+  <button class="btn btn-icon" data-menu-trigger="note" aria-expanded="false" title="更多笔记操作" aria-label="更多笔记操作"><svg class="ic ic-18"><use href="#i-menu"/></svg></button>
+  <div class="menu" data-menu-panel="note" hidden>
+    <button><span class="mi-ic"><svg class="ic ic-16"><use href="#i-rename"/></svg></span><span class="mi-copy"><strong>重命名</strong><span>改笔记标题</span></span></button>
+    <button><span class="mi-ic"><svg class="ic ic-16"><use href="#i-copy"/></svg></span><span class="mi-copy"><strong>复制 Markdown</strong><span>整篇复制到剪贴板</span></span></button>
+    <button data-act="history"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-clock"/></svg></span><span class="mi-copy"><strong>历史记录</strong><span>查看与恢复旧版本</span></span></button>
+    <div class="menu-sep"></div>
+    <button class="danger"><span class="mi-ic"><svg class="ic ic-16"><use href="#i-trash"/></svg></span><span class="mi-copy"><strong>删除笔记</strong><span>移入回收站</span></span></button>
+  </div>
+</div>
+<button class="btn btn-icon" title="显示大纲" aria-label="显示大纲"><svg class="ic ic-19"><use href="#i-panel"/></svg></button>
+  </div>
+</header><div class="c-strip" data-only="fmt" role="toolbar" aria-label="编辑器工具条">
+  <button class="fmt-btn" title="公式"><span class="g">Σ</span></button>
+  <button class="fmt-btn" title="上标"><span class="g-x">x<sup>2</sup></span></button>
+  <button class="fmt-btn" title="加粗"><span class="g">B</span></button>
+  <button class="fmt-btn" title="斜体"><span class="g-i">I</span></button>
+  <button class="fmt-btn" title="下划线"><span class="g-u">U</span></button>
+  <button class="fmt-btn" title="代码"><span class="g-x">&lt;&gt;</span></button>
+  <button class="fmt-btn" title="删除线"><span class="g-s">S</span></button>
+  <button class="fmt-btn" title="提示块"><span class="g-x">💡</span></button>
+  <span class="vr"></span>
+  <button class="fmt-btn" title="复制"><svg class="ic ic-16"><use href="#i-copy"/></svg></button>
+  <div class="c-strip-tail">
+    <div class="menu-anchor"><button class="c-aa" data-menu-trigger="font" aria-expanded="false" title="设置字号" aria-label="设置字号"><span class="aa">Aa</span><span class="num" data-bind="font-value">17</span></button><div class="menu font-panel" data-menu-panel="font" hidden>
+  <div class="font-head"><strong>正文字号</strong><span>只影响阅读与编辑</span></div>
+  <div class="font-value"><button class="font-step" data-act="font-step" data-delta="-1" aria-label="减小字号">−</button><div class="font-read"><span data-bind="font-value">17</span><small> px</small></div><button class="font-step" data-act="font-step" data-delta="1" aria-label="增大字号">+</button></div>
+  <div class="font-track"><input type="range" min="13" max="26" value="17" step="1" aria-label="字号滑块" data-font-range></div>
+  <div class="font-presets"><button data-act="font-preset" data-size="15" data-font-value="15">小 15</button><button data-act="font-preset" data-size="17" data-font-value="17" aria-pressed="true">标准 17</button><button data-act="font-preset" data-size="19" data-font-value="19">大 19</button><button data-act="font-preset" data-size="22" data-font-value="22">特大 22</button></div>
+  <div class="font-note"><span>记在本机，下次打开沿用</span><button class="btn is-bare" data-act="font-preset" data-size="17">重置</button></div>
+</div></div>
+    <button class="c-hide" data-act="fmt-toggle" title="隐藏编辑器工具条" aria-label="隐藏编辑器工具条"><svg class="ic"><use href="#i-chev-up"/></svg><span>隐藏</span></button>
+  </div>
+</div></div>
+    <div class="canvas"><button class="c-reveal" data-act="fmt-toggle" aria-label="显示编辑器工具条" title="显示编辑器工具条（⌘/）"><svg class="ic" width="12" height="12"><use href="#i-chev-down"/></svg>格式<kbd style="border:0;color:#b3bdb4">⌘/</kbd></button><div class="i-dock" id="i-dock">
+  <span class="i-grip" aria-hidden="true"><i></i><i></i><i></i></span>
+  <div class="i-mode-anchor" data-only="preview">
+    <button class="i-chip" data-act="mode" data-value="edit" title="编辑（⌘1）"><span class="i-chip-ic"><svg class="ic ic-14"><use href="#i-pencil"/></svg></span><span>编辑</span></button>
+  </div>
+  <div class="i-bar" data-only="not-preview">
+    <span class="i-bar-state"><span class="i-dot"></span>编辑中</span>
+    <span class="i-bar-sep" aria-hidden="true"></span>
+    <button class="i-done" data-c-done title="完成：保存并回到阅读"><svg class="ic ic-14"><use href="#i-check"/></svg><span>完成</span></button>
+  </div>
+</div>
+<div class="i-rail" aria-hidden="true"></div><div class="scroll" data-only="not-source">
+  <article class="doc" spellcheck="false">
+    <div class="meta"><span>2026 年 11 月 9 日</span><span>1,180 字</span><span>约 6 分钟</span></div>
+    <h1>春分 · 阅读与编辑的动线</h1>
+    <p class="lede">阅读和编辑不是两个房间，而是一段路。这条路好不好走，取决于你每次要迈几步、拐几个弯。</p>
+    <p>上一版的切换是「预览态一个大绿按钮叫编辑，编辑态一个小灰按钮叫预览」。同一个动作，两次出现的位置、形状、轻重都不一样——每切换一次，眼睛都要重新去找它。</p>
+    <h2>一、别扭的不是按钮，是它每次都在搬家</h2>
+    <p>真正让人停顿的，不是颜色，而是定位成本：你要先想起「现在是什么模式」，再在顶栏扫一遍，找到那个和刚才长得不一样的按钮。进出还不对称——进入编辑很显眼，退出编辑却躲在保存旁边。</p>
+    <ul>
+      <li><strong>位置稳定</strong>：同一个控件，永远待在同一个坐标</li>
+      <li><strong>形状稳定</strong>：不为「进入」和「退出」换两副面孔</li>
+      <li><strong>状态一眼可辨</strong>：不用读文字也知道自己在哪</li>
+    </ul>
+    <blockquote>好的切换控件应该像灯的开关：位置固定，状态清楚，按下去就知道自己在哪。</blockquote>
+    <p>下面三个方向，都在回答同一个问题：从「读」走到「改」，再走回来，这条动线能不能更短、更直、更让人放心。</p>
+  </article>
+</div>
+<div class="source" data-only="source">
+<span class="ln">1</span><span class="tok-h"># 春分 · 阅读与编辑的动线</span>
+<span class="ln">2</span>
+<span class="ln">3</span>阅读和编辑不是两个房间，而是一段路。
+<span class="ln">4</span>这条路好不好走，取决于你每次要迈几步。
+<span class="ln">5</span>
+<span class="ln">6</span><span class="tok-h">## 一、别扭的不是按钮，是它每次都在搬家</span>
+<span class="ln">7</span>
+<span class="ln">8</span>- 位置稳定：同一个控件，永远待在同一个坐标
+<span class="ln">9</span>- 形状稳定：不为进入和退出换两副面孔
+<span class="ln">10</span>- 状态一眼可辨：不用读文字也知道自己在哪
+</div></div>
+    <div class="c-hud"><span class="save-state" data-bind="save-state"><i></i><span>已保存</span></span><span class="vr"></span><button data-act="focus"><svg class="ic ic-14"><use href="#i-focus"/></svg>退出专注</button><button><svg class="ic ic-14"><use href="#i-menu"/></svg>目录</button></div>
+  </main>
+</div>
+<div class="backdrop palette-backdrop" data-dialog="palette" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="命令面板">
+    <div class="palette-input"><svg class="ic ic-17" aria-hidden="true"><use href="#i-search"/></svg><input placeholder="搜索命令或导出方式…" aria-label="搜索命令" autocomplete="off"><kbd>ESC</kbd></div>
+    <div class="palette-state"><span>当前 · <strong data-bind="palette-mode">所见即所得</strong></span><span data-bind="palette-count">12 项可用</span></div>
+    <div class="palette-list">
+      <div class="palette-group">显示模式</div>
+      <button class="palette-item" data-act="mode" data-value="edit" data-mode-item="edit"><svg class="ic ic-16"><use href="#i-pencil"/></svg><span class="pi-copy"><strong data-bind="edit-mode-label">回到编辑</strong><span>所见即所得，继续修改正文</span></span><span class="pi-kbd">⌘1</span></button>
+      <button class="palette-item" data-act="mode" data-value="source" data-mode-item="source" data-only="not-preview"><svg class="ic ic-16"><use href="#i-code"/></svg><span class="pi-copy"><strong>源码模式</strong><span>编辑 Markdown 原文</span></span><span class="pi-kbd">⌘2</span></button>
+      <button class="palette-item" data-act="mode" data-value="preview" data-mode-item="preview" data-only="not-preview"><svg class="ic ic-16"><use href="#i-eye"/></svg><span class="pi-copy"><strong>预览</strong><span>只读，按发布的样子看</span></span><span class="pi-kbd">⌘3</span></button>
+      <div class="palette-group">视图</div>
+      <button class="palette-item" data-act="focus" data-only="not-preview"><svg class="ic ic-16"><use href="#i-focus"/></svg><span class="pi-copy"><strong>专注写作</strong><span>收起目录，只留正文</span></span><span class="pi-kbd">⌘.</span></button>
+      <button class="palette-item" data-act="history"><svg class="ic ic-16"><use href="#i-clock"/></svg><span class="pi-copy"><strong>历史记录</strong><span>查看与恢复旧版本</span></span><span class="pi-kbd">⌘Y</span></button>
+      <div class="palette-group">导出</div>
+      <button class="palette-item" data-act="export" data-format="html"><svg class="ic ic-16"><use href="#i-globe"/></svg><span class="pi-copy"><strong>导出 HTML 网页</strong><span>带样式，可离线打开</span></span><span class="pi-kbd">.html</span></button>
+      <button class="palette-item" data-act="export" data-format="pdf"><svg class="ic ic-16"><use href="#i-doc"/></svg><span class="pi-copy"><strong>导出 PDF 文档</strong><span>适合打印与发给别人</span></span><span class="pi-kbd">.pdf</span></button>
+      <button class="palette-item" data-act="export" data-format="md"><svg class="ic ic-16"><use href="#i-md"/></svg><span class="pi-copy"><strong>导出 Markdown</strong><span>原始 .md，跨工具通用</span></span><span class="pi-kbd">.md</span></button>
+      <button class="palette-item" data-act="export" data-format="png"><svg class="ic ic-16"><use href="#i-image"/></svg><span class="pi-copy"><strong>导出图片长图</strong><span>整篇渲染成一张 PNG</span></span><span class="pi-kbd">.png</span></button>
+    </div>
+    <div class="palette-foot"><span>↑↓ 选择 · ↵ 执行 · esc 关闭</span><span>只列出当前模式可用的命令</span></div>
+  </div>
+</div><div class="backdrop" data-dialog="history" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+    <div class="dialog-head"><div><h2 id="hist-title">历史记录</h2><p>春分 · 阅读与编辑的动线 · 共 18 个版本</p></div><button class="dialog-close" data-act="close-dialog" aria-label="关闭">×</button></div>
+    <div class="hist-body"><div class="hist-list"><button class="selected"><strong>今天 16:12</strong><span>1,180 字 · 当前版本</span></button><button><strong>今天 14:48</strong><span>1,126 字</span></button><button><strong>今天 11:03</strong><span>1,102 字</span></button><button><strong>昨天 22:31</strong><span>968 字</span></button></div>
+      <div class="hist-preview"><p><strong>别扭的不是按钮，是它每次都在搬家</strong></p><p>真正让人停顿的，不是颜色，而是定位成本：你要先想起现在是什么模式，再在顶栏扫一遍，找到那个和刚才长得不一样的按钮。</p></div></div>
+  </section>
+</div>
+<script src="../editor-toolbar/shared/harness.js"></script>
+<script>
+(function(){ document.addEventListener('click', function(e){
+  var b = e.target.closest('[data-c-done]'); if(!b) return; e.preventDefault();
+  if(window.V5 && V5.state.dirty){ V5.save(); setTimeout(function(){ V5.setMode('preview'); }, 600); }
+  else if(window.V5){ V5.setMode('preview'); }
+}, true); })();
+</script>
+<script>
+(function(){
+  var dock = document.getElementById('i-dock'); if(!dock) return;
+  var canvas = dock.parentElement;
+  var FIXED_RIGHT = 16, PAD = 8;
+  function clamp(){
+    var ch = canvas.clientHeight, dh = dock.offsetHeight;
+    var maxT = Math.max(PAD, ch - dh - PAD);
+    var t = parseFloat(dock.style.top); if (isNaN(t)) t = 16;
+    t = Math.min(maxT, Math.max(PAD, t));
+    dock.style.right = FIXED_RIGHT + 'px'; dock.style.top = t + 'px';
+  }
+  function save(){ try { localStorage.setItem('v5notes-mode-dock', JSON.stringify({ r: dock.style.right, t: dock.style.top })); } catch(e){} }
+  function restore(){ try { var s = JSON.parse(localStorage.getItem('v5notes-mode-dock') || 'null'); if (s) { dock.style.right = s.r; dock.style.top = s.t; } } catch(e){} }
+  var down = false, moved = false, sx = 0, sy = 0, sr = 0, st = 0, suppress = false;
+  dock.addEventListener('pointerdown', function(e){
+    if (e.button !== 0) return;
+    down = true; moved = false; sx = e.clientX; sy = e.clientY;
+    var cs = getComputedStyle(dock); sr = parseFloat(cs.right) || 24; st = parseFloat(cs.top) || 16;
+  });
+  window.addEventListener('pointermove', function(e){
+    if (!down) return;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!moved) {
+      if (Math.abs(dx) + Math.abs(dy) <= 5) return;
+      moved = true; suppress = true;
+      try { dock.setPointerCapture(e.pointerId); } catch(err){}
+      dock.classList.add('is-dragging'); document.body.classList.add('is-dock-drag');
+    }
+    dock.style.top = (st + dy) + 'px';
+    clamp();
+  });
+  function end(){ if (!down) return; down = false; dock.classList.remove('is-dragging'); document.body.classList.remove('is-dock-drag'); if (moved) save(); moved = false; }
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
+  dock.addEventListener('click', function(e){ if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; } }, true);
+  dock.addEventListener('dblclick', function(e){ if (e.target.closest('button')) return; dock.style.right = '24px'; dock.style.top = '16px'; clamp(); save(); });
+  new MutationObserver(function(){ requestAnimationFrame(clamp); }).observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
+  window.addEventListener('resize', clamp);
+  restore(); requestAnimationFrame(clamp);
+  window.__dock = { clamp: clamp, dock: dock, canvas: canvas };
+})();
+</script>
+</body></html>

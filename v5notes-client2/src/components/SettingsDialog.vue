@@ -1,17 +1,70 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import brandIcon from '../assets/brand-icon.png'
+import { OFFICIAL_SERVER, normalizeServer } from '../models/serverSettings'
 
-const props = defineProps<{ defaultOutlineVisible: boolean; defaultDirectoryVisible: boolean; defaultTreeExpanded: boolean }>()
+const props = defineProps<{
+  defaultOutlineVisible: boolean
+  defaultDirectoryVisible: boolean
+  defaultTreeExpanded: boolean
+  server: string
+  useOfficial: boolean
+}>()
 const emit = defineEmits<{
   close: []
   'set-default-outline-visible': [visible: boolean]
   'set-default-directory-visible': [visible: boolean]
   'set-default-tree-expanded': [expanded: boolean]
+  'save-server': [address: string, official: boolean]
 }>()
 const version = ref('读取中…')
+/** 官方地址只在代码里，勾选官方时输入框不显示 URL。 */
+const serverDraft = ref(props.useOfficial ? '' : props.server)
+const officialDraft = ref(props.useOfficial)
+const serverMessage = ref('')
+const serverError = ref('')
+const serverDirty = computed(() => {
+  if (officialDraft.value !== props.useOfficial) return true
+  if (officialDraft.value) return false
+  const draft = serverDraft.value.trim()
+  try {
+    return normalizeServer(draft) !== props.server
+  } catch {
+    return draft.length > 0 || props.server !== OFFICIAL_SERVER
+  }
+})
+
+watch(() => props.server, () => { serverMessage.value = '' })
+watch(() => props.useOfficial, value => { officialDraft.value = value })
+
+function toggleOfficial(event: Event): void {
+  const checked = (event.target as HTMLInputElement).checked
+  officialDraft.value = checked
+  serverError.value = ''
+  serverMessage.value = ''
+  if (!checked && !serverDraft.value && props.server !== OFFICIAL_SERVER) serverDraft.value = props.server
+}
+
+function onServerInput(event: Event): void {
+  serverDraft.value = (event.target as HTMLInputElement).value
+  serverError.value = ''
+  serverMessage.value = ''
+}
+
+function saveServer(): void {
+  serverError.value = ''
+  serverMessage.value = ''
+  try {
+    const address = officialDraft.value ? OFFICIAL_SERVER : normalizeServer(serverDraft.value)
+    if (!officialDraft.value) serverDraft.value = address
+    emit('save-server', address, officialDraft.value)
+    serverMessage.value = '已保存'
+  } catch (cause) {
+    serverError.value = cause instanceof Error ? cause.message : '服务器地址无效，请检查后重试'
+  }
+}
 const linkError = ref('')
 const closeButton = ref<HTMLButtonElement | null>(null)
 const autostartSupported = ref(false)
@@ -78,8 +131,37 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
           <span class="eyebrow">PREFERENCES</span>
           <h2 id="settings-title">设置</h2>
         </div>
-        <button ref="closeButton" class="settings-close" type="button" aria-label="关闭设置" title="关闭" @click="emit('close')">×</button>
+        <button ref="closeButton" class="settings-close" type="button" aria-label="关闭设置" @click="emit('close')">×</button>
       </header>
+
+      <section class="settings-conn" aria-labelledby="settings-conn-title">
+        <div class="settings-conn-head">
+          <span class="conn-dot" :class="{ 'is-custom': !officialDraft }" aria-hidden="true" />
+          <strong id="settings-conn-title">连接</strong>
+          <span class="settings-conn-state">{{ officialDraft ? '官方服务器' : '自定义服务器' }}</span>
+        </div>
+        <div class="settings-conn-body">
+          <input
+            class="conn-input"
+            type="url"
+            :value="serverDraft"
+            :disabled="officialDraft"
+            :placeholder="officialDraft ? '官方服务器 · 不可编辑' : 'https://notes.example.com'"
+            aria-label="服务器地址"
+            autocomplete="url"
+            @input="onServerInput"
+          >
+          <label class="conn-check" :class="{ 'is-checked': officialDraft }">
+            <input type="checkbox" :checked="officialDraft" @change="toggleOfficial">
+            <span class="conn-box" aria-hidden="true" />
+            使用官方地址
+          </label>
+          <button class="conn-save" type="button" :disabled="!serverDirty" @click="saveServer">保存</button>
+        </div>
+        <p v-if="serverError" class="conn-error" role="alert">{{ serverError }}</p>
+        <p v-else-if="serverMessage && !serverDirty" class="conn-hint" role="status">{{ serverMessage }}</p>
+        <p v-else class="conn-hint">保存连接设置后，需要用该服务器上的账号重新登录。</p>
+      </section>
 
       <section v-if="autostartSupported || autostartError" class="settings-section" aria-labelledby="settings-general-title">
         <h3 id="settings-general-title">通用</h3>
@@ -128,8 +210,7 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
         </div>
       </section>
 
-      <section class="settings-section" aria-labelledby="settings-about-title">
-        <h3 id="settings-about-title">关于</h3>
+      <footer class="settings-footer">
         <div class="about-app">
           <img :src="brandIcon" alt="" />
           <div>
@@ -137,18 +218,12 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
             <span>版本 {{ version }}</span>
           </div>
         </div>
-        <div class="about-project">
-          <span>项目主页</span>
-          <a class="project-link" href="https://github.com/zyw/v5notes" target="_blank" rel="noopener noreferrer" @click="openProjectLink">
-            github.com/zyw/v5notes
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4h9v9M16 4 8 12M14 11v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" /></svg>
-          </a>
-        </div>
-        <p v-if="linkError" class="dialog-error" role="alert">{{ linkError }}</p>
-      </section>
-
-      <footer class="modal-actions settings-actions">
+        <a class="project-link" href="https://github.com/zyw/v5notes" target="_blank" rel="noopener noreferrer" aria-label="项目主页（GitHub）" @click="openProjectLink">
+          github.com/zyw/v5notes
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4h9v9M16 4 8 12M14 11v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" /></svg>
+        </a>
         <button class="primary" type="button" @click="emit('close')">完成</button>
+        <p v-if="linkError" class="dialog-error" role="alert">{{ linkError }}</p>
       </footer>
     </section>
   </div>
