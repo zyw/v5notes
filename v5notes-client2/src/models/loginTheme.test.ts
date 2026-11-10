@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  LOGIN_THEME_STORAGE_KEY,
+  LEGACY_LOGIN_THEME_STORAGE_KEY,
+  THEME_STORAGE_KEY,
   isThemeMode,
   nextThemeMode,
   readStoredThemeMode,
   resolveTheme,
 } from './loginTheme'
 
-describe('login theme', () => {
+describe('app theme', () => {
   it('cycles auto → light → dark → auto', () => {
     expect(nextThemeMode('auto')).toBe('light')
     expect(nextThemeMode('light')).toBe('dark')
@@ -30,12 +31,15 @@ describe('login theme', () => {
   it('falls back to auto for missing or broken storage', () => {
     expect(readStoredThemeMode(null)).toBe('auto')
     expect(readStoredThemeMode({ getItem: () => null })).toBe('auto')
-    expect(readStoredThemeMode({ getItem: () => 'dark' })).toBe('dark')
+    expect(readStoredThemeMode({ getItem: key => (key === THEME_STORAGE_KEY ? 'dark' : null) })).toBe('dark')
     expect(readStoredThemeMode({ getItem: () => ({}) as unknown as string })).toBe('auto')
     expect(readStoredThemeMode({ getItem: () => { throw new Error('blocked') } })).toBe('auto')
   })
 
-  it('uses one stable storage key', () => {
-    expect(LOGIN_THEME_STORAGE_KEY).toBe('v5notes-login-theme')
+  it('migrates the early login-only key', () => {
+    expect(readStoredThemeMode({
+      getItem: key => (key === LEGACY_LOGIN_THEME_STORAGE_KEY ? 'light' : null),
+    })).toBe('light')
+    expect(THEME_STORAGE_KEY).toBe('v5notes-theme')
   })
 })

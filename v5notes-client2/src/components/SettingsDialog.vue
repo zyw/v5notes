@@ -6,10 +6,17 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import brandIcon from '../assets/brand-icon.png'
 import { applyLocale, currentLocale, LOCALE_OPTIONS, type AppLocale } from '../i18n'
 import { settingsActionLabel } from '../models/appUpdate'
+import { useAppTheme } from '../hooks/useAppTheme'
 import { OFFICIAL_SERVER, normalizeServer } from '../models/serverSettings'
 
 const { t } = useI18n()
 const locale = computed(() => currentLocale())
+const { mode: themeMode, setMode: setThemeMode } = useAppTheme()
+const themeOptions = computed(() => ([
+  { value: 'auto' as const, label: t('settings.themeAuto') },
+  { value: 'light' as const, label: t('settings.themeLight') },
+  { value: 'dark' as const, label: t('settings.themeDark') },
+]))
 
 const props = defineProps<{
   defaultOutlineVisible: boolean
@@ -232,6 +239,22 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
             <select class="settings-locale" :value="locale" :aria-label="t('settings.language')" @change="onLocale">
               <option v-for="option in LOCALE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
+          </div>
+          <div class="settings-preference-row settings-row-theme">
+            <div class="settings-preference-copy">
+              <strong>{{ t('settings.theme') }}</strong>
+              <span>{{ t('settings.themeHint') }}</span>
+            </div>
+            <div class="theme-choice" role="group" :aria-label="t('settings.theme')">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                type="button"
+                class="theme-choice-item"
+                :aria-pressed="themeMode === option.value"
+                @click="setThemeMode(option.value)"
+              >{{ option.label }}</button>
+            </div>
           </div>
           <div v-if="autostartSupported" class="settings-preference-row is-clickable" @click="toggleAutostart">
             <div class="settings-preference-copy">

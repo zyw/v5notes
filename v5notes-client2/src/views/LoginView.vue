@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useLoginTheme } from '../hooks/useLoginTheme'
+import { useAppTheme } from '../hooks/useAppTheme'
 
 const props = defineProps<{
   server: string
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { mode, resolved, cycleTheme } = useLoginTheme()
+const { mode, resolved, cycleTheme } = useAppTheme()
 
 const brandIcon = new URL('../assets/brand-icon.png', import.meta.url).href
 
@@ -40,6 +40,9 @@ const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
     <div class="login-atmos" aria-hidden="true">
       <div class="login-atmos-light">
         <span class="atmos-wash"></span>
+        <span class="atmos-bloom atmos-bloom-a"></span>
+        <span class="atmos-bloom atmos-bloom-b"></span>
+        <span class="atmos-bloom atmos-bloom-c"></span>
         <span class="atmos-dots"></span>
         <span class="atmos-stripes"></span>
       </div>
@@ -170,3 +173,4 @@ const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
     </footer>
   </div>
 </template>
+

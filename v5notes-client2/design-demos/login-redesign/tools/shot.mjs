@@ -57,7 +57,7 @@ await send('Page.enable')
 await send('Runtime.enable')
 await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: dpr, mobile: false })
 await send('Page.navigate', { url })
-await sleep(1600)
+await sleep(Number(process.env.SHOT_WAIT || 1600))
 
 const evalSource = process.env.SHOT_EVAL_FILE ? fs.readFileSync(process.env.SHOT_EVAL_FILE, 'utf8') : process.env.SHOT_EVAL
 if (evalSource) {

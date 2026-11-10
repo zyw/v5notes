@@ -1,8 +1,10 @@
-/** 登录页主题：自动跟随系统 / 固定浅色 / 固定深色。 */
+/** 应用主题：自动跟随系统 / 固定浅色 / 固定深色。登录页与工作区共用。 */
 export type ThemeMode = 'auto' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
 
-export const LOGIN_THEME_STORAGE_KEY = 'v5notes-login-theme'
+export const THEME_STORAGE_KEY = 'v5notes-theme'
+/** 早期只有登录页支持主题时用的键，读取时兼容一次。 */
+export const LEGACY_LOGIN_THEME_STORAGE_KEY = 'v5notes-login-theme'
 
 const THEME_MODES: readonly ThemeMode[] = ['auto', 'light', 'dark']
 
@@ -24,7 +26,7 @@ export function resolveTheme(mode: ThemeMode, systemPrefersDark: boolean): Resol
 export function readStoredThemeMode(storage: Pick<Storage, 'getItem'> | null): ThemeMode {
   if (!storage) return 'auto'
   try {
-    const value = storage.getItem(LOGIN_THEME_STORAGE_KEY)
+    const value = storage.getItem(THEME_STORAGE_KEY) ?? storage.getItem(LEGACY_LOGIN_THEME_STORAGE_KEY)
     return isThemeMode(value) ? value : 'auto'
   } catch {
     return 'auto'
