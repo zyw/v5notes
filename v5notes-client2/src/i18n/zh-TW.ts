@@ -3,6 +3,8 @@ import type { Messages } from './zh-CN'
 export const zhTW: Messages = {
   app: {
     title: 'V5Notes雲筆記',
+    tagline: '把想法留在這裡。',
+    summary: '連接你的筆記空間，繼續寫作。',
   },
   common: {
     cancel: '取消',

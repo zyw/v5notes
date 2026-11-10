@@ -240,7 +240,8 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
         <div class="about-app">
           <img :src="brandIcon" alt="" />
           <div>
-            <strong>v5notes</strong>
+            <strong>{{ t('app.title') }}</strong>
+            <span class="about-tagline">{{ t('app.tagline') }}</span>
             <span>{{ t('settings.version', { version }) }}<button class="update-check" type="button" :disabled="updateChecking" @click="emit('check-update')">{{ updateLabel }}</button><button v-if="releaseNotesAvailable" class="update-check" type="button" @click="emit('show-release-notes')">{{ t('settings.releaseNotes') }}</button></span>
           </div>
         </div>

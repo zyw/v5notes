@@ -1,6 +1,8 @@
 export const zhCN = {
   app: {
     title: 'V5Notes云笔记',
+    tagline: '把想法留在这里。',
+    summary: '连接你的笔记空间，继续写作。',
   },
   common: {
     cancel: '取消',

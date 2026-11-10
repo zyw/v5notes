@@ -3,6 +3,8 @@ import type { Messages } from './zh-CN'
 export const en: Messages = {
   app: {
     title: 'V5Notes',
+    tagline: 'Keep your ideas here.',
+    summary: 'Connect to your notes and keep writing.',
   },
   common: {
     cancel: 'Cancel',

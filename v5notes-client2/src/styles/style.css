@@ -436,6 +436,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .about-app img { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; }
 .about-app div { display: grid; gap: 2px; min-width: 0; }
 .about-app strong { color: #35483b; font-size: 13.5px; }
+.about-app .about-tagline { display: block; color: #6d7b70; font-size: 11px; }
 .about-app span { display: flex; flex-wrap: wrap; gap: 4px 8px; color: #89958b; font-size: 11px; }
 .update-check { padding: 0; color: #315b4a; font-size: 11px; font-weight: 650; }
 .update-check:hover:not(:disabled) { text-decoration: underline; }

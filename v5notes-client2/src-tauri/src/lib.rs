@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
+    menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
@@ -45,6 +45,148 @@ fn tr_detail(zh_cn: &str, zh_tw: &str, en: &str, detail: impl std::fmt::Display)
         "zh-TW" => format!("{zh_tw}：{detail}"),
         _ => format!("{zh_cn}：{detail}"),
     }
+}
+
+fn app_display_name() -> String {
+    tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes")
+}
+
+fn quit_label() -> String {
+    let name = app_display_name();
+    match locale_code().as_str() {
+        "zh-TW" => format!("結束 {name}"),
+        "en" => format!("Quit {name}"),
+        _ => format!("退出 {name}"),
+    }
+}
+
+fn about_menu_label() -> String {
+    let name = app_display_name();
+    match locale_code().as_str() {
+        "zh-TW" => format!("關於 {name}"),
+        "en" => format!("About {name}"),
+        _ => format!("关于 {name}"),
+    }
+}
+
+fn hide_menu_label() -> String {
+    let name = app_display_name();
+    match locale_code().as_str() {
+        "zh-TW" => format!("隱藏 {name}"),
+        "en" => format!("Hide {name}"),
+        _ => format!("隐藏 {name}"),
+    }
+}
+
+fn about_credits() -> String {
+    format!(
+        "{}\n\n{}",
+        tr(
+            "连接你的笔记空间，继续写作。",
+            "連接你的筆記空間，繼續寫作。",
+            "Connect to your notes and keep writing."
+        ),
+        PROJECT_URL
+    )
+}
+
+#[cfg(desktop)]
+fn application_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let name = app_display_name();
+    let metadata = AboutMetadata {
+        name: Some(name.clone()),
+        version: Some(app.package_info().version.to_string()),
+        copyright: Some(tr("把想法留在这里。", "把想法留在這裡。", "Keep your ideas here.")),
+        credits: Some(about_credits()),
+        comments: Some(tr(
+            "连接你的笔记空间，继续写作。",
+            "連接你的筆記空間，繼續寫作。",
+            "Connect to your notes and keep writing.",
+        )),
+        website: Some(PROJECT_URL.to_string()),
+        website_label: Some(tr("项目主页", "專案首頁", "Project page")),
+        icon: Some(Image::from_bytes(include_bytes!("../icons/128x128@2x.png"))?),
+        ..Default::default()
+    };
+
+    let window_menu = Submenu::with_items(
+        app,
+        "Window",
+        true,
+        &[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, None)?,
+            #[cfg(target_os = "macos")]
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::close_window(app, None)?,
+        ],
+    )?;
+    let help_menu = Submenu::with_items(
+        app,
+        "Help",
+        true,
+        &[
+            #[cfg(not(target_os = "macos"))]
+            &PredefinedMenuItem::about(app, Some(&about_menu_label()), Some(metadata.clone()))?,
+        ],
+    )?;
+
+    Menu::with_items(
+        app,
+        &[
+            #[cfg(target_os = "macos")]
+            &Submenu::with_items(
+                app,
+                &name,
+                true,
+                &[
+                    &PredefinedMenuItem::about(app, Some(&about_menu_label()), Some(metadata))?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &PredefinedMenuItem::services(app, None)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &PredefinedMenuItem::hide(app, Some(&hide_menu_label()))?,
+                    &PredefinedMenuItem::hide_others(app, None)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &PredefinedMenuItem::quit(app, Some(&quit_label()))?,
+                ],
+            )?,
+            #[cfg(not(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )))]
+            &Submenu::with_items(
+                app,
+                "File",
+                true,
+                &[
+                    &PredefinedMenuItem::close_window(app, None)?,
+                    #[cfg(not(target_os = "macos"))]
+                    &PredefinedMenuItem::quit(app, Some(&quit_label()))?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Edit",
+                true,
+                &[
+                    &PredefinedMenuItem::undo(app, None)?,
+                    &PredefinedMenuItem::redo(app, None)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &PredefinedMenuItem::cut(app, None)?,
+                    &PredefinedMenuItem::copy(app, None)?,
+                    &PredefinedMenuItem::paste(app, None)?,
+                    &PredefinedMenuItem::select_all(app, None)?,
+                ],
+            )?,
+            #[cfg(target_os = "macos")]
+            &Submenu::with_items(app, "View", true, &[&PredefinedMenuItem::fullscreen(app, None)?])?,
+            &window_menu,
+            &help_menu,
+        ],
+    )
 }
 
 /// 只接受 https 清单地址。非法或空值回退到内置的 GitHub Release 地址。
@@ -261,12 +403,15 @@ fn exit_app(app: tauri::AppHandle) {
 fn set_app_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> {
     set_locale_code(&locale);
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.set_title(&tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes"));
+        let _ = window.set_title(&app_display_name());
     }
+    #[cfg(desktop)]
+    app.set_menu(application_menu(&app).map_err(|error| error.to_string())?)
+        .map_err(|error| error.to_string())?;
     if let Some(tray) = app.tray_by_id("main-tray") {
         let show = MenuItem::with_id(&app, "show", tr("显示窗口", "顯示視窗", "Show Window"), true, None::<&str>)
             .map_err(|error| error.to_string())?;
-        let quit = MenuItem::with_id(&app, "quit", tr("退出 v5notes", "結束 v5notes", "Quit v5notes"), true, None::<&str>)
+        let quit = MenuItem::with_id(&app, "quit", quit_label(), true, None::<&str>)
             .map_err(|error| error.to_string())?;
         let menu = Menu::with_items(&app, &[&show, &quit]).map_err(|error| error.to_string())?;
         tray.set_menu(Some(menu)).map_err(|error| error.to_string())?;
@@ -694,7 +839,8 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
+        .plugin(tauri_plugin_process::init())
+        .menu(|app| application_menu(app));
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let builder = tauri::Builder::default();
@@ -719,7 +865,7 @@ pub fn run() {
         ])
         .setup(|app| {
             let show = MenuItem::with_id(app, "show", tr("显示窗口", "顯示視窗", "Show Window"), true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", tr("退出 v5notes", "結束 v5notes", "Quit v5notes"), true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", quit_label(), true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-mono.png"))?;
