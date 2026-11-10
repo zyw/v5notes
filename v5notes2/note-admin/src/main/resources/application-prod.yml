@@ -1,82 +1,35 @@
 --- # 临时文件存储位置 避免临时文件被系统清理报错
-spring.servlet.multipart.location: /ruoyi/server/temp
+spring.servlet.multipart.location: /v5notes/server/temp
 
---- # 监控中心配置
-spring.boot.admin.client:
-  # 增加客户端开关
-  enabled: false
-  url: http://localhost:9090/admin
-  instance:
-    service-host-type: IP
-    metadata:
-      username: ${spring.boot.admin.client.username}
-      userpassword: ${spring.boot.admin.client.password}
-  username: @monitor.username@
-  password: @monitor.password@
+#--- # 监控中心配置
+#spring.boot.admin.client:
+#  # 增加客户端开关
+#  enabled: false
+#  url: http://localhost:9090/admin
+#  instance:
+#    service-host-type: IP
+#    metadata:
+#      username: ${spring.boot.admin.client.username}
+#      userpassword: ${spring.boot.admin.client.password}
+#  username: ${V5NOTES_MONITOR_USERNAME:v5notes}
+#  password: ${V5NOTES_MONITOR_PASSWORD:123456}
 
 --- # snail-job 配置
 snail-job:
   enabled: false
   # 需要在 SnailJob 后台组管理创建对应名称的组,然后创建任务的时候选择对应的组,才能正确分派任务
-  group: "ruoyi_group"
-  # SnailJob 接入验证令牌 详见 script/sql/ry_job.sql `sj_group_config`表
-  token: "SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT"
+  group: "v5notes_group"
+  # SnailJob 接入验证令牌 详见 script/sql/v5notes_job.sql `sj_group_config`表
+  token: ${V5NOTES_SNAIL_JOB_TOKEN:SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT}
   server:
     host: 127.0.0.1
     port: 17888
-  # 命名空间UUID 详见 script/sql/ry_job.sql `sj_namespace`表`unique_id`字段
+  # 命名空间UUID 详见 script/sql/v5notes_job.sql `sj_namespace`表`unique_id`字段
   namespace: ${spring.profiles.active}
   # 随主应用端口漂移
   port: 2${server.port}
   # 客户端ip指定
   host:
-
---- # snail-ai 配置
-snail-ai:
-  # 启用客户端模式
-  enabled: false
-  # ==================== Server 连接 ====================
-  # Server 端 gRPC 地址（即 snail-ai-starter 的 snail-ai.server.grpc-port）
-  server:
-    host: 127.0.0.1
-    port: 18888
-  # ==================== 客户端配置 ====================
-  # 本客户端 gRPC 端口（Server 通过此端口分发 Chat 请求）
-  # 应用 ID（在 Server「应用管理」页面创建后获取）
-  app-id: 1
-  # 认证令牌（在 Server「应用管理」页面创建时自动生成）
-  token: SAI_566a6bfbc26e4998b4841cc927d50c5d
-  port: 3${server.port}
-  # Skill 文件临时目录
-  skill-temp-dir: /tmp/snail-ai-agent/skills
-  # ==================== Chat 嵌入模式配置 ====================
-  chat.ui.embed:
-    # 启用嵌入模式
-    enabled: true
-    # 嵌入模式下隐藏顶部栏
-    show-header: false
-    # 嵌入模式下隐藏侧边栏用户信息
-    show-sidebar-user: false
-    # 嵌入模式下隐藏智能体市场入口
-    show-agent-market: true
-    # 嵌入模式下使用紧凑输入框
-    compact-input: true
-    # 是否锁定当前智能体
-    lock-agent: false
-  # ==================== OpenAPI Client 配置 ====================
-  open-api:
-    # 启用 OpenAPI Client
-    enabled: true
-    # Server HTTP 端口
-    web-port: 8900
-    # 是否使用 HTTPS
-    https: false
-    # API 路径前缀
-    prefix: snail-ai
-    # 超时配置（毫秒）
-    connect-timeout-ms: 5000
-    read-timeout-ms: 60000
-    chat-timeout-ms: 300000
 
 --- # MyBatis Plus 配置
 mybatis-plus:
@@ -94,46 +47,20 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     # 动态数据源文档 https://www.kancloud.cn/tracy5546/dynamic-datasource/content
     dynamic:
-      # 设置默认的数据源或者数据源组,默认值即为 master
+      # 只注册 master 这一个数据源。dynamic-datasource 会把配置里出现的每个数据源都建一个
+      # Hikari 池并立刻真连一次，所以这里不能并列写 mysql / postgresql 两个块。
+      # 连哪个库由 v5notes.db-dialect 决定，见下方 v5notes.datasource.*。
       primary: master
       # 严格模式 匹配不到数据源则报错
       strict: true
       datasource:
-        # 主库数据源
         master:
           type: ${spring.datasource.type}
-          driverClassName: com.mysql.cj.jdbc.Driver
-          # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
-          # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://localhost:3306/v5notes2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: root
-          password: root
-#        # 从库数据源
-#        slave:
-#          lazy: true
-#          type: ${spring.datasource.type}
-#          driverClassName: com.mysql.cj.jdbc.Driver
-#          url: jdbc:mysql://localhost:3306/v5notes2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-#          username:
-#          password:
-#        oracle:
-#          type: ${spring.datasource.type}
-#          driverClassName: oracle.jdbc.OracleDriver
-#          url: jdbc:oracle:thin:@//localhost:1521/XE
-#          username: ROOT
-#          password: root
-#        postgres:
-#          type: ${spring.datasource.type}
-#          driverClassName: org.postgresql.Driver
-#          url: jdbc:postgresql://localhost:5432/postgres?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
-#          username: root
-#          password: root
-#        sqlserver:
-#          type: ${spring.datasource.type}
-#          driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-#          url: jdbc:sqlserver://localhost:1433;DatabaseName=tempdb;SelectMethod=cursor;encrypt=false;rewriteBatchedStatements=true
-#          username: SA
-#          password: root
+          # 驱动、连接串和账号按当前方言取值。未被选中的那组只是备用配置，不会建池也不连接
+          driverClassName: ${v5notes.datasource.${v5notes.db-dialect}.driver-class-name}
+          url: ${v5notes.datasource.${v5notes.db-dialect}.url}
+          username: ${v5notes.datasource.${v5notes.db-dialect}.username}
+          password: ${v5notes.datasource.${v5notes.db-dialect}.password}
       hikari:
         # 最大连接池数量
         maxPoolSize: 20
@@ -150,17 +77,34 @@ spring:
         # 多久检查一次连接的活性
         keepaliveTime: 30000
 
+--- # 各方言的连接参数：只有 v5notes.db-dialect 选中的那一组会被注册成数据源并真正连接
+# 切方言时只改 application.yml 里的 v5notes.db-dialect 即可，这里两组都留着备用。
+v5notes:
+  datasource:
+    mysql:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
+      # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
+      url: ${V5NOTES_DATASOURCE_MYSQL_URL:jdbc:mysql://localhost:3306/v5notes2?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+      username: ${V5NOTES_DATASOURCE_MYSQL_USERNAME:root}
+      password: ${V5NOTES_DATASOURCE_MYSQL_PASSWORD:root}
+    postgresql:
+      driver-class-name: org.postgresql.Driver
+      url: ${V5NOTES_DATASOURCE_POSTGRESQL_URL:jdbc:postgresql://localhost:5432/v5notes2?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true}
+      username: ${V5NOTES_DATASOURCE_POSTGRESQL_USERNAME:root}
+      password: ${V5NOTES_DATASOURCE_POSTGRESQL_PASSWORD:root}
+
 --- # redis 单机配置(单机与集群只能开启一个另一个需要注释掉)
 spring.data:
   redis:
     # 地址
-    host: localhost
+    host: ${V5NOTES_REDIS_HOST:localhost}
     # 端口，默认为6379
-    port: 6379
+    port: ${V5NOTES_REDIS_PORT:6379}
     # 数据库索引
-    database: 0
+    database: ${V5NOTES_REDIS_DATABASE:0}
     # redis 密码必须配置
-    password: ruoyi123
+    password: ${V5NOTES_REDIS_PASSWORD:ruoyi123}
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl
@@ -191,17 +135,17 @@ redisson:
 
 --- # mail 邮件发送
 mail:
-  enabled: false
-  host: smtp.163.com
-  port: 465
+  enabled: ${V5NOTES_MAIL_ENABLED:false}
+  host: ${V5NOTES_MAIL_HOST:smtp.163.com}
+  port: ${V5NOTES_MAIL_PORT:465}
   # 是否需要用户名密码验证
   auth: true
   # 发送方，遵循RFC-822标准
-  from: xxx@163.com
+  from: ${V5NOTES_MAIL_FROM:xxx@163.com}
   # 用户名（注意：如果使用foxmail邮箱，此处user为qq号）
-  user: xxx@163.com
+  user: ${V5NOTES_MAIL_USER:xxx@163.com}
   # 密码（注意，某些邮箱需要为SMTP服务单独设置密码，详情查看相关帮助）
-  pass: xxxxxxxxxx
+  pass: ${V5NOTES_MAIL_PASSWORD:xxxxxxxxxx}
   # 使用 STARTTLS安全连接，STARTTLS是对纯文本通信协议的扩展。
   starttlsEnable: true
   # 使用SSL安全连接
@@ -230,18 +174,18 @@ sms:
       # 框架定义的厂商名称标识，标定此配置是哪个厂商，详细请看厂商标识介绍部分
       supplier: alibaba
       # 有些称为accessKey有些称之为apiKey，也有称为sdkKey或者appId。
-      access-key-id: 您的accessKey
+      access-key-id: ${V5NOTES_SMS_ALIBABA_ACCESS_KEY_ID:您的accessKey}
       # 称为accessSecret有些称之为apiSecret
-      access-key-secret: 您的accessKeySecret
-      signature: 您的短信签名
-      sdk-app-id: 您的sdkAppId
+      access-key-secret: ${V5NOTES_SMS_ALIBABA_ACCESS_KEY_SECRET:您的accessKeySecret}
+      signature: ${V5NOTES_SMS_ALIBABA_SIGNATURE:您的短信签名}
+      sdk-app-id: ${V5NOTES_SMS_ALIBABA_SDK_APP_ID:您的sdkAppId}
     config2:
       # 厂商标识，标定此配置是哪个厂商，详细请看厂商标识介绍部分
       supplier: tencent
-      access-key-id: 您的accessKey
-      access-key-secret: 您的accessKeySecret
-      signature: 您的短信签名
-      sdk-app-id: 您的sdkAppId
+      access-key-id: ${V5NOTES_SMS_TENCENT_ACCESS_KEY_ID:您的accessKey}
+      access-key-secret: ${V5NOTES_SMS_TENCENT_ACCESS_KEY_SECRET:您的accessKeySecret}
+      signature: ${V5NOTES_SMS_TENCENT_SIGNATURE:您的短信签名}
+      sdk-app-id: ${V5NOTES_SMS_TENCENT_SDK_APP_ID:您的sdkAppId}
 
 --- # 三方授权
 justauth:
@@ -272,8 +216,8 @@ justauth:
       client-secret: 1f7d08**********5b7**********29e
       redirect-uri: ${justauth.address}/social-callback?source=weibo
     gitee:
-      client-id: 91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98
-      client-secret: 02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac
+      client-id: ${V5NOTES_GITEE_CLIENT_ID:91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98}
+      client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac}
       redirect-uri: ${justauth.address}/social-callback?source=gitee
     dingtalk:
       client-id: 10**********6

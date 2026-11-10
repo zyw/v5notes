@@ -1,7 +1,7 @@
 # 开发环境配置
 server:
   # 服务器的HTTP端口，默认为8080
-  port: 8080
+  port: ${V5NOTES_SERVER_PORT:8080}
   servlet:
     # 应用的访问路径
     context-path: /
@@ -45,7 +45,9 @@ user:
 
 # v5notes 自定义配置
 v5notes:
-  # 数据库方言：mysql / postgresql，决定 Flyway 迁移目录（spring.flyway.locations）
+  # 数据库方言：mysql | postgresql
+  # 一个开关管两处：Flyway 迁移目录（spring.flyway.locations）与 master 数据源取哪组连接参数
+  # （v5notes.datasource.<方言>.*，定义在 application-dev.yml 与 application-prod.yml）。未被选中的方言不建池、不连接。
   # 可用环境变量 V5NOTES_DB_DIALECT 覆盖，默认 mysql
   db-dialect: ${V5NOTES_DB_DIALECT:mysql}
 
@@ -109,7 +111,7 @@ sa-token:
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
   is-share: false
   # jwt秘钥
-  jwt-secret-key: abcdefghijklmnopqrstuvwxyz
+  jwt-secret-key: ${V5NOTES_JWT_SECRET:abcdefghijklmnopqrstuvwxyz}
 
 # security配置
 security:
@@ -151,10 +153,10 @@ mybatis-encryptor:
   # 编码方式 BASE64/HEX。默认BASE64
   encode: BASE64
   # 安全秘钥 对称算法的秘钥 如：AES，SM4
-  password:
+  password: ${V5NOTES_MYBATIS_ENCRYPTOR_PASSWORD:}
   # 公私钥 非对称算法的公私钥 如：SM2，RSA
-  publicKey:
-  privateKey:
+  publicKey: ${V5NOTES_MYBATIS_ENCRYPTOR_PUBLIC_KEY:}
+  privateKey: ${V5NOTES_MYBATIS_ENCRYPTOR_PRIVATE_KEY:}
 
 # api接口加密
 api-decrypt:
@@ -164,10 +166,10 @@ api-decrypt:
   headerFlag: encrypt-key
   # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
   # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
-  publicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu0QumTTAkPSiGQ75RZqpCvpJDWDspRoacrIHdWUbj5SGRcPfHh3QcGh7cQ1nm40sWwfb3jdO1g7yP/smEx4vXn4mjqpztrt5RbYoZlZ2AAAxI6Uxj522NUEWYVBpWqzqxnGw/w2wtfKTd/HSyZi/zXeRONF4G4aH4zCLxsFYKjeemz1y0eLKg8Cfx2dqUffU3yxNf4N7tilthgxw6XSKABjB488CpJMYelDWrtw6W+5c6HaBAYMQfJM2PJqjTnndGokJDS3mGp33Laba+lZeZtf8vt0bYW6rKuLtoqY0pQ0yLvmgty7JvhacInYUQzI7RleMXSGXhVKmK/MFA2dpvwIDAQAB
+  publicKey: ${V5NOTES_API_DECRYPT_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu0QumTTAkPSiGQ75RZqpCvpJDWDspRoacrIHdWUbj5SGRcPfHh3QcGh7cQ1nm40sWwfb3jdO1g7yP/smEx4vXn4mjqpztrt5RbYoZlZ2AAAxI6Uxj522NUEWYVBpWqzqxnGw/w2wtfKTd/HSyZi/zXeRONF4G4aH4zCLxsFYKjeemz1y0eLKg8Cfx2dqUffU3yxNf4N7tilthgxw6XSKABjB488CpJMYelDWrtw6W+5c6HaBAYMQfJM2PJqjTnndGokJDS3mGp33Laba+lZeZtf8vt0bYW6rKuLtoqY0pQ0yLvmgty7JvhacInYUQzI7RleMXSGXhVKmK/MFA2dpvwIDAQAB}
   # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
   # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
-  privateKey: MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7RC6ZNMCQ9KIZDvlFmqkK+kkNYOylGhpysgd1ZRuPlIZFw98eHdBwaHtxDWebjSxbB9veN07WDvI/+yYTHi9efiaOqnO2u3lFtihmVnYAADEjpTGPnbY1QRZhUGlarOrGcbD/DbC18pN38dLJmL/Nd5E40XgbhofjMIvGwVgqN56bPXLR4sqDwJ/HZ2pR99TfLE1/g3u2KW2GDHDpdIoAGMHjzwKkkxh6UNau3Dpb7lzodoEBgxB8kzY8mqNOed0aiQkNLeYanfctptr6Vl5m1/y+3Rthbqsq4u2ipjSlDTIu+aC3Lsm+FpwidhRDMjtGV4xdIZeFUqYr8wUDZ2m/AgMBAAECggEAQH3otmaOct1s/chEXI447Ujo46yfkvR8a0eYffuGFFqIK3qbWlnWMQAqkvKU3eMuhWMde1f81IdtMk+h+y+IDLjROozFMQc7aqCjJStdk/587dO0T8t2trxlorn4rnuilxkMZaonU2HpG4Oyni72zyIAZ1rsTD52ie1sFdT8Mf1CJ4eiOJltCTW7PJqkeBWCX4v9mJiCajqGik0UUAITxhruHwuBEUmumtBxXApygLWthYjdII7UYulhsU5LGam/YW4QL64DsKVnxWx5H48qyillkU1CP5itHArQ5bsC89lsJ78zU7Zl5IKWSZ+0YGUX+tLXf4qALnTSbRwxftaCMQKBgQDw9D1gC35kGWkwc3xT+sBJn7Zhn1Oahn/vGmV/xxyufQh+VAeZmh5/Ty17Pqt1RhlF3rTWSRjuhXegjYhVb3bw13EswVkWTqpMSSWBZOZFP/j6kL1++uDpoQ0B94UbcMdRCzI4VuXQsr5Un+Fc+ii7z5ioe36OcLr6a+VP2xmwjQKBgQDG9bg1zEWHqhPfumNCl0HFCYjIRr6f75D8PqZBIbntVx1fjiCPnndpl6yCM45FbHypTA9yN/kDwHZXKAFamRBizOkoESSaGAZa8PqviWlbWq53OgvhTtCT9MYB+/rGmTG2Y1Ot8MqfOWPRIzDPsXZKczKOpkr/irl2JXiXp79uewKBgQCY+uiQtxtq4DtJuLjB9NzqoY1A09BXtnc5TnAMvVT3b4jZ8+3TVudv+swsiHCBh5z6IFh+CHDc1z5JYDKj054XcSF4wdUW9aDnyDUYvv/4DZK9OvIk0ZHEoyzIB+epsWPKj6o13O4SH7n5rnx99JGyFC6fIbELLIV6AtDXb4sS7QKBgHq2+AWGlqQUjOmDZtGdxZ0oQkt1BwJSmtRaN+UYTjtLbfyQBxlOHkzsliRAdFHxlfo9xZEnYNmljdg3/o3ItsiZpn1mBXNduh3BYH2AfZExH0a+cLFpEVEQukhjCMwRlQ3vuZ8hU3hdx2kpEWQpCtLktpwxiTSQdc+fUQAJIROdAoGBAM7pskuAYFl6TC3+Je4BRvWeZu3rylpPv9rmOVDQKA5mF9vGFwFDJbtHmdpzlciSMrCjPdTdtX0c/BYAFqVQodPA/9UPuzlUwUqFIB8vwq8PswwAaHCaoDGu1+E4/c7hF3Isvnln1/PDxKKIwwOpj37xqxfuJs1hLGPEHZlnyy6m
+  privateKey: ${V5NOTES_API_DECRYPT_PRIVATE_KEY:MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7RC6ZNMCQ9KIZDvlFmqkK+kkNYOylGhpysgd1ZRuPlIZFw98eHdBwaHtxDWebjSxbB9veN07WDvI/+yYTHi9efiaOqnO2u3lFtihmVnYAADEjpTGPnbY1QRZhUGlarOrGcbD/DbC18pN38dLJmL/Nd5E40XgbhofjMIvGwVgqN56bPXLR4sqDwJ/HZ2pR99TfLE1/g3u2KW2GDHDpdIoAGMHjzwKkkxh6UNau3Dpb7lzodoEBgxB8kzY8mqNOed0aiQkNLeYanfctptr6Vl5m1/y+3Rthbqsq4u2ipjSlDTIu+aC3Lsm+FpwidhRDMjtGV4xdIZeFUqYr8wUDZ2m/AgMBAAECggEAQH3otmaOct1s/chEXI447Ujo46yfkvR8a0eYffuGFFqIK3qbWlnWMQAqkvKU3eMuhWMde1f81IdtMk+h+y+IDLjROozFMQc7aqCjJStdk/587dO0T8t2trxlorn4rnuilxkMZaonU2HpG4Oyni72zyIAZ1rsTD52ie1sFdT8Mf1CJ4eiOJltCTW7PJqkeBWCX4v9mJiCajqGik0UUAITxhruHwuBEUmumtBxXApygLWthYjdII7UYulhsU5LGam/YW4QL64DsKVnxWx5H48qyillkU1CP5itHArQ5bsC89lsJ78zU7Zl5IKWSZ+0YGUX+tLXf4qALnTSbRwxftaCMQKBgQDw9D1gC35kGWkwc3xT+sBJn7Zhn1Oahn/vGmV/xxyufQh+VAeZmh5/Ty17Pqt1RhlF3rTWSRjuhXegjYhVb3bw13EswVkWTqpMSSWBZOZFP/j6kL1++uDpoQ0B94UbcMdRCzI4VuXQsr5Un+Fc+ii7z5ioe36OcLr6a+VP2xmwjQKBgQDG9bg1zEWHqhPfumNCl0HFCYjIRr6f75D8PqZBIbntVx1fjiCPnndpl6yCM45FbHypTA9yN/kDwHZXKAFamRBizOkoESSaGAZa8PqviWlbWq53OgvhTtCT9MYB+/rGmTG2Y1Ot8MqfOWPRIzDPsXZKczKOpkr/irl2JXiXp79uewKBgQCY+uiQtxtq4DtJuLjB9NzqoY1A09BXtnc5TnAMvVT3b4jZ8+3TVudv+swsiHCBh5z6IFh+CHDc1z5JYDKj054XcSF4wdUW9aDnyDUYvv/4DZK9OvIk0ZHEoyzIB+epsWPKj6o13O4SH7n5rnx99JGyFC6fIbELLIV6AtDXb4sS7QKBgHq2+AWGlqQUjOmDZtGdxZ0oQkt1BwJSmtRaN+UYTjtLbfyQBxlOHkzsliRAdFHxlfo9xZEnYNmljdg3/o3ItsiZpn1mBXNduh3BYH2AfZExH0a+cLFpEVEQukhjCMwRlQ3vuZ8hU3hdx2kpEWQpCtLktpwxiTSQdc+fUQAJIROdAoGBAM7pskuAYFl6TC3+Je4BRvWeZu3rylpPv9rmOVDQKA5mF9vGFwFDJbtHmdpzlciSMrCjPdTdtX0c/BYAFqVQodPA/9UPuzlUwUqFIB8vwq8PswwAaHCaoDGu1+E4/c7hF3Isvnln1/PDxKKIwwOpj37xqxfuJs1hLGPEHZlnyy6m}
 
 springdoc:
   api-docs:
@@ -182,8 +184,8 @@ springdoc:
     version: '版本号: ${project.version}'
     # 作者信息
     contact:
-      name: Lion Li
-      email: crazylionli@163.com
+      name: ZYW
+      email: zyw090111@163.com
       url: https://github.com/zyw/v5notes
   #这里定义了两个分组，可定义多个，也可以不定义
   group-configs:
