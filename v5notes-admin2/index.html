@@ -23,12 +23,15 @@
           root.classList.toggle('light', !dark);
           root.setAttribute('data-theme', dark ? 'dark' : 'light');
           var rawLang = localStorage.getItem('language');
-          var lang = 'zh_CN';
-          try {
-            lang = rawLang ? JSON.parse(rawLang) : 'zh_CN';
-          } catch (err) {
-            lang = 'zh_CN';
+          var lang = rawLang || 'zh_CN';
+          if (lang.charAt(0) === '"') {
+            try {
+              lang = JSON.parse(lang);
+            } catch (err) {
+              lang = rawLang;
+            }
           }
+          if (lang !== 'zh_CN' && lang !== 'zh_TW' && lang !== 'en_US') lang = 'zh_CN';
           root.lang = lang === 'zh_TW' ? 'zh-TW' : lang === 'en_US' ? 'en' : 'zh-CN';
         } catch (e) {
           /* ignore */
@@ -128,7 +131,7 @@
       #boot[data-theme='dark'] .boot-step b{color:#eafff5}
       .boot-slash{margin:0 2px;color:#5f7067}
       .boot-elapsed{display:inline-flex;align-items:baseline;gap:2px}
-      .boot-lab{font-size:12px;color:#556660}
+      .boot-lab{font-size:12px;color:#556660;margin-right:4px}
       #boot[data-theme='dark'] .boot-lab{color:#a9c6ba}
       .boot-elapsed b{font-family:'SF Mono',SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
       .boot-unit{font-size:12px;color:#556660;font-family:'SF Mono',SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
@@ -169,7 +172,7 @@
             <img class="boot-logo" id="bootLogo" alt="" />
             <div>
               <div class="boot-name">V5Notes2</div>
-              <div class="boot-sub">云笔记 · 管理控制台</div>
+              <div class="boot-sub" id="bootSub">云笔记 · 管理控制台</div>
             </div>
           </div>
           <span class="boot-flag" id="bootFlag">冷启动</span>
@@ -190,10 +193,10 @@
           <div class="boot-now-detail" id="bootDetail">document.readyState · interactive</div>
         </div>
         <ul class="boot-stages" id="bootStages"></ul>
-        <div class="boot-slow" id="bootSlow"><span class="boot-slow-dot"></span>网络似乎较慢，仍在重试…</div>
+        <div class="boot-slow" id="bootSlow"><span class="boot-slow-dot"></span><span id="bootSlowText">网络似乎较慢，仍在重试…</span></div>
         <div class="boot-foot">
-          <span class="boot-step">步骤 <b id="bootStep">1</b><span class="boot-slash">/</span>5</span>
-          <span class="boot-elapsed"><span class="boot-lab">已用</span><b id="bootElapsed">0.0</b><span class="boot-unit">s</span></span>
+          <span class="boot-step"><span id="bootStepLab">步骤</span> <b id="bootStep">1</b><span class="boot-slash">/</span>5</span>
+          <span class="boot-elapsed"><span class="boot-lab" id="bootElapsedLab">已用</span><b id="bootElapsed">0.0</b><span class="boot-unit">s</span></span>
         </div>
       </div>
       <div class="boot-fail">
@@ -219,14 +222,115 @@
         'use strict';
         var TOTAL = 5;
         var CIRC = 389.56;
-        var STAGES = [
-          { label: '解析页面骨架', detail: 'document.readyState · interactive' },
-          { label: '载入应用脚本', detail: 'main.ts · 应用模块' },
-          { label: '校验会话', detail: 'GET /getInfo · 会话令牌' },
-          { label: '生成菜单与路由', detail: 'generateRoutes() · 动态路由' },
-          { label: '渲染工作台', detail: '首屏 paint' }
-        ];
+        var COPY = {
+          zh_CN: {
+            aria: '正在加载 V5Notes2 管理控制台',
+            sub: '云笔记 · 管理控制台',
+            flag: '冷启动',
+            cap: '已载入',
+            slow: '网络似乎较慢，仍在重试…',
+            step: '步骤',
+            elapsed: '已用',
+            readyNow: '工作台已就绪',
+            readyDetail: '5 个阶段已完成 · 正在进入',
+            readyFlag: '已就绪',
+            readyCap: '已完成',
+            reload: '重新加载',
+            diag: '查看网络诊断',
+            stages: [
+              { label: '解析页面骨架', detail: 'document.readyState · interactive' },
+              { label: '载入应用脚本', detail: 'main.ts · 应用模块' },
+              { label: '校验会话', detail: 'GET /getInfo · 会话令牌' },
+              { label: '生成菜单与路由', detail: 'generateRoutes() · 动态路由' },
+              { label: '渲染工作台', detail: '首屏 paint' }
+            ],
+            fails: {
+              timeout: { code: '8.0s · 超时', title: '加载时间超出预期', body: '应用在 8 秒内没有完成启动。重新加载不会从头再来，通常再试一次即可。', foot: '已保留：页面骨架 · 已完成的阶段' },
+              session: { code: '401 · UNAUTHORIZED', title: '会话已过期，请重新登录', body: '登录凭证已失效。重新加载后会回到登录页。', foot: '已保留：当前页面地址' },
+              '502': { code: '502 · BAD GATEWAY', title: '服务暂时不可用（502）', body: '网关没能连上笔记服务（v5notes-api）。稍后重试即可。', foot: '已保留：页面骨架' }
+            }
+          },
+          zh_TW: {
+            aria: '正在載入 V5Notes2 管理控制台',
+            sub: '雲筆記 · 管理控制台',
+            flag: '冷啟動',
+            cap: '已載入',
+            slow: '網路似乎較慢，仍在重試…',
+            step: '步驟',
+            elapsed: '已用',
+            readyNow: '工作台已就緒',
+            readyDetail: '5 個階段已完成 · 正在進入',
+            readyFlag: '已就緒',
+            readyCap: '已完成',
+            reload: '重新載入',
+            diag: '查看網路診斷',
+            stages: [
+              { label: '解析頁面骨架', detail: 'document.readyState · interactive' },
+              { label: '載入應用腳本', detail: 'main.ts · 應用模組' },
+              { label: '校驗會話', detail: 'GET /getInfo · 會話權杖' },
+              { label: '生成選單與路由', detail: 'generateRoutes() · 動態路由' },
+              { label: '渲染工作台', detail: '首屏 paint' }
+            ],
+            fails: {
+              timeout: { code: '8.0s · 逾時', title: '載入時間超出預期', body: '應用在 8 秒內沒有完成啟動。重新載入不會從頭再來，通常再試一次即可。', foot: '已保留：頁面骨架 · 已完成的階段' },
+              session: { code: '401 · UNAUTHORIZED', title: '會話已過期，請重新登入', body: '登入憑證已失效。重新載入後會回到登入頁。', foot: '已保留：目前頁面位址' },
+              '502': { code: '502 · BAD GATEWAY', title: '服務暫時無法使用（502）', body: '閘道沒能連上筆記服務（v5notes-api）。稍後重試即可。', foot: '已保留：頁面骨架' }
+            }
+          },
+          en_US: {
+            aria: 'Loading the V5Notes2 admin console',
+            sub: 'Notes · Admin console',
+            flag: 'Cold start',
+            cap: 'Loaded',
+            slow: 'The network looks slow. Still retrying…',
+            step: 'Step',
+            elapsed: 'Elapsed',
+            readyNow: 'Workspace is ready',
+            readyDetail: 'All 5 stages finished · entering',
+            readyFlag: 'Ready',
+            readyCap: 'Done',
+            reload: 'Reload',
+            diag: 'Network diagnostics',
+            stages: [
+              { label: 'Parsing the page', detail: 'document.readyState · interactive' },
+              { label: 'Loading application scripts', detail: 'main.ts · app modules' },
+              { label: 'Checking the session', detail: 'GET /getInfo · session token' },
+              { label: 'Building menus and routes', detail: 'generateRoutes() · dynamic routes' },
+              { label: 'Rendering the workspace', detail: 'first paint' }
+            ],
+            fails: {
+              timeout: { code: '8.0s · timeout', title: 'Loading took longer than expected', body: 'The app did not finish starting within 8 seconds. Reloading continues from here. Trying again usually works.', foot: 'Kept: page shell · finished stages' },
+              session: { code: '401 · UNAUTHORIZED', title: 'Your session expired. Sign in again', body: 'The sign-in token is no longer valid. Reloading returns you to the sign-in page.', foot: 'Kept: the current page address' },
+              '502': { code: '502 · BAD GATEWAY', title: 'The service is temporarily unavailable (502)', body: 'The gateway could not reach the notes API (v5notes-api). Try again shortly.', foot: 'Kept: page shell' }
+            }
+          }
+        };
+        var lang = 'zh_CN';
+        try {
+          var rawLang = localStorage.getItem('language') || 'zh_CN';
+          if (rawLang.charAt(0) === '"') rawLang = JSON.parse(rawLang);
+          if (COPY[rawLang]) lang = rawLang;
+        } catch (e) {
+          lang = 'zh_CN';
+        }
+        var t = COPY[lang];
+        var STAGES = t.stages;
         var root = document.getElementById('boot');
+        root.setAttribute('aria-label', t.aria);
+        document.getElementById('bootSub').textContent = t.sub;
+        document.getElementById('bootFlag').textContent = t.flag;
+        document.getElementById('bootCap').textContent = t.cap;
+        document.getElementById('bootNow').textContent = STAGES[0].label;
+        document.getElementById('bootDetail').textContent = STAGES[0].detail;
+        document.getElementById('bootSlowText').textContent = t.slow;
+        document.getElementById('bootStepLab').textContent = t.step;
+        document.getElementById('bootElapsedLab').textContent = t.elapsed;
+        document.getElementById('bootFailReload').textContent = t.reload;
+        document.getElementById('bootFailDiag').textContent = t.diag;
+        document.getElementById('bootFailCode').textContent = t.fails.timeout.code;
+        document.getElementById('bootFailTitle').textContent = t.fails.timeout.title;
+        document.getElementById('bootFailBody').textContent = t.fails.timeout.body;
+        document.getElementById('bootFailFoot').textContent = t.fails.timeout.foot;
         var cabin = document.getElementById('bootCabin');
         var stagesEl = document.getElementById('bootStages');
         var bar = document.getElementById('bootBar');
@@ -349,12 +453,12 @@
           completed = TOTAL;
           for (var i = 0; i < TOTAL; i++) setRow(i, 'done');
           stepEl.textContent = String(TOTAL);
-          nowEl.textContent = '工作台已就绪';
-          detailEl.textContent = '5 个阶段已完成 · 正在进入';
+          nowEl.textContent = t.readyNow;
+          detailEl.textContent = t.readyDetail;
           elapsedEl.textContent = ((performance.now() - t0) / 1000).toFixed(1);
           slowEl.classList.remove('is-on');
-          flagEl.textContent = '已就绪';
-          capEl.textContent = '已完成';
+          flagEl.textContent = t.readyFlag;
+          capEl.textContent = t.readyCap;
           cabin.classList.add('is-done');
           setTarget(100);
           // 稳健收口：不依赖 rAF 是否被节流；给环形 180ms 收敛，再淡出移除
@@ -376,11 +480,7 @@
           setTimeout(finalize, 220);   // 正常路径
           setTimeout(finalize, 1600);  // 硬兜底：即使 rAF 被完全暂停也必定移除
         }
-        var FAILS = {
-          timeout: { code: '8.0s · 超时', title: '加载时间超出预期', body: '应用在 8 秒内没有完成启动。重新加载不会从头再来，通常再试一次即可。', foot: '已保留：页面骨架 · 已完成的阶段' },
-          session: { code: '401 · UNAUTHORIZED', title: '会话已过期，请重新登录', body: '登录凭证已失效。重新加载后会回到登录页。', foot: '已保留：当前页面地址' },
-          '502': { code: '502 · BAD GATEWAY', title: '服务暂时不可用（502）', body: '网关没能连上笔记服务（v5notes-api）。稍后重试即可。', foot: '已保留：页面骨架' }
-        };
+        var FAILS = t.fails;
         function fail(kind) {
           if (isDone) return;
           isFail = true;
