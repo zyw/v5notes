@@ -1,18 +1,18 @@
 <template>
   <div class="user-info-head" @click="editCropper()">
-    <img :src="options.img" title="点击上传头像" class="img-circle img-lg" />
+    <img :src="options.img" :title="$t('system.profile.clickAvatar')" class="img-circle img-lg" />
     <el-dialog v-model="open" :title="title" width="800px" append-to-body @opened="modalOpened" @close="closeDialog" class="app-dialog">
       <template #header>
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 个人中心</span>
+            <span>{{ $t('system.profile.avatarBrand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">头</div>
+            <div class="app-dialog-hero__icon">{{ $t('system.profile.avatarInitial') }}</div>
             <div>
               <div class="app-dialog-hero__name">{{ title }}</div>
-              <div class="app-dialog-hero__meta"><span>裁剪并上传新的头像</span></div>
+              <div class="app-dialog-hero__meta"><span>{{ $t('system.profile.avatarHint') }}</span></div>
             </div>
           </div>
         </div>
@@ -44,7 +44,7 @@
         <el-col :lg="2" :md="2">
           <el-upload action="#" :http-request="requestUpload" :show-file-list="false" :before-upload="beforeUpload">
             <el-button>
-              选择
+              {{ $t('system.profile.chooseFile') }}
               <el-icon class="el-icon--right">
                 <Upload />
               </el-icon>
@@ -64,7 +64,7 @@
           <el-button icon="RefreshRight" @click="rotateRight()"></el-button>
         </el-col>
         <el-col :lg="{ span: 2, offset: 6 }" :md="2">
-          <el-button type="primary" @click="uploadImg()">提 交</el-button>
+          <el-button type="primary" @click="uploadImg()">{{ $t('common.submit') }}</el-button>
         </el-col>
       </el-row>
     </el-dialog>
@@ -79,6 +79,9 @@ import { uploadFile } from '@/api/basics/file';
 import { updateUserProfile } from '@/api/system/user';
 import modal from '@/plugins/modal';
 import { useUserStore } from '@/store/modules/user';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface Options {
   img: string | any; // 裁剪图片的地址
@@ -96,7 +99,7 @@ const userStore = useUserStore();
 
 const open = ref(false);
 const visible = ref(false);
-const title = ref('修改头像');
+const title = ref('');
 
 const cropper = ref<any>({});
 //图片裁剪数据
@@ -114,6 +117,7 @@ const options = reactive<Options>({
 
 /** 编辑头像 */
 const editCropper = () => {
+  title.value = t('system.profile.editAvatar');
   open.value = true;
 };
 /** 打开弹出层结束时的回调 */
@@ -138,7 +142,7 @@ const changeScale = (num: number) => {
 /** 上传预处理 */
 const beforeUpload = (file: UploadRawFile): any => {
   if (file.type.indexOf('image/') == -1) {
-    modal.msgError('文件格式错误，请上传图片类型,如：JPG，PNG后缀的文件。');
+    modal.msgError(t('system.profile.fileTypeError'));
   } else {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -157,14 +161,14 @@ const uploadImg = async () => {
       const res = await uploadFile(formData);
       const url = res.data?.url;
       if (!url) {
-        modal.msgError('头像上传失败');
+        modal.msgError(t('system.profile.avatarFail'));
         return;
       }
       await updateUserProfile({ avatar: url });
       open.value = false;
       options.img = url;
       userStore.setAvatar(url);
-      modal.msgSuccess('修改成功');
+      modal.msgSuccess(t('common.editSuccess'));
       visible.value = false;
     } catch {
       // 错误提示已由请求拦截器统一处理，这里保持弹窗打开以便重试

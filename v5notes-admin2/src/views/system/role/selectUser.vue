@@ -1,17 +1,17 @@
 <template>
   <el-row>
-    <el-dialog v-model="visible" title="选择用户" width="800px" top="5vh" append-to-body class="select-user-dialog app-dialog">
+    <el-dialog v-model="visible" :title="$t('system.role.selectUser')" width="800px" top="5vh" append-to-body class="select-user-dialog app-dialog">
       <template #header>
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 角色</span>
+            <span>{{ $t('system.role.selectUserBrand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">选</div>
+            <div class="app-dialog-hero__icon">{{ $t('system.role.selectInitial') }}</div>
             <div>
-              <div class="app-dialog-hero__name">选择用户</div>
-              <div class="app-dialog-hero__meta"><span>为该角色分配成员</span></div>
+              <div class="app-dialog-hero__name">{{ $t('system.role.selectUser') }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ $t('system.role.selectUserHint') }}</span></div>
             </div>
           </div>
         </div>
@@ -20,25 +20,25 @@
       <div class="p-2 select-user-shell">
         <el-card shadow="hover" class="search-panel select-user-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-            <el-form-item label="用户名称" prop="userName">
+            <el-form-item :label="$t('system.user.userName')" prop="userName">
               <el-input
                 v-model="queryParams.userName"
-                placeholder="请输入用户名称"
+                :placeholder="$t('common.pleaseInput', { label: $t('system.user.userName') })"
                 clearable
                 @keyup.enter="handleQuery"
               />
             </el-form-item>
-            <el-form-item label="手机号码" prop="phoneNumber">
+            <el-form-item :label="$t('system.user.phone')" prop="phoneNumber">
               <el-input
                 v-model="queryParams.phoneNumber"
-                placeholder="请输入手机号码"
+                :placeholder="$t('common.pleaseInput', { label: $t('system.user.phone') })"
                 clearable
                 @keyup.enter="handleQuery"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+              <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+              <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -54,16 +54,16 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column label="用户名称" prop="userName" :show-overflow-tooltip="true" />
-            <el-table-column label="用户昵称" prop="nickName" :show-overflow-tooltip="true" />
-            <el-table-column label="邮箱" prop="email" :show-overflow-tooltip="true" />
-            <el-table-column label="手机" prop="phoneNumber" :show-overflow-tooltip="true" />
-            <el-table-column label="状态" align="center" prop="status">
+            <el-table-column :label="$t('system.user.userName')" prop="userName" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('system.user.nickName')" prop="nickName" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('system.user.email')" prop="email" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('system.role.phoneShort')" prop="phoneNumber" :show-overflow-tooltip="true" />
+            <el-table-column :label="$t('common.status')" align="center" prop="status">
               <template #default="scope">
                 <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
               </template>
             </el-table-column>
-            <el-table-column label="创建时间" align="center" prop="createTime" width="180">
+            <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180">
               <template #default="scope">
                 <span>{{ parseTime(scope.row.createTime) }}</span>
               </template>
@@ -80,8 +80,8 @@
       </div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSelectUser">确 定</el-button>
-          <el-button @click="visible = false">取 消</el-button>
+          <el-button type="primary" @click="handleSelectUser">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="visible = false">{{ $t('common.cancel') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -95,6 +95,9 @@ import { UserQuery } from '@/api/system/user/types';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { parseTime } from '@/utils/ruoyi';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   roleId: {
@@ -162,11 +165,11 @@ const handleSelectUser = async () => {
   const roleId = queryParams.roleId;
   const ids = userIds.value.join(',');
   if (ids == '') {
-    modal.msgError('请选择要分配的用户');
+    modal.msgError(t('system.role.selectUserError'));
     return;
   }
   await authUserSelectAll({ roleId, userIds: ids });
-  modal.msgSuccess('分配成功');
+  modal.msgSuccess(t('system.role.assignSuccess'));
   emit('ok');
   visible.value = false;
 };

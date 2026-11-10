@@ -64,7 +64,7 @@ public class NoteDirectoryController extends BaseController {
      */
     @SaCheckPermission("notes:directory:query")
     @GetMapping("/{id}")
-    public R<NoteDirectoryVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<NoteDirectoryVo> getInfo(@NotNull(message = "{id.not.null}")
                                      @PathVariable Long id) {
         return R.ok(noteDirectoryService.queryById(id));
     }
@@ -99,7 +99,7 @@ public class NoteDirectoryController extends BaseController {
     @SaCheckPermission("notes:directory:remove")
     @Log(title = "目录", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(noteDirectoryService.deleteWithValidByIds(List.of(ids), true));
     }

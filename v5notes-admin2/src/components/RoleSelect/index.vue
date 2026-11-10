@@ -15,26 +15,26 @@
           <div v-show="showSearch">
             <el-card shadow="hover" class="search-panel selector-card">
               <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-                <el-form-item label="角色名称" prop="roleName">
+                <el-form-item :label="$t('widgets.roleSelect.roleName')" prop="roleName">
                   <el-input
                     v-model="queryParams.roleName"
-                    placeholder="请输入角色名称"
+                    :placeholder="$t('common.pleaseInput', { label: $t('widgets.roleSelect.roleName') })"
                     clearable
                     @keyup.enter="handleQuery"
                   />
                 </el-form-item>
-                <el-form-item label="权限字符" prop="roleKey">
+                <el-form-item :label="$t('widgets.roleSelect.roleKey')" prop="roleKey">
                   <el-input
                     v-model="queryParams.roleKey"
-                    placeholder="请输入权限字符"
+                    :placeholder="$t('common.pleaseInput', { label: $t('widgets.roleSelect.roleKey') })"
                     clearable
                     @keyup.enter="handleQuery"
                   />
                 </el-form-item>
 
                 <el-form-item>
-                  <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                  <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+                  <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+                  <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
                 </el-form-item>
               </el-form>
             </el-card>
@@ -45,7 +45,7 @@
           <template #header>
             <div class="toolbar-shell selector-header">
               <div class="table-heading">
-                <h3>角色列表</h3>
+                <h3>{{ $t('widgets.roleSelect.roleList') }}</h3>
               </div>
               <div v-if="selectRoleList.length" class="selector-tags">
                 <el-tag v-for="role in selectRoleList" :key="role.roleId" closable @close="handleCloseTag(role)">
@@ -70,16 +70,16 @@
             @checkbox-change="handleCheckboxChange"
           >
             <vxe-column type="checkbox" width="50" align="center" />
-            <vxe-column v-if="false" key="roleId" label="角色编号" />
-            <vxe-column field="roleName" title="角色名称" />
-            <vxe-column field="roleKey" title="权限字符" />
-            <vxe-column field="roleSort" title="显示顺序" width="100" />
-            <vxe-column title="状态" align="center" width="100">
+            <vxe-column v-if="false" key="roleId" :label="$t('widgets.roleSelect.roleId')" />
+            <vxe-column field="roleName" :title="$t('widgets.roleSelect.roleName')" />
+            <vxe-column field="roleKey" :title="$t('widgets.roleSelect.roleKey')" />
+            <vxe-column field="roleSort" :title="$t('common.sort')" width="100" />
+            <vxe-column :title="$t('common.status')" align="center" width="100">
               <template #default="scope">
                 <dict-tag :options="sys_normal_disable" :value="scope.row.status"></dict-tag>
               </template>
             </vxe-column>
-            <vxe-column field="createTime" title="创建时间" align="center">
+            <vxe-column field="createTime" :title="$t('common.createTime')" align="center">
               <template #default="scope">
                 <span>{{ parseTime(scope.row.createTime) }}</span>
               </template>
@@ -96,8 +96,8 @@
         </el-card>
       </div>
       <template #footer>
-        <el-button @click="close">取消</el-button>
-        <el-button type="primary" @click="confirm">确定</el-button>
+        <el-button @click="close">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="confirm">{{ $t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -112,6 +112,9 @@ import { useDialogState } from '@/hooks/dialog/useDialogState';
 import { useDateRangeQuery } from '@/hooks/form/useDateRangeQuery';
 import { useDict } from '@/utils/dict';
 import { parseTime } from '@/utils/ruoyi';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface PropType {
   modelValue?: RoleVO[] | RoleVO | undefined;
@@ -134,7 +137,7 @@ const total = ref(0);
 const { dateRange, applyDateRange, resetDateRange } = useDateRangeQuery();
 const selectRoleList = ref<RoleVO[]>([]);
 
-const { dialog, openDialog, closeDialog } = useDialogState('角色选择');
+const { dialog, openDialog, closeDialog } = useDialogState();
 
 const queryFormRef = ref<ElFormInstance>();
 const tableRef = ref<VxeTableInstance<RoleVO>>();
@@ -273,8 +276,12 @@ onMounted(() => {
   getList(); // 初始化列表数据
 });
 
+const open = (title?: string) => {
+  openDialog(title ?? t('widgets.roleSelect.title'));
+};
+
 defineExpose({
-  open: openDialog,
+  open,
   close: closeDialog
 });
 </script>

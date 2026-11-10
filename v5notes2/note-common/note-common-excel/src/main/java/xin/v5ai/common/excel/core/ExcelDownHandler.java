@@ -1,5 +1,6 @@
 package xin.v5ai.common.excel.core;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ArrayUtil;
@@ -113,7 +114,7 @@ public class ExcelDownHandler implements SheetWriteHandler {
                 if (StringUtils.isNotBlank(dictType)) {
                     // 如果传递了字典名，则依据字典建立下拉
                     Collection<String> values = Optional.ofNullable(getDictService().getAllDictByDictType(dictType))
-                        .orElseThrow(() -> new ServiceException("字典 {} 不存在", dictType))
+                        .orElseThrow(() -> new ServiceException(MessageUtils.message("dict.missing", dictType)))
                         .values();
                     options = new ArrayList<>(values);
                 } else if (StringUtils.isNotBlank(converterExp)) {
@@ -122,7 +123,7 @@ public class ExcelDownHandler implements SheetWriteHandler {
                     options = StreamUtils.toList(strList, s -> {
                         String[] itemArray = s.split("=", 2);
                         if (itemArray.length != 2) {
-                            throw new ServiceException("Excel转换表达式格式错误: {}", s);
+                            throw new ServiceException(MessageUtils.message("excel.expression", s));
                         }
                         return itemArray[1];
                     });
@@ -322,7 +323,7 @@ public class ExcelDownHandler implements SheetWriteHandler {
         for (String firstOption : firstOptions) {
             DropDownOptions.validateOptionValue(firstOption);
             if (!names.add(firstOption)) {
-                throw new ServiceException("级联下拉一级选项重复：" + firstOption);
+                throw new ServiceException(MessageUtils.message("excel.cascade.duplicate", firstOption));
             }
         }
     }

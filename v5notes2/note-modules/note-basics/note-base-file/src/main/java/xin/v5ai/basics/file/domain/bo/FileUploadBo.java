@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUploadBo {
 
     @Schema(description = "文件附件", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "文件附件不能为空")
+    @NotNull(message = "{file.upload.not.null}")
     private MultipartFile file;
 
     @Schema(description = "文件附件", example = "v5cn.png")

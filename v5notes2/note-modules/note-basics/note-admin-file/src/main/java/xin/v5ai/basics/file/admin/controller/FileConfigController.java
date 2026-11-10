@@ -66,7 +66,7 @@ public class FileConfigController extends BaseController {
      */
     @SaCheckPermission("basics:fileConfig:query")
     @GetMapping("/{id}")
-    public R<FileConfigVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<FileConfigVo> getInfo(@NotNull(message = "{id.not.null}")
                                      @PathVariable Long id) {
         return R.ok(fileConfigService.queryById(id));
     }
@@ -101,7 +101,7 @@ public class FileConfigController extends BaseController {
     @SaCheckPermission("basics:fileConfig:remove")
     @Log(title = "文件配置", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(fileConfigService.deleteWithValidByIds(List.of(ids), true));
     }

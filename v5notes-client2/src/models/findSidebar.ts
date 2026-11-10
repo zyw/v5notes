@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 export type SidebarView = 'outline' | 'find'
 export type FindKind = 'find' | 'replace'
 
@@ -48,7 +50,7 @@ export function matchPreview(doc: string, from: number, to: number, index: numbe
     to,
     index,
     before: trimEdge(doc.slice(lineStart, from), 'start'),
-    match: doc.slice(from, to).replace(/\n/g, '↵') || '空匹配',
+    match: doc.slice(from, to).replace(/\n/g, '↵') || t('find.emptyMatch'),
     after: trimEdge(doc.slice(to, lineEnd), 'end'),
   }
 }
@@ -62,6 +64,6 @@ function trimEdge(text: string, edge: 'start' | 'end'): string {
 export function findStatus(query: string, result: FindStatus): string {
   if (!query) return ''
   if (result.error) return result.error
-  if (!result.hit) return '无结果'
+  if (!result.hit) return t('find.noResults')
   return `${result.hit.index}/${result.hit.total}`
 }

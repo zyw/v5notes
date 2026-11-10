@@ -71,7 +71,7 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:query")
     @GetMapping("/{id}")
-    public R<NotesContentVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<NotesContentVo> getInfo(@NotNull(message = "{id.not.null}")
                                      @PathVariable Long id) {
         return R.ok(noteNotesService.queryById(id));
     }
@@ -92,7 +92,7 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:edit")
     @Log(title = "笔记", businessType = BusinessType.UPDATE)
-    @RepeatSubmit(message = "内容保存中，请不要重复提交")
+    @RepeatSubmit(message = "{note.save.repeat}")
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody NoteNotesBo bo) {
         return toAjax(noteNotesService.updateByBo(bo));
@@ -106,7 +106,7 @@ public class NoteNotesController extends BaseController {
     @SaCheckPermission("notes:notes:remove")
     @Log(title = "笔记", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(noteNotesService.deleteWithValidByIds(List.of(ids), true));
     }
@@ -116,7 +116,7 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:query")
     @GetMapping("/{id}/revisions")
-    public R<PageResult<NoteRevisionItemVo>> revisions(@NotNull(message = "主键不能为空") @PathVariable Long id,
+    public R<PageResult<NoteRevisionItemVo>> revisions(@NotNull(message = "{id.not.null}") @PathVariable Long id,
                                                        PageQuery pageQuery) {
         return R.ok(noteRevisionService.listForAdmin(id, pageQuery));
     }
@@ -126,8 +126,8 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:query")
     @GetMapping("/{id}/revisions/{revisionId}")
-    public R<NoteRevisionDetailVo> revision(@NotNull(message = "主键不能为空") @PathVariable Long id,
-                                            @NotNull(message = "版本不能为空") @PathVariable Long revisionId) {
+    public R<NoteRevisionDetailVo> revision(@NotNull(message = "{id.not.null}") @PathVariable Long id,
+                                            @NotNull(message = "{note.revision.required}") @PathVariable Long revisionId) {
         return R.ok(noteRevisionService.detailForAdmin(id, revisionId));
     }
 
@@ -136,10 +136,10 @@ public class NoteNotesController extends BaseController {
      */
     @SaCheckPermission("notes:notes:edit")
     @Log(title = "笔记历史", businessType = BusinessType.UPDATE)
-    @RepeatSubmit(message = "正在恢复，请不要重复提交")
+    @RepeatSubmit(message = "{note.restore.repeat}")
     @PostMapping("/{id}/revisions/{revisionId}/restore")
-    public R<NoteRestoreVo> restore(@NotNull(message = "主键不能为空") @PathVariable Long id,
-                                    @NotNull(message = "版本不能为空") @PathVariable Long revisionId) {
+    public R<NoteRestoreVo> restore(@NotNull(message = "{id.not.null}") @PathVariable Long id,
+                                    @NotNull(message = "{note.revision.required}") @PathVariable Long revisionId) {
         return R.ok(noteRevisionService.restoreForAdmin(id, revisionId));
     }
 }

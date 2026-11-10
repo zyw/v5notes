@@ -1,8 +1,15 @@
 import { useStorage } from '@vueuse/core';
 import enUS from 'element-plus/es/locale/lang/en';
 import zhCN from 'element-plus/es/locale/lang/zh-cn';
+import zhTW from 'element-plus/es/locale/lang/zh-tw';
 import { defineStore } from 'pinia';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
+import { VxeUI } from 'vxe-pc-ui';
+import vxeEnUS from 'vxe-pc-ui/es/language/en-US';
+import vxeZhCN from 'vxe-pc-ui/es/language/zh-CN';
+import vxeZhTW from 'vxe-pc-ui/es/language/zh-TW';
+import i18n from '@/lang';
+import { LanguageEnum } from '@/enums/LanguageEnum';
 
 export const useAppStore = defineStore('app', () => {
   const sidebarStatus = useStorage('sidebarStatus', '1');
@@ -15,14 +22,39 @@ export const useAppStore = defineStore('app', () => {
   const size = useStorage<'large' | 'default' | 'small'>('size', 'default');
 
   // 语言
-  const language = useStorage('language', 'zh_CN');
-  const languageObj: any = {
+  const language = useStorage('language', LanguageEnum.zh_CN);
+  const languageObj: Record<string, object> = {
     en_US: enUS,
-    zh_CN: zhCN
+    zh_CN: zhCN,
+    zh_TW: zhTW
   };
-  const locale = computed(() => {
-    return languageObj[language.value];
-  });
+  const locale = computed(() => languageObj[language.value] || zhCN);
+
+  const htmlLang: Record<string, string> = {
+    zh_CN: 'zh-CN',
+    zh_TW: 'zh-TW',
+    en_US: 'en'
+  };
+  const vxeLang: Record<string, string> = {
+    zh_CN: 'zh-CN',
+    zh_TW: 'zh-TW',
+    en_US: 'en-US'
+  };
+  VxeUI.setI18n('zh-CN', vxeZhCN);
+  VxeUI.setI18n('zh-TW', vxeZhTW);
+  VxeUI.setI18n('en-US', vxeEnUS);
+
+  const applyLanguage = (val: string) => {
+    const next = languageObj[val] ? val : LanguageEnum.zh_CN;
+    if (language.value !== next) language.value = next;
+    i18n.global.locale.value = next as 'zh_CN' | 'zh_TW' | 'en_US';
+    VxeUI.setLanguage(vxeLang[next]);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = htmlLang[next];
+    }
+  };
+  applyLanguage(language.value);
+  watch(language, applyLanguage);
 
   const toggleSideBar = (withoutAnimation: boolean) => {
     if (sidebar.hide) {
@@ -54,7 +86,7 @@ export const useAppStore = defineStore('app', () => {
   };
 
   const changeLanguage = (val: string): void => {
-    language.value = val;
+    applyLanguage(val);
   };
 
   return {

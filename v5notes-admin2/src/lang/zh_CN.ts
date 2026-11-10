@@ -1,3 +1,11 @@
+import common from './packs/zh_CN/common';
+import file from './packs/zh_CN/file';
+import monitor from './packs/zh_CN/monitor';
+import notes from './packs/zh_CN/notes';
+import shell from './packs/zh_CN/shell';
+import system from './packs/zh_CN/system';
+import widgets from './packs/zh_CN/widgets';
+
 export default {
   // 路由国际化
   route: {
@@ -106,6 +114,16 @@ export default {
     layoutSize: '布局大小',
     layoutSetting: '布局设置',
     personalCenter: '个人中心',
-    logout: '退出登录'
-  }
+    logout: '退出登录',
+    search: '搜索',
+    admin: '管理员',
+    logoutConfirm: '确定注销并退出系统吗？'
+  },
+  ...common,
+  ...shell,
+  ...notes,
+  ...system,
+  ...monitor,
+  ...file,
+  ...widgets
 };

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   filterCommands,
   groupCommands,
@@ -9,6 +10,7 @@ import {
   type EditorCommand,
 } from '../models/editorCommands'
 
+const { t, locale } = useI18n()
 const props = defineProps<{
   open: boolean
   commands: EditorCommand[]
@@ -42,7 +44,10 @@ const ICONS: Record<string, string> = {
 const filtered = computed(() => filterCommands(visibleCommands(props.commands, props.context), query.value))
 const groups = computed(() => groupCommands(filtered.value))
 const flat = computed(() => groups.value.flatMap(group => group.items))
-const modeLabel = computed(() => paletteModeLabel(props.context))
+const modeLabel = computed(() => {
+  void locale.value
+  return paletteModeLabel(props.context)
+})
 
 function iconFor(command: EditorCommand): string {
   return ICONS[command.id] ?? '<circle cx="12" cy="12" r="7.5"/>'
@@ -117,19 +122,19 @@ function onKeydown(event: KeyboardEvent): void {
 <template>
   <Teleport to="body">
     <div v-if="open" class="palette-backdrop" @pointerdown.self="emit('close')">
-      <section class="palette" role="dialog" aria-modal="true" aria-label="命令面板">
+      <section class="palette" role="dialog" aria-modal="true" :aria-label="t('commands.palette')">
         <div class="palette-input">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4 4"/></svg>
-          <input ref="input" v-model="query" type="text" placeholder="搜索命令或导出方式…" aria-label="搜索命令" autocomplete="off" @keydown="onKeydown">
+          <input ref="input" v-model="query" type="text" :placeholder="t('commands.searchPlaceholder')" :aria-label="t('commands.searchLabel')" autocomplete="off" @keydown="onKeydown">
           <kbd>ESC</kbd>
         </div>
         <div class="palette-state">
-          <span>当前 · <strong>{{ modeLabel }}</strong></span>
-          <span>{{ flat.length }} 项可用</span>
+          <span>{{ t('commands.current') }} · <strong>{{ modeLabel }}</strong></span>
+          <span>{{ t('commands.available', { count: flat.length }) }}</span>
         </div>
         <div class="palette-list">
           <template v-for="group in groups" :key="group.name">
-            <div class="palette-group">{{ group.name }}</div>
+            <div class="palette-group">{{ t(`commands.group.${group.name}`) }}</div>
             <button
               v-for="command in group.items"
               :key="command.id"
@@ -145,11 +150,11 @@ function onKeydown(event: KeyboardEvent): void {
               <span v-else-if="command.shortcut" class="pi-kbd">{{ command.shortcut }}</span>
             </button>
           </template>
-          <p v-if="!flat.length" class="palette-empty">没有匹配的命令</p>
+          <p v-if="!flat.length" class="palette-empty">{{ t('commands.empty') }}</p>
         </div>
         <div class="palette-foot">
-          <span>↑↓ 选择 · ↵ 执行 · esc 关闭</span>
-          <span>只列出当前模式可用的命令</span>
+          <span>{{ t('commands.hintKeys') }}</span>
+          <span>{{ t('commands.hintScope') }}</span>
         </div>
       </section>
     </div>

@@ -10,7 +10,7 @@
     <h3 class="es-title">{{ resolvedTitle }}</h3>
     <p class="es-body">{{ resolvedMessage }}</p>
     <div class="es-actions">
-      <el-button type="primary" @click="$emit('retry')">{{ retryText }}</el-button>
+      <el-button type="primary" @click="$emit('retry')">{{ resolvedRetry }}</el-button>
       <el-button v-if="secondaryText" @click="$emit('secondary')">{{ secondaryText }}</el-button>
     </div>
   </div>
@@ -18,6 +18,7 @@
 
 <script setup name="ErrorState" lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { ErrorKind } from '@/utils/errorKind';
 
 const props = withDefaults(
@@ -28,11 +29,12 @@ const props = withDefaults(
     retryText?: string;
     secondaryText?: string;
   }>(),
-  { kind: 'unknown', retryText: '重新加载' }
+  { kind: 'unknown', retryText: '' }
 );
 
 defineEmits<{ retry: []; secondary: [] }>();
 
+const { t } = useI18n();
 const EYEBROW: Record<ErrorKind, string> = {
   timeout: 'TIMEOUT',
   network: 'NETWORK',
@@ -40,14 +42,17 @@ const EYEBROW: Record<ErrorKind, string> = {
   server: '5XX · SERVER ERROR',
   unknown: 'ERROR'
 };
-const DEF: Record<ErrorKind, { title: string; message: string }> = {
-  timeout: { title: '请求超时', message: '服务在预期时间内没有响应，可能是网络较慢或服务繁忙，请重试。' },
-  network: { title: '网络连接异常', message: '无法连接到笔记服务，请检查网络或后端是否可用后重试。' },
-  session: { title: '会话已过期', message: '登录状态已失效，请重新登录后继续。' },
-  server: { title: '服务暂时不可用', message: '服务端返回错误，请稍后重试。' },
-  unknown: { title: '加载失败', message: '发生未知错误，请重试。' }
-};
 const eyebrow = computed(() => EYEBROW[props.kind] || 'ERROR');
-const resolvedTitle = computed(() => props.title || DEF[props.kind].title);
-const resolvedMessage = computed(() => props.message || DEF[props.kind].message);
+const resolvedRetry = computed(() => props.retryText || t('error.retry'));
+const resolvedTitle = computed(() => t(`error.${props.kind}.title`));
+const resolvedMessage = computed(() => {
+  if (props.kind === 'server' && props.message) {
+    const code = props.message.match(/\d{3}/)?.[0];
+    if (code) return t('error.server.messageWithCode', { code });
+  }
+  if (props.kind === 'unknown' && props.message && props.message !== t('error.unknown.message')) {
+    return props.message;
+  }
+  return t(`error.${props.kind}.message`);
+});
 </script>

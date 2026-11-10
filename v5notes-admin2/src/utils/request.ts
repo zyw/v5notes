@@ -1,7 +1,7 @@
 import type { LoadingInstance } from 'element-plus';
 import axiosModule from 'axios';
 import { HttpStatus } from '@/enums/RespEnum';
-import { getLanguage } from '@/lang';
+import { getLanguage, t } from '@/lang';
 import cache from '@/plugins/cache';
 import router from '@/router';
 import { useUserStore } from '@/store/modules/user';
@@ -41,13 +41,13 @@ function normalizeErrorMessage(message?: string) {
     return undefined;
   }
   if (message === 'Network Error') {
-    return '后端接口连接异常';
+    return t('request.network');
   }
   if (message.includes('timeout')) {
-    return '系统接口请求超时';
+    return t('request.timeout');
   }
   if (message.includes('Request failed with status code')) {
-    return '系统接口' + message.slice(-3) + '异常';
+    return t('request.status', { code: message.slice(-3) });
   }
   return message;
 }
@@ -233,7 +233,7 @@ service.interceptors.request.use(
         const s_time = sessionObj.time; // 请求时间
         const interval = 500; // 间隔时间(ms)，小于此时间视为重复提交
         if (s_data === requestObj.data && requestObj.time - s_time < interval && s_url === requestObj.url) {
-          const message = '数据正在处理，请勿重复提交';
+          const message = t('request.repeat');
           console.warn(`[${s_url}]: ` + message);
           return Promise.reject(new Error(message));
         } else {
@@ -311,11 +311,11 @@ service.interceptors.response.use(
       if (!isRelogin.show) {
 				isRelogin.show = true;
 				ElMessageBox.confirm(
-					"登录状态已过期，您可以继续留在该页面，或者重新登录",
-					"系统提示",
+					t('request.sessionExpired'),
+					t('common.systemTip'),
 					{
-						confirmButtonText: "重新登录",
-						cancelButtonText: "取消",
+						confirmButtonText: t('request.relogin'),
+						cancelButtonText: t('common.cancel'),
 						type: "warning",
 					},
 				)
@@ -338,7 +338,7 @@ service.interceptors.response.use(
 						isRelogin.show = false;
 					});
 			}
-      return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
+      return Promise.reject(t('request.invalidSession'));
     } else if (code === HttpStatus.SERVER_ERROR) {
       ElMessage({ message: msg, type: 'error' });
       return Promise.reject(createHandledError(msg));
@@ -362,7 +362,7 @@ service.interceptors.response.use(
 // 通用下载方法
 export function download(url: string, params: any, fileName: string) {
   downloadLoadingInstance = ElLoading.service({
-    text: '正在下载数据，请稍候',
+    text: t('request.downloading'),
     background: 'rgba(0, 0, 0, 0.7)'
   });
   // prettier-ignore

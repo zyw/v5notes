@@ -17,13 +17,13 @@ public class LocalFileClientConfig implements FileClientConfig, Serializable {
     /**
      * 基础路径
      */
-    @NotEmpty(message = "基础路径不能为空")
+    @NotEmpty(message = "{file.base.path.not.blank}")
     private String basePath;
 
     /**
      * 自定义域名
      */
-    @NotEmpty(message = "domain 不能为空")
-    @URL(message = "domain 必须是 URL 格式")
+    @NotEmpty(message = "{file.domain.not.blank}")
+    @URL(message = "{file.domain.invalid}")
     private String domain;
 }

@@ -12,6 +12,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import logo from '@/assets/logo/logo.png';
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import { useSettingsStore } from '@/store/modules/settings';
@@ -24,7 +25,8 @@ defineProps({
 });
 
 const title = import.meta.env.VITE_APP_LOGO_TITLE;
-const subtitle = '云笔记 · 管理控制台';
+const { t } = useI18n();
+const subtitle = computed(() => t('layout.logoSub'));
 const settingsStore = useSettingsStore();
 const sideTheme = computed(() => settingsStore.sideTheme);
 const isTopNav = computed(() => settingsStore.navType === NavTypeEnum.TOP);

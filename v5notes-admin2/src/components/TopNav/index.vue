@@ -12,7 +12,7 @@
           v-if="item.meta && item.meta.icon && item.meta.icon !== '#'"
           :icon-class="item.meta ? item.meta.icon : ''"
         />
-        {{ item.meta?.title }}
+        {{ titleOf(item.meta?.title) }}
       </el-menu-item>
     </template>
 
@@ -23,11 +23,11 @@
       popper-class="mix-topnav-popper"
       index="more"
     >
-      <template #title>更多菜单</template>
+      <template #title>{{ $t('layout.moreMenu') }}</template>
       <template v-for="(item, index) in topMenus">
         <el-menu-item v-if="index >= visibleNumber" :key="index" :index="item.path">
           <svg-icon :icon-class="item.meta ? item.meta.icon : ''" />
-          {{ item.meta?.title }}
+          {{ titleOf(item.meta?.title) }}
         </el-menu-item>
       </template>
     </el-sub-menu>
@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { RouteRecordRaw } from 'vue-router';
 import { constantRoutes } from '@/router';
+import { translateRouteTitle } from '@/utils/i18n';
 import { useAppStore } from '@/store/modules/app';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
@@ -46,6 +47,8 @@ import { isHttp } from '@/utils/validate';
 const visibleNumber = ref<number>(-1);
 // 隐藏侧边栏路由
 const hideList = ['/index', '/user/profile'];
+
+const titleOf = (title?: string) => translateRouteTitle(title);
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();

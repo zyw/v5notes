@@ -1,5 +1,6 @@
 package xin.v5ai.web.service;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import lombok.RequiredArgsConstructor;
@@ -85,6 +86,6 @@ public class AuthTokenService {
     }
 
     private ServiceException invalidRefreshToken() {
-        return new ServiceException("刷新令牌无效或已过期，请重新登录", HttpStatus.UNAUTHORIZED);
+        return new ServiceException(MessageUtils.message("auth.refresh.invalid"), HttpStatus.UNAUTHORIZED);
     }
 }

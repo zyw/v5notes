@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatReleaseDate, progressLabel, type UpdatePhase } from '../models/appUpdate'
 import ReleaseNotes from './ReleaseNotes.vue'
 
+const { t } = useI18n()
 const props = defineProps<{
   phase: UpdatePhase
   currentVersion: string
@@ -23,16 +25,16 @@ const offer = computed(() => {
 })
 const title = computed(() => {
   switch (props.phase.kind) {
-    case 'checking': return '正在检查更新'
-    case 'current': return '当前已是最新版本'
-    case 'available': return `发现新版本 ${props.phase.offer.version}`
-    case 'downloading': return '正在下载更新'
-    case 'ready': return '已下载，等待重启'
-    case 'installing': return '正在安装更新'
-    case 'error': return '更新没有完成'
-    case 'unsupported': return '当前是开发运行，不能在应用内更新'
-    case 'installed-notes': return '本版更新'
-    default: return '检查更新'
+    case 'checking': return t('update.checking')
+    case 'current': return t('update.current')
+    case 'available': return t('update.available', { version: props.phase.offer.version })
+    case 'downloading': return t('update.downloading')
+    case 'ready': return t('update.ready')
+    case 'installing': return t('update.installing')
+    case 'error': return t('update.failed')
+    case 'unsupported': return t('update.unsupported')
+    case 'installed-notes': return t('update.installed')
+    default: return t('update.check')
   }
 })
 const eyebrow = computed(() => props.phase.kind === 'installed-notes' ? "WHAT'S NEW" : 'UPDATE')
@@ -82,7 +84,7 @@ function primary(): void {
         <span v-if="currentVersion && phase.kind !== 'installed-notes'">{{ currentVersion }} → {{ offer.version }}</span>
         <span v-if="offer.date">{{ formatReleaseDate(offer.date) }}</span>
       </p>
-      <p v-else-if="phase.kind === 'installing'" class="update-meta">正在安装，完成后将重新打开</p>
+      <p v-else-if="phase.kind === 'installing'" class="update-meta">{{ t('update.installingHint') }}</p>
       <ReleaseNotes v-if="showNotes" :source="notes" />
       <div v-if="phase.kind === 'downloading'" class="update-progress" :class="{ 'is-indeterminate': !phase.total }" role="progressbar" :aria-valuenow="phase.total ? progressRatio : undefined" :aria-valuemin="0" :aria-valuemax="100" :aria-label="progress">
         <span :style="phase.total ? { width: `${progressRatio}%` } : undefined" />
@@ -90,13 +92,13 @@ function primary(): void {
       <p v-if="phase.kind === 'downloading'" class="update-meta">{{ progress }}</p>
       <p v-if="phase.kind === 'error'" class="dialog-error" role="alert">{{ phase.message }}</p>
       <div class="modal-actions">
-        <button v-if="phase.kind === 'available' || phase.kind === 'ready'" type="button" @click="emit('later')">稍后</button>
-        <button v-else-if="phase.kind === 'downloading' || phase.kind === 'checking'" type="button" @click="dismiss">取消</button>
-        <button v-else-if="phase.kind === 'error'" type="button" @click="emit('close')">关闭</button>
+        <button v-if="phase.kind === 'available' || phase.kind === 'ready'" type="button" @click="emit('later')">{{ t('update.later') }}</button>
+        <button v-else-if="phase.kind === 'downloading' || phase.kind === 'checking'" type="button" @click="dismiss">{{ t('update.cancel') }}</button>
+        <button v-else-if="phase.kind === 'error'" type="button" @click="emit('close')">{{ t('update.close') }}</button>
         <button v-if="phase.kind !== 'checking' && phase.kind !== 'downloading' && phase.kind !== 'installing'" ref="primaryButton" class="primary" type="button" @click="primary">
-          {{ phase.kind === 'available' ? '下载并更新' : phase.kind === 'ready' ? '完成更新并重启' : phase.kind === 'error' ? '重试' : '关闭' }}
+          {{ phase.kind === 'available' ? t('update.download') : phase.kind === 'ready' ? t('update.restart') : phase.kind === 'error' ? t('update.retry') : t('update.close') }}
         </button>
-        <button v-else-if="phase.kind === 'installing'" class="primary" type="button" disabled>正在安装，完成后将重新打开</button>
+        <button v-else-if="phase.kind === 'installing'" class="primary" type="button" disabled>{{ t('update.installingHint') }}</button>
       </div>
     </section>
   </div>

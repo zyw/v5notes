@@ -1,4 +1,5 @@
 import themeCss from '@v5md/view/theme.css?raw'
+import { currentLocale, t } from '../i18n'
 import katexCss from 'katex/dist/katex.min.css?raw'
 
 // KaTeX ships its fonts next to the stylesheet; an exported file has no such
@@ -69,7 +70,7 @@ export function safeFileStem(name: string): string {
     .replace(/\s+/g, ' ')
     .replace(/^[.\s]+|[.\s]+$/g, '')
   const stem = cleaned.slice(0, MAX_FILE_STEM).trim()
-  return stem || '未命名笔记'
+  return stem || t('export.untitled')
 }
 
 export function exportFileName(name: string, extension: string): string {
@@ -94,7 +95,7 @@ function escapeHtml(value: string): string {
  */
 export function buildExportDocument(note: ExportNoteContent): string {
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="${currentLocale()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -130,7 +131,7 @@ ${note.html}
  */
 export function buildRenderedDocument(name: string, body: string): string {
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="${currentLocale()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -267,7 +268,7 @@ function points(value: number): string {
  * no CJK font to embed), but nothing leaves the app and no dialog is needed.
  */
 export function buildImagePdf(pages: PdfPage[]): Blob {
-  if (!pages.length) throw new Error('没有可导出的页面')
+  if (!pages.length) throw new Error(t('export.noPages'))
   const encoder = new TextEncoder()
   const parts: Uint8Array[] = []
   const offsets: number[] = []
@@ -330,7 +331,7 @@ function readAsDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error ?? new Error('无法读取图片'))
+    reader.onerror = () => reject(reader.error ?? new Error(t('export.readImage')))
     reader.readAsDataURL(blob)
   })
 }
@@ -338,7 +339,7 @@ function readAsDataUrl(blob: Blob): Promise<string> {
 /** Loads an image URL into a data URL; the browser path needs CORS. */
 export async function fetchImageDataUrl(source: string): Promise<string> {
   const response = await fetch(source, { mode: 'cors', credentials: 'omit' })
-  if (!response.ok) throw new Error(`图片请求失败 (${response.status})`)
+  if (!response.ok) throw new Error(t('export.imageStatus', { status: response.status }))
   return readAsDataUrl(await response.blob())
 }
 
@@ -476,14 +477,14 @@ async function rasterizePage(page: HTMLElement, width: number, height: number, s
   const image = new Image()
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve()
-    image.onerror = () => reject(new Error('内容渲染失败'))
+    image.onerror = () => reject(new Error(t('export.renderFailed')))
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   })
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(width * scale)
   canvas.height = Math.round(height * scale)
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('当前环境不支持画布渲染')
+  if (!context) throw new Error(t('export.noCanvas'))
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(image, 0, 0, canvas.width, canvas.height)
@@ -493,7 +494,7 @@ async function rasterizePage(page: HTMLElement, width: number, height: number, s
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('画布导出失败'))), type, quality)
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error(t('export.canvasFailed')))), type, quality)
   })
 }
 
@@ -516,7 +517,7 @@ export async function renderNotePng(html: string, options: RenderNoteOptions = {
   const mounted = await mountExportPage(html, width, options.serverBase ?? '', options.loadImage ?? fetchImageDataUrl)
   try {
     const height = mounted.height()
-    if (height <= 0) throw new Error('正文为空，无法导出图片')
+    if (height <= 0) throw new Error(t('export.emptyImage'))
     const limit = 16000
     if (height * scale > limit) scale = Math.max(1, limit / height)
     const canvas = await rasterizePage(mounted.page, width, height, scale)
@@ -543,7 +544,7 @@ export async function renderNotePdf(html: string, options: RenderNoteOptions = {
   const mounted = await mountExportPage(html, width, options.serverBase ?? '', options.loadImage ?? fetchImageDataUrl)
   try {
     const height = mounted.height()
-    if (height <= 0) throw new Error('正文为空，无法导出 PDF')
+    if (height <= 0) throw new Error(t('export.emptyPdf'))
     const maxArea = 60_000_000
     const maxSide = 28_000
     while (width * scale * height * scale > maxArea || height * scale > maxSide) scale *= 0.85
@@ -556,7 +557,7 @@ export async function renderNotePdf(html: string, options: RenderNoteOptions = {
       slice.width = Math.round(width * scale)
       slice.height = Math.round(pageHeight * scale)
       const context = slice.getContext('2d')
-      if (!context) throw new Error('当前环境不支持 PDF 导出')
+      if (!context) throw new Error(t('export.noPdf'))
       context.fillStyle = '#ffffff'
       context.fillRect(0, 0, slice.width, slice.height)
       context.drawImage(

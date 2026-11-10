@@ -23,17 +23,18 @@
     </el-upload>
     <!-- 上传提示 -->
     <div v-if="showTip" class="el-upload__tip">
-      请上传
-      <template v-if="fileSize">
-        大小不超过 <b style="color: #f56c6c">{{ fileSize }}MB</b>
+      <template v-if="fileSize && fileType">
+        {{ $t('widgets.upload.tipBothLead') }}<b style="color: #f56c6c">{{ fileSize }}MB</b>{{ $t('widgets.upload.tipBothMid') }}<b style="color: #f56c6c">{{ fileType.join('/') }}</b>{{ $t('widgets.upload.tipBothTail') }}
       </template>
-      <template v-if="fileType">
-        格式为 <b style="color: #f56c6c">{{ fileType.join('/') }}</b>
+      <template v-else-if="fileSize">
+        {{ $t('widgets.upload.tipSizeLead') }}<b style="color: #f56c6c">{{ fileSize }}MB</b>{{ $t('widgets.upload.tipSizeTail') }}
       </template>
-      的文件
+      <template v-else-if="fileType">
+        {{ $t('widgets.upload.tipTypeLead') }}<b style="color: #f56c6c">{{ fileType.join('/') }}</b>{{ $t('widgets.upload.tipTypeTail') }}
+      </template>
     </div>
 
-    <el-dialog v-model="dialogVisible" title="预览" width="800px" append-to-body>
+    <el-dialog v-model="dialogVisible" :title="$t('common.preview')" width="800px" append-to-body>
       <img :src="dialogImageUrl" style="display: block; max-width: 100%; margin: 0 auto" />
     </el-dialog>
   </div>
@@ -46,6 +47,9 @@ import modal from '@/plugins/modal';
 import { propTypes } from '@/utils/propTypes';
 import { globalHeaders } from '@/utils/request';
 import { compressAccurately } from 'image-conversion';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   modelValue: {
@@ -136,31 +140,31 @@ const handleBeforeUpload = (file: any) => {
     isImg = file.type.indexOf('image') > -1;
   }
   if (!isImg) {
-    modal.msgError(`文件格式不正确, 请上传${props.fileType.join('/')}图片格式文件!`);
+    modal.msgError(t('widgets.imageUpload.invalidType', { types: props.fileType.join('/') }));
     return false;
   }
   if (props.fileSize) {
     const isLt = file.size / 1024 / 1024 < props.fileSize;
     if (!isLt) {
-      modal.msgError(`上传头像图片大小不能超过 ${props.fileSize} MB!`);
+      modal.msgError(t('widgets.imageUpload.avatarSize', { size: props.fileSize }));
       return false;
     }
   }
 
   //压缩图片，开启压缩并且大于指定的压缩大小时才压缩
   if (props.compressSupport && file.size / 1024 > props.compressTargetSize) {
-    modal.loading('正在上传图片，请稍候...');
+    modal.loading(t('widgets.imageUpload.uploading'));
     number.value++;
     return compressAccurately(file, props.compressTargetSize);
   } else {
-    modal.loading('正在上传图片，请稍候...');
+    modal.loading(t('widgets.imageUpload.uploading'));
     number.value++;
   }
 };
 
 // 文件个数超出
 const handleExceed = () => {
-  modal.msgError(`上传文件数量不能超过 ${props.limit} 个!`);
+  modal.msgError(t('widgets.upload.countExceeded', { limit: props.limit }));
 };
 
 // 上传成功回调
@@ -203,7 +207,7 @@ const uploadedSuccessfully = () => {
 
 // 上传失败
 const handleUploadError = () => {
-  modal.msgError('上传图片失败');
+  modal.msgError(t('widgets.imageUpload.failed'));
   modal.closeLoading();
 };
 

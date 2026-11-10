@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.lang.tree.Tree;
 import cn.hutool.core.util.ObjectUtil;
@@ -91,9 +92,9 @@ public class SysPostController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysPostBo post) {
         if (!postService.checkPostNameUnique(post)) {
-            return R.fail("新增岗位'" + post.getPostName() + "'失败，岗位名称已存在");
+            return R.fail(MessageUtils.message("post.add.name.exists", post.getPostName()));
         } else if (!postService.checkPostCodeUnique(post)) {
-            return R.fail("新增岗位'" + post.getPostName() + "'失败，岗位编码已存在");
+            return R.fail(MessageUtils.message("post.add.code.exists", post.getPostName()));
         }
         return toAjax(postService.insertPost(post));
     }
@@ -110,12 +111,12 @@ public class SysPostController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysPostBo post) {
         if (!postService.checkPostNameUnique(post)) {
-            return R.fail("修改岗位'" + post.getPostName() + "'失败，岗位名称已存在");
+            return R.fail(MessageUtils.message("post.edit.name.exists", post.getPostName()));
         } else if (!postService.checkPostCodeUnique(post)) {
-            return R.fail("修改岗位'" + post.getPostName() + "'失败，岗位编码已存在");
+            return R.fail(MessageUtils.message("post.edit.code.exists", post.getPostName()));
         } else if (SystemConstants.DISABLE.equals(post.getStatus())
             && postService.countUserPostById(post.getPostId()) > 0) {
-            return R.fail("该岗位下存在已分配用户，不能禁用!");
+            return R.fail(MessageUtils.message("post.disable.assigned"));
         }
         return toAjax(postService.updatePost(post));
     }

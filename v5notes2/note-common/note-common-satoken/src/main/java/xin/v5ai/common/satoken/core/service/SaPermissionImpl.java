@@ -1,5 +1,6 @@
 package xin.v5ai.common.satoken.core.service;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
@@ -62,7 +63,7 @@ public class SaPermissionImpl implements StpInterface {
             if (ObjectUtil.isNotNull(permissionService)) {
                 return new ArrayList<>(remotePermissionExtractor.apply(permissionService, resolveUserId(loginId)));
             }
-            throw new ServiceException("PermissionService 实现类不存在");
+            throw new ServiceException(MessageUtils.message("permission.service.missing"));
         }
         Collection<String> permissionList = localPermissionExtractor.apply(loginUser);
         if (CollUtil.isNotEmpty(permissionList)) {
@@ -112,7 +113,7 @@ public class SaPermissionImpl implements StpInterface {
             separatorIndex = loginIdStr.lastIndexOf(LoginUser.LOGIN_ID_SEPARATOR);
         }
         if (separatorIndex < 0 || separatorIndex == loginIdStr.length() - 1) {
-            throw new ServiceException("登录ID格式错误");
+            throw new ServiceException(MessageUtils.message("login.id.invalid"));
         }
         return Long.parseLong(loginIdStr.substring(separatorIndex + 1));
     }

@@ -1,5 +1,6 @@
 import type { LoadingInstance } from 'element-plus';
 import axiosModule from 'axios';
+import { t } from '@/lang';
 import errorCode from '@/utils/errorCode';
 import { extractErrorMessage, globalHeaders } from '@/utils/request';
 import { blobValidate } from '@/utils/ruoyi';
@@ -12,7 +13,7 @@ export default {
   async file(fileId: string | number) {
     const url = baseURL + '/basics/admin/file/download/' + fileId;
     downloadLoadingInstance = ElLoading.service({
-      text: '正在下载数据，请稍候',
+      text: t('request.downloading'),
       background: 'rgba(0, 0, 0, 0.7)'
     });
     try {
@@ -33,14 +34,14 @@ export default {
     } catch (r) {
       console.error(r);
       const errMsg = await extractErrorMessage(r);
-      ElMessage.error(errMsg || '下载文件出现错误，请联系管理员！');
+      ElMessage.error(errMsg || t('request.downloadFailed'));
       downloadLoadingInstance?.close();
     }
   },
   async zip(url: string, name: string) {
     url = baseURL + url;
     downloadLoadingInstance = ElLoading.service({
-      text: '正在下载数据，请稍候',
+      text: t('request.downloading'),
       background: 'rgba(0, 0, 0, 0.7)'
     });
     try {
@@ -61,7 +62,7 @@ export default {
     } catch (r) {
       console.error(r);
       const errMsg = await extractErrorMessage(r);
-      ElMessage.error(errMsg || '下载文件出现错误，请联系管理员！');
+      ElMessage.error(errMsg || t('request.downloadFailed'));
       downloadLoadingInstance?.close();
     }
   },

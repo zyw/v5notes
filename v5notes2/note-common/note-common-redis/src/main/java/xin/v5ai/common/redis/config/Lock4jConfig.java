@@ -1,5 +1,6 @@
 package xin.v5ai.common.redis.config;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.http.HttpStatus;
 import com.baomidou.lock.LockFailureStrategy;
 import com.baomidou.lock.spring.boot.autoconfigure.LockAutoConfiguration;
@@ -25,7 +26,7 @@ public class Lock4jConfig {
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public LockFailureStrategy defaultLockFailureStrategy() {
         return (key, method, arguments) -> {
-            throw new ServiceException("业务处理中，请稍后再试...", HttpStatus.HTTP_UNAVAILABLE);
+            throw new ServiceException(MessageUtils.message("lock.busy"), HttpStatus.HTTP_UNAVAILABLE);
         };
     }
 

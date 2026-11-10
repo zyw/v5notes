@@ -1,5 +1,6 @@
 package xin.v5ai.system.listener;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.lang.tree.Tree;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -96,7 +97,7 @@ public class DeptExcelConverter implements Converter<Long> {
         }
         Long deptId = getDeptMaps().nameToId().get(deptName);
         if (deptId == null) {
-            throw new ServiceException("部门不存在：" + deptName);
+            throw new ServiceException(MessageUtils.message("dept.missing.name", deptName));
         }
         return deptId;
     }

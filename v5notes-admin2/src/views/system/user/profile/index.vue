@@ -5,7 +5,7 @@
         <el-card shadow="hover" class="side-panel profile-summary-card">
           <template #header>
             <div class="panel-heading">
-              <div><h3>个人信息</h3></div>
+              <div><h3>{{ $t('system.profile.infoTitle') }}</h3></div>
             </div>
           </template>
           <div class="profile-summary">
@@ -16,28 +16,28 @@
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="user" />
-                  <span>用户名称</span>
+                  <span>{{ $t('system.user.userName') }}</span>
                 </div>
                 <span class="profile-item-value">{{ state.user.userName || '-' }}</span>
               </li>
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="phone" />
-                  <span>手机号码</span>
+                  <span>{{ $t('system.user.phone') }}</span>
                 </div>
                 <span class="profile-item-value">{{ state.user.phoneNumber || '-' }}</span>
               </li>
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="email" />
-                  <span>用户邮箱</span>
+                  <span>{{ $t('system.profile.userEmail') }}</span>
                 </div>
                 <span class="profile-item-value">{{ state.user.email || '-' }}</span>
               </li>
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="tree" />
-                  <span>所属部门</span>
+                  <span>{{ $t('system.profile.belongDept') }}</span>
                 </div>
                 <span v-if="state.user.deptName" class="profile-item-value">
                   {{ state.user.deptName }} / {{ state.postGroup }}
@@ -47,14 +47,14 @@
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="peoples" />
-                  <span>所属角色</span>
+                  <span>{{ $t('system.profile.belongRole') }}</span>
                 </div>
                 <span class="profile-item-value">{{ state.roleGroup || '-' }}</span>
               </li>
               <li class="list-group-item">
                 <div class="profile-item-label">
                   <svg-icon icon-class="date" />
-                  <span>创建日期</span>
+                  <span>{{ $t('system.profile.createDate') }}</span>
                 </div>
                 <span class="profile-item-value">{{ state.user.createTime || '-' }}</span>
               </li>
@@ -67,22 +67,22 @@
           <template #header>
             <div class="toolbar-shell">
               <div class="table-heading">
-                <h3>个人设置</h3>
-                <p>维护个人资料、密码、第三方应用和在线设备。</p>
+                <h3>{{ $t('system.profile.settings') }}</h3>
+                <p>{{ $t('system.profile.settingsDesc') }}</p>
               </div>
             </div>
           </template>
           <el-tabs v-model="activeTab" class="profile-tabs">
-            <el-tab-pane label="基本资料" name="userinfo">
+            <el-tab-pane :label="$t('system.profile.basic')" name="userinfo">
               <userInfo :user="userForm" />
             </el-tab-pane>
-            <el-tab-pane label="修改密码" name="resetPwd">
+            <el-tab-pane :label="$t('system.profile.changePwd')" name="resetPwd">
               <resetPwd />
             </el-tab-pane>
-            <el-tab-pane label="第三方应用" name="thirdParty">
+            <el-tab-pane :label="$t('system.profile.thirdParty')" name="thirdParty">
               <thirdParty :auths="state.auths" />
             </el-tab-pane>
-            <el-tab-pane label="在线设备" name="onlineDevice">
+            <el-tab-pane :label="$t('system.profile.online')" name="onlineDevice">
               <onlineDevice :devices="state.devices" />
             </el-tab-pane>
           </el-tabs>

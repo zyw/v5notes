@@ -14,6 +14,39 @@ const UPDATE_FEED: &str = "https://github.com/zyw/v5notes/releases/latest/downlo
 
 const PROJECT_URL: &str = "https://github.com/zyw/v5notes";
 
+static APP_LOCALE: Mutex<String> = Mutex::new(String::new());
+
+fn locale_code() -> String {
+    APP_LOCALE.lock().map(|value| value.clone()).unwrap_or_default()
+}
+
+fn set_locale_code(value: &str) {
+    let normalized = match value {
+        "zh-TW" | "zh-HK" | "zh-Hant" => "zh-TW",
+        "en" | "en-US" | "en-GB" => "en",
+        _ => "zh-CN",
+    };
+    if let Ok(mut slot) = APP_LOCALE.lock() {
+        *slot = normalized.to_string();
+    }
+}
+
+fn tr(zh_cn: &str, zh_tw: &str, en: &str) -> String {
+    match locale_code().as_str() {
+        "zh-TW" => zh_tw.to_string(),
+        "en" => en.to_string(),
+        _ => zh_cn.to_string(),
+    }
+}
+
+fn tr_detail(zh_cn: &str, zh_tw: &str, en: &str, detail: impl std::fmt::Display) -> String {
+    match locale_code().as_str() {
+        "en" => format!("{en}: {detail}"),
+        "zh-TW" => format!("{zh_tw}：{detail}"),
+        _ => format!("{zh_cn}：{detail}"),
+    }
+}
+
 /// 只接受 https 清单地址。非法或空值回退到内置的 GitHub Release 地址。
 fn https_update_feed(value: &str) -> Option<&str> {
     let target = value.trim();
@@ -100,7 +133,7 @@ async fn app_update_check(app: tauri::AppHandle) -> Result<Option<UpdateOffer>, 
     if let Some(endpoint) = feed_override() {
         let url = endpoint
             .parse()
-            .map_err(|_| "更新地址无效".to_string())?;
+            .map_err(|_| tr("更新地址无效", "更新位址無效", "The update address is invalid"))?;
         builder = builder
             .endpoints(vec![url])
             .map_err(|error| error.to_string())?;
@@ -136,7 +169,7 @@ async fn app_update_download(app: tauri::AppHandle) -> Result<(), String> {
         let held = app.state::<HeldUpdate>();
         (held.current_generation(), held.clone_update())
     };
-    let update = update.ok_or("没有待下载的更新")?;
+    let update = update.ok_or(tr("没有待下载的更新", "沒有待下載的更新", "There is no update to download"))?;
     let progress = app.clone();
     let bytes = update
         .download(
@@ -155,7 +188,7 @@ async fn app_update_download(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|error| error.to_string())?;
     let held = app.state::<HeldUpdate>();
     if held.current_generation() != generation {
-        return Err("下载已取消".into());
+        return Err(tr("下载已取消", "下載已取消", "Download cancelled").into());
     }
     held.store_bytes(bytes);
     Ok(())
@@ -165,8 +198,8 @@ async fn app_update_download(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn app_update_install(app: tauri::AppHandle) -> Result<(), String> {
     let held = app.state::<HeldUpdate>();
-    let update = held.clone_update().ok_or("没有待安装的更新")?;
-    let bytes = held.take_bytes().ok_or("更新包还没有下载完成")?;
+    let update = held.clone_update().ok_or(tr("没有待安装的更新", "沒有待安裝的更新", "There is no update to install"))?;
+    let bytes = held.take_bytes().ok_or(tr("更新包还没有下载完成", "更新套件尚未下載完成", "The update has not finished downloading"))?;
     update.install(bytes).map_err(|error| error.to_string())
 }
 
@@ -185,19 +218,19 @@ fn app_update_cancel(app: tauri::AppHandle) {
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 async fn app_update_check() -> Result<Option<UpdateOffer>, String> {
-    Err("此平台不支持应用内更新".into())
+    Err(tr("此平台不支持应用内更新", "此平台不支援應用程式內更新", "In-app updates are not supported on this platform").into())
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 async fn app_update_download() -> Result<(), String> {
-    Err("此平台不支持应用内更新".into())
+    Err(tr("此平台不支持应用内更新", "此平台不支援應用程式內更新", "In-app updates are not supported on this platform").into())
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 fn app_update_install() -> Result<(), String> {
-    Err("此平台不支持应用内更新".into())
+    Err(tr("此平台不支持应用内更新", "此平台不支援應用程式內更新", "In-app updates are not supported on this platform").into())
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -225,8 +258,25 @@ fn exit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+fn set_app_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> {
+    set_locale_code(&locale);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_title(&tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes"));
+    }
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let show = MenuItem::with_id(&app, "show", tr("显示窗口", "顯示視窗", "Show Window"), true, None::<&str>)
+            .map_err(|error| error.to_string())?;
+        let quit = MenuItem::with_id(&app, "quit", tr("退出 v5notes", "結束 v5notes", "Quit v5notes"), true, None::<&str>)
+            .map_err(|error| error.to_string())?;
+        let menu = Menu::with_items(&app, &[&show, &quit]).map_err(|error| error.to_string())?;
+        tray.set_menu(Some(menu)).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn open_project_link() -> Result<(), String> {
-    open_with_system(PROJECT_URL).map_err(|error| format!("无法打开项目主页：{error}"))
+    open_with_system(PROJECT_URL).map_err(|error| tr_detail("无法打开项目主页", "無法開啟專案首頁", "Could not open the project page", error))
 }
 
 /// v5md asks for this when a note link is opened inside the webview.
@@ -234,9 +284,9 @@ fn open_project_link() -> Result<(), String> {
 #[tauri::command]
 fn open_external_url(url: String) -> Result<(), String> {
     let Some(target) = openable_external_url(&url) else {
-        return Err("只能打开 http、https 或 mailto 链接".into());
+        return Err(tr("只能打开 http、https 或 mailto 链接", "只能開啟 http、https 或 mailto 連結", "Only http, https, or mailto links can be opened").into());
     };
-    open_with_system(target).map_err(|error| format!("无法打开链接：{error}"))
+    open_with_system(target).map_err(|error| tr_detail("无法打开链接", "無法開啟連結", "Could not open the link", error))
 }
 
 fn openable_external_url(url: &str) -> Option<&str> {
@@ -327,7 +377,7 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         let _ = (app, enabled);
-        Err("此平台不支持登录系统后自动启动".into())
+        Err(tr("此平台不支持登录系统后自动启动", "此平台不支援登入系統後自動啟動", "Launch at login is not supported on this platform").into())
     }
 }
 
@@ -352,15 +402,15 @@ async fn export_pdf(
 
     let name = file_name.trim().to_string();
     if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
-        return Err("文件名不合法".into());
+        return Err(tr("文件名不合法", "檔名不合法", "The file name is not valid").into());
     }
     if !(x.is_finite() && y.is_finite() && width.is_finite() && height.is_finite())
         || width < 100.0
         || height < 100.0
     {
-        return Err("导出尺寸不合法".into());
+        return Err(tr("导出尺寸不合法", "匯出尺寸不合法", "The export size is not valid").into());
     }
-    let home = std::env::var("HOME").map_err(|_| "找不到用户目录".to_string())?;
+    let home = std::env::var("HOME").map_err(|_| tr("找不到用户目录", "找不到使用者目錄", "Could not find the user directory"))?;
     let directory = std::path::Path::new(&home).join("Downloads");
     std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let target = unique_target(&directory, &name);
@@ -380,12 +430,12 @@ async fn export_pdf(
 
     receiver
         .recv_timeout(Duration::from_secs(60))
-        .map_err(|_| "导出超时".to_string())??;
+        .map_err(|_| tr("导出超时", "匯出逾時", "Export timed out"))??;
 
     let bytes = std::fs::read(&target).map_err(|error| error.to_string())?;
     if bytes.len() < 1024 || !bytes.starts_with(b"%PDF") {
         let _ = std::fs::remove_file(&target);
-        return Err("生成的 PDF 无效".into());
+        return Err(tr("生成的 PDF 无效", "產生的 PDF 無效", "The generated PDF is invalid").into());
     }
     Ok(path)
 }
@@ -428,7 +478,7 @@ unsafe fn vector_pdf(
             let message = unsafe { (*error).localizedDescription() }.to_string();
             let _ = sender.send(Err(message));
         } else if data.is_null() {
-            let _ = sender.send(Err("PDF 数据为空".to_string()));
+            let _ = sender.send(Err(tr("PDF 数据为空", "PDF 資料是空的", "The PDF data is empty")));
         } else {
             let bytes = unsafe { (*data).to_vec() };
             let _ = sender.send(Ok(bytes));
@@ -441,11 +491,11 @@ unsafe fn vector_pdf(
     let source = loop {
         match receiver.try_recv() {
             Ok(result) => break result?,
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => return Err("PDF 生成被中断".into()),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => return Err(tr("PDF 生成被中断", "PDF 產生被中斷", "PDF generation was interrupted").into()),
             Err(std::sync::mpsc::TryRecvError::Empty) => {}
         }
         if std::time::Instant::now() > deadline {
-            return Err("PDF 生成超时".into());
+            return Err(tr("PDF 生成超时", "PDF 產生逾時", "PDF generation timed out").into());
         }
         let date = NSDate::dateWithTimeIntervalSinceNow(0.02);
         let mode = unsafe { NSDefaultRunLoopMode };
@@ -454,12 +504,12 @@ unsafe fn vector_pdf(
 
     // ---- repaginate into A4 ----
     let data = CFData::from_bytes(&source);
-    let provider = CGDataProvider::with_cf_data(Some(&data)).ok_or("无法读取 PDF 数据")?;
-    let document = CGPDFDocument::with_provider(Some(&provider)).ok_or("无法解析 PDF")?;
-    let page = CGPDFDocument::page(Some(&document), 1).ok_or("PDF 没有页面")?;
+    let provider = CGDataProvider::with_cf_data(Some(&data)).ok_or(tr("无法读取 PDF 数据", "無法讀取 PDF 資料", "Could not read the PDF data"))?;
+    let document = CGPDFDocument::with_provider(Some(&provider)).ok_or(tr("无法解析 PDF", "無法解析 PDF", "Could not parse the PDF"))?;
+    let page = CGPDFDocument::page(Some(&document), 1).ok_or(tr("PDF 没有页面", "PDF 沒有頁面", "The PDF has no pages"))?;
     let bounds = CGPDFPage::box_rect(Some(&page), CGPDFBox::MediaBox);
     if bounds.size.height <= 1.0 {
-        return Err("PDF 页面高度异常".into());
+        return Err(tr("PDF 页面高度异常", "PDF 頁面高度異常", "The PDF page height is invalid").into());
     }
 
     let page_width = 595.28_f64;
@@ -491,7 +541,7 @@ unsafe fn vector_pdf(
         origin: CGPoint { x: 0.0, y: 0.0 },
         size: CGSize { width: page_width, height: page_height },
     };
-    let context = unsafe { CGPDFContextCreateWithURL(Some(url), &media, None) }.ok_or("无法创建 PDF 文件")?;
+    let context = unsafe { CGPDFContextCreateWithURL(Some(url), &media, None) }.ok_or(tr("无法创建 PDF 文件", "無法建立 PDF 檔案", "Could not create the PDF file"))?;
 
     for (top_px, height_px) in ranges {
         let slice_height = (height_px * scale).max(1.0);
@@ -558,7 +608,7 @@ async fn export_pdf(
     _height: f64,
     _slices: Vec<(f64, f64)>,
 ) -> Result<String, String> {
-    Err("当前平台暂不支持矢量 PDF，请使用图片版".into())
+    Err(tr("当前平台暂不支持矢量 PDF，请使用图片版", "目前平台暫不支援向量 PDF，請改用圖片版", "Vector PDF is not available on this platform. Use the image version.").into())
 }
 
 /// Fetches an HTTP(S) image and returns it as a data URL. Webviews cannot read
@@ -572,23 +622,23 @@ async fn fetch_image_data_url(url: String) -> Result<String, String> {
 
     let target = url.trim();
     if !(target.starts_with("http://") || target.starts_with("https://")) {
-        return Err("只支持 http/https 图片".into());
+        return Err(tr("只支持 http/https 图片", "只支援 http/https 圖片", "Only http/https images are supported").into());
     }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
-        .map_err(|error| format!("图片客户端初始化失败：{error}"))?;
+        .map_err(|error| tr_detail("图片客户端初始化失败", "圖片用戶端初始化失敗", "Could not start the image client", error))?;
     let response = client
         .get(target)
         .send()
         .await
-        .map_err(|error| format!("图片请求失败：{error}"))?;
+        .map_err(|error| tr_detail("图片请求失败", "圖片請求失敗", "Image request failed", error))?;
     if !response.status().is_success() {
-        return Err(format!("图片请求失败：HTTP {}", response.status()));
+        return Err(tr_detail("图片请求失败", "圖片請求失敗", "Image request failed", format!("HTTP {}", response.status())));
     }
     const MAX_IMAGE_BYTES: u64 = 40 * 1024 * 1024;
     if response.content_length().is_some_and(|length| length > MAX_IMAGE_BYTES) {
-        return Err("图片过大，无法嵌入".into());
+        return Err(tr("图片过大，无法嵌入", "圖片過大，無法嵌入", "The image is too large to embed").into());
     }
     let declared = response
         .headers()
@@ -601,9 +651,9 @@ async fn fetch_image_data_url(url: String) -> Result<String, String> {
     let bytes = response
         .bytes()
         .await
-        .map_err(|error| format!("图片读取失败：{error}"))?;
+        .map_err(|error| tr_detail("图片读取失败", "圖片讀取失敗", "Could not read the image", error))?;
     if bytes.len() as u64 > MAX_IMAGE_BYTES {
-        return Err("图片过大，无法嵌入".into());
+        return Err(tr("图片过大，无法嵌入", "圖片過大，無法嵌入", "The image is too large to embed").into());
     }
     // The notes server sends files as attachments without an image Content-Type,
     // and browsers need a usable MIME type for the data URL to decode.
@@ -652,6 +702,7 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             exit_app,
+            set_app_locale,
             open_project_link,
             open_external_url,
             export_pdf,
@@ -667,8 +718,8 @@ pub fn run() {
             app_update_cancel
         ])
         .setup(|app| {
-            let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "退出 v5notes", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", tr("显示窗口", "顯示視窗", "Show Window"), true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", tr("退出 v5notes", "結束 v5notes", "Quit v5notes"), true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-mono.png"))?;

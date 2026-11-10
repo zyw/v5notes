@@ -18,7 +18,7 @@
             <p v-if="subtitle" class="fd-subtitle">{{ subtitle }}</p>
           </div>
         </slot>
-        <button class="fd-close" type="button" aria-label="关闭" @click="close">
+        <button class="fd-close" type="button" :aria-label="$t('common.close')" @click="close">
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <path d="m6 6 12 12M18 6 6 18" />
           </svg>
@@ -37,9 +37,9 @@
         </div>
         <div class="fd-actions">
           <slot name="footer">
-            <el-button @click="close">取消</el-button>
+            <el-button @click="close">{{ $t('common.cancel') }}</el-button>
             <el-button type="primary" :loading="submitting" @click="$emit('submit')">
-              {{ submitText }}
+              {{ submitText || $t('widgets.formDrawer.saveChanges') }}
             </el-button>
           </slot>
         </div>
@@ -66,7 +66,7 @@ withDefaults(
     eyebrow: '',
     hint: '',
     size: '680px',
-    submitText: '保存修改',
+    submitText: '',
     submitting: false
   }
 );

@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.lock.annotation.Lock4j;
 import jakarta.servlet.http.HttpServletResponse;
@@ -85,7 +86,7 @@ public class SysDictTypeController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysDictTypeBo dict) {
         if (!dictTypeService.checkDictTypeUnique(dict)) {
-            return R.fail("新增字典'" + dict.getDictName() + "'失败，字典类型已存在");
+            return R.fail(MessageUtils.message("dict.type.add.exists", dict.getDictName()));
         }
         dictTypeService.insertDictType(dict);
         return R.ok();
@@ -103,7 +104,7 @@ public class SysDictTypeController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysDictTypeBo dict) {
         if (!dictTypeService.checkDictTypeUnique(dict)) {
-            return R.fail("修改字典'" + dict.getDictName() + "'失败，字典类型已存在");
+            return R.fail(MessageUtils.message("dict.type.edit.exists", dict.getDictName()));
         }
         dictTypeService.updateDictType(dict);
         return R.ok();

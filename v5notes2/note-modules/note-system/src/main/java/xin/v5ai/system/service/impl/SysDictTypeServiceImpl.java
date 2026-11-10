@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
@@ -144,7 +145,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService, DictService 
         list.forEach(x -> {
             boolean assigned = dictDataMapper.lambda().eq(SysDictData::getDictType, x.getDictType()).exists();
             if (assigned) {
-                throw new ServiceException("{}已分配,不能删除", x.getDictName());
+                throw new ServiceException(MessageUtils.message("dict.delete.assigned", x.getDictName()));
             }
         });
         dictTypeMapper.deleteByIds(dictIds);
@@ -178,7 +179,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService, DictService 
             // 新增 type 下无 data 数据 返回空防止缓存穿透
             return new ArrayList<>();
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**
@@ -203,7 +204,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService, DictService 
             CacheUtils.evict(CacheNames.SYS_DICT_TYPE, oldDict.getDictType());
             return dictDataMapper.selectDictDataByType(dict.getDictType());
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**

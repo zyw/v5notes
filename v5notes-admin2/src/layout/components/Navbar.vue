@@ -25,7 +25,7 @@
     <div class="right-menu flex align-center">
       <template v-if="appStore.device !== 'mobile'">
         <search-menu ref="searchMenuRef" />
-        <el-tooltip content="搜索" effect="dark" placement="bottom">
+        <el-tooltip :content="$t('navbar.search')" effect="dark" placement="bottom">
           <div class="right-menu-item hover-effect" @click="openSearchMenu">
             <svg-icon class-name="search-icon" icon-class="search" />
           </div>
@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import type { ElMessageBoxOptions } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import { CaretBottom, Setting, SwitchButton, User } from '@element-plus/icons-vue';
 import appLogo from '@/assets/logo/logo.png';
 import { useThemeMode } from '@/composables/useThemeMode';
@@ -129,7 +130,8 @@ const { mode: themeMode, label: themeLabel, cycle: cycleTheme } = useThemeMode()
 
 const navType = computed(() => settingsStore.navType);
 const showLogo = computed(() => settingsStore.sidebarLogo);
-const displayName = computed(() => userStore.nickname || '管理员');
+const { t } = useI18n();
+const displayName = computed(() => userStore.nickname || t('navbar.admin'));
 
 // 搜索菜单
 const searchMenuRef = ref<InstanceType<typeof SearchMenu>>();
@@ -143,9 +145,9 @@ const toggleSideBar = () => {
 };
 
 const logout = async () => {
-  await ElMessageBox.confirm('确定注销并退出系统吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
+  await ElMessageBox.confirm(t('navbar.logoutConfirm'), t('common.tip'), {
+    confirmButtonText: t('common.confirm'),
+    cancelButtonText: t('common.cancel'),
     type: 'warning'
   } as ElMessageBoxOptions);
   userStore.logout().then(() => {

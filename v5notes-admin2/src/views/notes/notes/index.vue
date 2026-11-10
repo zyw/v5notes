@@ -4,7 +4,7 @@
       <!-- 笔记目录和笔记树 -->
       <el-col :lg="4" :xs="24" class="notes-tree-col">
         <el-card shadow="hover" class="tree-panel-shell notes-tree-card">
-          <el-input v-model="dirAndNotesName" placeholder="请输入目录或笔记名称" prefix-icon="Search" clearable />
+          <el-input v-model="dirAndNotesName" :placeholder="$t('common.pleaseInput', { label: $t('notes.tree.searchLabel') })" prefix-icon="Search" clearable />
           <el-tree
             ref="notesTreeRef"
             class="mt-2 notes-tree"

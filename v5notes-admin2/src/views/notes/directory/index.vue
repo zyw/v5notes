@@ -5,13 +5,13 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('notes.kicker.search') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="所属目录" prop="pid">
+          <el-form-item :label="$t('notes.dir.parent')" prop="pid">
             <el-tree-select
               v-model="queryParams.pid"
               :data="dirTreeData"
@@ -19,26 +19,26 @@
               default-expand-all
               check-strictly
               :render-after-expand="false"
-              placeholder="请选择所属目录"
+              :placeholder="$t('common.pleaseSelect', { label: $t('notes.dir.parent') })"
             />
           </el-form-item>
-          <el-form-item label="目录名称" prop="name">
-            <el-input v-model="queryParams.name" placeholder="请输入目录名称" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('notes.dir.name')" prop="name">
+            <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('notes.dir.name') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="创建时间" style="width: 308px">
+          <el-form-item :label="$t('common.createTime')" style="width: 308px">
             <el-date-picker
               v-model="dateRange"
               value-format="YYYY-MM-DD HH:mm:ss"
               type="daterange"
               range-separator="-"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              :start-placeholder="$t('common.startDate')"
+              :end-placeholder="$t('common.endDate')"
               :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -48,15 +48,15 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Directory Dataset</span>
-            <h3>目录列表</h3>
-            <p>共 {{ total }} 个目录，用于组织笔记的层级结构。</p>
+            <span class="panel-kicker">{{ $t('notes.dir.dataset') }}</span>
+            <h3>{{ $t('notes.dir.listTitle') }}</h3>
+            <p>{{ $t('notes.dir.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['system:directory:add']">新增</el-button>
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['system:directory:edit']">修改</el-button>
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['system:directory:remove']">删除</el-button>
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['system:directory:export']">导出</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['system:directory:add']">{{ $t('common.add') }}</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['system:directory:edit']">{{ $t('common.edit') }}</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['system:directory:remove']">{{ $t('common.delete') }}</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['system:directory:export']">{{ $t('common.export') }}</el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList" />
           </div>
         </div>
@@ -72,26 +72,26 @@
       <el-table v-else v-loading="loading && (directoryList).length > 0" class="data-table" :data="directoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="目录名称" align="center" prop="name" />
-        <el-table-column label="描述" align="center" prop="descr" />
-        <el-table-column label="创建时间" align="center" prop="createTime" width="180">
+        <el-table-column :label="$t('notes.dir.name')" align="center" prop="name" />
+        <el-table-column :label="$t('common.description')" align="center" prop="descr" />
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="修改" placement="top">
+            <el-tooltip :content="$t('common.edit')" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row as DirectoryVO)" v-hasPermi="['system:directory:edit']"></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row as DirectoryVO)" v-hasPermi="['system:directory:remove']"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -104,10 +104,10 @@
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 笔记目录</span>
+            <span>{{ $t('notes.dir.brand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">{{ (form.name || '目录').slice(0, 1) }}</div>
+            <div class="app-dialog-hero__icon">{{ (form.name || $t('notes.directory')).slice(0, 1) }}</div>
             <div>
               <div class="app-dialog-hero__name">{{ form.name || dialog.title }}</div>
               <div class="app-dialog-hero__meta"><span>{{ dialog.title }}</span></div>
@@ -118,8 +118,8 @@
 
       <el-form ref="directoryFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
         <section class="app-dialog-section">
-          <h4>基本信息</h4>
-          <el-form-item label="所属目录" prop="pid">
+          <h4>{{ $t('common.basicInfo') }}</h4>
+          <el-form-item :label="$t('notes.dir.parent')" prop="pid">
             <el-tree-select
               v-model="form.pid"
               :data="dirTreeData"
@@ -127,25 +127,25 @@
               default-expand-all
               check-strictly
               :render-after-expand="false"
-              placeholder="请选择所属目录"
+              :placeholder="$t('common.pleaseSelect', { label: $t('notes.dir.parent') })"
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="目录名称" prop="name">
-            <el-input v-model="form.name" placeholder="请输入目录名称" />
+          <el-form-item :label="$t('notes.dir.name')" prop="name">
+            <el-input v-model="form.name" :placeholder="$t('common.pleaseInput', { label: $t('notes.dir.name') })" />
           </el-form-item>
         </section>
         <section class="app-dialog-section">
-          <h4>描述</h4>
-          <el-form-item label="描述" prop="descr">
-            <el-input v-model="form.descr" placeholder="请输入描述" type="textarea" :rows="3" />
+          <h4>{{ $t('common.description') }}</h4>
+          <el-form-item :label="$t('common.description')" prop="descr">
+            <el-input v-model="form.descr" :placeholder="$t('common.pleaseInput', { label: $t('common.description') })" type="textarea" :rows="3" />
           </el-form-item>
         </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="cancel">取消</el-button>
-          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确定</submit-button>
+          <el-button @click="cancel">{{ $t('common.cancel') }}</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">{{ $t('common.confirm') }}</submit-button>
         </div>
       </template>
     </el-dialog>
@@ -153,6 +153,7 @@
 </template>
 
 <script setup name="Directory" lang="ts">
+import { useI18n } from 'vue-i18n';
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import SubmitButton from '@/components/Loading/SubmitButton.vue';
 import ErrorState from '@/components/ErrorState/ErrorState.vue';
@@ -163,6 +164,8 @@ import type { DirectoryForm, DirectoryQuery, DirectoryVO, NotesTreeVo } from '@/
 import modal from '@/plugins/modal';
 import { download } from '@/utils/request';
 import { addDateRange, parseTime } from '@/utils/ruoyi';
+
+const { t } = useI18n();
 
 const dateRange = ref<any>(['', '']);
 
@@ -187,10 +190,14 @@ const dialog = reactive<DialogOption>({
 const dirTreeData = ref<NotesTreeVo[]>([
   {
     id: 0,
-    label: '根节点',
+    label: '',
     type: 1
   } as NotesTreeVo
 ]);
+
+watchEffect(() => {
+  dirTreeData.value[0].label = t('notes.dir.root');
+});
 
 const initFormData: DirectoryForm = {
   id: undefined,
@@ -208,13 +215,15 @@ const data = reactive<PageData<DirectoryForm, DirectoryQuery>>({
     pid: undefined,
     params: {}
   },
-  rules: {
-    name: [{ required: true, message: '目录名称不能为空', trigger: 'blur' }],
-    pid: [{ required: true, message: '父目录ID不能为空', trigger: 'blur' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+
+const rules = computed<ElFormRules>(() => ({
+  name: [{ required: true, message: t('notes.dir.nameRequired'), trigger: 'blur' }],
+  pid: [{ required: true, message: t('notes.dir.parentRequired'), trigger: 'blur' }]
+}));
 
 /** 查询目录列表 */
 const getList = async () => {
@@ -268,7 +277,7 @@ const handleSelectionChange = (selection: DirectoryVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = '添加目录';
+  dialog.title = t('notes.dir.addTitle');
 };
 
 /** 修改按钮操作 */
@@ -278,7 +287,7 @@ const handleUpdate = async (row?: DirectoryVO) => {
   const res = await getDirectory(dirId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = '修改目录';
+  dialog.title = t('notes.dir.editTitle');
 };
 
 /** 提交按钮 */
@@ -291,7 +300,7 @@ const submitForm = () => {
       } else {
         await addDirectory(form.value).finally(() => (buttonLoading.value = false));
       }
-      modal.msgSuccess('操作成功');
+      modal.msgSuccess(t('common.actionSuccess'));
       dialog.visible = false;
       await getList();
     }
@@ -301,9 +310,9 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: DirectoryVO) => {
   const dirIds = row?.id || ids.value;
-  await modal.confirm('删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"' + dirIds + '"的数据项？').finally(() => (loading.value = false));
+  await modal.confirm(t('notes.dir.deleteConfirm', { ids: dirIds })).finally(() => (loading.value = false));
   await delDirectory(dirIds);
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
   await getList();
 };
 

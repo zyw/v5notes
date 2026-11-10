@@ -5,31 +5,31 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('system.config.searchKicker') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="参数名称" prop="configName">
+          <el-form-item :label="$t('system.config.name')" prop="configName">
             <el-input
               v-model="queryParams.configName"
-              placeholder="请输入参数名称"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.config.name') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="参数键名" prop="configKey">
+          <el-form-item :label="$t('system.config.key')" prop="configKey">
             <el-input
               v-model="queryParams.configKey"
-              placeholder="请输入参数键名"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.config.key') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -39,16 +39,16 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Config Dataset</span>
-            <h3>参数列表</h3>
-            <p>共 {{ total }} 条记录，支持键值维护、导出和缓存刷新。</p>
+            <span class="panel-kicker">{{ $t('system.config.datasetKicker') }}</span>
+            <h3>{{ $t('system.config.listTitle') }}</h3>
+            <p>{{ $t('system.config.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
             <el-button v-hasPermi="['system:config:add']" type="primary" plain icon="Plus" @click="handleAdd">
-              新增
+              {{ $t('common.add') }}
             </el-button>
             <el-button v-hasPermi="['system:config:export']" type="warning" plain icon="Download" @click="handleExport">
-              导出
+              {{ $t('common.export') }}
             </el-button>
             <el-button
               v-hasPermi="['system:config:remove']"
@@ -57,7 +57,7 @@
               icon="Refresh"
               @click="handleRefreshCache"
             >
-              刷新缓存
+              {{ $t('system.config.refreshCache') }}
             </el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList"></right-toolbar>
           </div>
@@ -66,33 +66,33 @@
 
       <div class="config-body">
         <el-tabs v-model="activeTab" tab-position="left" class="config-tabs" @tab-change="handleTabChange">
-          <el-tab-pane label="全部" name="" />
-          <el-tab-pane label="系统内置" name="Y" />
-          <el-tab-pane label="自定义配置" name="N" />
+          <el-tab-pane :label="$t('common.all')" name="" />
+          <el-tab-pane :label="$t('system.config.builtin')" name="Y" />
+          <el-tab-pane :label="$t('system.config.custom')" name="N" />
         </el-tabs>
 
         <div class="config-content">
           <el-table v-loading="loading && configList.length > 0" :data="configList" :border="false" class="data-table">
-            <el-table-column label="参数名称" prop="configName" min-width="160" />
-            <el-table-column label="参数键名" prop="configKey" min-width="160" />
-            <el-table-column label="参数键值" min-width="160">
+            <el-table-column :label="$t('system.config.name')" prop="configName" min-width="160" />
+            <el-table-column :label="$t('system.config.key')" prop="configKey" min-width="160" />
+            <el-table-column :label="$t('system.config.value')" min-width="160">
               <template #default="{ row }">
                 <el-input
                   v-model="row.configValue"
-                  placeholder="请输入参数键值"
+                  :placeholder="$t('common.pleaseInput', { label: $t('system.config.value') })"
                   @blur="handleInlineSave(row)"
                   @keyup.enter="handleInlineSave(row)"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="备注" prop="remark" min-width="180" show-overflow-tooltip>
+            <el-table-column :label="$t('common.remark')" prop="remark" min-width="180" show-overflow-tooltip>
               <template #default="{ row }">
                 {{ row.remark || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" align="center" class-name="small-padding">
+            <el-table-column :label="$t('common.operate')" width="100" align="center" class-name="small-padding">
               <template #default="{ row }">
-                <el-tooltip content="修改" placement="top">
+                <el-tooltip :content="$t('common.edit')" placement="top">
                   <el-button
                     v-hasPermi="['system:config:edit']"
                     link
@@ -101,7 +101,7 @@
                     @click="handleUpdate(row)"
                   ></el-button>
                 </el-tooltip>
-                <el-tooltip content="删除" placement="top">
+                <el-tooltip :content="$t('common.delete')" placement="top">
                   <el-button
                     v-hasPermi="['system:config:remove']"
                     link
@@ -114,7 +114,7 @@
             </el-table-column>
           <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
         </el-table>
           <pagination
@@ -132,28 +132,28 @@
     <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      eyebrow="参数设置"
-      subtitle="配置系统参数项、键值与类型"
+      :eyebrow="$t('system.config.eyebrow')"
+      :subtitle="$t('system.config.subtitle')"
       size="560px"
-      submit-text="确定"
-      hint="带 * 为必填项，保存后立即生效"
+      :submit-text="$t('common.confirm')"
+      :hint="$t('system.config.requiredHint')"
       @submit="submitForm"
       @closed="cancel"
     >
       <template #hero>
         <div class="config-hero">
           <div class="config-hero__top">
-            <span class="config-hero__brand"><img :src="logoUrl" alt="" />V5Notes 参数设置</span>
+            <span class="config-hero__brand"><img :src="logoUrl" alt="" />{{ $t('system.config.brand') }}</span>
             <span class="config-hero__divider">·</span>
             <span class="config-hero__action">{{ dialog.title }}</span>
           </div>
           <div class="config-hero__profile">
-            <div class="config-hero__icon">{{ (form.configName || '参').slice(0, 1) }}</div>
+            <div class="config-hero__icon">{{ (form.configName || $t('system.config.initial')).slice(0, 1) }}</div>
             <div>
-              <div class="config-hero__name">{{ form.configName || '未命名参数' }}</div>
+              <div class="config-hero__name">{{ form.configName || $t('system.config.unnamed') }}</div>
               <div class="config-hero__meta">
                 <span class="config-hero__tag">{{ configTypeLabel }}</span>
-                <span>{{ form.configKey || '未设置键名' }}</span>
+                <span>{{ form.configKey || $t('system.config.noKey') }}</span>
               </div>
             </div>
           </div>
@@ -162,39 +162,39 @@
 
       <el-form ref="configFormRef" :model="form" :rules="rules" label-position="top" class="config-form">
         <section class="form-section">
-          <h4>基本信息</h4>
+          <h4>{{ $t('common.basicInfo') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
-              <el-form-item label="参数名称" prop="configName">
-                <el-input v-model="form.configName" placeholder="请输入参数名称" />
+              <el-form-item :label="$t('system.config.name')" prop="configName">
+                <el-input v-model="form.configName" :placeholder="$t('common.pleaseInput', { label: $t('system.config.name') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="参数键名" prop="configKey">
-                <el-input v-model="form.configKey" placeholder="请输入参数键名" />
+              <el-form-item :label="$t('system.config.key')" prop="configKey">
+                <el-input v-model="form.configKey" :placeholder="$t('common.pleaseInput', { label: $t('system.config.key') })" />
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="参数键值" prop="configValue">
-                <el-input v-model="form.configValue" type="textarea" :rows="3" placeholder="请输入参数键值" />
+              <el-form-item :label="$t('system.config.value')" prop="configValue">
+                <el-input v-model="form.configValue" type="textarea" :rows="3" :placeholder="$t('common.pleaseInput', { label: $t('system.config.value') })" />
               </el-form-item>
             </el-col>
           </el-row>
         </section>
 
         <section class="form-section">
-          <h4>类型与备注</h4>
+          <h4>{{ $t('system.config.typeRemark') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
-              <el-form-item label="系统内置" prop="configType">
+              <el-form-item :label="$t('system.config.builtin')" prop="configType">
                 <el-radio-group v-model="form.configType">
                   <el-radio v-for="dict in sys_yes_no" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
                 </el-radio-group>
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="备注" prop="remark">
-                <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入内容" />
+              <el-form-item :label="$t('common.remark')" prop="remark">
+                <el-input v-model="form.remark" type="textarea" :rows="2" :placeholder="$t('common.pleaseInput', { label: $t('common.content') })" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -217,12 +217,15 @@ import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const { sys_yes_no } = toRefs<any>(useDict('sys_yes_no'));
 
 const configTypeLabel = computed(() => {
   const dict = (sys_yes_no.value || []).find((item: any) => item.value === form.value.configType);
-  return dict?.label || (form.value.configType === 'Y' ? '是' : '否');
+  return dict?.label || (form.value.configType === 'Y' ? t('common.yes') : t('common.no'));
 });
 
 const configList = ref<ConfigVO[]>([]);
@@ -250,14 +253,15 @@ const data = reactive<PageData<ConfigForm, ConfigQuery>>({
     configKey: '',
     configType: ''
   },
-  rules: {
-    configName: [{ required: true, message: '参数名称不能为空', trigger: 'blur' }],
-    configKey: [{ required: true, message: '参数键名不能为空', trigger: 'blur' }],
-    configValue: [{ required: true, message: '参数键值不能为空', trigger: 'blur' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+const rules = computed<ElFormRules>(() => ({
+  configName: [{ required: true, message: t('system.config.required', { label: t('system.config.name') }), trigger: 'blur' }],
+  configKey: [{ required: true, message: t('system.config.required', { label: t('system.config.key') }), trigger: 'blur' }],
+  configValue: [{ required: true, message: t('system.config.required', { label: t('system.config.value') }), trigger: 'blur' }]
+}));
 const { dialog, resetForm, openDialog, showDialog, closeDialog } = useFormDialog({
   form,
   formRef: configFormRef,
@@ -298,7 +302,7 @@ const handleTabChange = (tab: string | number) => {
 };
 /** 新增按钮操作 */
 const handleAdd = () => {
-  openDialog('添加参数');
+  openDialog(t('system.config.addTitle'));
 };
 /** 修改按钮操作 */
 const handleUpdate = async (row?: Partial<ConfigVO>) => {
@@ -306,23 +310,23 @@ const handleUpdate = async (row?: Partial<ConfigVO>) => {
   const configId = row?.configId;
   const res = await getConfig(configId!);
   Object.assign(form.value, res.data);
-  showDialog('修改参数');
+  showDialog(t('system.config.editTitle'));
 };
 /** 内联保存参数值 */
 const handleInlineSave = async (row: Partial<ConfigVO>) => {
   if (!row.configKey) {
     return;
   }
-  await modal.confirm('确认要保存对参数"' + row.configKey + '"的修改吗？');
+  await modal.confirm(t('system.config.confirmSave', { name: row.configKey }));
   await updateConfigByKey(row.configKey, row.configValue ?? '');
-  modal.msgSuccess('修改成功');
+  modal.msgSuccess(t('common.editSuccess'));
 };
 /** 提交按钮 */
 const submitForm = () => {
   configFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       form.value.configId ? await updateConfig(form.value) : await addConfig(form.value);
-      modal.msgSuccess('操作成功');
+      modal.msgSuccess(t('common.actionSuccess'));
       closeDialog();
       await getList();
     }
@@ -331,10 +335,10 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: Partial<ConfigVO>) => {
   const configIds = row?.configId;
-  await modal.confirm('是否确认删除参数编号为"' + configIds + '"的数据项？');
+  await modal.confirm(t('system.config.confirmDelete', { id: configIds }));
   await delConfig(configIds!);
   await getList();
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
 };
 /** 导出按钮操作 */
 const handleExport = () => {
@@ -349,7 +353,7 @@ const handleExport = () => {
 /** 刷新缓存按钮操作 */
 const handleRefreshCache = async () => {
   await refreshCache();
-  modal.msgSuccess('刷新缓存成功');
+  modal.msgSuccess(t('system.config.refreshCacheSuccess'));
 };
 
 onMounted(() => {

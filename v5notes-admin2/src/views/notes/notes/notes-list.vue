@@ -5,29 +5,29 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('notes.kicker.search') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="关键字" prop="name">
-            <el-input v-model="queryParams.searchValue" placeholder="输入关键字搜索标题和内容" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('notes.list.keyword')" prop="name">
+            <el-input v-model="queryParams.searchValue" :placeholder="$t('notes.list.keywordPh')" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="创建时间" style="width: 308px">
+          <el-form-item :label="$t('common.createTime')" style="width: 308px">
             <el-date-picker
               v-model="dateRange"
               value-format="YYYY-MM-DD HH:mm:ss"
               type="daterange"
               range-separator="-"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              :start-placeholder="$t('common.startDate')"
+              :end-placeholder="$t('common.endDate')"
               :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -37,15 +37,15 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Notes Dataset</span>
-            <h3>笔记列表</h3>
-            <p>共 {{ total }} 篇笔记，按目录归类维护。</p>
+            <span class="panel-kicker">{{ $t('notes.list.dataset') }}</span>
+            <h3>{{ $t('notes.list.title') }}</h3>
+            <p>{{ $t('notes.list.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['notes:notes:add']">新增</el-button>
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['notes:notes:edit']">修改</el-button>
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['notes:notes:remove']">删除</el-button>
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['notes:notes:export']">导出</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['notes:notes:add']">{{ $t('common.add') }}</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['notes:notes:edit']">{{ $t('common.edit') }}</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['notes:notes:remove']">{{ $t('common.delete') }}</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['notes:notes:export']">{{ $t('common.export') }}</el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList" />
           </div>
         </div>
@@ -60,31 +60,31 @@
       />
       <el-table v-else v-loading="loading && (notesList).length > 0" class="data-table" :data="notesList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="笔记名" align="left" prop="name" min-width="300" width="auto" />
-        <el-table-column label="文件大小" align="center" prop="fileSize" width="150" />
-        <el-table-column label="修改时间" align="center" prop="updateTime" width="180" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="240">
+        <el-table-column :label="$t('notes.list.name')" align="left" prop="name" min-width="300" width="auto" />
+        <el-table-column :label="$t('notes.list.fileSize')" align="center" prop="fileSize" width="150" />
+        <el-table-column :label="$t('notes.list.modifiedAt')" align="center" prop="updateTime" width="180" />
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width" width="240">
           <template #default="scope">
-            <el-tooltip content="查看笔记" placement="top">
+            <el-tooltip :content="$t('notes.list.view')" placement="top">
               <el-button link type="primary" icon="View" @click="handleViewOrEdit('preview', scope.row.id)" v-hasPermi="['notes:notes:query']"></el-button>
             </el-tooltip>
-            <el-tooltip content="历史版本" placement="top">
+            <el-tooltip :content="$t('notes.history.title')" placement="top">
               <el-button link type="primary" icon="Clock" @click="openHistory(scope.row as NotesVO)" v-hasPermi="['notes:notes:query']"></el-button>
             </el-tooltip>
-            <el-tooltip content="编辑笔记" placement="top">
+            <el-tooltip :content="$t('notes.list.edit')" placement="top">
               <el-button link type="primary" icon="Document" @click="handleViewOrEdit('editor', scope.row.id)" v-hasPermi="['notes:notes:edit']"></el-button>
             </el-tooltip>
-            <el-tooltip content="修改笔记名称" placement="top">
+            <el-tooltip :content="$t('notes.list.rename')" placement="top">
               <el-button link icon="Edit" @click="handleUpdate(scope.row as NotesVO)" v-hasPermi="['notes:notes:edit']"></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row as NotesVO)" v-hasPermi="['notes:notes:remove']"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -97,10 +97,10 @@
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 笔记</span>
+            <span>{{ $t('notes.list.brand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">{{ (form.name || '笔').slice(0, 1) }}</div>
+            <div class="app-dialog-hero__icon">{{ (form.name || $t('notes.glyph')).slice(0, 1) }}</div>
             <div>
               <div class="app-dialog-hero__name">{{ form.name || dialog.title }}</div>
               <div class="app-dialog-hero__meta"><span>{{ dialog.title }}</span></div>
@@ -111,8 +111,8 @@
 
       <el-form ref="notesFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
         <section class="app-dialog-section">
-          <h4>基本信息</h4>
-          <el-form-item label="所属目录" prop="dirId">
+          <h4>{{ $t('common.basicInfo') }}</h4>
+          <el-form-item :label="$t('notes.dir.parent')" prop="dirId">
             <el-tree-select
               v-model="form.dirId"
               :data="dirTreeData"
@@ -120,19 +120,19 @@
               default-expand-all
               check-strictly
               :render-after-expand="false"
-              placeholder="请选择所属目录"
+              :placeholder="$t('common.pleaseSelect', { label: $t('notes.dir.parent') })"
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="笔记名" prop="name">
-            <el-input v-model="form.name" placeholder="请输入笔记名" />
+          <el-form-item :label="$t('notes.list.name')" prop="name">
+            <el-input v-model="form.name" :placeholder="$t('common.pleaseInput', { label: $t('notes.list.name') })" />
           </el-form-item>
         </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="cancel">取消</el-button>
-          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确定</submit-button>
+          <el-button @click="cancel">{{ $t('common.cancel') }}</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">{{ $t('common.confirm') }}</submit-button>
         </div>
       </template>
     </el-dialog>
@@ -141,6 +141,7 @@
 </template>
 
 <script setup name="NotesList" lang="ts">
+import { useI18n } from 'vue-i18n';
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import SubmitButton from '@/components/Loading/SubmitButton.vue';
 import ErrorState from '@/components/ErrorState/ErrorState.vue';
@@ -154,6 +155,8 @@ import type { NotesTreeVo } from '@/api/notes/directory/types';
 import modal from '@/plugins/modal';
 import { download } from '@/utils/request';
 import { addDateRange } from '@/utils/ruoyi';
+
+const { t } = useI18n();
 
 const dateRange = ref<any>(['', '']);
 
@@ -182,10 +185,14 @@ const dialog = reactive<DialogOption>({
 const dirTreeData = ref<NotesTreeVo[]>([
   {
     id: 0,
-    label: '根节点',
+    label: '',
     type: 1
   } as NotesTreeVo
 ]);
+
+watchEffect(() => {
+  dirTreeData.value[0].label = t('notes.dir.root');
+});
 
 const initFormData: NotesForm = {
   id: undefined,
@@ -203,13 +210,15 @@ const data = reactive<PageData<NotesForm, NotesQuery>>({
     dirId: undefined,
     params: {}
   },
-  rules: {
-    name: [{ required: true, message: '笔记名不能为空', trigger: 'blur' }],
-    dirId: [{ required: true, message: '所属目录ID不能为空', trigger: 'blur' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+
+const rules = computed<ElFormRules>(() => ({
+  name: [{ required: true, message: t('notes.list.nameRequired'), trigger: 'blur' }],
+  dirId: [{ required: true, message: t('notes.list.dirRequired'), trigger: 'blur' }]
+}));
 
 const openHistory = (row: NotesVO) => {
   historyNoteId.value = row.id;
@@ -277,7 +286,7 @@ const handleSelectionChange = (selection: NotesVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = '添加笔记';
+  dialog.title = t('notes.list.addTitle');
 };
 
 /** 修改按钮操作 */
@@ -287,7 +296,7 @@ const handleUpdate = async (row?: NotesVO) => {
   const res = await getNotes(noteId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = '修改笔记';
+  dialog.title = t('notes.list.editTitle');
 };
 
 /** 提交按钮 */
@@ -300,7 +309,7 @@ const submitForm = () => {
       } else {
         await addNotes(form.value).finally(() => (buttonLoading.value = false));
       }
-      modal.msgSuccess('操作成功');
+      modal.msgSuccess(t('common.actionSuccess'));
       dialog.visible = false;
       await getList();
     }
@@ -310,9 +319,9 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: NotesVO) => {
   const noteIds = row?.id || ids.value;
-  await modal.confirm('是否确认删除笔记编号为"' + noteIds + '"的数据项？').finally(() => (loading.value = false));
+  await modal.confirm(t('notes.list.deleteConfirm', { ids: noteIds })).finally(() => (loading.value = false));
   await delNotes(noteIds);
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
   await getList();
 };
 

@@ -419,6 +419,8 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .settings-preference-copy { display: grid; gap: 3px; min-width: 0; }
 .settings-preference-copy strong { color: #35483b; font-size: 13px; font-weight: 550; }
 .settings-preference-copy span { color: #8b978d; font-size: 11px; line-height: 1.55; }
+.settings-locale { flex: none; min-width: 132px; height: 32px; padding: 0 28px 0 10px; border: 1px solid #d7dfd4; border-radius: 8px; background: #fffefa; color: #35483b; font: inherit; font-size: 13px; }
+.settings-locale { flex: none; min-width: 132px; height: 32px; padding: 0 28px 0 10px; border: 1px solid #d7dfd4; border-radius: 8px; background: #fffefa; color: #35483b; font: inherit; font-size: 13px; }
 .settings-switch { position: relative; width: 38px; height: 22px; flex: 0 0 38px; padding: 0; border: 0; border-radius: 999px; background: #d9ded7; transition: background .16s ease; }
 .settings-switch.is-on { background: #4d8060; }
 .settings-switch:disabled { cursor: wait; opacity: .65; }

@@ -1,5 +1,6 @@
 package xin.v5ai.common.redis;
 
+import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpStatus;
 import com.baomidou.lock.exception.LockFailureException;
 import xin.v5ai.common.core.domain.R;
@@ -10,16 +11,30 @@ import xin.v5ai.common.redis.config.IdempotentConfig;
 import xin.v5ai.common.redis.config.RateLimiterConfig;
 import xin.v5ai.common.redis.handler.RedisExceptionHandler;
 import xin.v5ai.common.redis.manager.PlusSpringCacheManager;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.cache.CacheManager;
 import org.springframework.mock.web.MockHttpServletRequest;
+
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("common-redis 配置与异常单元测试")
 class RedisConfigurationTest {
+
+    @BeforeAll
+    static void initializeMessages() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        LocaleContextHolder.setLocale(Locale.getDefault());
+        context.getStaticMessageSource().addMessage("lock.busy", Locale.getDefault(), "业务处理中，请稍后再试...");
+        context.refresh();
+        new SpringUtil().setApplicationContext(context);
+    }
 
     /**
      * 验证缓存配置创建可用的 Caffeine 实例和项目自定义缓存管理器。

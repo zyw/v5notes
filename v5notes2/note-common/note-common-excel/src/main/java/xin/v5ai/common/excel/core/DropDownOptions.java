@@ -1,5 +1,6 @@
 package xin.v5ai.common.excel.core;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
 import lombok.AllArgsConstructor;
@@ -75,7 +76,7 @@ public class DropDownOptions {
         for (int i = 0; i < vars.length; i++) {
             String var = StrUtil.trimToEmpty(Convert.toStr(vars[i]));
             if (!var.matches(OPTION_PART_REGEX)) {
-                throw new ServiceException("选项数据不符合规则，仅允许使用中英文字符以及数字");
+                throw new ServiceException(MessageUtils.message("excel.option.charset"));
             }
             stringBuffer.append(var);
             if (i < vars.length - 1) {
@@ -95,16 +96,16 @@ public class DropDownOptions {
      */
     public static void validateOptionValue(String optionValue) {
         if (StrUtil.isBlank(optionValue)) {
-            throw new ServiceException("选项数据不能为空");
+            throw new ServiceException(MessageUtils.message("excel.option.empty"));
         }
         if (optionValue.matches("^[0-9].*")) {
-            throw new ServiceException("禁止以数字开头");
+            throw new ServiceException(MessageUtils.message("excel.option.leading.digit"));
         }
         if (!optionValue.matches(EXCEL_NAME_REGEX)) {
-            throw new ServiceException("选项数据不符合Excel名称规则，仅允许中英文、数字或下划线，且不能以数字开头");
+            throw new ServiceException(MessageUtils.message("excel.option.name"));
         }
         if (optionValue.matches(CELL_REFERENCE_REGEX)) {
-            throw new ServiceException("选项数据不能为Excel单元格引用");
+            throw new ServiceException(MessageUtils.message("excel.option.cell"));
         }
     }
 

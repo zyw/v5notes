@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 /** 应用内更新的阶段。网络和安装留在调用方，这里只决定界面该停在哪。 */
 
 export type HostOs = 'macos' | 'windows' | 'linux'
@@ -173,17 +175,17 @@ export function notesToShowOnLaunch(notes: PendingReleaseNotes | null, currentVe
 }
 
 export function messageForCheckFailure(raw: string, os: HostOs): string {
-  if (isSignatureFailure(raw)) return '更新包校验失败，已取消安装'
+  if (isSignatureFailure(raw)) return t('update.signature')
   if (isMissingPlatform(raw)) {
-    return os === 'windows' ? '当前没有适用于这台 Windows 的更新包' : '当前没有适用于这台 Mac 的更新包'
+    return os === 'windows' ? t('update.missingWindows') : t('update.missingMac')
   }
-  return '暂时无法检查更新，请稍后重试'
+  return t('update.checkLater')
 }
 
 export function messageForTransferFailure(raw: string): string {
-  if (isSignatureFailure(raw)) return '更新包校验失败，已取消安装'
+  if (isSignatureFailure(raw)) return t('update.signature')
   const trimmed = raw.trim()
-  return trimmed || '下载中断，请重试'
+  return trimmed || t('update.downloadInterrupted')
 }
 
 function isSignatureFailure(raw: string): boolean {
@@ -195,7 +197,7 @@ function isMissingPlatform(raw: string): boolean {
 }
 
 export function settingsActionLabel(checking: boolean, offeredVersion: string | null): string {
-  if (checking) return '正在检查…'
-  if (offeredVersion) return `可更新至 ${offeredVersion}`
-  return '检查更新'
+  if (checking) return t('settings.checking')
+  if (offeredVersion) return t('settings.updateTo', { version: offeredVersion })
+  return t('settings.checkUpdate')
 }

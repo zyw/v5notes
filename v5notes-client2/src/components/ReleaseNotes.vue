@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { isHttpLink, parseReleaseNotes } from '../models/releaseNotes'
 
+const { t } = useI18n()
 const props = defineProps<{ source: string }>()
 const blocks = computed(() => parseReleaseNotes(props.source))
 
@@ -14,7 +16,7 @@ async function openLink(href: string): Promise<void> {
 
 <template>
   <div class="update-notes">
-    <p v-if="blocks.length === 0">这个版本没有更新说明。</p>
+    <p v-if="blocks.length === 0">{{ t('update.emptyNotes') }}</p>
     <template v-for="(block, index) in blocks" :key="index">
       <h3 v-if="block.kind === 'heading'">
         <template v-for="(inline, inlineIndex) in block.inlines" :key="inlineIndex">

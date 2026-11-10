@@ -20,7 +20,7 @@ public class SmsLoginBody extends LoginBody {
      * 手机号
      */
     @NotBlank(message = "{user.phonenumber.not.blank}")
-    @Pattern(regexp = RegexConstants.MOBILE, message = "手机号格式不正确")
+    @Pattern(regexp = RegexConstants.MOBILE, message = "{user.mobile.invalid}")
     private String phoneNumber;
 
     /**

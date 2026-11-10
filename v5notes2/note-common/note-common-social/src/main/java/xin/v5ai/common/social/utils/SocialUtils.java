@@ -7,6 +7,7 @@ import me.zhyd.oauth.model.AuthCallback;
 import me.zhyd.oauth.model.AuthResponse;
 import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.*;
+import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.core.utils.SpringUtils;
 import xin.v5ai.common.social.config.properties.SocialLoginConfigProperties;
 import xin.v5ai.common.social.config.properties.SocialProperties;
@@ -49,7 +50,7 @@ public class SocialUtils {
     public static AuthRequest getAuthRequest(String source, SocialProperties socialProperties) throws AuthException {
         SocialLoginConfigProperties obj = socialProperties.getType().get(source);
         if (ObjectUtil.isNull(obj)) {
-            throw new AuthException("不支持的第三方登录类型");
+            throw new AuthException(MessageUtils.message("social.type.unsupported"));
         }
         AuthConfig.AuthConfigBuilder builder = AuthConfig.builder()
             .clientId(obj.getClientId())
@@ -86,7 +87,7 @@ public class SocialUtils {
             case "maxkey" -> new AuthMaxKeyRequest(builder.build(), STATE_CACHE);
             case "topiam" -> new AuthTopIamRequest(builder.build(), STATE_CACHE);
             case "gitea" -> new AuthGiteaRequest(builder.build(), STATE_CACHE);
-            default -> throw new AuthException("未获取到有效的Auth配置");
+            default -> throw new AuthException(MessageUtils.message("social.config.missing"));
         };
     }
 }

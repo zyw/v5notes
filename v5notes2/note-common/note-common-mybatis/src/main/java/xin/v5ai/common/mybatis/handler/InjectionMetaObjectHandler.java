@@ -1,5 +1,6 @@
 package xin.v5ai.common.mybatis.handler;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.http.HttpStatus;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
@@ -67,7 +68,7 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
                 this.strictInsertFill(metaObject, "updateTime", Date.class, legacyDate);
             }
         } catch (Exception e) {
-            throw new ServiceException("自动注入异常 => " + e.getMessage(), HttpStatus.HTTP_INTERNAL_ERROR);
+            throw new ServiceException(MessageUtils.message("audit.inject.failed", e.getMessage()), HttpStatus.HTTP_INTERNAL_ERROR);
         }
     }
 
@@ -93,7 +94,7 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
                 this.strictUpdateFill(metaObject, "updateTime", Date.class, new Date());
             }
         } catch (Exception e) {
-            throw new ServiceException("自动注入异常 => " + e.getMessage(), HttpStatus.HTTP_INTERNAL_ERROR);
+            throw new ServiceException(MessageUtils.message("audit.inject.failed", e.getMessage()), HttpStatus.HTTP_INTERNAL_ERROR);
         }
     }
 

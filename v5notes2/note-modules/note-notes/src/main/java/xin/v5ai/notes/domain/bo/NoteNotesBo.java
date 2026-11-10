@@ -28,19 +28,19 @@ public class NoteNotesBo extends BaseEntity {
     /**
      * 笔记ID编号
      */
-    @NotNull(message = "笔记ID编号不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{note.id.not.null}", groups = { EditGroup.class })
     private Long id;
 
     /**
      * 笔记名
      */
-    @NotBlank(message = "笔记名不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{note.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String name;
 
     /**
      * 所属目录ID
      */
-    @NotNull(message = "所属目录ID不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{note.dir.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Long dirId;
 
     /**

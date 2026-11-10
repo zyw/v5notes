@@ -1,6 +1,6 @@
 <template>
   <div class="relative" :style="{ width: width }">
-    <el-input v-model="modelValue" readonly placeholder="点击选择图标" @click="visible = !visible">
+    <el-input v-model="modelValue" readonly :placeholder="$t('widgets.iconSelect.placeholder')" @click="visible = !visible">
       <template #prepend>
         <svg-icon :icon-class="modelValue" />
       </template>
@@ -17,18 +17,18 @@
         </div>
       </template>
 
-      <el-input v-model="filterValue" class="p-2" placeholder="搜索图标" clearable @input="filterIcons" />
+      <el-input v-model="filterValue" class="p-2" :placeholder="$t('widgets.iconSelect.search')" clearable @input="filterIcons" />
 
       <div class="iconify-panel">
-        <div class="iconify-heading">也可以直接输入 Iconify 图标名</div>
+        <div class="iconify-heading">{{ $t('widgets.iconSelect.hint') }}</div>
         <div class="iconify-form">
           <el-input
             v-model="customIcon"
-            placeholder="例如：mdi:account-circle-outline"
+            :placeholder="$t('widgets.iconSelect.example')"
             clearable
             @keyup.enter="applyCustomIcon"
           />
-          <el-button type="primary" plain @click="applyCustomIcon">使用</el-button>
+          <el-button type="primary" plain @click="applyCustomIcon">{{ $t('widgets.iconSelect.use') }}</el-button>
         </div>
       </div>
 

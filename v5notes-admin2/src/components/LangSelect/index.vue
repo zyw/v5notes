@@ -5,7 +5,8 @@
     </div>
     <template #dropdown>
       <el-dropdown-menu>
-        <el-dropdown-item :disabled="appStore.language === 'zh_CN'" command="zh_CN">中文</el-dropdown-item>
+        <el-dropdown-item :disabled="appStore.language === 'zh_CN'" command="zh_CN">简体中文</el-dropdown-item>
+        <el-dropdown-item :disabled="appStore.language === 'zh_TW'" command="zh_TW">繁體中文</el-dropdown-item>
         <el-dropdown-item :disabled="appStore.language === 'en_US'" command="en_US">English</el-dropdown-item>
       </el-dropdown-menu>
     </template>
@@ -15,19 +16,15 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import SvgIcon from '@/components/SvgIcon/index.vue';
+import { LanguageEnum } from '@/enums/LanguageEnum';
 import { useAppStore } from '@/store/modules/app';
 
 const appStore = useAppStore();
-const { locale } = useI18n();
+const { t } = useI18n();
 
-const message: any = {
-  zh_CN: '切换语言成功！',
-  en_US: 'Switch Language Successful!'
-};
-const handleLanguageChange = (lang: any) => {
-  locale.value = lang;
+const handleLanguageChange = (lang: LanguageEnum) => {
   appStore.changeLanguage(lang);
-  ElMessage.success(message[lang] || '切换语言成功！');
+  ElMessage.success(t('lang.switched'));
 };
 </script>
 

@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
@@ -72,7 +73,7 @@ public class SysClientController extends BaseController {
      */
     @SaCheckPermission("system:client:query")
     @GetMapping("/{id}")
-    public R<SysClientVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<SysClientVo> getInfo(@NotNull(message = "{id.not.null}")
                                   @PathVariable Long id) {
         return R.ok(sysClientService.queryById(id));
     }
@@ -89,7 +90,7 @@ public class SysClientController extends BaseController {
     @PostMapping()
     public R<Void> add(@Validated(AddGroup.class) @RequestBody SysClientBo bo) {
         if (!sysClientService.checkClickKeyUnique(bo)) {
-            return R.fail("新增客户端'" + bo.getClientKey() + "'失败，客户端key已存在");
+            return R.fail(MessageUtils.message("client.add.exists", bo.getClientKey()));
         }
         return toAjax(sysClientService.insertByBo(bo));
     }
@@ -106,7 +107,7 @@ public class SysClientController extends BaseController {
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody SysClientBo bo) {
         if (!sysClientService.checkClickKeyUnique(bo)) {
-            return R.fail("修改客户端'" + bo.getClientKey() + "'失败，客户端key已存在");
+            return R.fail(MessageUtils.message("client.edit.exists", bo.getClientKey()));
         }
         return toAjax(sysClientService.updateByBo(bo));
     }
@@ -133,7 +134,7 @@ public class SysClientController extends BaseController {
     @SaCheckPermission("system:client:remove")
     @Log(title = "客户端管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(sysClientService.deleteWithValidByIds(List.of(ids), true));
     }

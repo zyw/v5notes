@@ -2,6 +2,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import EditorModeDock from './EditorModeDock.vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
@@ -10,6 +11,7 @@ import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
+const { t, locale } = useI18n()
 const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
@@ -43,6 +45,12 @@ const fontSize = ref(Number(localStorage.getItem('v5notes-editor-font-size')) ||
 if (!Number.isFinite(fontSize.value) || fontSize.value < FONT_MIN || fontSize.value > FONT_MAX) fontSize.value = 17
 const paletteOpen = ref(false)
 const exporting = ref(false)
+const fontPresets = computed(() => [
+  { size: 15, label: t('editor.fontSmall', { size: 15 }) },
+  { size: 17, label: t('editor.fontNormal', { size: 17 }) },
+  { size: 19, label: t('editor.fontLarge', { size: 19 }) },
+  { size: 22, label: t('editor.fontXLarge', { size: 22 }) },
+])
 
 function onFontRange(event: Event): void {
   applyFontSize(Number((event.target as HTMLInputElement).value))
@@ -135,7 +143,7 @@ async function exportVectorPdf(fileName: string): Promise<boolean> {
     // .v5-doc is the text column itself: it excludes the format strip above it.
     const canvas = document.querySelector<HTMLElement>('.editor-pane .v5-doc')
       ?? document.querySelector<HTMLElement>('.editor-mount')
-    if (!canvas) throw new Error('找不到编辑器画布')
+    if (!canvas) throw new Error(t('editor.missingCanvas'))
     const rect = canvas.getBoundingClientRect()
     const x = Math.round(rect.left + window.scrollX)
     const y = Math.round(rect.top + window.scrollY)
@@ -156,7 +164,7 @@ async function exportVectorPdf(fileName: string): Promise<boolean> {
     const slices = computePdfSlices(height, PDF_CONTENT_HEIGHT / scale, blocks)
       .map(slice => [Math.round(slice.top), Math.round(slice.height)])
     const path = await invoke<string>('export_pdf', { fileName, x, y, width, height, slices })
-    showToast(`已导出矢量 PDF：${path}`)
+    showToast(t('editor.exportedVector', { path }))
     return true
   } catch (cause) {
     console.warn('[export] 矢量 PDF 不可用，改用图片版：', cause)
@@ -181,7 +189,7 @@ async function exportNote(format: ExportFormat): Promise<void> {
     if (draft.dirty) {
       await save()
       if (draft.dirty) {
-        error.value = '保存失败，已取消导出'
+        error.value = t('editor.exportCancelled')
         return
       }
     }
@@ -196,11 +204,11 @@ async function exportNote(format: ExportFormat): Promise<void> {
     if (format === 'markdown') {
       const fileName = exportFileName(note.name, 'md')
       downloadText(fileName, buildMarkdownDocument(payload), 'text/markdown')
-      showToast(`已导出 ${fileName}`)
+      showToast(t('editor.exported', { fileName }))
     } else if (format === 'html') {
       const fileName = exportFileName(note.name, 'html')
       downloadText(fileName, buildRenderedDocument(note.name, payload.html), 'text/html')
-      showToast(`已导出 ${fileName}`)
+      showToast(t('editor.exported', { fileName }))
     } else if (format === 'pdf' || format === 'pdf-image') {
       const fileName = exportFileName(note.name, 'pdf')
       // The vector path prints the live view, so source mode would print the
@@ -217,8 +225,8 @@ async function exportNote(format: ExportFormat): Promise<void> {
       downloadBlob(fileName, blob)
       showToast(
         missingImages
-          ? `已导出 ${fileName}（${pages} 页），${missingImages} 张图片未能嵌入`
-          : `已导出 ${fileName}（${pages} 页）`,
+          ? t('editor.exportedPdfMissing', { fileName, pages, missing: missingImages })
+          : t('editor.exportedPdf', { fileName, pages }),
         missingImages ? 'warn' : 'ok',
       )
     } else {
@@ -227,13 +235,13 @@ async function exportNote(format: ExportFormat): Promise<void> {
       downloadBlob(fileName, blob)
       showToast(
         missingImages
-          ? `已导出 ${fileName}，${missingImages} 张外链图片未能嵌入`
-          : `已导出 ${fileName}`,
+          ? t('editor.exportedImageMissing', { fileName, missing: missingImages })
+          : t('editor.exported', { fileName }),
         missingImages ? 'warn' : 'ok',
       )
     }
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '导出失败'
+    error.value = cause instanceof Error ? cause.message : t('editor.exportFailed')
   } finally {
     exporting.value = false
   }
@@ -250,7 +258,10 @@ const commandActions: CommandActions = {
   copyMarkdown: () => { void copyNoteContent() },
   deleteNote,
 }
-const commands = buildEditorCommands(commandActions)
+const commands = computed(() => {
+  void locale.value
+  return buildEditorCommands(commandActions)
+})
 
 function runCommand(command: EditorCommand): void {
   // Repeatable commands (font size) stay in the palette so they can be repeated.
@@ -297,7 +308,7 @@ function openImageLibrary(): void {
 }
 
 function insertLibraryImage(image: LibraryImage): void {
-  const alt = image.name.replace(/\.[^.]+$/, '').trim() || '图片'
+  const alt = image.name.replace(/\.[^.]+$/, '').trim() || t('editor.imageAlt')
   editorInstance.value?.insertImageUrl(image.url, alt)
   libraryOpen.value = false
 }
@@ -460,7 +471,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
 
 <template>
     <main class="editor-pane" :class="{ 'is-resizing-outline': resizingOutline }" :style="{ '--outline-width': `${outlineVisible ? outlineWidth : 0}px`, '--doc-size': `${fontSize}px` }" @pointermove="resizeOutline" @pointerup="stopOutlineResize" @pointercancel="stopOutlineResize">
-      <div v-if="sessionExpired" class="session-alert">登录已过期；草稿仍在当前窗口。请重新登录后保存。<button @click="reauthenticate">重新登录</button></div>
+      <div v-if="sessionExpired" class="session-alert">{{ t('editor.sessionExpired') }}<button @click="reauthenticate">{{ t('editor.reauthenticate') }}</button></div>
       <div v-if="notice" class="notice-bar">{{ notice }} <button @click="notice = ''">×</button></div>
       <div v-if="error" class="error-bar" role="alert">{{ error }} <button @click="error = ''">×</button></div>
       <Teleport to="body">
@@ -472,7 +483,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               <circle v-if="toast.tone !== 'ok'" cx="10" cy="10" r="7.5" />
             </svg>
             <span class="export-toast-text">{{ toast.message }}</span>
-            <button type="button" class="export-toast-close" aria-label="关闭提示" @click="toast = null">×</button>
+            <button type="button" class="export-toast-close" :aria-label="t('editor.dismissToast')" @click="toast = null">×</button>
           </div>
         </Transition>
         <Transition name="mode-toast">
@@ -485,32 +496,32 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
       <template v-if="draft.note">
         <header class="editor-header">
           <div class="editor-toolbar-left">
-            <button class="toolbar-icon sidebar-toggle" :aria-pressed="directoryVisible && !focusMode" :aria-label="directoryVisible ? '收起侧栏' : '展开侧栏'" :title="directoryVisible ? '收起侧栏' : '展开侧栏'" @click="toggleSidebar">
+            <button class="toolbar-icon sidebar-toggle" :aria-pressed="directoryVisible && !focusMode" :aria-label="directoryVisible ? t('editor.collapseSidebar') : t('editor.expandSidebar')" :title="directoryVisible ? t('editor.collapseSidebar') : t('editor.expandSidebar')" @click="toggleSidebar">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9 4v16"/><path v-if="directoryVisible" d="m15 9-3 3 3 3"/><path v-else d="m12 9 3 3-3 3"/></svg>
             </button>
             <div class="note-identity">
               <span class="note-name" :title="draft.note.name">{{ draft.note.name }}</span>
-              <span v-if="editorMode === 'preview'" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>预览中</span>
-              <span v-else-if="sourceMode" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 6-3.5 4 3.5 4M13 6l3.5 4-3.5 4"/></svg>源码</span>
-              <span v-if="draft.dirty" class="save-state unsaved"><i />未保存</span>
+              <span v-if="editorMode === 'preview'" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s2.8-4.5 8-4.5 8 4.5 8 4.5-2.8 4.5-8 4.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2"/></svg>{{ t('editor.previewing') }}</span>
+              <span v-else-if="sourceMode" class="preview-state"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 6-3.5 4 3.5 4M13 6l3.5 4-3.5 4"/></svg>{{ t('editor.source') }}</span>
+              <span v-if="draft.dirty" class="save-state unsaved"><i />{{ t('editor.unsaved') }}</span>
             </div>
           </div>
           <div class="actions">
-            <button class="command-trigger" type="button" aria-label="打开命令面板" title="命令面板（⌘K）" @click="paletteOpen = true">
-              <span>命令</span><kbd>⌘K</kbd>
+            <button class="command-trigger" type="button" :aria-label="t('editor.openPalette')" :title="t('editor.paletteTitle')" @click="paletteOpen = true">
+              <span>{{ t('editor.commands') }}</span><kbd>⌘K</kbd>
             </button>
             <template v-if="editorMode !== 'preview'">
               <details class="action-menu note-menu" data-action-menu="note" @toggle="syncActionMenu('note', $event)">
-                <summary aria-label="更多笔记操作" title="更多笔记操作"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></summary>
+                <summary :aria-label="t('editor.moreNoteActions')" :title="t('editor.moreNoteActions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></summary>
                 <div class="popover-menu" @click="closeActionMenu">
-                  <button @click="renameNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>重命名</button>
-                  <button @click="copyNoteContent"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="10" height="11" rx="1.5"/><path d="M13 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></svg>复制 Markdown</button>
-                  <button @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>历史记录</button>
-                  <button class="danger-menu-item" @click="deleteNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>删除笔记</button>
+                  <button @click="renameNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>{{ t('editor.rename') }}</button>
+                  <button @click="copyNoteContent"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="10" height="11" rx="1.5"/><path d="M13 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></svg>{{ t('editor.copyMarkdown') }}</button>
+                  <button @click="openHistory"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>{{ t('editor.history') }}</button>
+                  <button class="danger-menu-item" @click="deleteNote"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>{{ t('editor.deleteNote') }}</button>
                 </div>
               </details>
             </template>
-            <button class="toolbar-icon outline-toggle" :aria-pressed="outlineVisible" :aria-label="outlineVisible ? '隐藏大纲' : '显示大纲'" :title="outlineVisible ? '隐藏大纲' : '显示大纲'" @click="outlineVisible = !outlineVisible">
+            <button class="toolbar-icon outline-toggle" :aria-pressed="outlineVisible" :aria-label="outlineVisible ? t('editor.hideOutline') : t('editor.showOutline')" :title="outlineVisible ? t('editor.hideOutline') : t('editor.showOutline')" @click="outlineVisible = !outlineVisible">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M14 4v16"/><path v-if="outlineVisible" d="m15 9 3 3-3 3"/><path v-else d="m18 9-3 3 3 3"/></svg>
             </button>
           </div>
@@ -518,33 +529,33 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
         <div class="editor-body">
           <div v-if="editorMode === 'edit' && !sourceMode && toolbarVisible" class="strip-tools">
             <details class="font-menu">
-              <summary aria-label="设置字号" title="设置字号"><span class="font-aa">Aa</span><span class="font-current">{{ fontSize }}</span></summary>
+              <summary :aria-label="t('editor.fontSize')" :title="t('editor.fontSize')"><span class="font-aa">Aa</span><span class="font-current">{{ fontSize }}</span></summary>
               <div class="font-panel">
-                <div class="font-head"><strong>正文字号</strong><span>只影响阅读与编辑</span></div>
+                <div class="font-head"><strong>{{ t('editor.bodySize') }}</strong><span>{{ t('editor.fontScope') }}</span></div>
                 <div class="font-value">
-                  <button type="button" class="font-step" aria-label="减小字号" @click="applyFontSize(fontSize - 1)">−</button>
+                  <button type="button" class="font-step" :aria-label="t('editor.decreaseFont')" @click="applyFontSize(fontSize - 1)">−</button>
                   <div class="font-read">{{ fontSize }}<small> px</small></div>
-                  <button type="button" class="font-step" aria-label="增大字号" @click="applyFontSize(fontSize + 1)">+</button>
+                  <button type="button" class="font-step" :aria-label="t('editor.increaseFont')" @click="applyFontSize(fontSize + 1)">+</button>
                 </div>
-                <input class="font-range" type="range" min="13" max="26" step="1" :value="fontSize" aria-label="字号滑块" @input="onFontRange">
+                <input class="font-range" type="range" min="13" max="26" step="1" :value="fontSize" :aria-label="t('editor.fontSlider')" @input="onFontRange">
                 <div class="font-presets">
-                  <button v-for="preset in [{ size: 15, label: '小 15' }, { size: 17, label: '标准 17' }, { size: 19, label: '大 19' }, { size: 22, label: '特大 22' }]" :key="preset.size" type="button" :aria-pressed="fontSize === preset.size" @click="applyFontSize(preset.size)">{{ preset.label }}</button>
+                  <button v-for="preset in fontPresets" :key="preset.size" type="button" :aria-pressed="fontSize === preset.size" @click="applyFontSize(preset.size)">{{ preset.label }}</button>
                 </div>
-                <div class="font-note"><span>记在本机，下次打开沿用</span><button type="button" @click="applyFontSize(17)">重置</button></div>
+                <div class="font-note"><span>{{ t('editor.fontRemembered') }}</span><button type="button" @click="applyFontSize(17)">{{ t('editor.reset') }}</button></div>
               </div>
             </details>
             <span class="strip-divider" aria-hidden="true"></span>
-            <button class="strip-hide" type="button" title="隐藏编辑器工具条（⌘/）" aria-label="隐藏编辑器工具条" @click="toggleToolbar">
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg><span>隐藏</span>
+            <button class="strip-hide" type="button" :title="t('editor.hideToolbarTitle')" :aria-label="t('editor.hideToolbar')" @click="toggleToolbar">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg><span>{{ t('editor.hide') }}</span>
             </button>
           </div>
-          <button v-if="editorMode === 'edit' && !sourceMode && !toolbarVisible" class="toolbar-reveal" type="button" title="显示编辑器工具条（⌘/）" aria-label="显示编辑器工具条" @click="toggleToolbar">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>格式<kbd>⌘/</kbd>
+          <button v-if="editorMode === 'edit' && !sourceMode && !toolbarVisible" class="toolbar-reveal" type="button" :title="t('editor.showToolbarTitle')" :aria-label="t('editor.showToolbar')" @click="toggleToolbar">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>{{ t('editor.format') }}<kbd>⌘/</kbd>
           </button>
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" placeholder="开始编写…" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>
@@ -557,40 +568,40 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
             @done="setMode('preview')"
           />
         </div>
-        <aside class="outline-sidebar" :class="{ 'is-hidden': !outlineVisible }" :aria-label="sidebarView === 'find' ? '查找' : '笔记大纲'">
+        <aside class="outline-sidebar" :class="{ 'is-hidden': !outlineVisible }" :aria-label="sidebarView === 'find' ? t('editor.findPane') : t('editor.outlinePane')">
           <header class="outline-header">
-            <div class="outline-tabs" role="tablist" aria-label="侧栏视图">
-              <button type="button" role="tab" :aria-selected="sidebarView === 'outline'" @click="sidebarView = 'outline'">大纲</button>
-              <button type="button" role="tab" :aria-selected="sidebarView === 'find'" @click="sidebarView = 'find'">查找</button>
+            <div class="outline-tabs" role="tablist" :aria-label="t('editor.sidebarViews')">
+              <button type="button" role="tab" :aria-selected="sidebarView === 'outline'" @click="sidebarView = 'outline'">{{ t('editor.outline') }}</button>
+              <button type="button" role="tab" :aria-selected="sidebarView === 'find'" @click="sidebarView = 'find'">{{ t('editor.find') }}</button>
             </div>
           </header>
           <div class="outline-body" :class="{ 'is-find': sidebarView === 'find' }">
-            <nav v-show="sidebarView === 'outline'" class="outline-list" aria-label="大纲">
+            <nav v-show="sidebarView === 'outline'" class="outline-list" :aria-label="t('editor.outline')">
               <button v-for="entry in outlineEntries" :key="`${entry.start}-${entry.text}`" type="button" :style="{ paddingLeft: `${(entry.depth - 1) * 12 + 8}px` }" @click="focusOutline(entry.start)">{{ entry.text }}</button>
             </nav>
-            <form v-show="sidebarView === 'find'" class="find-panel" role="tabpanel" aria-label="查找" @submit.prevent="refreshFind(true, 1)" @keydown="onFindKeydown">
+            <form v-show="sidebarView === 'find'" class="find-panel" role="tabpanel" :aria-label="t('editor.find')" @submit.prevent="refreshFind(true, 1)" @keydown="onFindKeydown">
               <div class="find-fields">
-                <button type="button" class="find-expand" :aria-expanded="replaceExpanded" :aria-label="replaceExpanded ? '收起替换' : '展开替换'" :title="replaceExpanded ? '收起替换' : '展开替换'" @click="replaceExpanded = !replaceExpanded"><svg viewBox="0 0 20 20" aria-hidden="true"><path :d="replaceExpanded ? 'm5.5 7.5 4.5 4.5 4.5-4.5' : 'm7.5 5.5 4.5 4.5-4.5 4.5'"/></svg></button>
+                <button type="button" class="find-expand" :aria-expanded="replaceExpanded" :aria-label="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" :title="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" @click="replaceExpanded = !replaceExpanded"><svg viewBox="0 0 20 20" aria-hidden="true"><path :d="replaceExpanded ? 'm5.5 7.5 4.5 4.5 4.5-4.5' : 'm7.5 5.5 4.5 4.5-4.5 4.5'"/></svg></button>
                 <div class="find-field-stack">
-                  <input ref="findInput" v-model="findQuery" type="search" aria-label="查找" placeholder="查找" @input="refreshFind(false)" />
+                  <input ref="findInput" v-model="findQuery" type="search" :aria-label="t('editor.findLabel')" :placeholder="t('editor.findLabel')" @input="refreshFind(false)" />
                   <div class="find-options">
-                    <button type="button" class="find-toggle" :class="{ 'is-on': caseSensitive }" :aria-pressed="caseSensitive" title="区分大小写" aria-label="区分大小写" @click="toggleFindOption('case')">Aa</button>
-                    <button type="button" class="find-toggle" :class="{ 'is-on': wholeWord }" :aria-pressed="wholeWord" title="全词匹配" aria-label="全词匹配" @click="toggleFindOption('word')">ab</button>
-                    <button type="button" class="find-toggle" :class="{ 'is-on': useRegexp }" :aria-pressed="useRegexp" title="使用正则表达式" aria-label="使用正则表达式" @click="toggleFindOption('regexp')">.*</button>
-                    <button type="button" class="find-step" title="上一处" aria-label="上一处" @click="refreshFind(true, -1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg></button>
-                    <button type="button" class="find-step" title="下一处" aria-label="下一处" @click="refreshFind(true, 1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg></button>
+                    <button type="button" class="find-toggle" :class="{ 'is-on': caseSensitive }" :aria-pressed="caseSensitive" :title="t('editor.matchCase')" :aria-label="t('editor.matchCase')" @click="toggleFindOption('case')">Aa</button>
+                    <button type="button" class="find-toggle" :class="{ 'is-on': wholeWord }" :aria-pressed="wholeWord" :title="t('editor.wholeWord')" :aria-label="t('editor.wholeWord')" @click="toggleFindOption('word')">ab</button>
+                    <button type="button" class="find-toggle" :class="{ 'is-on': useRegexp }" :aria-pressed="useRegexp" :title="t('editor.regexp')" :aria-label="t('editor.regexp')" @click="toggleFindOption('regexp')">.*</button>
+                    <button type="button" class="find-step" :title="t('editor.previous')" :aria-label="t('editor.previous')" @click="refreshFind(true, -1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg></button>
+                    <button type="button" class="find-step" :title="t('editor.next')" :aria-label="t('editor.next')" @click="refreshFind(true, 1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg></button>
                   </div>
                   <template v-if="replaceExpanded">
-                    <input v-model="replacement" type="text" aria-label="替换为" placeholder="替换为" :disabled="!replacing" />
+                    <input v-model="replacement" type="text" :aria-label="t('editor.replaceWith')" :placeholder="t('editor.replaceWith')" :disabled="!replacing" />
                     <div class="replace-actions">
-                      <button type="button" :disabled="!replacing" @click="replaceOne">替换</button>
-                      <button type="button" :disabled="!replacing" @click="replaceEvery">全部替换</button>
+                      <button type="button" :disabled="!replacing" @click="replaceOne">{{ t('editor.replace') }}</button>
+                      <button type="button" :disabled="!replacing" @click="replaceEvery">{{ t('editor.replaceAll') }}</button>
                     </div>
                   </template>
                 </div>
               </div>
               <p class="find-status" aria-live="polite">{{ findMessage }}</p>
-              <ul ref="findList" class="find-hits" aria-label="匹配项">
+              <ul ref="findList" class="find-hits" :aria-label="t('editor.matches')">
                 <li v-for="item in findHits" :key="`${item.index}-${item.from}-${item.to}`">
                   <button type="button" :class="{ 'is-current': isCurrentMatch(item) }" :aria-current="isCurrentMatch(item) ? 'true' : undefined" @click="goToMatch(item)">
                     <span class="find-hit-index">{{ item.index }}</span>
@@ -600,27 +611,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               </ul>
             </form>
           </div>
-          <div v-show="outlineVisible" class="outline-resize" role="separator" aria-label="调整大纲栏宽度" aria-orientation="vertical" aria-valuemin="190" aria-valuemax="520" :aria-valuenow="outlineWidth" tabindex="0" @pointerdown="startOutlineResize" @keydown="keyboardResizeOutline" />
+          <div v-show="outlineVisible" class="outline-resize" role="separator" :aria-label="t('editor.resizeOutline')" aria-orientation="vertical" aria-valuemin="190" aria-valuemax="520" :aria-valuenow="outlineWidth" tabindex="0" @pointerdown="startOutlineResize" @keydown="keyboardResizeOutline" />
         </aside>
       </template>
       <div v-else class="empty-editor">
-        <span class="empty-mark">✳</span><p class="eyebrow">V5 NOTES</p><h2>选择一篇笔记开始阅读</h2><p>从左侧目录树打开笔记。笔记默认以预览模式显示，需要修改时再进入编辑。</p>
+        <span class="empty-mark">✳</span><p class="eyebrow">V5 NOTES</p><h2>{{ t('editor.emptyTitle') }}</h2><p>{{ t('editor.emptyBody') }}</p>
         <div class="empty-actions">
           <button class="primary" type="button" @click="newNote">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" /></svg>
-            新建笔记
+            {{ t('editor.newNote') }}
           </button>
           <button v-if="!directoryVisible || focusMode" class="secondary-action" type="button" @click="directoryVisible = true; focusMode = false">
             <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M8 4v12" /></svg>
-            显示目录
+            {{ t('editor.showDirectory') }}
           </button>
         </div>
       </div>
       <div v-if="focusMode" class="focus-hud">
-        <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? '未保存' : '已保存' }}</span>
+        <span class="save-state" :class="{ unsaved: draft.dirty }"><i />{{ draft.dirty ? t('editor.unsaved') : t('editor.saved') }}</span>
         <span class="hud-divider" aria-hidden="true"></span>
-        <button type="button" @click="focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>退出专注</button>
-        <button type="button" @click="directoryVisible = true; focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>目录</button>
+        <button type="button" @click="focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>{{ t('editor.exitFocus') }}</button>
+        <button type="button" @click="directoryVisible = true; focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>{{ t('editor.directory') }}</button>
       </div>
       <EditorPalette :open="paletteOpen" :commands="commands" :context="commandContext" @close="paletteOpen = false" @run="runCommand" />
       <ImageLibraryDialog v-model="libraryOpen" @insert="insertLibraryImage" />

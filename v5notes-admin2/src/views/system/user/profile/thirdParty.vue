@@ -6,21 +6,21 @@
       border
       class="data-table profile-auth-table"
       data-full-height-table="false"
-      empty-text="暂无第三方账号绑定"
+      :empty-text="$t('system.profile.noBind')"
     >
-      <el-table-column label="序号" type="index" width="64" align="center" />
-      <el-table-column label="绑定账号平台" min-width="150" align="center" prop="source" show-overflow-tooltip />
-      <el-table-column label="头像" width="110" align="center" prop="avatar">
+      <el-table-column :label="$t('common.serial')" type="index" width="64" align="center" />
+      <el-table-column :label="$t('system.profile.platform')" min-width="150" align="center" prop="source" show-overflow-tooltip />
+      <el-table-column :label="$t('system.profile.avatar')" width="110" align="center" prop="avatar">
         <template #default="scope">
           <img v-if="scope.row.avatar" :src="scope.row.avatar" class="profile-auth-avatar" />
           <span v-else class="profile-auth-avatar-empty">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="系统账号" min-width="160" align="center" prop="userName" :show-overflow-tooltip="true" />
-      <el-table-column label="绑定时间" min-width="170" align="center" prop="createTime" />
-      <el-table-column label="操作" width="90" align="center" class-name="small-padding fixed-width">
+      <el-table-column :label="$t('system.profile.systemAccount')" min-width="160" align="center" prop="userName" :show-overflow-tooltip="true" />
+      <el-table-column :label="$t('system.profile.bindTime')" min-width="170" align="center" prop="createTime" />
+      <el-table-column :label="$t('common.operate')" width="90" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-tooltip content="解绑" placement="top">
+          <el-tooltip :content="$t('system.profile.unbind')" placement="top">
             <el-button link type="primary" icon="CircleClose" @click="unlockAuth(scope.row)"></el-button>
           </el-tooltip>
         </template>
@@ -30,35 +30,35 @@
 
     <div class="provider-section">
       <div class="provider-heading">
-        <h4 class="provider-desc">可绑定的第三方应用</h4>
-        <p>点击下方平台完成账号绑定。</p>
+        <h4 class="provider-desc">{{ $t('system.profile.bindable') }}</h4>
+        <p>{{ $t('system.profile.bindHint') }}</p>
       </div>
       <div class="user-bind">
-        <a class="third-app" href="#" title="使用 微信 账号授权登录" @click="authUrl('wechat')">
+        <a class="third-app" href="#" :title="$t('system.profile.wechatAuth')" @click="authUrl('wechat')">
           <div class="third-app__icon">
             <svg-icon icon-class="wechat" />
           </div>
-          <span class="app-name">微信</span>
+          <span class="app-name">{{ $t('system.profile.wechat') }}</span>
         </a>
-        <a class="third-app" href="#" title="使用 MaxKey 账号授权登录" @click="authUrl('maxkey')">
+        <a class="third-app" href="#" :title="$t('system.profile.maxkeyAuth')" @click="authUrl('maxkey')">
           <div class="third-app__icon">
             <svg-icon icon-class="maxkey" />
           </div>
           <span class="app-name">MaxKey</span>
         </a>
-        <a class="third-app" href="#" title="使用 TopIam 账号授权登录" @click="authUrl('topiam')">
+        <a class="third-app" href="#" :title="$t('system.profile.topiamAuth')" @click="authUrl('topiam')">
           <div class="third-app__icon">
             <svg-icon icon-class="topiam" />
           </div>
           <span class="app-name">TopIam</span>
         </a>
-        <a class="third-app" href="#" title="使用 Gitee 账号授权登录" @click="authUrl('gitee')">
+        <a class="third-app" href="#" :title="$t('system.profile.giteeAuth')" @click="authUrl('gitee')">
           <div class="third-app__icon">
             <svg-icon icon-class="gitee" />
           </div>
           <span class="app-name">Gitee</span>
         </a>
-        <a class="third-app" href="#" title="使用 GitHub 账号授权登录" @click="authUrl('github')">
+        <a class="third-app" href="#" :title="$t('system.profile.githubAuth')" @click="authUrl('github')">
           <div class="third-app__icon">
             <svg-icon icon-class="github" />
           </div>
@@ -74,6 +74,9 @@ import { authUnlock, authRouterUrl } from '@/api/system/social/auth';
 import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
 import { propTypes } from '@/utils/propTypes';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   auths: propTypes.any.isRequired
@@ -81,13 +84,13 @@ const props = defineProps({
 const auths = computed(() => props.auths);
 
 const unlockAuth = (row: any) => {
-  ElMessageBox.confirm('您确定要解除"' + row.source + '"的账号绑定吗？')
+  ElMessageBox.confirm(t('system.profile.confirmUnbind', { name: row.source }))
     .then(() => {
       return authUnlock(row.id);
     })
     .then((res: any) => {
       if (res.code === 200) {
-        modal.msgSuccess('解绑成功');
+        modal.msgSuccess(t('system.profile.unbindSuccess'));
         tab.refreshPage();
       } else {
         modal.msgError(res.msg);

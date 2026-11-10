@@ -21,15 +21,17 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { useAppStore } from '@/store/modules/app';
 
 const appStore = useAppStore();
+const { t } = useI18n();
 const size = computed(() => appStore.size);
 
-const sizeOptions = ref([
-  { label: '较大', value: 'large' },
-  { label: '默认', value: 'default' },
-  { label: '稍小', value: 'small' }
+const sizeOptions = computed(() => [
+  { label: t('size.large'), value: 'large' as const },
+  { label: t('size.default'), value: 'default' as const },
+  { label: t('size.small'), value: 'small' as const }
 ]);
 
 const handleSetSize = (size: 'large' | 'default' | 'small') => {

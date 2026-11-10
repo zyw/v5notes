@@ -39,20 +39,20 @@ public class SysDeptBo implements Serializable {
     /**
      * 部门名称
      */
-    @NotBlank(message = "部门名称不能为空")
-    @Size(min = 0, max = 30, message = "部门名称长度不能超过{max}个字符")
+    @NotBlank(message = "{dept.name.not.blank}")
+    @Size(min = 0, max = 30, message = "{dept.name.length}")
     private String deptName;
 
     /**
      * 部门类别编码
      */
-    @Size(min = 0, max = 100, message = "部门类别编码长度不能超过{max}个字符")
+    @Size(min = 0, max = 100, message = "{dept.category.length}")
     private String deptCategory;
 
     /**
      * 显示顺序
      */
-    @NotNull(message = "显示顺序不能为空")
+    @NotNull(message = "{dept.order.not.null}")
     private Integer orderNum;
 
     /**
@@ -63,14 +63,14 @@ public class SysDeptBo implements Serializable {
     /**
      * 联系电话
      */
-    @Size(min = 0, max = 11, message = "联系电话长度不能超过{max}个字符")
+    @Size(min = 0, max = 11, message = "{dept.phone.length}")
     private String phone;
 
     /**
      * 邮箱
      */
-    @Email(message = "邮箱格式不正确")
-    @Size(min = 0, max = 50, message = "邮箱长度不能超过{max}个字符")
+    @Email(message = "{user.email.incorrect}")
+    @Size(min = 0, max = 50, message = "{dept.email.length}")
     private String email;
 
     /**

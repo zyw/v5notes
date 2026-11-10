@@ -1,3 +1,4 @@
+import { contentLanguage, t } from '../../i18n'
 import { normalizeIds } from '../../utils/identity'
 
 export interface RequestConnection {
@@ -40,7 +41,7 @@ export function createRequest(
   ): Promise<T> {
     const { server, clientId, token } = config()
     const headers: Record<string, string> = {
-      'Content-Language': 'zh_CN',
+      'Content-Language': contentLanguage(),
       clientid: clientId,
       ...(authenticated && token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
@@ -52,7 +53,7 @@ export function createRequest(
     const result = normalizeIds(await response.json()) as Envelope<T> & Partial<{ rows: unknown[] }>
     if (result.code === 409) {
       const data = (result.data ?? {}) as { contentHash?: string; updateTime?: string }
-      throw new ConflictError(result.msg || '笔记已在其他地方保存，请查看历史或重新加载后再保存', data)
+      throw new ConflictError(result.msg || t('conflict.fallback'), data)
     }
     if (response.status === 401 || result.code === 401) {
       // 已认证请求在首次 401 时尝试用刷新令牌续期，成功后重放一次原请求
@@ -63,9 +64,9 @@ export function createRequest(
         }
       }
       onUnauthorized()
-      throw new Error(result.msg || '登录已过期，请重新登录')
+      throw new Error(result.msg || t('session.expired'))
     }
-    if (!response.ok || result.code !== 200) throw new Error(result.msg || `请求失败 (${response.status})`)
+    if (!response.ok || result.code !== 200) throw new Error(result.msg || t('common.requestFailedStatus', { status: response.status }))
     return ('rows' in result ? result : result.data) as T
   }
 }

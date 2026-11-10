@@ -27,19 +27,19 @@ public class NoteDirectoryBo extends BaseEntity {
     /**
      * ID
      */
-    @NotNull(message = "ID不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{note.dir.id.not.null}", groups = { EditGroup.class })
     private Long id;
 
     /**
      * 目录名称
      */
-    @NotBlank(message = "目录名称不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{note.dir.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String name;
 
     /**
      * 父目录ID
      */
-    @NotNull(message = "父目录ID不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{note.dir.parent.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Long pid;
 
     /**

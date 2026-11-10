@@ -8,24 +8,18 @@
         <img class="pic-404__child right" src="@/assets/404_images/404_cloud.png" alt="404" />
       </div>
       <div class="bullshit">
-        <div class="bullshit__oops">404错误!</div>
+        <div class="bullshit__oops">{{ $t('errorPage.oops404') }}</div>
         <div class="bullshit__headline">
-          {{ message }}
+          {{ $t('errorPage.headline404') }}
         </div>
         <div class="bullshit__info">
-          对不起，您正在寻找的页面不存在。尝试检查URL的错误，然后按浏览器上的刷新按钮或尝试在我们的应用程序中找到其他内容。
+          {{ $t('errorPage.info404') }}
         </div>
-        <router-link to="/index" class="bullshit__return-home">返回首页</router-link>
+        <router-link to="/index" class="bullshit__return-home">{{ $t('errorPage.backHome') }}</router-link>
       </div>
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-const message = computed(() => {
-  return '找不到网页！';
-});
-</script>
 
 <style lang="scss" scoped>
 .wscn-http404-container {

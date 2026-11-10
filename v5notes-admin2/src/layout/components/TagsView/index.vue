@@ -17,7 +17,7 @@
         @contextmenu.prevent="openMenu(tag, $event)"
       >
         <svg-icon v-if="tagsIcon && tag.meta && tag.meta.icon && tag.meta.icon !== '#'" :icon-class="tag.meta.icon" />
-        <span class="tags-view-item-title">{{ tag.title || tag.meta?.title }}</span>
+        <span class="tags-view-item-title">{{ titleOf(tag.title || tag.meta?.title) }}</span>
         <span v-if="!isAffix(tag)" @click.prevent.stop="closeSelectedTag(tag)">
           <Close class="el-icon-close" style="width: 1em; height: 1em; vertical-align: middle" />
         </span>
@@ -36,71 +36,71 @@
         <el-dropdown-menu class="tags-dropdown-menu">
           <el-dropdown-item v-if="!isAffix(selectedDropdownTag)" command="close">
             <el-icon class="tags-dropdown__icon"><Close /></el-icon>
-            <span>关闭当前</span>
+            <span>{{ $t('layout.tagsClose') }}</span>
           </el-dropdown-item>
           <el-dropdown-item command="closeOthers">
             <el-icon class="tags-dropdown__icon"><CircleClose /></el-icon>
-            <span>关闭其他</span>
+            <span>{{ $t('layout.tagsCloseOthers') }}</span>
           </el-dropdown-item>
           <el-dropdown-item command="closeLeft" :disabled="isFirstView()">
             <el-icon class="tags-dropdown__icon"><Back /></el-icon>
-            <span>关闭左侧</span>
+            <span>{{ $t('layout.tagsCloseLeft') }}</span>
           </el-dropdown-item>
           <el-dropdown-item command="closeRight" :disabled="isLastView()">
             <el-icon class="tags-dropdown__icon"><Right /></el-icon>
-            <span>关闭右侧</span>
+            <span>{{ $t('layout.tagsCloseRight') }}</span>
           </el-dropdown-item>
           <el-dropdown-item command="closeAll">
             <el-icon class="tags-dropdown__icon"><CircleClose /></el-icon>
-            <span>全部关闭</span>
+            <span>{{ $t('layout.tagsCloseAll') }}</span>
           </el-dropdown-item>
           <el-dropdown-item command="fullscreen" divided>
             <template v-if="!isFullscreen">
               <el-icon class="tags-dropdown__icon"><FullScreen /></el-icon>
-              <span>全屏显示</span>
+              <span>{{ $t('layout.tagsFullscreen') }}</span>
             </template>
             <template v-else>
               <el-icon class="tags-dropdown__icon"><CloseBold /></el-icon>
-              <span>退出全屏</span>
+              <span>{{ $t('layout.tagsExitFullscreen') }}</span>
             </template>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
 
-    <span class="tags-action-btn tags-refresh-btn" title="刷新页面" @click="refreshSelectedTag(selectedDropdownTag)">
+    <span class="tags-action-btn tags-refresh-btn" :title="$t('layout.tagsRefreshPage')" @click="refreshSelectedTag(selectedDropdownTag)">
       <el-icon><RefreshRight /></el-icon>
-      <span>刷新</span>
+      <span>{{ $t('layout.tagsRefresh') }}</span>
     </span>
 
     <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
       <li @click="refreshSelectedTag(selectedTag)">
         <el-icon class="contextmenu__icon"><RefreshRight /></el-icon>
-        刷新页面
+        {{ $t('layout.tagsRefreshPage') }}
       </li>
       <li v-if="!isAffix(selectedTag)" @click="closeSelectedTag(selectedTag)">
         <el-icon class="contextmenu__icon"><Close /></el-icon>
-        关闭当前
+        {{ $t('layout.tagsClose') }}
       </li>
       <li @click="closeOthersTags">
         <el-icon class="contextmenu__icon"><CircleClose /></el-icon>
-        关闭其他
+        {{ $t('layout.tagsCloseOthers') }}
       </li>
       <li v-if="!isFirstView()" @click="closeLeftTags">
         <el-icon class="contextmenu__icon"><Back /></el-icon>
-        关闭左侧
+        {{ $t('layout.tagsCloseLeft') }}
       </li>
       <li v-if="!isLastView()" @click="closeRightTags">
         <el-icon class="contextmenu__icon"><Right /></el-icon>
-        关闭右侧
+        {{ $t('layout.tagsCloseRight') }}
       </li>
       <li @click="closeAllTags(selectedTag)">
         <el-icon class="contextmenu__icon"><CircleClose /></el-icon>
-        全部关闭
+        {{ $t('layout.tagsCloseAll') }}
       </li>
       <li @click="toggleFullscreen">
         <el-icon class="contextmenu__icon"><FullScreen /></el-icon>
-        全屏显示
+        {{ $t('layout.tagsFullscreen') }}
       </li>
     </ul>
   </div>
@@ -121,11 +121,14 @@ import {
   Right
 } from '@element-plus/icons-vue';
 import tab from '@/plugins/tab';
+import { translateRouteTitle } from '@/utils/i18n';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
 import { useTagsViewStore } from '@/store/modules/tagsView';
 import { getNormalPath } from '@/utils/ruoyi';
 import ScrollPane from './ScrollPane.vue';
+
+const titleOf = (title?: string) => translateRouteTitle(title);
 
 const visible = ref(false);
 const top = ref(0);

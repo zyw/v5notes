@@ -1,5 +1,6 @@
 package xin.v5ai.common.mybatis.handler;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.hutool.http.HttpStatus;
 import com.baomidou.dynamic.datasource.exception.CannotFindDataSourceException;
@@ -31,7 +32,7 @@ public class MybatisExceptionHandler {
     public R<Void> handleDuplicateKeyException(DuplicateKeyException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',数据库中已存在记录'{}'", requestURI, e.getMessage());
-        return R.fail(HttpStatus.HTTP_CONFLICT, "数据库中已存在该记录，请联系管理员确认");
+        return R.fail(HttpStatus.HTTP_CONFLICT, MessageUtils.message("db.duplicate"));
     }
 
     /**
@@ -47,11 +48,11 @@ public class MybatisExceptionHandler {
         Throwable root = getRootCause(e);
         if (root instanceof NotLoginException) {
             log.error("请求地址'{}',认证失败'{}',无法访问系统资源", requestURI, root.getMessage());
-            return R.fail(HttpStatus.HTTP_UNAUTHORIZED, "认证失败，无法访问系统资源");
+            return R.fail(HttpStatus.HTTP_UNAUTHORIZED, MessageUtils.message("auth.sse.failed"));
         }
         if (root instanceof CannotFindDataSourceException) {
             log.error("请求地址'{}', 未找到数据源", requestURI);
-            return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "未找到数据源，请联系管理员确认");
+            return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, MessageUtils.message("db.datasource.missing"));
         }
         log.error("请求地址'{}', Mybatis系统异常", requestURI, e);
         return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, e.getMessage());

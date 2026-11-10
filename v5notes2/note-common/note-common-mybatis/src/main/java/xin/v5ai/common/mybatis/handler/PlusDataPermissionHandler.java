@@ -1,5 +1,6 @@
 package xin.v5ai.common.mybatis.handler;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.hutool.core.annotation.AnnotationUtil;
@@ -73,7 +74,7 @@ public class PlusDataPermissionHandler {
         try {
             DataPermission dataPermission = getDataPermission();
             if (dataPermission == null) {
-                throw new ServiceException("数据权限上下文缺失，请检查 @DataPermission 注解处理生命周期");
+                throw new ServiceException(MessageUtils.message("data.permission.context"));
             }
             LoginUser currentUser = currentUser();
             // 如果是超级管理员或租户管理员，则不过滤数据
@@ -94,7 +95,7 @@ public class PlusDataPermissionHandler {
                 return parenthesis;
             }
         } catch (JSQLParserException e) {
-            throw new ServiceException("数据权限解析异常 => " + e.getMessage());
+            throw new ServiceException(MessageUtils.message("data.permission.parse", e.getMessage()));
         }
     }
 
@@ -130,7 +131,7 @@ public class PlusDataPermissionHandler {
         List<String> keys = new ArrayList<>();
         for (DataColumn dataColumn : dataPermission.value()) {
             if (dataColumn.key().length != dataColumn.value().length) {
-                throw new ServiceException("角色数据范围异常 => key与value长度不匹配");
+                throw new ServiceException(MessageUtils.message("data.permission.scope.length"));
             }
             // 设置注解变量 key 为表达式变量 value 为变量值
             for (int i = 0; i < dataColumn.key().length; i++) {
@@ -144,7 +145,7 @@ public class PlusDataPermissionHandler {
             // 获取角色权限泛型
             DataScopeType type = DataScopeType.findCode(role.getDataScope());
             if (ObjectUtil.isNull(type)) {
-                throw new ServiceException("角色数据范围异常 => " + role.getDataScope());
+                throw new ServiceException(MessageUtils.message("data.permission.scope", role.getDataScope()));
             }
             // 全部数据权限直接返回
             if (type == DataScopeType.ALL) {

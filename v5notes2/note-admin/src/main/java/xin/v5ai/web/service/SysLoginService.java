@@ -1,5 +1,6 @@
 package xin.v5ai.web.service;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
@@ -86,7 +87,7 @@ public class SysLoginService {
         bo.setNickName(authUserData.getNickname());
         List<SysSocialVo> checkList = sysSocialService.selectByAuthId(authId);
         if (CollUtil.isNotEmpty(checkList)) {
-            throw new ServiceException("此三方账号已经被绑定!");
+            throw new ServiceException(MessageUtils.message("auth.social.bound"));
         }
         // 查询是否已经绑定用户
         SysSocialBo params = new SysSocialBo();

@@ -28,22 +28,22 @@ public class SysConfigBo implements Serializable {
     /**
      * 参数名称
      */
-    @NotBlank(message = "参数名称不能为空")
-    @Size(min = 0, max = 100, message = "参数名称不能超过{max}个字符")
+    @NotBlank(message = "{config.name.not.blank}")
+    @Size(min = 0, max = 100, message = "{config.name.length}")
     private String configName;
 
     /**
      * 参数键名
      */
-    @NotBlank(message = "参数键名不能为空")
-    @Size(min = 0, max = 100, message = "参数键名长度不能超过{max}个字符")
+    @NotBlank(message = "{config.key.not.blank}")
+    @Size(min = 0, max = 100, message = "{config.key.length}")
     private String configKey;
 
     /**
      * 参数键值
      */
-    @NotBlank(message = "参数键值不能为空")
-    @Size(min = 0, max = 500, message = "参数键值长度不能超过{max}个字符")
+    @NotBlank(message = "{config.value.not.blank}")
+    @Size(min = 0, max = 500, message = "{config.value.length}")
     private String configValue;
 
     /**

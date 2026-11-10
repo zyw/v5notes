@@ -28,7 +28,7 @@
                   @click.stop="treeCollapsed = !treeCollapsed"
                 >
                   <div v-show="!treeCollapsed" class="table-heading">
-                    <h3>部门结构</h3>
+                    <h3>{{ $t('widgets.userSelect.dept') }}</h3>
                   </div>
                 </div>
               </template>
@@ -36,7 +36,7 @@
                 <el-input
                   v-model="deptName"
                   class="selector-dept-input"
-                  placeholder="请输入部门名称"
+                  :placeholder="$t('common.pleaseInput', { label: $t('widgets.userSelect.deptName') })"
                   prefix-icon="Search"
                   clearable
                 />
@@ -69,25 +69,25 @@
                 <div v-show="showSearch">
                   <el-card shadow="hover" class="search-panel selector-card">
                     <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-                      <el-form-item label="用户名称" prop="userName">
+                      <el-form-item :label="$t('widgets.userSelect.userName')" prop="userName">
                         <el-input
                           v-model="queryParams.userName"
-                          placeholder="请输入用户名称"
+                          :placeholder="$t('common.pleaseInput', { label: $t('widgets.userSelect.userName') })"
                           clearable
                           @keyup.enter="handleQuery"
                         />
                       </el-form-item>
-                      <el-form-item label="手机号码" prop="phoneNumber">
+                      <el-form-item :label="$t('widgets.userSelect.phone')" prop="phoneNumber">
                         <el-input
                           v-model="queryParams.phoneNumber"
-                          placeholder="请输入手机号码"
+                          :placeholder="$t('common.pleaseInput', { label: $t('widgets.userSelect.phone') })"
                           clearable
                           @keyup.enter="handleQuery"
                         />
                       </el-form-item>
                       <el-form-item>
-                        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                        <el-button icon="Refresh" @click="() => resetQuery()">重置</el-button>
+                        <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+                        <el-button icon="Refresh" @click="() => resetQuery()">{{ $t('common.reset') }}</el-button>
                       </el-form-item>
                     </el-form>
                   </el-card>
@@ -98,7 +98,7 @@
                 <template #header>
                   <div class="toolbar-shell selector-header">
                     <div class="table-heading">
-                      <h3>用户列表</h3>
+                      <h3>{{ $t('widgets.userSelect.userList') }}</h3>
                     </div>
                     <div v-if="prop.multiple && selectUserList.length" class="selector-tags">
                       <el-tag v-for="user in selectUserList" :key="user.userId" closable @close="handleCloseTag(user)">
@@ -127,18 +127,18 @@
                   @checkbox-change="handleCheckboxChange"
                 >
                   <vxe-column type="checkbox" width="50" align="center" />
-                  <vxe-column key="userId" title="用户编号" align="center" field="userId" />
-                  <vxe-column key="userName" title="用户名称" align="center" field="userName" />
-                  <vxe-column key="nickName" title="用户昵称" align="center" field="nickName" />
-                  <vxe-column key="deptName" title="部门" align="center" field="deptName" />
-                  <vxe-column key="phoneNumber" title="手机号码" align="center" field="phoneNumber" width="120" />
-                  <vxe-column key="status" title="状态" align="center">
+                  <vxe-column key="userId" :title="$t('widgets.userSelect.userId')" align="center" field="userId" />
+                  <vxe-column key="userName" :title="$t('widgets.userSelect.userName')" align="center" field="userName" />
+                  <vxe-column key="nickName" :title="$t('widgets.userSelect.nickName')" align="center" field="nickName" />
+                  <vxe-column key="deptName" :title="$t('widgets.userSelect.deptColumn')" align="center" field="deptName" />
+                  <vxe-column key="phoneNumber" :title="$t('widgets.userSelect.phone')" align="center" field="phoneNumber" width="120" />
+                  <vxe-column key="status" :title="$t('common.status')" align="center">
                     <template #default="scope">
                       <dict-tag :options="sys_normal_disable" :value="scope.row.status"></dict-tag>
                     </template>
                   </vxe-column>
 
-                  <vxe-column title="创建时间" align="center" width="160">
+                  <vxe-column :title="$t('common.createTime')" align="center" width="160">
                     <template #default="scope">
                       <span>{{ scope.row.createTime }}</span>
                     </template>
@@ -159,8 +159,8 @@
       </div>
 
       <template #footer>
-        <el-button @click="close">取消</el-button>
-        <el-button type="primary" @click="confirm">确定</el-button>
+        <el-button @click="close">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="confirm">{{ $t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -175,6 +175,9 @@ import { UserQuery, UserVO } from '@/api/system/user/types';
 import { useDialogState } from '@/hooks/dialog/useDialogState';
 import { useDateRangeQuery } from '@/hooks/form/useDateRangeQuery';
 import { useDict } from '@/utils/dict';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface PropType {
   modelValue?: UserVO[] | UserVO | undefined;
@@ -206,7 +209,7 @@ const deptTreeRef = ref<ElTreeInstance>();
 const queryFormRef = ref<ElFormInstance>();
 const tableRef = ref<VxeTableInstance<UserVO>>();
 
-const { dialog, openDialog, closeDialog } = useDialogState('用户选择');
+const { dialog, openDialog, closeDialog } = useDialogState();
 
 const queryParams = ref<UserQuery>({
   pageNum: 1,
@@ -374,8 +377,12 @@ watch(
   }
 );
 
+const open = (title?: string) => {
+  openDialog(title ?? t('widgets.userSelect.title'));
+};
+
 defineExpose({
-  open: openDialog,
+  open,
   close: closeDialog
 });
 </script>

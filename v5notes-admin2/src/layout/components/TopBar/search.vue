@@ -14,7 +14,7 @@
         v-model="state.menuQuery"
         size="large"
         clearable
-        placeholder="菜单搜索，支持标题、URL模糊查询"
+        :placeholder="$t('layout.searchPlaceholder')"
         @input="querySearch"
         @keydown="handleSearchKeydown"
       >
@@ -24,9 +24,9 @@
       </el-input>
 
       <div v-if="state.menuQuery && state.options.length > 0" class="result-count">
-        找到
+        {{ $t('layout.searchFound') }}
         <strong>{{ state.options.length }}</strong>
-        个结果
+        {{ $t('layout.searchResults') }}
       </div>
 
       <el-scrollbar wrap-class="layout-search-scrollbar">
@@ -57,11 +57,9 @@
           <div v-else-if="state.menuQuery" class="empty-state">
             <el-icon class="empty-icon"><Search /></el-icon>
             <p class="empty-text">
-              未找到 "
-              <strong>{{ state.menuQuery }}</strong>
-              " 相关菜单
+              {{ $t('layout.searchEmpty', { keyword: state.menuQuery }) }}
             </p>
-            <p class="empty-tip">试试其他关键词或路径</p>
+            <p class="empty-tip">{{ $t('layout.searchEmptyTip') }}</p>
           </div>
         </div>
       </el-scrollbar>
@@ -70,15 +68,15 @@
         <span class="shortcut-item">
           <kbd>↑</kbd>
           <kbd>↓</kbd>
-          切换
+          {{ $t('layout.searchSwitch') }}
         </span>
         <span class="shortcut-item">
           <kbd>↵</kbd>
-          选择
+          {{ $t('layout.searchSelect') }}
         </span>
         <span class="shortcut-item">
           <kbd>Esc</kbd>
-          关闭
+          {{ $t('layout.searchClose') }}
         </span>
       </div>
     </el-dialog>
@@ -87,6 +85,7 @@
 
 <script setup lang="ts" name="layoutBreadcrumbSearch">
 import type { RouteRecordRaw } from 'vue-router';
+import { translateRouteTitle } from '@/utils/i18n';
 import { Search } from '@element-plus/icons-vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
@@ -169,7 +168,7 @@ const generateRoutes = (routeList: RouteRecordRaw[], basePath = '', prefixTitle:
     };
 
     if (route.meta?.title) {
-      data.title = [...data.title, String(route.meta.title)];
+      data.title = [...data.title, translateRouteTitle(String(route.meta.title))];
       data.fullTitle = data.title.join(' / ');
       if (route.redirect !== 'noRedirect') {
         result.push(data);

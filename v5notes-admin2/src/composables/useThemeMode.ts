@@ -1,11 +1,10 @@
 import { computed, ref } from 'vue';
+import i18n from '@/lang';
 
 export type ThemeMode = 'auto' | 'dark' | 'light';
 
 const MODE_KEY = 'v5-theme-mode';
 const ORDER: ThemeMode[] = ['auto', 'dark', 'light'];
-const LABEL: Record<ThemeMode, string> = { auto: '跟随系统', dark: '深色', light: '浅色' };
-
 const mode = ref<ThemeMode>('auto');
 const systemDark = ref(false);
 let initialized = false;
@@ -69,7 +68,10 @@ function ensureInit() {
 export function useThemeMode() {
   ensureInit();
   const resolved = computed<'dark' | 'light'>(() => (isDark(mode.value, systemDark.value) ? 'dark' : 'light'));
-  const label = computed(() => LABEL[mode.value]);
+  const label = computed(() => {
+    void i18n.global.locale.value;
+    return String(i18n.global.t(`theme.${mode.value}`));
+  });
 
   const setMode = (m: ThemeMode) => {
     mode.value = m;

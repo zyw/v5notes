@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 export interface DiffLine {
   kind: 'same' | 'add' | 'remove'
   text: string
@@ -8,7 +10,7 @@ export function diffLines(before: string, after: string): DiffLine[] {
   const older = before.split('\n')
   const newer = after.split('\n')
   if (older.length * newer.length > 250000) {
-    return [{ kind: 'same', text: '正文较长，请直接查看全文。' }]
+    return [{ kind: 'same', text: t('history.tooLong') }]
   }
   const width = newer.length + 1
   const score = new Uint32Array((older.length + 1) * width)

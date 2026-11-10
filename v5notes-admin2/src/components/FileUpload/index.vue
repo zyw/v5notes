@@ -15,18 +15,19 @@
       class="upload-file-uploader"
     >
       <!-- 上传按钮 -->
-      <el-button type="primary">选取文件</el-button>
+      <el-button type="primary">{{ $t('widgets.fileUpload.pick') }}</el-button>
     </el-upload>
     <!-- 上传提示 -->
     <div v-if="showTip" class="el-upload__tip">
-      请上传
-      <template v-if="fileSize">
-        大小不超过 <b style="color: #f56c6c">{{ fileSize }}MB</b>
+      <template v-if="fileSize && fileType">
+        {{ $t('widgets.upload.tipBothLead') }}<b style="color: #f56c6c">{{ fileSize }}MB</b>{{ $t('widgets.upload.tipBothMid') }}<b style="color: #f56c6c">{{ fileType.join('/') }}</b>{{ $t('widgets.upload.tipBothTail') }}
       </template>
-      <template v-if="fileType">
-        格式为 <b style="color: #f56c6c">{{ fileType.join('/') }}</b>
+      <template v-else-if="fileSize">
+        {{ $t('widgets.upload.tipSizeLead') }}<b style="color: #f56c6c">{{ fileSize }}MB</b>{{ $t('widgets.upload.tipSizeTail') }}
       </template>
-      的文件
+      <template v-else-if="fileType">
+        {{ $t('widgets.upload.tipTypeLead') }}<b style="color: #f56c6c">{{ fileType.join('/') }}</b>{{ $t('widgets.upload.tipTypeTail') }}
+      </template>
     </div>
     <!-- 文件列表 -->
     <transition-group class="upload-file-list el-upload-list el-upload-list--text" name="el-fade-in-linear" tag="ul">
@@ -35,7 +36,7 @@
           <span class="el-icon-document"> {{ getFileName(file.name) }} </span>
         </el-link>
         <div class="ele-upload-list__item-content-action">
-          <el-button type="danger" link @click="handleDelete(index)">删除</el-button>
+          <el-button type="danger" link @click="handleDelete(index)">{{ $t('common.delete') }}</el-button>
         </div>
       </li>
     </transition-group>
@@ -47,6 +48,9 @@ import modal from '@/plugins/modal';
 import { propTypes } from '@/utils/propTypes';
 import { delFile, listByIds } from '@/api/basics/file';
 import { globalHeaders } from '@/utils/request';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   modelValue: {
@@ -116,7 +120,7 @@ const handleBeforeUpload = (file: any) => {
     const fileExt = fileName[fileName.length - 1];
     const isTypeOk = props.fileType.indexOf(fileExt) >= 0;
     if (!isTypeOk) {
-      modal.msgError(`文件格式不正确, 请上传${props.fileType.join('/')}格式文件!`);
+      modal.msgError(t('widgets.fileUpload.invalidType', { types: props.fileType.join('/') }));
       return false;
     }
   }
@@ -124,23 +128,23 @@ const handleBeforeUpload = (file: any) => {
   if (props.fileSize) {
     const isLt = file.size / 1024 / 1024 < props.fileSize;
     if (!isLt) {
-      modal.msgError(`上传文件大小不能超过 ${props.fileSize} MB!`);
+      modal.msgError(t('widgets.fileUpload.sizeExceeded', { size: props.fileSize }));
       return false;
     }
   }
-  modal.loading('正在上传文件，请稍候...');
+  modal.loading(t('widgets.fileUpload.uploading'));
   number.value++;
   return true;
 };
 
 // 文件个数超出
 const handleExceed = () => {
-  modal.msgError(`上传文件数量不能超过 ${props.limit} 个!`);
+  modal.msgError(t('widgets.upload.countExceeded', { limit: props.limit }));
 };
 
 // 上传失败
 const handleUploadError = () => {
-  modal.msgError('上传文件失败');
+  modal.msgError(t('widgets.fileUpload.failed'));
 };
 
 // 上传成功回调

@@ -13,10 +13,16 @@ import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.service.PermissionService;
 import xin.v5ai.common.core.utils.SpringUtils;
 import xin.v5ai.system.api.model.LoginUser;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Locale;
 
 import java.util.List;
 import java.util.Set;
@@ -27,6 +33,20 @@ import static org.mockito.Mockito.*;
 
 @DisplayName("common-satoken 功能单元测试")
 class SaTokenFunctionTest {
+
+    @BeforeAll
+    static void initializeMessages() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        Locale locale = Locale.getDefault();
+        LocaleContextHolder.setLocale(locale);
+        context.getStaticMessageSource().addMessage("auth.forbidden", locale, "没有访问权限，请联系管理员授权");
+        context.getStaticMessageSource().addMessage("auth.session.expired", locale, "登录已过期，请重新登录");
+        context.getStaticMessageSource().addMessage("auth.session.replaced", locale, "当前账号已在其他设备登录，您已被强制下线");
+        context.getStaticMessageSource().addMessage("permission.service.missing", locale, "PermissionService 实现类不存在");
+        context.getStaticMessageSource().addMessage("login.id.invalid", locale, "登录ID格式错误");
+        context.refresh();
+        new SpringUtil().setApplicationContext(context);
+    }
 
     /**
      * 验证权限校验失败统一返回 HTTP 403 业务响应。
@@ -126,7 +146,7 @@ class SaTokenFunctionTest {
         when(service.getMenuPermission(9L)).thenReturn(Set.of("system:dept:list"));
 
         try (var login = mockStatic(LoginHelper.class);
-             var spring = mockStatic(SpringUtil.class)) {
+             var spring = mockStatic(SpringUtil.class, Mockito.CALLS_REAL_METHODS)) {
             login.when(LoginHelper::getLoginUser).thenReturn(null);
             spring.when(() -> SpringUtil.getBean(PermissionService.class)).thenReturn(service);
             SaPermissionImpl permission = new SaPermissionImpl();
@@ -145,7 +165,7 @@ class SaTokenFunctionTest {
     @DisplayName("缺少权限服务时明确失败")
     void shouldFailClearlyWhenPermissionServiceIsMissing() {
         try (var login = mockStatic(LoginHelper.class);
-             var spring = mockStatic(SpringUtil.class)) {
+             var spring = mockStatic(SpringUtil.class, Mockito.CALLS_REAL_METHODS)) {
             login.when(LoginHelper::getLoginUser).thenReturn(null);
             spring.when(() -> SpringUtil.getBean(PermissionService.class))
                 .thenThrow(new IllegalStateException("missing bean"));

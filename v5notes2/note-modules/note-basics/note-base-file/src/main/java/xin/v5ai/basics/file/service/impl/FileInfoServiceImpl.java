@@ -1,5 +1,6 @@
 package xin.v5ai.basics.file.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.lang.Assert;
@@ -172,7 +173,7 @@ public class FileInfoServiceImpl implements IFileInfoService {
         }
         List<FileInfo> fileInfos = baseMapper.selectBatchIds(ids);
         if (fileInfos.isEmpty()) {
-            throw new ServiceException("文件不存在");
+            throw new ServiceException(MessageUtils.message("file.missing"));
         }
         fileInfos.forEach(item -> {
             // 如果多个数据库记录指向同一个文件，则在数据库记录大于1时不删除文件，防止删除后其他记录下载文件时找不到文件
@@ -185,7 +186,7 @@ public class FileInfoServiceImpl implements IFileInfoService {
                 try {
                     client.delete(item.getPath());
                 } catch (Exception e) {
-                    throw new ServiceException("删除文件失败:" + e.getMessage());
+                    throw new ServiceException(MessageUtils.message("file.delete.failed", e.getMessage()));
                 }
             }
         });

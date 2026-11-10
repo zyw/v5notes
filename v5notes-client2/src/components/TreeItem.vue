@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { TreeNode } from '../service/api'
 import TreeIcon from './TreeIcon.vue'
 
+const { t } = useI18n()
 const props = defineProps<{
   node: TreeNode
   selectedId: string
@@ -161,7 +163,7 @@ function activate(): void {
       <button
         class="tree-disclosure"
         type="button"
-        :aria-label="isDirectory ? `${expanded ? '收起' : '展开'}目录 ${node.label}` : undefined"
+        :aria-label="isDirectory ? t('tree.toggle', { action: expanded ? t('tree.collapse') : t('tree.expand'), name: node.label }) : undefined"
         :aria-expanded="isDirectory ? expanded : undefined"
         @click="activate"
       >
@@ -176,18 +178,18 @@ function activate(): void {
       </button>
       <div class="tree-actions">
         <details ref="menuRoot" class="tree-menu" :open="menuOpen" @toggle="onMenuToggle" @click.stop>
-          <summary title="更多操作" :aria-label="`${node.label} 更多操作`"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1.35"/><circle cx="10" cy="10" r="1.35"/><circle cx="16" cy="10" r="1.35"/></svg></summary>
+          <summary :title="t('tree.more')" :aria-label="t('tree.moreFor', { name: node.label })"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1.35"/><circle cx="10" cy="10" r="1.35"/><circle cx="16" cy="10" r="1.35"/></svg></summary>
           <div class="popover-menu" popover="manual" :style="menuStyle" @toggle.stop>
             <template v-if="isDirectory">
-              <button @click="emit('add', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 6h5.8L10 8h7.5v8H2.5zM13.5 3v5M11 5.5h5"/></svg>新建子目录</button>
-              <button @click="emit('addNote', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6l4 4V17H5zM11 2.8v4h3.7M8 10h4M8 13h4M16.5 12v5M14 14.5h5"/></svg>新建笔记</button>
-              <button @click="emit('rename', node); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>重命名</button>
-              <button class="danger-menu-item" @click="emit('remove', node); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>删除目录</button>
+              <button @click="emit('add', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 6h5.8L10 8h7.5v8H2.5zM13.5 3v5M11 5.5h5"/></svg>{{ t('tree.newChild') }}</button>
+              <button @click="emit('addNote', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6l4 4V17H5zM11 2.8v4h3.7M8 10h4M8 13h4M16.5 12v5M14 14.5h5"/></svg>{{ t('tree.newNote') }}</button>
+              <button @click="emit('rename', node); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>{{ t('tree.rename') }}</button>
+              <button class="danger-menu-item" @click="emit('remove', node); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>{{ t('tree.deleteDirectory') }}</button>
             </template>
             <template v-else>
-              <button @click="emit('noteOpen', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16 16 4M8 4h8v8"/></svg>打开</button>
-              <button @click="emit('noteRename', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>重命名</button>
-              <button class="danger-menu-item" @click="emit('noteDelete', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>删除笔记</button>
+              <button @click="emit('noteOpen', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16 16 4M8 4h8v8"/></svg>{{ t('tree.open') }}</button>
+              <button @click="emit('noteRename', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>{{ t('tree.rename') }}</button>
+              <button class="danger-menu-item" @click="emit('noteDelete', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>{{ t('tree.deleteNote') }}</button>
             </template>
           </div>
         </details>

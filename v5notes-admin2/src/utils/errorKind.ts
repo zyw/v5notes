@@ -22,7 +22,7 @@ export function classifyRequestError(error: any): ErrorInfo {
   const status: number | undefined = error?.response?.status;
   const msg: string = String(error?.message ?? '');
 
-  if (status === 401 || /401|会话已过期|无效的会话/.test(msg)) {
+  if (status === 401 || /401|会话已过期|无效的会话|會話已過期|無效的會話|session has expired|invalid session/i.test(msg)) {
     return { kind: 'session', ...DEFAULTS.session };
   }
   if ((status && status >= 500) || /50\d/.test(msg)) {

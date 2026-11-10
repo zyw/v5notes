@@ -1,3 +1,4 @@
+import { currentLocale } from '../i18n'
 import type { TreeNode } from '../service/api'
 
 export type NoteGroupMode = 'tree' | 'list'
@@ -13,7 +14,7 @@ function isDirectory(node: TreeNode): boolean {
 }
 
 export function compareName(left: string, right: string): number {
-  return left.localeCompare(right, 'zh-CN', { numeric: true, sensitivity: 'base' })
+  return left.localeCompare(right, currentLocale(), { numeric: true, sensitivity: 'base' })
 }
 
 function timestamp(value?: string): string {
@@ -61,7 +62,7 @@ export function flattenNotes(nodes: TreeNode[], sort: NoteSortMode): FlatNote[] 
       const timeDelta = timestamp(right.note.updateTime).localeCompare(timestamp(left.note.updateTime))
       if (timeDelta) return timeDelta
     }
-    return compareName(left.note.label, right.note.label) || left.path.localeCompare(right.path, 'zh-CN') || left.note.id.localeCompare(right.note.id)
+    return compareName(left.note.label, right.note.label) || left.path.localeCompare(right.path, currentLocale()) || left.note.id.localeCompare(right.note.id)
   })
 }
 

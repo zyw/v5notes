@@ -16,7 +16,7 @@ public class DBFileClientConfig implements FileClientConfig {
     /**
      * 自定义域名
      */
-    @NotEmpty(message = "domain 不能为空")
-    @URL(message = "domain 必须是 URL 格式")
+    @NotEmpty(message = "{file.domain.not.blank}")
+    @URL(message = "{file.domain.invalid}")
     private String domain;
 }

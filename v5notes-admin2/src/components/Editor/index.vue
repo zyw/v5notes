@@ -21,6 +21,9 @@ import { listByIds } from '@/api/basics/file';
 import modal from '@/plugins/modal';
 import { propTypes } from '@/utils/propTypes';
 import { globalHeaders } from '@/utils/request';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const OSS_MARKER_RE = /oss:\/\/([\w-]+)/g;
 const props = defineProps({
@@ -97,7 +100,7 @@ const uploadToFile = async (file: File): Promise<{ url: string; path: string; id
     ossUrlToId.set(data.data.url, String(data.data.id));
     return data.data;
   }
-  throw new Error(data.msg || '上传失败');
+  throw new Error(data.msg || t('widgets.editor.uploadFailed'));
 };
 
 /**
@@ -142,14 +145,14 @@ const decodeOssContent = async (html: string): Promise<string> => {
 const validateImageFile = (file: File) => {
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg', 'image/svg+xml'];
   if (!allowedTypes.includes(file.type)) {
-    modal.msgError('图片格式错误!');
+    modal.msgError(t('widgets.editor.imageFormat'));
     return false;
   }
 
   if (props.fileSize) {
     const isLt = file.size / 1024 / 1024 < props.fileSize;
     if (!isLt) {
-      modal.msgError(`上传图片大小不能超过 ${props.fileSize} MB!`);
+      modal.msgError(t('widgets.editor.imageSize', { size: props.fileSize }));
       return false;
     }
   }
@@ -160,14 +163,14 @@ const validateImageFile = (file: File) => {
 const validateVideoFile = (file: File) => {
   const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
   if (!allowedTypes.includes(file.type)) {
-    modal.msgError('视频格式错误, 请上传 mp4/webm/ogg 格式!');
+    modal.msgError(t('widgets.editor.videoFormat'));
     return false;
   }
 
   if (props.videoSize) {
     const isLt = file.size / 1024 / 1024 < props.videoSize;
     if (!isLt) {
-      modal.msgError(`上传视频大小不能超过 ${props.videoSize} MB!`);
+      modal.msgError(t('widgets.editor.videoSize', { size: props.videoSize }));
       return false;
     }
   }
@@ -184,7 +187,7 @@ const getUploadImageMenuConfig = () => {
       customUpload(file: File, insertFn: (url: string, alt?: string, href?: string) => void) {
         if (!validateImageFile(file)) return;
 
-        modal.loading('正在上传图片，请稍候...');
+        modal.loading(t('widgets.editor.uploadingImage'));
         const reader = new FileReader();
 
         reader.onload = () => {
@@ -193,7 +196,7 @@ const getUploadImageMenuConfig = () => {
         };
 
         reader.onerror = () => {
-          modal.msgError('图片插入失败');
+          modal.msgError(t('widgets.editor.imageInsertFailed'));
           modal.closeLoading();
         };
 
@@ -207,12 +210,12 @@ const getUploadImageMenuConfig = () => {
     async customUpload(file: File, insertFn: (url: string, alt?: string, href?: string) => void) {
       if (!validateImageFile(file)) return;
 
-      modal.loading('正在上传图片，请稍候...');
+      modal.loading(t('widgets.editor.uploadingImage'));
       try {
         const result = await uploadToFile(file);
         insertFn(result.url, file.name, result.url);
       } catch {
-        modal.msgError('图片上传失败');
+        modal.msgError(t('widgets.editor.imageUploadFailed'));
       } finally {
         modal.closeLoading();
       }
@@ -225,12 +228,12 @@ const getUploadVideoMenuConfig = () => ({
   async customUpload(file: File, insertFn: (url: string, poster?: string) => void) {
     if (!validateVideoFile(file)) return;
 
-    modal.loading('正在上传视频，请稍候...');
+    modal.loading(t('widgets.editor.uploadingVideo'));
     try {
       const result = await uploadToFile(file);
       insertFn(result.url);
     } catch {
-      modal.msgError('视频上传失败');
+      modal.msgError(t('widgets.editor.videoUploadFailed'));
     } finally {
       modal.closeLoading();
     }
@@ -238,7 +241,7 @@ const getUploadVideoMenuConfig = () => ({
 });
 
 const editorConfig = computed<Partial<IEditorConfig>>(() => ({
-  placeholder: '请输入内容',
+  placeholder: t('common.pleaseInput', { label: t('common.content') }),
   autoFocus: false,
   MENU_CONF: {
     uploadImage: getUploadImageMenuConfig() as any,

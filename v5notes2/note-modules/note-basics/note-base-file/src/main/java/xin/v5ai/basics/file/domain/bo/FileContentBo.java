@@ -23,18 +23,18 @@ public class FileContentBo extends BaseEntity {
     /**
      * 编号
      */
-    @NotNull(message = "编号不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{file.config.id.not.null}", groups = { EditGroup.class })
     private Long id;
 
     /**
      * 配置编号
      */
-    @NotNull(message = "配置编号不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{file.content.config.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Long configId;
 
     /**
      * 文件路径
      */
-    @NotBlank(message = "文件路径不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.path.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String path;
 }

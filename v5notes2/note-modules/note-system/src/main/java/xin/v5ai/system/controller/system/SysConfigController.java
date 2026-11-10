@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -95,7 +96,7 @@ public class SysConfigController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysConfigBo config) {
         if (!configService.checkConfigKeyUnique(config)) {
-            return R.fail("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return R.fail(MessageUtils.message("config.add.exists", config.getConfigName()));
         }
         configService.insertConfig(config);
         return R.ok();
@@ -113,7 +114,7 @@ public class SysConfigController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysConfigBo config) {
         if (!configService.checkConfigKeyUnique(config)) {
-            return R.fail("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return R.fail(MessageUtils.message("config.edit.exists", config.getConfigName()));
         }
         configService.updateConfig(config);
         return R.ok();

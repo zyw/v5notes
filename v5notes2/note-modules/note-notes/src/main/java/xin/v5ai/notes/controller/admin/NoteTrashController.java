@@ -1,5 +1,6 @@
 package xin.v5ai.notes.controller.admin;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class NoteTrashController extends BaseController {
     public R<NoteTrashRestoreVo> restore(@PathVariable Long id) {
         NoteTrashRestoreVo restored = noteTrashService.restoreForAdmin(id);
         if (Boolean.TRUE.equals(restored.getRelocated())) {
-            return R.ok("原目录已不在，已恢复到根目录", restored);
+            return R.ok(MessageUtils.message("note.restore.root"), restored);
         }
         return R.ok(restored);
     }
@@ -52,7 +53,7 @@ public class NoteTrashController extends BaseController {
     @SaCheckPermission("notes:trash:remove")
     @Log(title = "回收站", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> purge(@NotEmpty(message = "主键不能为空") @PathVariable Long[] ids) {
+    public R<Void> purge(@NotEmpty(message = "{id.not.null}") @PathVariable Long[] ids) {
         for (Long id : ids) {
             noteTrashService.purge(id, null, false);
         }
@@ -69,6 +70,6 @@ public class NoteTrashController extends BaseController {
         if (failed == 0) {
             return R.ok(result);
         }
-        return R.ok(failed + " 条清除失败", result);
+        return R.ok(MessageUtils.message("note.purge.failed", failed), result);
     }
 }

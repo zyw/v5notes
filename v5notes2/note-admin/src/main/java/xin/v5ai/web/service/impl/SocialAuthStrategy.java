@@ -1,5 +1,6 @@
 package xin.v5ai.web.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.collection.CollUtil;
@@ -66,7 +67,7 @@ public class SocialAuthStrategy implements IAuthStrategy {
 
         List<SysSocialVo> list = sysSocialService.selectByAuthId(authUserData.getSource() + authUserData.getUuid());
         if (CollUtil.isEmpty(list)) {
-            throw new ServiceException("你还没有绑定第三方账号，绑定后才可以登录！");
+            throw new ServiceException(MessageUtils.message("auth.social.unbound"));
         }
         SysUserVo user = loadUser(list.getFirst().getUserId());
         // 此处可根据登录用户的数据不同 自行创建 loginUser 属性不够用继承扩展就行了

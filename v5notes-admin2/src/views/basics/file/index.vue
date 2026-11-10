@@ -4,26 +4,26 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-            <el-form-item label="原名" prop="name">
-              <el-input v-model="queryParams.name" placeholder="请输入文件原名" clearable @keyup.enter="handleQuery" />
+            <el-form-item :label="$t('file.list.originalName')" prop="name">
+              <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('file.list.fileOriginName') })" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="文件类型" prop="type">
-              <el-input v-model="queryParams.type" placeholder="请输入文件类型" clearable style="width: 240px" @keyup.enter="handleQuery" />
+            <el-form-item :label="$t('file.list.fileType')" prop="type">
+              <el-input v-model="queryParams.type" :placeholder="$t('common.pleaseInput', { label: $t('file.list.fileType') })" clearable style="width: 240px" @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="创建时间">
+            <el-form-item :label="$t('common.createTime')">
               <el-date-picker
                 v-model="queryParams.createTime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
                 type="daterange"
                 range-separator="-"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
+                :start-placeholder="$t('file.list.startTime')"
+                :end-placeholder="$t('file.list.endTime')"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+              <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+              <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -33,18 +33,18 @@
     <el-card shadow="hover" class="table-panel">
       <template #header>
         <div class="table-heading file-table-heading">
-          <h3>文件列表</h3>
-          <p>共 {{ total }} 个文件，管理已上传的资源文件；可预览、下载或按类型清理。</p>
+          <h3>{{ $t('file.list.title') }}</h3>
+          <p>{{ $t('file.list.summary', { total }) }}</p>
         </div>
         <el-row :gutter="10" class="mb8 file-table-toolbar">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:file:upload']" type="primary" plain icon="Upload" @click="handleFile">上传文件</el-button>
+            <el-button v-hasPermi="['basics:file:upload']" type="primary" plain icon="Upload" @click="handleFile">{{ $t('file.list.uploadFile') }}</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:file:upload']" type="primary" plain icon="Upload" @click="handleImage">上传图片</el-button>
+            <el-button v-hasPermi="['basics:file:upload']" type="primary" plain icon="Upload" @click="handleImage">{{ $t('file.list.uploadImage') }}</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:file:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
+            <el-button v-hasPermi="['basics:file:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">{{ $t('common.delete') }}</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button
@@ -52,11 +52,11 @@
               :type="previewListResource ? 'danger' : 'warning'"
               plain
               @click="handlePreviewListResource(!previewListResource)"
-              >预览开关 : {{ previewListResource ? '禁用' : '启用' }}</el-button
+              >{{ $t('file.list.previewSwitch', { state: previewListResource ? $t('file.list.previewDisabled') : $t('common.enable') }) }}</el-button
             >
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:fileConfig:list']" type="info" plain icon="Operation" @click="handleFileConfig">配置管理</el-button>
+            <el-button v-hasPermi="['basics:fileConfig:list']" type="info" plain icon="Operation" @click="handleFileConfig">{{ $t('file.list.configManage') }}</el-button>
           </el-col>
           <right-toolbar v-model:show-search="showSearch" @query-table="getList" />
         </el-row>
@@ -72,15 +72,15 @@
         @header-click="handleHeaderCLick"
       >
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="序号" type="index" width="50" :index="hIndex" />
-        <el-table-column label="原名" align="center" prop="name" />
-        <el-table-column label="文件名" align="center" prop="path" />
-        <el-table-column label="文件后缀" align="center" prop="suffix">
+        <el-table-column :label="$t('common.serial')" type="index" width="50" :index="hIndex" />
+        <el-table-column :label="$t('file.list.originalName')" align="center" prop="name" />
+        <el-table-column :label="$t('file.list.fileName')" align="center" prop="path" />
+        <el-table-column :label="$t('file.list.suffix')" align="center" prop="suffix">
           <template #default="scope">
             <el-tag type="primary">{{ scope.row.suffix }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="文件展示" align="center" prop="url">
+        <el-table-column :label="$t('file.list.display')" align="center" prop="url">
           <template #default="scope">
             <ImagePreview
               v-if="previewListResource && checkFileSuffix(scope.row.suffix)"
@@ -94,24 +94,24 @@
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" width="180" sortable="custom">
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180" sortable="custom">
           <template #default="scope">
             <span>{{ parseTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="下载" placement="top">
+            <el-tooltip :content="$t('common.download')" placement="top">
               <el-button v-hasPermi="['basics:file:download']" link type="primary" icon="Download" @click="handleDownload(scope.row as FileVO)"></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button v-hasPermi="['basics:file:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row as FileVO)"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -124,28 +124,28 @@
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 文件</span>
+            <span>{{ $t('file.list.brand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">{{ type === 0 ? '文' : '图' }}</div>
+            <div class="app-dialog-hero__icon">{{ type === 0 ? $t('file.list.iconFile') : $t('file.list.iconImage') }}</div>
             <div>
               <div class="app-dialog-hero__name">{{ dialog.title }}</div>
-              <div class="app-dialog-hero__meta"><span>{{ type === 0 ? '上传资源文件' : '上传图片资源' }}</span></div>
+              <div class="app-dialog-hero__meta"><span>{{ type === 0 ? $t('file.list.uploadResource') : $t('file.list.uploadImageResource') }}</span></div>
             </div>
           </div>
         </div>
       </template>
 
       <el-form ref="ossFormRef" :model="form" :rules="rules" label-position="top" class="app-dialog-form">
-        <el-form-item label="文件名">
+        <el-form-item :label="$t('file.list.fileName')">
           <file-upload v-if="type === 0" v-model="form.file" />
           <image-upload v-if="type === 1" v-model="form.file" />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</submit-button>
-          <el-button @click="cancel">取 消</el-button>
+          <submit-button :loading="buttonLoading" type="primary" @click="submitForm">{{ $t('common.confirm') }}</submit-button>
+          <el-button @click="cancel">{{ $t('common.cancel') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -164,6 +164,9 @@ import animateConfig from '@/animate';
 import download from '@/plugins/download';
 import modal from '@/plugins/modal';
 import { addDateRange, parseTime } from '@/utils/ruoyi';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const router = useRouter();
 
@@ -204,12 +207,13 @@ const data = reactive<PageData<FileForm, FileQuery>>({
     type: undefined,
     createTime: undefined
   },
-  rules: {
-    file: [{ required: true, message: '文件不能为空', trigger: 'blur' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+const rules = computed<ElFormRules>(() => ({
+  file: [{ required: true, message: t('file.list.fileRequired'), trigger: 'blur' }]
+}));
 
 const hIndex = (index: number) => {
   return index + 1 + (queryParams.value.pageNum - 1) * queryParams.value.pageSize;
@@ -304,7 +308,7 @@ const handleFile = () => {
   reset();
   type.value = 0;
   dialog.visible = true;
-  dialog.title = '上传文件';
+  dialog.title = t('file.list.uploadFile');
 };
 
 /** 图片按钮操作 */
@@ -312,7 +316,7 @@ const handleImage = () => {
   reset();
   type.value = 1;
   dialog.visible = true;
-  dialog.title = '上传图片';
+  dialog.title = t('file.list.uploadImage');
 };
 
 /** 提交按钮 */
@@ -328,12 +332,12 @@ const handleDownload = (row: FileVO) => {
 
 /** 预览开关按钮  */
 const handlePreviewListResource = async (preview: boolean) => {
-  const text = preview ? '启用' : '停用';
+  const text = preview ? t('common.enable') : t('common.disable');
   try {
-    await modal.confirm('确认要"' + text + '""预览列表图片"配置吗?');
+    await modal.confirm(t('file.list.confirmPreview', { action: text }));
     await updateConfigByKey('sys.file.previewListResource', preview);
     await getList();
-    modal.msgSuccess(text + '成功');
+    modal.msgSuccess(t('file.list.actionDone', { action: text }));
   } catch {
     return;
   }
@@ -342,11 +346,11 @@ const handlePreviewListResource = async (preview: boolean) => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: FileVO) => {
   const ossIds = row?.id || ids.value;
-  await modal.confirm('是否确认删除文件编号为"' + ossIds + '"的数据项?');
+  await modal.confirm(t('file.list.confirmDelete', { name: String(ossIds) }));
   loading.value = true;
   await delFile(ossIds).finally(() => (loading.value = false));
   await getList();
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
 };
 
 onMounted(() => {

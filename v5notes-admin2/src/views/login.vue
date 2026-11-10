@@ -93,6 +93,8 @@
         <div class="lang-switch" role="group" :aria-label="$t('login.langAria')">
           <button type="button" :aria-pressed="appStore.language === 'zh_CN'" @click="switchLang('zh_CN')">简体中文</button>
           <i aria-hidden="true">/</i>
+          <button type="button" :aria-pressed="appStore.language === 'zh_TW'" @click="switchLang('zh_TW')">繁體中文</button>
+          <i aria-hidden="true">/</i>
           <button type="button" :aria-pressed="appStore.language === 'en_US'" @click="switchLang('en_US')">English</button>
         </div>
       </div>
@@ -209,7 +211,7 @@ import { HttpStatus } from '@/enums/RespEnum';
 import { useAppStore } from '@/store/modules/app';
 import { useUserStore } from '@/store/modules/user';
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const appStore = useAppStore();
 const userStore = useUserStore();
 const router = useRouter();
@@ -247,9 +249,8 @@ watch(
   { immediate: true }
 );
 
-function switchLang(lang: 'zh_CN' | 'en_US') {
+function switchLang(lang: 'zh_CN' | 'zh_TW' | 'en_US') {
   if (appStore.language === lang) return;
-  locale.value = lang;
   appStore.changeLanguage(lang);
 }
 
@@ -503,6 +504,8 @@ onMounted(() => {
 .lang-switch {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 2px;
 
   button {

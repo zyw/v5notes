@@ -22,6 +22,14 @@
           root.classList.toggle('dark', dark);
           root.classList.toggle('light', !dark);
           root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          var rawLang = localStorage.getItem('language');
+          var lang = 'zh_CN';
+          try {
+            lang = rawLang ? JSON.parse(rawLang) : 'zh_CN';
+          } catch (err) {
+            lang = 'zh_CN';
+          }
+          root.lang = lang === 'zh_TW' ? 'zh-TW' : lang === 'en_US' ? 'en' : 'zh-CN';
         } catch (e) {
           /* ignore */
         }

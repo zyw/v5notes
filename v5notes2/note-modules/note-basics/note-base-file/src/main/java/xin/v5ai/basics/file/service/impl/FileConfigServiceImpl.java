@@ -1,5 +1,6 @@
 package xin.v5ai.basics.file.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -204,7 +205,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
     private FileConfig validateFileConfigExists(Long id) {
         FileConfig config = baseMapper.selectById(id);
         if (config == null) {
-            throw new ServiceException("文件配置不存在");
+            throw new ServiceException(MessageUtils.message("file.config.missing"));
         }
         return config;
     }

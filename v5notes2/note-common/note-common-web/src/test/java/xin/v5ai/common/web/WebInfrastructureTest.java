@@ -1,5 +1,6 @@
 package xin.v5ai.common.web;
 
+import cn.hutool.extra.spring.SpringUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import xin.v5ai.common.core.constant.HttpStatus;
@@ -13,8 +14,12 @@ import xin.v5ai.common.web.filter.RepeatedlyRequestWrapper;
 import xin.v5ai.common.web.filter.XssFilter;
 import xin.v5ai.common.web.filter.XssHttpServletRequestWrapper;
 import xin.v5ai.common.web.handler.GlobalExceptionHandler;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticApplicationContext;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.boot.json.JsonParseException;
@@ -28,6 +33,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +47,23 @@ import static org.mockito.Mockito.when;
 
 @DisplayName("common-web 基础设施单元测试")
 class WebInfrastructureTest {
+
+    @BeforeAll
+    static void initializeMessages() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        StaticMessageSource messages = context.getStaticMessageSource();
+        Locale locale = Locale.getDefault();
+        LocaleContextHolder.setLocale(locale);
+        messages.addMessage("request.type.mismatch", locale,
+            "请求参数类型不匹配，参数[{0}]要求类型为：''{1}''，但输入值为：''{2}''");
+        messages.addMessage("request.not.found", locale, "请求地址不存在");
+        messages.addMessage("request.json.invalid", locale, "请求数据格式错误");
+        messages.addMessage("request.body.invalid", locale, "请求参数格式错误");
+        messages.addMessage("request.spel.failed", locale, "SpEL解析失败：{0}");
+        messages.addMessage("error.unknown.withId", locale, "发生未知异常，请联系管理员 [错误编号: {0}]");
+        context.refresh();
+        new SpringUtil().setApplicationContext(context);
+    }
 
     /**
      * 验证请求体被缓存后可以通过输入流和字符读取器分别完整读取。

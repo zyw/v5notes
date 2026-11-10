@@ -7,6 +7,7 @@ import cn.hutool.http.HttpStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.core.utils.MessageUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,7 +37,7 @@ public class SaTokenExceptionHandler {
         String requestURI = request.getRequestURI();
         String reason = e instanceof NotRoleException ? "角色权限校验失败" : "权限码校验失败";
         log.error("请求地址'{}',{}'{}'", requestURI, reason, e.getMessage());
-        return R.fail(HttpStatus.HTTP_FORBIDDEN, "没有访问权限，请联系管理员授权");
+        return R.fail(HttpStatus.HTTP_FORBIDDEN, MessageUtils.message("auth.forbidden"));
     }
 
     /**
@@ -55,10 +56,10 @@ public class SaTokenExceptionHandler {
         }
         String msg = switch (e.getType()) {
             case NotLoginException.TOKEN_TIMEOUT,
-                 NotLoginException.TOKEN_FREEZE -> "登录已过期，请重新登录";
-            case NotLoginException.BE_REPLACED -> "当前账号已在其他设备登录，您已被强制下线";
-            case NotLoginException.KICK_OUT -> "账号已被管理员强制下线";
-            default -> "登录状态异常，请重新登录";
+                 NotLoginException.TOKEN_FREEZE -> MessageUtils.message("auth.session.expired");
+            case NotLoginException.BE_REPLACED -> MessageUtils.message("auth.session.replaced");
+            case NotLoginException.KICK_OUT -> MessageUtils.message("auth.session.kicked");
+            default -> MessageUtils.message("auth.session.invalid");
         };
         return ResponseEntity.ok(R.fail(HttpStatus.HTTP_UNAUTHORIZED, msg));
     }

@@ -23,43 +23,43 @@ public class FileInfoBo extends BaseEntity {
     /**
      * 文件编号
      */
-    @NotNull(message = "文件编号不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{file.info.id.not.null}", groups = { EditGroup.class })
     private Long id;
 
     /**
      * 配置编号
      */
-    @NotNull(message = "配置编号不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{file.content.config.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Long configId;
 
     /**
      * 文件名
      */
-    @NotBlank(message = "文件名不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String name;
 
     /**
      * 文件路径
      */
-    @NotBlank(message = "文件路径不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.path.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String path;
 
     /**
      * 文件 URL
      */
-    @NotBlank(message = "文件 URL不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.url.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String url;
 
     /**
      * 文件类型
      */
-    @NotBlank(message = "文件类型不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.type.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String type;
 
     /**
      * 文件大小
      */
-    @NotNull(message = "文件大小不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{file.size.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Long size;
 
 

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch 
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Editor } from '@v5md/view'
+import { t } from '../i18n'
 import { createApi, type Note, type NoteRevision, type NoteTrashItem, type TreeNode } from '../service/api'
 import { ConflictError } from '../service/request'
 import { Draft } from '../models/draft'
@@ -109,7 +110,7 @@ const content = computed({
 })
 
 function report(cause: unknown): void {
-  error.value = cause instanceof Error ? cause.message : '请求失败'
+  error.value = cause instanceof Error ? cause.message : t('common.requestFailed')
 }
 
 function resizeSidebarStart(event: PointerEvent): void {
@@ -183,9 +184,9 @@ function saveServerSettings(address: string, official: boolean): void {
   }
   settingsDialogOpen.value = false
   requestDelete(
-    '更改服务器',
-    '保存后会退出当前账号，需要用新服务器上的账号重新登录；当前未保存的笔记草稿会被清除。',
-    '保存并重新登录',
+    t('dialogs.changeServer'),
+    t('dialogs.changeServerMessage'),
+    t('dialogs.changeServerConfirm'),
     async () => {
       apply()
       token.value = ''
@@ -249,7 +250,9 @@ function openNameDialog(entity: 'note' | 'directory', action: 'create' | 'rename
   dialogError.value = ''
   dialog.value = {
     kind: 'name', entity, action,
-    title: `${action === 'create' ? '新建' : '重命名'}${entity === 'note' ? '笔记' : '目录'}`,
+    title: t(action === 'create'
+      ? (entity === 'note' ? 'dialogs.createNote' : 'dialogs.createDirectory')
+      : (entity === 'note' ? 'dialogs.renameNote' : 'dialogs.renameDirectory')),
     parentId, directory,
   }
 }
@@ -270,11 +273,11 @@ async function submitNameDialog(): Promise<void> {
   if (!current || current.kind !== 'name' || dialogBusy.value) return
   const name = dialogValue.value.trim()
   if (!name) {
-    dialogError.value = '请输入名称'
+    dialogError.value = t('common.nameRequired')
     return
   }
   if (name.length > 100) {
-    dialogError.value = '名称不能超过 100 个字符'
+    dialogError.value = t('common.nameTooLong')
     return
   }
 
@@ -293,7 +296,7 @@ async function submitNameDialog(): Promise<void> {
           const saved = await persistDraft()
           if (!saved) {
             if (conflict.value) dialog.value = null
-            else throw new Error('笔记内容保存失败，请重试后再重命名')
+            else throw new Error(t('dialogs.saveContentFirst'))
             return
           }
         }
@@ -322,7 +325,7 @@ async function submitNameDialog(): Promise<void> {
     }
   } catch (cause) {
     if (showConflict(cause, 'save')) dialog.value = null
-    else if (dialog.value?.kind === 'name') dialogError.value = cause instanceof Error ? cause.message : '操作失败，请重试'
+    else if (dialog.value?.kind === 'name') dialogError.value = cause instanceof Error ? cause.message : t('common.operationFailed')
     else report(cause)
   } finally {
     dialogBusy.value = false
@@ -335,7 +338,7 @@ async function confirmDialog(): Promise<void> {
   dialog.value = null
   try { await current.action() } catch (cause) {
     dialog.value = current
-    dialogError.value = cause instanceof Error ? cause.message : '操作失败，请重试'
+    dialogError.value = cause instanceof Error ? cause.message : t('common.operationFailed')
   }
 }
 
@@ -393,11 +396,11 @@ async function login(): Promise<void> {
   busy.value = true
   try {
     const parsed = new URL(server.value)
-    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('请输入 HTTP 或 HTTPS 服务器地址')
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(t('login.protocol'))
     const sameAccount = localStorage.getItem('v5notes-server')?.replace(/\/+$/, '') === server.value.replace(/\/+$/, '')
       && localStorage.getItem('v5notes-username') === username.value
     if (!sameAccount && draft.note) {
-      requestDelete('切换账号', '当前仍保留上一账号的笔记草稿。继续切换会清除这份草稿，避免内容进入其他账号。', '清除草稿并切换', async () => {
+      requestDelete(t('dialogs.switchAccount'), t('dialogs.switchAccountMessage'), t('dialogs.switchAccountConfirm'), async () => {
         selectedId.value = ''
         draft.clear()
         localStorage.removeItem('v5notes-last-note')
@@ -466,11 +469,11 @@ function respond(choice: DirtyChoice): void {
 async function mayLeave(): Promise<boolean> {
   try {
     const allowed = await resolveDirty(draft, choose, note => api.update(note))
-    if (!allowed && !promptVisible.value && !conflict.value) error.value = '未保存：请重试保存或继续编辑'
+    if (!allowed && !promptVisible.value && !conflict.value) error.value = t('dialogs.unsavedRetry')
     return allowed
   } catch (cause) {
     if (showConflict(cause, 'save')) return false
-    error.value = '未保存：请重试保存或继续编辑'
+    error.value = t('dialogs.unsavedRetry')
     return false
   }
 }
@@ -614,7 +617,7 @@ async function copyNoteContent(): Promise<void> {
   try {
     await navigator.clipboard.writeText(draft.note?.content || '')
   } catch {
-    error.value = '无法访问剪贴板，请检查浏览器权限'
+    error.value = t('dialogs.clipboard')
   }
 }
 
@@ -628,7 +631,7 @@ async function openTreeNoteActions(id: string, action: 'rename' | 'delete' = 're
 function deleteNote(): void {
   const note = draft.note
   if (!note) return
-  requestDelete('删除笔记', `「${note.name}」将移到回收站，30 天内可以恢复。`, '移到回收站', async () => {
+  requestDelete(t('dialogs.deleteNote'), t('dialogs.deleteNoteMessage', { name: note.name }), t('dialogs.moveToTrash'), async () => {
     if (!(await mayLeave())) return
     await api.remove(note.id)
     localStorage.removeItem('v5notes-last-note')
@@ -653,7 +656,7 @@ function editDirectory(dir: TreeNode): void {
 }
 
 function deleteDirectory(dir: TreeNode): void {
-  requestDelete('删除目录', `「${dir.label}」及其子目录和笔记会移到回收站，30 天内可以恢复。此前单独删除的内容仍留在各自的记录里。`, '移到回收站', async () => {
+  requestDelete(t('dialogs.deleteDirectory'), t('dialogs.deleteDirectoryMessage', { name: dir.label }), t('dialogs.moveToTrash'), async () => {
     if (!(await mayLeave())) return
     await api.removeDirectory(dir.id)
     const removedIds = collectDirectoryIds(dir)
@@ -720,9 +723,9 @@ async function changeTrashPage(page: number): Promise<void> {
 }
 
 function restoreTrashItem(item: NoteTrashItem): void {
-  requestDelete('恢复', `恢复「${item.name}」以及这次一起删除的内容。`, '恢复', async () => {
+  requestDelete(t('dialogs.restore'), t('dialogs.restoreMessage', { name: item.name }), t('dialogs.restore'), async () => {
     const restored = await api.restoreTrash(item.id)
-    notice.value = restored.relocated ? '原目录已不在，已恢复到根目录' : ''
+    notice.value = restored.relocated ? t('dialogs.restoredToRoot') : ''
     trashOpen.value = false
     try {
       await refreshDirectories()
@@ -740,7 +743,7 @@ function restoreTrashItem(item: NoteTrashItem): void {
 }
 
 function purgeTrashItem(item: NoteTrashItem): void {
-  requestDelete('彻底删除', `彻底删除「${item.name}」后，正文版本会一并清除，且无法再恢复。`, '彻底删除', async () => {
+  requestDelete(t('dialogs.purge'), t('dialogs.purgeMessage', { name: item.name }), t('dialogs.purge'), async () => {
     await api.purgeTrash(item.id)
     try {
       await refreshDirectories()
@@ -751,7 +754,7 @@ function purgeTrashItem(item: NoteTrashItem): void {
 }
 
 function emptyTrash(): void {
-  requestDelete('清空回收站', '将永久删除回收站中的全部笔记、目录和正文版本。', '清空回收站', async () => {
+  requestDelete(t('dialogs.emptyTrash'), t('dialogs.emptyTrashMessage'), t('dialogs.emptyTrash'), async () => {
     const result = await api.emptyTrash()
     try {
       await refreshDirectories()
@@ -759,13 +762,13 @@ function emptyTrash(): void {
       trashPage.value = 1
       await loadTrash()
     } catch (cause) { report(cause) }
-    if (result?.failed) error.value = `${result.failed} 条清除失败`
+    if (result?.failed) error.value = t('dialogs.purgeFailed', { count: result.failed })
   })
 }
 
 async function logout(): Promise<void> {
   if (!(await mayLeave())) return
-  requestDelete('退出登录', '确定退出当前账号吗？退出后需要重新登录。', '退出登录', async () => {
+  requestDelete(t('dialogs.logout'), t('dialogs.logoutMessage'), t('dialogs.logout'), async () => {
   token.value = ''
   refreshToken.value = ''
   currentUser.value = null

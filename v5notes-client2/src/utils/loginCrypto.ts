@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js'
+import { t } from '../i18n'
 import JSEncrypt from 'jsencrypt'
 
 export function encryptLogin(body: string, publicKey: string): { body: string; key: string } {
@@ -9,7 +10,7 @@ export function encryptLogin(body: string, publicKey: string): { body: string; k
   const rsa = new JSEncrypt()
   rsa.setPublicKey(publicKey)
   const key = rsa.encrypt(CryptoJS.enc.Base64.stringify(aes))
-  if (!key) throw new Error('登录加密失败：请检查服务器公钥')
+  if (!key) throw new Error(t('crypto.failed'))
   return {
     key,
     body: CryptoJS.AES.encrypt(body, aes, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString(),

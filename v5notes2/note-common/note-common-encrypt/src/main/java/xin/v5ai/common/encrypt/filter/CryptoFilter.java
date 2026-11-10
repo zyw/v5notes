@@ -1,5 +1,6 @@
 package xin.v5ai.common.encrypt.filter;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -78,7 +79,7 @@ public class CryptoFilter implements Filter {
                 if (ObjectUtil.isNotNull(apiEncrypt)) {
                     handlerExceptionResolver.resolveException(
                         servletRequest, servletResponse, null,
-                        new ServiceException("没有访问权限，请联系管理员授权", HttpStatus.FORBIDDEN));
+                        new ServiceException(MessageUtils.message("auth.forbidden"), HttpStatus.FORBIDDEN));
                     return;
                 }
             }

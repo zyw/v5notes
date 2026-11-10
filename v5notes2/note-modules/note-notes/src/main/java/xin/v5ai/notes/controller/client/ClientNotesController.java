@@ -1,5 +1,6 @@
 package xin.v5ai.notes.controller.client;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -61,16 +62,16 @@ public class ClientNotesController extends BaseController {
     public R<NoteCreatedVo> add(@Validated(AddGroup.class) @RequestBody NoteNotesBo bo) {
         // 归属校验：非根目录时，目标目录必须属于当前用户
         if (bo.getDirId() != null && bo.getDirId() != 0L && !isOwnDirectory(bo.getDirId())) {
-            return R.fail("无权使用该目录");
+            return R.fail(MessageUtils.message("note.dir.use.forbidden"));
         }
         Boolean result = noteNotesService.insertByBo(bo);
         if (!result) {
-            return R.fail("添加笔记失败");
+            return R.fail(MessageUtils.message("note.add.failed"));
         }
         NoteCreatedVo created = new NoteCreatedVo();
         created.setId(bo.getId());
         created.setContentHash(bo.getContentHash());
-        return R.ok("添加笔记成功", created);
+        return R.ok(MessageUtils.message("note.add.success"), created);
     }
 
     /**
@@ -84,14 +85,14 @@ public class ClientNotesController extends BaseController {
         NotesContentVo existing = noteNotesService.queryById(bo.getId());
         if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
             if (noteTrashService.ownedTrashedNote(bo.getId(), LoginHelper.getUserId())) {
-                return R.fail("笔记已在回收站");
+                return R.fail(MessageUtils.message("note.trashed"));
             }
-            return R.fail("无权操作该笔记");
+            return R.fail(MessageUtils.message("note.forbidden"));
         }
         // 若目录发生变更，还需校验目标目录归属
         if (bo.getDirId() != null && !bo.getDirId().equals(existing.getDirId())
             && bo.getDirId() != 0L && !isOwnDirectory(bo.getDirId())) {
-            return R.fail("无权使用该目录");
+            return R.fail(MessageUtils.message("note.dir.use.forbidden"));
         }
         try {
             return R.ok(noteRevisionService.saveClient(bo));
@@ -136,7 +137,7 @@ public class ClientNotesController extends BaseController {
      */
     @Log(title = "笔记", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         noteTrashService.moveNotes(List.of(ids), true);
         return R.ok();
@@ -164,11 +165,11 @@ public class ClientNotesController extends BaseController {
      * @param id 主键
      */
     @GetMapping("/{id}")
-    public R<NotesContentVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<NotesContentVo> getInfo(@NotNull(message = "{id.not.null}")
                                      @PathVariable Long id) {
         NotesContentVo vo = noteNotesService.queryById(id);
         if (vo == null || !LoginHelper.getUserId().equals(vo.getUserId())) {
-            return R.fail("无权访问该笔记");
+            return R.fail(MessageUtils.message("note.access.forbidden"));
         }
         return R.ok(vo);
     }

@@ -1,8 +1,14 @@
 package xin.v5ai.common.core.enums;
 
+import cn.hutool.extra.spring.SpringUtil;
 import xin.v5ai.common.core.exception.ServiceException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticApplicationContext;
+
+import java.util.Locale;
 
 import java.util.List;
 
@@ -10,6 +16,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("BusinessStatusEnum 单元测试")
 class BusinessStatusEnumTest {
+
+    @BeforeAll
+    static void initializeMessages() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        LocaleContextHolder.setLocale(Locale.getDefault());
+        context.getStaticMessageSource().addMessage("workflow.waiting", Locale.getDefault(), "该单据已提交过申请,正在审批中！");
+        context.refresh();
+        new SpringUtil().setApplicationContext(context);
+    }
 
     /**
      * 验证状态码查询、描述查询以及运行中和已结束状态集合。

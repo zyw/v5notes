@@ -6,28 +6,28 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('docs.kicker.search') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="文件名称" prop="name">
-            <el-input v-model="queryParams.name" placeholder="请输入文件名称" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('docs.fileName')" prop="name">
+            <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('docs.fileName') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="文件类型" prop="type">
-            <el-select v-model="queryParams.type" placeholder="请选择文件类型" clearable style="width: 160px">
-              <el-option label="全部" value="" />
+          <el-form-item :label="$t('docs.fileType')" prop="type">
+            <el-select v-model="queryParams.type" :placeholder="$t('common.pleaseSelect', { label: $t('docs.fileType') })" clearable style="width: 160px">
+              <el-option :label="$t('common.all')" value="" />
               <el-option label="Markdown" value="markdown" />
               <el-option label="PDF" value="pdf" />
-              <el-option label="文档" value="doc" />
-              <el-option label="图片" value="image" />
-              <el-option label="其他" value="other" />
+              <el-option :label="$t('docs.doc')" value="doc" />
+              <el-option :label="$t('docs.image')" value="image" />
+              <el-option :label="$t('docs.other')" value="other" />
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -37,13 +37,13 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Docs Dataset</span>
-            <h3>文档列表</h3>
-            <p>共 {{ total }} 个文档，管理文档库中的资源文件。</p>
+            <span class="panel-kicker">{{ $t('docs.kicker.dataset') }}</span>
+            <h3>{{ $t('docs.listTitle') }}</h3>
+            <p>{{ $t('docs.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" plain icon="Upload" @click="handleUpload">上传</el-button>
-            <el-button type="danger" plain icon="Delete" :disabled="!ids.length" @click="handleDelete()">删除</el-button>
+            <el-button type="primary" plain icon="Upload" @click="handleUpload">{{ $t('common.upload') }}</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="!ids.length" @click="handleDelete()">{{ $t('common.delete') }}</el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList" />
           </div>
         </div>
@@ -54,7 +54,7 @@
           <el-card shadow="hover" class="docs-type-card">
             <template #header>
               <div class="docs-type-head">
-                <span>文件类型</span>
+                <span>{{ $t('docs.fileType') }}</span>
               </div>
             </template>
             <nav class="docs-type-nav">
@@ -76,7 +76,7 @@
         <el-col :span="20" :xs="24">
           <el-table v-loading="loading && (fileList).length > 0" class="data-table" :data="fileList" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" align="center" />
-            <el-table-column label="文件名称" align="left" prop="name" show-overflow-tooltip>
+            <el-table-column :label="$t('docs.fileName')" align="left" prop="name" show-overflow-tooltip>
               <template #default="{ row }">
                 <div class="flex items-center">
                   <el-icon class="mr-2"><Document /></el-icon>
@@ -84,22 +84,22 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="文件大小" align="center" prop="size" width="120">
+            <el-table-column :label="$t('docs.fileSize')" align="center" prop="size" width="120">
               <template #default="{ row }">{{ formatFileSize(row.size) }}</template>
             </el-table-column>
-            <el-table-column label="扩展名" align="center" prop="suffix" width="100">
+            <el-table-column :label="$t('docs.suffix')" align="center" prop="suffix" width="100">
               <template #default="{ row }"><el-tag type="primary">{{ row.suffix }}</el-tag></template>
             </el-table-column>
-            <el-table-column label="更新时间" align="center" prop="updateTime" width="180">
+            <el-table-column :label="$t('common.updateTime')" align="center" prop="updateTime" width="180">
               <template #default="{ row }"><span>{{ parseTime(row.updateTime) }}</span></template>
             </el-table-column>
-            <el-table-column label="操作" align="center" width="140" fixed="right">
+            <el-table-column :label="$t('common.operate')" align="center" width="140" fixed="right">
               <template #default="{ row }">
                 <div class="docs-row-actions">
-                  <el-tooltip content="下载" placement="top">
+                  <el-tooltip :content="$t('common.download')" placement="top">
                     <el-button link type="primary" icon="Download" @click="handleDownload(row)" />
                   </el-tooltip>
-                  <el-tooltip content="删除" placement="top">
+                  <el-tooltip :content="$t('common.delete')" placement="top">
                     <el-button link type="danger" icon="Delete" @click="handleDelete(row)" />
                   </el-tooltip>
                 </div>
@@ -107,7 +107,7 @@
             </el-table-column>
             <template #empty>
               <table-skeleton v-if="loading" :rows="8" />
-              <div v-else class="empty-hint">暂无数据</div>
+              <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
             </template>
           </el-table>
           <pagination
@@ -121,18 +121,18 @@
       </el-row>
     </el-card>
 
-    <el-dialog v-model="uploadOpen" title="上传文件" width="440px" append-to-body class="app-dialog">
+    <el-dialog v-model="uploadOpen" :title="$t('docs.uploadTitle')" width="440px" append-to-body class="app-dialog">
       <template #header>
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 文档</span>
+            <span>{{ $t('docs.brand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">文</div>
+            <div class="app-dialog-hero__icon">{{ $t('docs.glyph') }}</div>
             <div>
-              <div class="app-dialog-hero__name">上传文件</div>
-              <div class="app-dialog-hero__meta"><span>拖动或选择文件上传至文档库</span></div>
+              <div class="app-dialog-hero__name">{{ $t('docs.uploadTitle') }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ $t('docs.uploadHint') }}</span></div>
             </div>
           </div>
         </div>
@@ -147,7 +147,7 @@
         :on-error="handleUploadError"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <div class="el-upload__text">{{ $t('docs.dropLead') }}<em>{{ $t('docs.clickUpload') }}</em></div>
       </el-upload>
     </el-dialog>
   </div>
@@ -156,6 +156,7 @@
 <script setup name="Docs" lang="ts">
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Document, Files, Folder, Memo, More, Picture, UploadFilled } from '@element-plus/icons-vue';
 import { delFile, listFile } from '@/api/basics/file';
@@ -165,6 +166,8 @@ import { globalHeaders } from '@/utils/request';
 import { saveBlob } from '@/utils/save';
 import { parseTime } from '@/utils/ruoyi';
 
+const { t } = useI18n();
+
 const loading = ref(false);
 const ids = ref<Array<string | number>>([]);
 const total = ref(0);
@@ -173,14 +176,14 @@ const fileList = ref<FileVO[]>([]);
 const activeType = ref('all');
 
 /** 左侧文件类型导航（图标 + 名称） */
-const docTypeItems = [
-  { value: 'all', label: '全部文件', icon: Files },
+const docTypeItems = computed(() => [
+  { value: 'all', label: t('docs.allFiles'), icon: Files },
   { value: 'markdown', label: 'Markdown', icon: Memo },
   { value: 'pdf', label: 'PDF', icon: Document },
-  { value: 'doc', label: '文档', icon: Document },
-  { value: 'image', label: '图片', icon: Picture },
-  { value: 'other', label: '其他', icon: More }
-];
+  { value: 'doc', label: t('docs.doc'), icon: Document },
+  { value: 'image', label: t('docs.image'), icon: Picture },
+  { value: 'other', label: t('docs.other'), icon: More }
+]);
 const uploadOpen = ref(false);
 const queryFormRef = ref();
 
@@ -240,16 +243,16 @@ const handleUpload = () => {
 
 const handleUploadSuccess = (response: any) => {
   if (response?.code !== 200) {
-    ElMessage.error(response?.msg || '上传失败');
+    ElMessage.error(response?.msg || t('docs.uploadFail'));
     return;
   }
-  ElMessage.success('上传成功');
+  ElMessage.success(t('docs.uploadOk'));
   uploadOpen.value = false;
   getList();
 };
 
 const handleUploadError = () => {
-  ElMessage.error('上传失败');
+  ElMessage.error(t('docs.uploadFail'));
 };
 
 /** 下载（直接请求 basics 下载接口，携带登录令牌） */
@@ -261,13 +264,13 @@ const handleDownload = async (row?: FileVO) => {
       headers: globalHeaders()
     });
     if (!response.ok) {
-      ElMessage.error('下载失败');
+      ElMessage.error(t('docs.downloadFail'));
       return;
     }
     const blob = await response.blob();
     saveBlob(blob, row?.name || 'download');
   } catch {
-    ElMessage.error('下载失败');
+    ElMessage.error(t('docs.downloadFail'));
   }
 };
 
@@ -275,13 +278,13 @@ const handleDownload = async (row?: FileVO) => {
 const handleDelete = async (row?: FileVO) => {
   const target = row?.id ?? ids.value;
   if (!target || (Array.isArray(target) && target.length === 0)) return;
-  await ElMessageBox.confirm('是否确认删除选中的文件?', '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
+  await ElMessageBox.confirm(t('docs.deleteConfirm'), t('docs.warn'), {
+    confirmButtonText: t('common.confirm'),
+    cancelButtonText: t('common.cancel'),
     type: 'warning'
   });
   await delFile(target);
-  ElMessage.success('删除成功');
+  ElMessage.success(t('common.deleteSuccess'));
   getList();
 };
 

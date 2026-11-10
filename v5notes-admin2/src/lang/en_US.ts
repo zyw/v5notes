@@ -1,3 +1,13 @@
+import common from './packs/en_US/common';
+import dict from './packs/en_US/dict';
+import file from './packs/en_US/file';
+import menu from './packs/en_US/menu';
+import monitor from './packs/en_US/monitor';
+import notes from './packs/en_US/notes';
+import shell from './packs/en_US/shell';
+import system from './packs/en_US/system';
+import widgets from './packs/en_US/widgets';
+
 export default {
   // 路由国际化
   route: {
@@ -105,7 +115,19 @@ export default {
     message: 'Message',
     layoutSize: 'Layout Size',
     layoutSetting: 'Layout Setting',
-    personalCenter: 'Personal Center',
-    logout: 'Logout'
-  }
+    personalCenter: 'Profile',
+    logout: 'Log out',
+    search: 'Search',
+    admin: 'Administrator',
+    logoutConfirm: 'Log out and leave the console?'
+  },
+  ...common,
+  ...shell,
+  ...menu,
+  ...dict,
+  ...notes,
+  ...system,
+  ...monitor,
+  ...file,
+  ...widgets
 };

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.exception.ServiceException;
+import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.notes.domain.NoteTrash;
@@ -47,21 +48,21 @@ public class NoteTrashServiceImpl implements INoteTrashService {
 
     static final String TYPE_DIRECTORY = "2";
 
-    private static final String NOTE_FORBIDDEN = "无权操作该笔记";
+    private static final String NOTE_FORBIDDEN = "note.forbidden";
 
-    private static final String NOTE_MISSING = "笔记不存在";
+    private static final String NOTE_MISSING = "note.missing";
 
-    private static final String NOTE_TRASHED = "笔记已在回收站";
+    private static final String NOTE_TRASHED = "note.trashed";
 
-    private static final String DIRECTORY_FORBIDDEN = "无权操作该目录";
+    private static final String DIRECTORY_FORBIDDEN = "note.dir.forbidden";
 
-    private static final String DIRECTORY_MISSING = "目录不存在";
+    private static final String DIRECTORY_MISSING = "note.dir.missing";
 
-    private static final String DIRECTORY_TRASHED = "目录已在回收站";
+    private static final String DIRECTORY_TRASHED = "note.dir.trashed";
 
-    private static final String DIRECTORY_CHANGED = "目录内容已变化，请重试";
+    private static final String DIRECTORY_CHANGED = "note.dir.changed";
 
-    private static final String TRASH_MISSING = "记录不存在";
+    private static final String TRASH_MISSING = "note.trash.missing";
 
     private final NoteTrashMapper trashMapper;
 
@@ -111,23 +112,23 @@ public class NoteTrashServiceImpl implements INoteTrashService {
     public NoteTrashRestoreVo restore(Long trashId, Long userId) {
         NoteTrash trash = lockTrash(trashId);
         if (trash == null || !Objects.equals(trash.getUserId(), userId)) {
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         String type = typeOf(trash);
         Long parentId = resolveParent(trash.getOriginalParentId(), userId);
         boolean relocated = trash.getOriginalParentId() != null && trash.getOriginalParentId() != 0L && parentId == 0L;
         if (TYPE_NOTE.equals(type)) {
             if (trashMapper.restoreNote(trash.getObjectId(), trash.getId(), userId, parentId) != 1) {
-                throw new ServiceException(TRASH_MISSING);
+                throw new ServiceException(MessageUtils.message(TRASH_MISSING));
             }
         } else if (TYPE_DIRECTORY.equals(type)) {
             if (trashMapper.restoreDirectory(trash.getObjectId(), trash.getId(), userId, parentId) != 1) {
-                throw new ServiceException(TRASH_MISSING);
+                throw new ServiceException(MessageUtils.message(TRASH_MISSING));
             }
             trashMapper.restoreChildDirectories(trash.getId(), userId, trash.getObjectId());
             trashMapper.restoreNotesByTrash(trash.getId(), userId);
         } else {
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         trashMapper.deleteById(trash.getId());
         NoteTrashRestoreVo restored = new NoteTrashRestoreVo();
@@ -143,7 +144,7 @@ public class NoteTrashServiceImpl implements INoteTrashService {
     public NoteTrashRestoreVo restoreForAdmin(Long trashId) {
         NoteTrash trash = trashMapper.selectById(trashId);
         if (trash == null) {
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         return restore(trashId, trash.getUserId());
     }
@@ -156,10 +157,10 @@ public class NoteTrashServiceImpl implements INoteTrashService {
             if (missingOk) {
                 return;
             }
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         if (requiredUserId != null && !Objects.equals(requiredUserId, trash.getUserId())) {
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         String type = typeOf(trash);
         if (TYPE_NOTE.equals(type)) {
@@ -171,7 +172,7 @@ public class NoteTrashServiceImpl implements INoteTrashService {
             trashMapper.deleteNotesByTrash(trash.getId(), trash.getUserId());
             trashMapper.deleteDirectoriesByTrash(trash.getId(), trash.getUserId());
         } else {
-            throw new ServiceException(TRASH_MISSING);
+            throw new ServiceException(MessageUtils.message(TRASH_MISSING));
         }
         trashMapper.deleteById(trash.getId());
     }
@@ -210,7 +211,7 @@ public class NoteTrashServiceImpl implements INoteTrashService {
         Map<Long, NoteTrashSubject> directories = index(trashMapper.selectLiveDirectories(note.getUserId()));
         NoteTrash trash = insertTrash(note, TYPE_NOTE, 1, 0, pathFrom(directories, note.getParentId()));
         if (trashMapper.markNotes(note.getUserId(), List.of(note.getId()), trash.getId()) != 1) {
-            throw new ServiceException(NOTE_TRASHED);
+            throw new ServiceException(MessageUtils.message(NOTE_TRASHED));
         }
     }
 
@@ -219,28 +220,28 @@ public class NoteTrashServiceImpl implements INoteTrashService {
         List<NoteTrashSubject> liveDirectories = trashMapper.selectLiveDirectories(directory.getUserId());
         List<NoteTrashSubject> batch = descendants(liveDirectories, directory.getId());
         if (batch.isEmpty()) {
-            throw new ServiceException(DIRECTORY_TRASHED);
+            throw new ServiceException(MessageUtils.message(DIRECTORY_TRASHED));
         }
         List<Long> directoryIds = batch.stream().map(NoteTrashSubject::getId).toList();
         List<Long> noteIds = trashMapper.selectLiveNoteIds(directory.getUserId(), directoryIds);
         NoteTrash trash = insertTrash(directory, TYPE_DIRECTORY, noteIds.size(), directoryIds.size(), pathFrom(index(liveDirectories), directory.getParentId()));
         if (trashMapper.markDirectories(directory.getUserId(), directoryIds, trash.getId()) != directoryIds.size()) {
-            throw new ServiceException(DIRECTORY_CHANGED);
+            throw new ServiceException(MessageUtils.message(DIRECTORY_CHANGED));
         }
         if (!noteIds.isEmpty() && trashMapper.markNotes(directory.getUserId(), noteIds, trash.getId()) != noteIds.size()) {
-            throw new ServiceException(DIRECTORY_CHANGED);
+            throw new ServiceException(MessageUtils.message(DIRECTORY_CHANGED));
         }
     }
 
     private NoteTrashSubject requireLive(NoteTrashSubject row, boolean clientScope, String forbidden, String missing, String trashed) {
         if (row == null) {
-            throw new ServiceException(clientScope ? forbidden : missing);
+            throw new ServiceException(MessageUtils.message(clientScope ? forbidden : missing));
         }
         if (clientScope && !Objects.equals(row.getUserId(), LoginHelper.getUserId())) {
-            throw new ServiceException(forbidden);
+            throw new ServiceException(MessageUtils.message(forbidden));
         }
         if (!NoteTrashPaths.live(row.getDelFlag())) {
-            throw new ServiceException(trashed);
+            throw new ServiceException(MessageUtils.message(trashed));
         }
         return row;
     }

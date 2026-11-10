@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import { diffLines } from '../models/lineDiff'
 import type { NoteRevision, NoteRevisionDetail } from '../service/api'
 import { ConflictError } from '../service/request'
 
+const { t } = useI18n()
 const { api, draft, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict } = useWorkspaceContext()
 const rows = ref<NoteRevision[]>([])
 const total = ref(0)
@@ -49,7 +51,7 @@ async function load(reset: boolean): Promise<void> {
       if (incoming[0]) await select(incoming[0])
     }
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '历史加载失败'
+    error.value = cause instanceof Error ? cause.message : t('history.loadFailed')
   } finally {
     loading.value = false
   }
@@ -63,7 +65,7 @@ async function select(row: NoteRevision): Promise<void> {
     selected.value = { ...detail, head: row.head }
     error.value = ''
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '版本读取失败'
+    error.value = cause instanceof Error ? cause.message : t('history.readFailed')
   }
 }
 
@@ -100,7 +102,7 @@ async function confirmRestore(): Promise<void> {
       }
       return
     }
-    restoreError.value = cause instanceof Error ? cause.message : '恢复失败'
+    restoreError.value = cause instanceof Error ? cause.message : t('history.restoreFailed')
   } finally {
     restoreBusy.value = false
   }
@@ -119,36 +121,36 @@ function formatSize(size: number): string {
       <header class="history-header">
         <div>
           <span class="eyebrow">HISTORY</span>
-          <h2 id="history-title">历史版本</h2>
+          <h2 id="history-title">{{ t('history.title') }}</h2>
         </div>
         <div class="history-header-tools">
-          <button class="settings-close" type="button" aria-label="关闭历史" @click="historyOpen = false">×</button>
+          <button class="settings-close" type="button" :aria-label="t('history.close')" @click="historyOpen = false">×</button>
           <div v-if="rows.length > 0" class="history-actions">
-            <button type="button" :aria-pressed="compare" :disabled="!selected" @click="compare = !compare">{{ compare ? '查看全文' : '与当前对比' }}</button>
-            <button class="primary" type="button" :disabled="!selected || selected.head" @click="askRestore">恢复此版本</button>
+            <button type="button" :aria-pressed="compare" :disabled="!selected" @click="compare = !compare">{{ compare ? t('history.fullText') : t('history.compare') }}</button>
+            <button class="primary" type="button" :disabled="!selected || selected.head" @click="askRestore">{{ t('history.restoreThis') }}</button>
           </div>
         </div>
       </header>
       <p v-if="error" class="dialog-error" role="alert">{{ error }}</p>
-      <div v-if="!loading && rows.length === 0 && !error" class="history-empty">这篇笔记还没有历史版本。</div>
+      <div v-if="!loading && rows.length === 0 && !error" class="history-empty">{{ t('history.empty') }}</div>
       <div v-else class="history-body">
-        <div class="history-list" role="listbox" aria-label="版本列表">
+        <div class="history-list" role="listbox" :aria-label="t('history.list')">
           <button v-for="row in rows" :key="row.id" type="button" role="option" :aria-selected="selected?.id === row.id" :class="{ selected: selected?.id === row.id }" @click="select(row)">
-            <span class="history-time">{{ row.createTime || '未知时间' }}</span>
-            <span v-if="row.head" class="history-current">当前</span>
-            <span class="history-excerpt">{{ row.excerpt || '空正文' }}</span>
+            <span class="history-time">{{ row.createTime || t('history.unknownTime') }}</span>
+            <span v-if="row.head" class="history-current">{{ t('history.current') }}</span>
+            <span class="history-excerpt">{{ row.excerpt || t('history.emptyBody') }}</span>
             <span class="history-size">{{ formatSize(row.size || 0) }}</span>
           </button>
-          <button v-if="rows.length < total" class="history-more" type="button" :disabled="loading" @click="loadMore">{{ loading ? '正在加载…' : '更早的版本' }}</button>
+          <button v-if="rows.length < total" class="history-more" type="button" :disabled="loading" @click="loadMore">{{ loading ? t('history.loading') : t('history.older') }}</button>
         </div>
         <div class="history-preview">
-          <div v-if="selected && compare" class="history-diff" aria-label="与当前正文的差异">
+          <div v-if="selected && compare" class="history-diff" :aria-label="t('history.diff')">
             <p v-for="(line, index) in diff" :key="index" :class="`diff-${line.kind}`"><span>{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' ' }}</span>{{ line.text || ' ' }}</p>
           </div>
           <div v-else-if="selected" class="history-rendered" aria-readonly="true">
             <V5Editor :key="selected.id" :model-value="selected.content || ''" :editable="false" placeholder="" />
           </div>
-          <p v-else class="history-empty">选择一个版本查看正文。</p>
+          <p v-else class="history-empty">{{ t('history.pick') }}</p>
         </div>
       </div>
     </section>
@@ -156,27 +158,27 @@ function formatSize(size: number): string {
 
   <div v-if="restoreTarget" class="modal-backdrop restore-backdrop" role="presentation">
     <section class="modal crud-modal" role="dialog" aria-modal="true" aria-labelledby="restore-title">
-      <span class="eyebrow">恢复版本</span>
-      <h2 id="restore-title">恢复到 {{ restoreTarget.createTime || '所选版本' }}</h2>
-      <p>当前正文会先保留成一条历史，恢复之后还能再回到这一版。</p>
+      <span class="eyebrow">{{ t('history.restoreEyebrow') }}</span>
+      <h2 id="restore-title">{{ t('history.restoreTo', { time: restoreTarget.createTime || t('history.selectedVersion') }) }}</h2>
+      <p>{{ t('history.restoreBody') }}</p>
       <p v-if="restoreError" class="dialog-error" role="alert">{{ restoreError }}</p>
       <div class="modal-actions">
-        <button type="button" :disabled="restoreBusy" @click="restoreTarget = null">取消</button>
-        <button class="primary" type="button" :disabled="restoreBusy" @click="confirmRestore">{{ restoreBusy ? '正在恢复…' : '恢复' }}</button>
+        <button type="button" :disabled="restoreBusy" @click="restoreTarget = null">{{ t('common.cancel') }}</button>
+        <button class="primary" type="button" :disabled="restoreBusy" @click="confirmRestore">{{ restoreBusy ? t('history.restoring') : t('history.restore') }}</button>
       </div>
     </section>
   </div>
 
   <div v-if="conflict" class="modal-backdrop conflict-backdrop" role="presentation">
     <section class="modal crud-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
-      <span class="eyebrow">版本冲突</span>
-      <h2 id="conflict-title">笔记已在其他地方更新</h2>
+      <span class="eyebrow">{{ t('conflict.eyebrow') }}</span>
+      <h2 id="conflict-title">{{ t('conflict.title') }}</h2>
       <p>{{ conflict.message }}</p>
-      <p v-if="conflict.updateTime">库中最近保存时间：{{ conflict.updateTime }}</p>
+      <p v-if="conflict.updateTime">{{ t('conflict.savedAt', { time: conflict.updateTime }) }}</p>
       <div class="modal-actions">
-        <button type="button" @click="conflict = null">取消</button>
-        <button type="button" @click="reloadAfterConflict">重新加载</button>
-        <button class="primary" type="button" @click="overwriteConflict">仍要覆盖保存</button>
+        <button type="button" @click="conflict = null">{{ t('common.cancel') }}</button>
+        <button type="button" @click="reloadAfterConflict">{{ t('conflict.reload') }}</button>
+        <button class="primary" type="button" @click="overwriteConflict">{{ t('conflict.overwrite') }}</button>
       </div>
     </section>
   </div>

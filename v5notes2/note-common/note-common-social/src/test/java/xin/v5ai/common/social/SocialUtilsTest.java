@@ -15,10 +15,12 @@ import xin.v5ai.common.social.utils.SocialUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.StaticApplicationContext;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +37,9 @@ class SocialUtilsTest {
         AuthRedisStateCache stateCache = mock(AuthRedisStateCache.class);
         StaticApplicationContext context = new StaticApplicationContext();
         context.getBeanFactory().registerSingleton("authRedisStateCache", stateCache);
+        LocaleContextHolder.setLocale(Locale.getDefault());
+        context.getStaticMessageSource().addMessage("social.type.unsupported", Locale.getDefault(), "不支持的第三方登录类型");
+        context.getStaticMessageSource().addMessage("social.config.missing", Locale.getDefault(), "未获取到有效的Auth配置");
         context.refresh();
         new SpringUtil().setApplicationContext(context);
     }

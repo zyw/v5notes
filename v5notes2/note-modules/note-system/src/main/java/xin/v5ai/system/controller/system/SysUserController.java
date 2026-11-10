@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.lang.tree.Tree;
 import cn.hutool.core.util.ArrayUtil;
@@ -125,7 +126,7 @@ public class SysUserController extends BaseController {
 
         SysUserVo user = DataPermissionHelper.ignore(() -> userService.selectUserById(loginUser.getUserId()));
         if (ObjectUtil.isNull(user)) {
-            return R.fail("没有权限访问用户数据!");
+            return R.fail(MessageUtils.message("user.data.forbidden"));
         }
         userInfoVo.setUser(user);
         userInfoVo.setPermissions(loginUser.getMenuPermission());
@@ -176,11 +177,11 @@ public class SysUserController extends BaseController {
     public R<Void> add(@Validated @RequestBody SysUserBo user) {
         deptService.checkDeptDataScope(user.getDeptId());
         if (!userService.checkUserNameUnique(user)) {
-            return R.fail("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
+            return R.fail(MessageUtils.message("user.add.account.exists", user.getUserName()));
         } else if (StringUtils.isNotEmpty(user.getPhoneNumber()) && !userService.checkPhoneUnique(user)) {
-            return R.fail("新增用户'" + user.getUserName() + "'失败，手机号码已存在");
+            return R.fail(MessageUtils.message("user.add.phone.exists", user.getUserName()));
         } else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user)) {
-            return R.fail("新增用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+            return R.fail(MessageUtils.message("user.add.email.exists", user.getUserName()));
         }
         user.setPassword(BCrypt.hashpw(user.getPassword()));
         return toAjax(userService.insertUser(user));
@@ -201,11 +202,11 @@ public class SysUserController extends BaseController {
         userService.checkUserDataScope(user.getUserId());
         deptService.checkDeptDataScope(user.getDeptId());
         if (!userService.checkUserNameUnique(user)) {
-            return R.fail("修改用户'" + user.getUserName() + "'失败，登录账号已存在");
+            return R.fail(MessageUtils.message("user.edit.account.exists", user.getUserName()));
         } else if (StringUtils.isNotEmpty(user.getPhoneNumber()) && !userService.checkPhoneUnique(user)) {
-            return R.fail("修改用户'" + user.getUserName() + "'失败，手机号码已存在");
+            return R.fail(MessageUtils.message("user.edit.phone.exists", user.getUserName()));
         } else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user)) {
-            return R.fail("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+            return R.fail(MessageUtils.message("user.edit.email.exists", user.getUserName()));
         }
         return toAjax(userService.updateUser(user));
     }
@@ -221,7 +222,7 @@ public class SysUserController extends BaseController {
     @DeleteMapping("/{userIds}")
     public R<Void> remove(@PathVariable Long[] userIds) {
         if (ArrayUtil.contains(userIds, LoginHelper.getUserId())) {
-            return R.fail("当前用户不能删除");
+            return R.fail(MessageUtils.message("user.delete.self"));
         }
         return toAjax(userService.deleteUserByIds(userIds));
     }
@@ -287,7 +288,7 @@ public class SysUserController extends BaseController {
     public R<Void> unlock(@PathVariable Long userId) {
         SysUserVo user = userService.selectUserById(userId);
         if (ObjectUtil.isNull(user)) {
-            return R.fail("用户不存在");
+            return R.fail(MessageUtils.message("user.missing"));
         }
         String loginName = CacheNames.PWD_ERR_CNT_KEY + user.getUserName();
         if (RedisUtils.hasKey(loginName)) {

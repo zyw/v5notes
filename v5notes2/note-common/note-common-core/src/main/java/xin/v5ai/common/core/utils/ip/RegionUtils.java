@@ -1,5 +1,6 @@
 package xin.v5ai.common.core.utils.ip;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.io.resource.ResourceUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -80,7 +81,7 @@ public class RegionUtils {
             RegionUtils.ip2Region = Ip2Region.create(v4Config, v6Config);
             log.debug("IP工具初始化成功，加载IP地址库数据成功！");
         } catch (Exception e) {
-            throw new ServiceException("RegionUtils初始化失败，原因：{}", e.getMessage());
+            throw new ServiceException(MessageUtils.message("region.init.failed", e.getMessage()));
         }
     }
 

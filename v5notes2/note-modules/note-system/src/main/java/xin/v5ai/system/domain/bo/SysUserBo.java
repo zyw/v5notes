@@ -44,17 +44,17 @@ public class SysUserBo implements Serializable {
     /**
      * 用户账号
      */
-    @Xss(message = "用户账号不能包含脚本字符")
-    @NotBlank(message = "用户账号不能为空")
-    @Size(min = 2, max = 30, message = "用户账号长度必须在{min}到{max}个字符之间")
+    @Xss(message = "{user.script}")
+    @NotBlank(message = "{user.account.not.blank}")
+    @Size(min = 2, max = 30, message = "{user.account.length}")
     private String userName;
 
     /**
      * 用户昵称
      */
-    @Xss(message = "用户昵称不能包含脚本字符")
-    @NotBlank(message = "用户昵称不能为空")
-    @Size(min = 0, max = 30, message = "用户昵称长度不能超过{max}个字符")
+    @Xss(message = "{user.nick.script}")
+    @NotBlank(message = "{user.nick.not.blank}")
+    @Size(min = 0, max = 30, message = "{user.nick.length}")
     private String nickName;
 
     /**
@@ -70,14 +70,14 @@ public class SysUserBo implements Serializable {
     /**
      * 用户邮箱
      */
-    @Email(message = "邮箱格式不正确")
-    @Size(min = 0, max = 50, message = "邮箱长度不能超过{max}个字符")
+    @Email(message = "{user.email.incorrect}")
+    @Size(min = 0, max = 50, message = "{dept.email.length}")
     private String email;
 
     /**
      * 手机号码
      */
-    @Pattern(regexp = RegexConstants.MOBILE, message = "手机号格式不正确")
+    @Pattern(regexp = RegexConstants.MOBILE, message = "{user.mobile.invalid}")
     private String phoneNumber;
 
     /**
@@ -108,7 +108,7 @@ public class SysUserBo implements Serializable {
     /**
      * 角色组
      */
-    @Size(min = 1, message = "用户角色不能为空")
+    @Size(min = 1, message = "{user.role.not.null}")
     private Long[] roleIds;
 
     /**

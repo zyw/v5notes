@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.convert.Convert;
 import lombok.RequiredArgsConstructor;
@@ -86,7 +87,7 @@ public class SysDeptController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysDeptBo dept) {
         if (!deptService.checkDeptNameUnique(dept)) {
-            return R.fail("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
+            return R.fail(MessageUtils.message("dept.add.exists", dept.getDeptName()));
         }
         return toAjax(deptService.insertDept(dept));
     }
@@ -105,14 +106,14 @@ public class SysDeptController extends BaseController {
         Long deptId = dept.getDeptId();
         deptService.checkDeptDataScope(deptId);
         if (!deptService.checkDeptNameUnique(dept)) {
-            return R.fail("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
+            return R.fail(MessageUtils.message("dept.edit.exists", dept.getDeptName()));
         } else if (dept.getParentId().equals(deptId)) {
-            return R.fail("修改部门'" + dept.getDeptName() + "'失败，上级部门不能是自己");
+            return R.fail(MessageUtils.message("dept.edit.self", dept.getDeptName()));
         } else if (StringUtils.equals(SystemConstants.DISABLE, dept.getStatus())) {
             if (deptService.selectNormalChildrenDeptById(deptId) > 0) {
-                return R.fail("该部门包含未停用的子部门!");
+                return R.fail(MessageUtils.message("dept.disable.children"));
             } else if (deptService.checkDeptExistUser(deptId)) {
-                return R.fail("该部门下存在已分配用户，不能禁用!");
+                return R.fail(MessageUtils.message("dept.disable.assigned"));
             }
         }
         return toAjax(deptService.updateDept(dept));
@@ -129,16 +130,16 @@ public class SysDeptController extends BaseController {
     @DeleteMapping("/{deptId}")
     public R<Void> remove(@PathVariable Long deptId) {
         if (SystemConstants.DEFAULT_DEPT_ID.equals(deptId)) {
-            return R.warn("默认部门,不允许删除");
+            return R.warn(MessageUtils.message("dept.delete.default"));
         }
         if (deptService.hasChildByDeptId(deptId)) {
-            return R.warn("存在下级部门,不允许删除");
+            return R.warn(MessageUtils.message("dept.delete.children"));
         }
         if (deptService.checkDeptExistUser(deptId)) {
-            return R.warn("部门存在用户,不允许删除");
+            return R.warn(MessageUtils.message("dept.delete.users"));
         }
         if (postService.countPostByDeptId(deptId) > 0) {
-            return R.warn("部门存在岗位,不允许删除");
+            return R.warn(MessageUtils.message("dept.delete.posts"));
         }
         deptService.checkDeptDataScope(deptId);
         return toAjax(deptService.deleteDeptById(deptId));

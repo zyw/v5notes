@@ -21,12 +21,12 @@ public class ClientNotesBo implements Serializable {
     /**
      * 目录ID，0：全部笔记，1: 最新笔记，其他表示正常的目录ID
      */
-    @NotNull(message = "目录ID不能为空", groups = { QueryGroup.class })
+    @NotNull(message = "{note.client.dir.not.null}", groups = { QueryGroup.class })
     private Long dirId;
 
     /**
      * 搜索值
      */
-    @NotBlank(message = "搜索值不能为空", groups = { SearchGroup.class })
+    @NotBlank(message = "{note.search.not.blank}", groups = { SearchGroup.class })
     private String searchValue;
 }

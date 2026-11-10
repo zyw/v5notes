@@ -26,31 +26,31 @@ public class FileConfigBo extends BaseEntity {
     /**
      * 编号
      */
-    @NotNull(message = "编号不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{file.config.id.not.null}", groups = { EditGroup.class })
     private Long id;
 
     /**
      * 配置名
      */
-    @NotBlank(message = "配置名不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.config.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String name;
 
     /**
      * 存储器
      */
-    @NotNull(message = "存储器不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{file.config.storage.not.null}", groups = { AddGroup.class, EditGroup.class })
     private Integer storage;
 
     /**
      * 备注
      */
-    @NotBlank(message = "备注不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{file.config.remark.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String remark;
 
     /**
      * 存储配置
      */
-    @NotNull(message = "存储配置不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotNull(message = "{file.config.body.not.null}", groups = { AddGroup.class, EditGroup.class })
     @AutoMapping(target = "config", ignore = true)
     private Map<String, Object> config;
 

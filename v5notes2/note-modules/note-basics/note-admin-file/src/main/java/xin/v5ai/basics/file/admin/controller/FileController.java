@@ -1,5 +1,6 @@
 package xin.v5ai.basics.file.admin.controller;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaIgnore;
 import cn.hutool.core.io.IoUtil;
@@ -66,7 +67,7 @@ public class FileController extends BaseController {
      */
     @SaCheckPermission("basics:file:list")
     @GetMapping("/listByIds/{ids}")
-    public R<List<FileUploadVo>> listByIds(@NotEmpty(message = "主键不能为空")
+    public R<List<FileUploadVo>> listByIds(@NotEmpty(message = "{id.not.null}")
                                        @PathVariable Long[] ids) {
         List<FileUploadVo> list = fileInfoService.queryByIds(Arrays.asList(ids));
         return R.ok(list);
@@ -90,7 +91,7 @@ public class FileController extends BaseController {
      */
     @SaCheckPermission("basics:file:query")
     @GetMapping("/{id}")
-    public R<FileInfoVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<FileInfoVo> getInfo(@NotNull(message = "{id.not.null}")
                                      @PathVariable Long id) {
         return R.ok(fileInfoService.queryById(id));
     }
@@ -113,7 +114,7 @@ public class FileController extends BaseController {
             .id(info.getId())
             .build();
 
-        return R.ok("上传成功",vo);
+        return R.ok(MessageUtils.message("file.upload.success"), vo);
     }
 
     /**
@@ -124,7 +125,7 @@ public class FileController extends BaseController {
     @SaCheckPermission("basics:file:remove")
     @Log(title = "文件路径", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(fileInfoService.deleteWithValidByIds(List.of(ids), true));
     }

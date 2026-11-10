@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
@@ -272,7 +273,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     @Override
     public void checkUserAllowed(Long userId) {
         if (ObjectUtil.isNotNull(userId) && LoginHelper.isSuperAdmin(userId)) {
-            throw new ServiceException("不允许操作超级管理员用户");
+            throw new ServiceException(MessageUtils.message("user.admin.forbidden"));
         }
     }
 
@@ -290,7 +291,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
             return;
         }
         if (userMapper.countUserById(userId) == 0) {
-            throw new ServiceException("没有权限访问用户数据！");
+            throw new ServiceException(MessageUtils.message("user.data.forbidden"));
         }
     }
 
@@ -346,7 +347,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
         // 防止错误更新后导致的数据误删除
         int flag = userMapper.updateById(sysUser);
         if (flag < 1) {
-            throw new ServiceException("修改用户{}信息失败", user.getUserName());
+            throw new ServiceException(MessageUtils.message("user.update.failed", user.getUserName()));
         }
         return flag;
     }
@@ -437,7 +438,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
 
         // 校验是否有权限操作这些岗位（含数据权限控制）
         if (postMapper.selectPostCount(postIds) != postIds.size()) {
-            throw new ServiceException("没有权限访问岗位的数据");
+            throw new ServiceException(MessageUtils.message("user.post.forbidden"));
         }
 
         // 是否清除旧的用户岗位绑定
@@ -477,12 +478,12 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
 
         // 移除超管角色后若无剩余角色，说明仅选了超管角色且不允许分配，显式报错
         if (roleList.isEmpty()) {
-            throw new ServiceException("不允许为普通用户分配超级管理员角色，请至少选择一个其他角色");
+            throw new ServiceException(MessageUtils.message("user.role.admin.forbidden"));
         }
 
         // 校验是否有权限访问这些角色（含数据权限控制）
         if (roleMapper.selectRoleCount(roleList) != roleList.size()) {
-            throw new ServiceException("没有权限访问角色的数据");
+            throw new ServiceException(MessageUtils.message("user.role.data.forbidden"));
         }
 
         // 是否清除原有绑定
@@ -517,7 +518,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
         // 防止更新失败导致的数据删除
         int flag = userMapper.deleteById(userId);
         if (flag < 1) {
-            throw new ServiceException("删除用户失败!");
+            throw new ServiceException(MessageUtils.message("user.delete.failed"));
         }
         return flag;
     }
@@ -543,7 +544,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
         // 防止更新失败导致的数据删除
         int flag = userMapper.deleteByIds(ids);
         if (flag < 1) {
-            throw new ServiceException("删除用户失败!");
+            throw new ServiceException(MessageUtils.message("user.delete.failed"));
         }
         return flag;
     }

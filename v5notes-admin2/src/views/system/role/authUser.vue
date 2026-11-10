@@ -4,29 +4,29 @@
       <el-card shadow="hover" class="search-panel" :class="{ 'is-collapsed': !showSearch }">
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
-            <div><h3>筛选条件</h3></div>
+            <div><h3>{{ $t('common.filter') }}</h3></div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="用户名称" prop="userName">
+          <el-form-item :label="$t('system.user.userName')" prop="userName">
             <el-input
               v-model="queryParams.userName"
-              placeholder="请输入用户名称"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.user.userName') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="手机号码" prop="phoneNumber">
+          <el-form-item :label="$t('system.user.phone')" prop="phoneNumber">
             <el-input
               v-model="queryParams.phoneNumber"
-              placeholder="请输入手机号码"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.user.phone') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -35,11 +35,11 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <h3>已授权用户</h3>
+            <h3>{{ $t('system.role.authUserTitle') }}</h3>
           </div>
           <div class="toolbar-actions">
             <el-button v-hasPermi="['system:role:add']" type="primary" plain icon="Plus" @click="openSelectUser">
-              添加用户
+              {{ $t('system.role.addUser') }}
             </el-button>
             <el-button
               v-hasPermi="['system:role:remove']"
@@ -49,9 +49,9 @@
               :disabled="multiple"
               @click="cancelAuthUserAll"
             >
-              批量取消授权
+              {{ $t('system.role.batchCancelAuth') }}
             </el-button>
-            <el-button type="warning" plain icon="Close" @click="handleClose">关闭</el-button>
+            <el-button type="warning" plain icon="Close" @click="handleClose">{{ $t('common.close') }}</el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList"></right-toolbar>
           </div>
         </div>
@@ -64,23 +64,23 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="用户名称" prop="userName" :show-overflow-tooltip="true" />
-        <el-table-column label="用户昵称" prop="nickName" :show-overflow-tooltip="true" />
-        <el-table-column label="邮箱" prop="email" :show-overflow-tooltip="true" />
-        <el-table-column label="手机" prop="phoneNumber" :show-overflow-tooltip="true" />
-        <el-table-column label="状态" align="center" prop="status">
+        <el-table-column :label="$t('system.user.userName')" prop="userName" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('system.user.nickName')" prop="nickName" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('system.user.email')" prop="email" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('system.role.phoneShort')" prop="phoneNumber" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('common.status')" align="center" prop="status">
           <template #default="scope">
             <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" width="180">
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180">
           <template #default="scope">
             <span>{{ scope.row.createTime }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="取消授权" placement="top">
+            <el-tooltip :content="$t('system.role.cancelAuth')" placement="top">
               <el-button
                 v-hasPermi="['system:role:remove']"
                 link
@@ -118,6 +118,9 @@ import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
 import { useDict } from '@/utils/dict';
 import SelectUser from './selectUser.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
@@ -179,19 +182,19 @@ const openSelectUser = () => {
 };
 /** 取消授权按钮操作 */
 const cancelAuthUser = async (row: Partial<UserVO>) => {
-  await modal.confirm('确认要取消该用户"' + row.userName + '"角色吗？');
+  await modal.confirm(t('system.role.cancelUserRole', { name: row.userName }));
   await authUserCancel({ userId: row.userId, roleId: queryParams.roleId });
   await getList();
-  modal.msgSuccess('取消授权成功');
+  modal.msgSuccess(t('system.role.cancelSuccess'));
 };
 /** 批量取消授权按钮操作 */
 const cancelAuthUserAll = async () => {
   const roleId = queryParams.roleId;
   const uIds = userIds.value.join(',');
-  await modal.confirm('是否取消选中用户授权数据项?');
+  await modal.confirm(t('system.role.cancelSelected'));
   await authUserCancelAll({ roleId: roleId, userIds: uIds });
   await getList();
-  modal.msgSuccess('取消授权成功');
+  modal.msgSuccess(t('system.role.cancelSuccess'));
 };
 
 onMounted(() => {

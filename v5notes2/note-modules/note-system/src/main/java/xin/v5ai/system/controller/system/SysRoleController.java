@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.lang.tree.Tree;
 import jakarta.servlet.http.HttpServletResponse;
@@ -97,9 +98,9 @@ public class SysRoleController extends BaseController {
     public R<Void> add(@Validated @RequestBody SysRoleBo role) {
         roleService.checkRoleAllowed(role);
         if (!roleService.checkRoleNameUnique(role)) {
-            return R.fail("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
+            return R.fail(MessageUtils.message("role.add.name.exists", role.getRoleName()));
         } else if (!roleService.checkRoleKeyUnique(role)) {
-            return R.fail("新增角色'" + role.getRoleName() + "'失败，角色权限已存在");
+            return R.fail(MessageUtils.message("role.add.key.exists", role.getRoleName()));
         }
         return toAjax(roleService.insertRole(role));
 
@@ -119,16 +120,16 @@ public class SysRoleController extends BaseController {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
         if (!roleService.checkRoleNameUnique(role)) {
-            return R.fail("修改角色'" + role.getRoleName() + "'失败，角色名称已存在");
+            return R.fail(MessageUtils.message("role.edit.name.exists", role.getRoleName()));
         } else if (!roleService.checkRoleKeyUnique(role)) {
-            return R.fail("修改角色'" + role.getRoleName() + "'失败，角色权限已存在");
+            return R.fail(MessageUtils.message("role.edit.key.exists", role.getRoleName()));
         }
 
         if (roleService.updateRoleBaseInfo(role) > 0) {
             SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
-        return R.fail("修改角色'" + role.getRoleName() + "'失败，请联系管理员");
+        return R.fail(MessageUtils.message("role.edit.failed", role.getRoleName()));
     }
 
     /**
@@ -148,7 +149,7 @@ public class SysRoleController extends BaseController {
             SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
-        return R.fail("修改角色'" + role.getRoleName() + "'权限失败，请联系管理员");
+        return R.fail(MessageUtils.message("role.edit.perm.failed", role.getRoleName()));
     }
 
     /**
@@ -168,7 +169,7 @@ public class SysRoleController extends BaseController {
             SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
-        return R.fail("修改角色'" + role.getRoleName() + "'状态失败，请联系管理员");
+        return R.fail(MessageUtils.message("role.edit.status.failed", role.getRoleName()));
     }
 
     /**

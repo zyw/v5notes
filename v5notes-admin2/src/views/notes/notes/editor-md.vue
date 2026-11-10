@@ -4,11 +4,11 @@
       <el-card shadow="hover">
         <div class="note-title-bar">
           <el-text size="large">
-            <el-tooltip class="box-item" effect="dark" content="保存笔记，使用 Ctrl + S 快捷键保存" placement="top">
+            <el-tooltip class="box-item" effect="dark" :content="$t('notes.editor.saveTooltip')" placement="top">
               <el-link :icon="MessageBox" @click="handleSaveContent">&nbsp;{{ mdEditorForm?.name }}</el-link>
             </el-tooltip>
           </el-text>
-          <el-button v-hasPermi="['notes:notes:query']" :disabled="mdEditorForm?.id == null" icon="Clock" @click="historyVisible = true">历史版本</el-button>
+          <el-button v-hasPermi="['notes:notes:query']" :disabled="mdEditorForm?.id == null" icon="Clock" @click="historyVisible = true">{{ $t('notes.history.title') }}</el-button>
         </div>
       </el-card>
     </div>
@@ -20,7 +20,8 @@
 </template>
 
 <script setup lang="ts" name="EditorMd">
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { MessageBox } from '@element-plus/icons-vue';
 import { ElLoading, ElMessage } from 'element-plus';
 import Vditor from 'vditor';
@@ -30,6 +31,15 @@ import type { NotesForm } from '@/api/notes/notes/types';
 import NoteHistoryDrawer from '@/views/notes/notes/history-drawer.vue';
 import modal from '@/plugins/modal';
 import { getToken } from '@/utils/auth';
+
+const { t, locale } = useI18n();
+
+const vditorLang = () => {
+  if (locale.value === 'zh_TW' || locale.value === 'en_US') {
+    return locale.value;
+  }
+  return 'zh_CN' as const;
+};
 
 const saveSvg =
   '<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M853.3 298.7l-128-128c-12.8-12.8-29.9-21.4-49.1-21.4H213.3C172.8 149.3 149.3 172.8 149.3 213.3v597.4c0 40.5 23.5 64 64 64h597.4c40.5 0 64-23.5 64-64V341.3c0-19.2-8.6-36.3-21.4-42.6zM512 810.7c-64 0-115.2-51.2-115.2-115.2S448 580.3 512 580.3s115.2 51.2 115.2 115.2S576 810.7 512 810.7zM640 362.7H256V256h384v106.7z" fill="#E16B5A"/></svg>';
@@ -45,27 +55,25 @@ const handleSaveContent = async () => {
   }
   mdEditorForm.value.content = vditor.value.getValue();
   await updateNotes(mdEditorForm.value);
-  modal.msgSuccess('保存成功');
-};
-
-const saveBtn = {
-  hotkey: '⌘S',
-  name: 'save-md',
-  tipPosition: 's',
-  tip: '保存笔记',
-  className: 'save-btn',
-  icon: saveSvg,
-  click: handleSaveContent
+  modal.msgSuccess(t('notes.editor.saved'));
 };
 
 // 编辑器配置项
-const options: IOptions = {
+const buildOptions = (): IOptions => ({
   height: '100%',
   mode: 'ir',
   theme: 'classic',
-  lang: 'zh_CN',
+  lang: vditorLang(),
   toolbar: [
-    saveBtn,
+    {
+      hotkey: '⌘S',
+      name: 'save-md',
+      tipPosition: 's',
+      tip: t('notes.editor.saveTip'),
+      className: 'save-btn',
+      icon: saveSvg,
+      click: handleSaveContent
+    },
     '|',
     'emoji',
     'headings',
@@ -175,10 +183,10 @@ const options: IOptions = {
     // 编辑器初始化完成后的回调
     vditor.value?.focus();
   }
-};
+});
 
 const initEditor = () => {
-  vditor.value = new Vditor('contentVditor', options);
+  vditor.value = new Vditor('contentVditor', buildOptions());
 };
 
 /** 载入笔记内容用于编辑 */
@@ -186,7 +194,7 @@ const notesInfo = async (id: string | number) => {
   const loading = ElLoading.service({
     target: '.editor-container',
     lock: true,
-    text: '加载中。。。'
+    text: t('notes.editor.loading')
   });
   try {
     const res = await getNotes(id);
@@ -217,6 +225,15 @@ defineExpose({ notesInfo });
 onMounted(() => {
   initEditor();
   window.addEventListener('keydown', handleKeydown);
+});
+
+watch(locale, () => {
+  const content = vditor.value?.getValue();
+  vditor.value?.destroy();
+  initEditor();
+  if (content != null) {
+    vditor.value?.setValue(content);
+  }
 });
 
 onBeforeUnmount(() => {

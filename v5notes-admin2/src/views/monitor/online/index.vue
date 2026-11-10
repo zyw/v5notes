@@ -5,26 +5,26 @@
         <template #header>
           <div class="panel-heading">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('monitor.kicker.search') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="登录地址" prop="ipaddr">
-            <el-input v-model="queryParams.ipaddr" placeholder="请输入登录地址" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.online.ipaddr')" prop="ipaddr">
+            <el-input v-model="queryParams.ipaddr" :placeholder="$t('common.pleaseInput', { label: $t('monitor.online.ipaddr') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="用户名称" prop="userName">
+          <el-form-item :label="$t('monitor.online.userName')" prop="userName">
             <el-input
               v-model="queryParams.userName"
-              placeholder="请输入用户名称"
+              :placeholder="$t('common.pleaseInput', { label: $t('monitor.online.userName') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -33,9 +33,9 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Online Sessions</span>
-            <h3>在线用户</h3>
-            <p>共 {{ total }} 条记录，支持按账号或地址检索并执行会话强退。</p>
+            <span class="panel-kicker">{{ $t('monitor.kicker.online') }}</span>
+            <h3>{{ $t('monitor.online.title') }}</h3>
+            <p>{{ $t('monitor.online.summary', { total }) }}</p>
           </div>
         </div>
       </template>
@@ -48,32 +48,32 @@
         "
         style="width: 100%"
       >
-        <el-table-column label="序号" width="50" type="index" align="center">
+        <el-table-column :label="$t('common.serial')" width="50" type="index" align="center">
           <template #default="scope">
             <span>{{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="会话编号" align="center" prop="tokenId" :show-overflow-tooltip="true" />
-        <el-table-column label="登录名称" align="center" prop="userName" :show-overflow-tooltip="true" />
-        <el-table-column label="客户端" align="center" prop="clientKey" :show-overflow-tooltip="true" />
-        <el-table-column label="设备类型" align="center">
+        <el-table-column :label="$t('monitor.online.tokenId')" align="center" prop="tokenId" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.loginName')" align="center" prop="userName" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.client')" align="center" prop="clientKey" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.deviceType')" align="center">
           <template #default="scope">
             <dict-tag :options="sys_device_type" :value="scope.row.deviceType" />
           </template>
         </el-table-column>
-        <el-table-column label="所属部门" align="center" prop="deptName" :show-overflow-tooltip="true" />
-        <el-table-column label="主机" align="center" prop="ipaddr" :show-overflow-tooltip="true" />
-        <el-table-column label="登录地点" align="center" prop="loginLocation" :show-overflow-tooltip="true" />
-        <el-table-column label="操作系统" align="center" prop="os" :show-overflow-tooltip="true" />
-        <el-table-column label="浏览器" align="center" prop="browser" :show-overflow-tooltip="true" />
-        <el-table-column label="登录时间" align="center" prop="loginTime" width="180">
+        <el-table-column :label="$t('monitor.online.dept')" align="center" prop="deptName" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.host')" align="center" prop="ipaddr" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.location')" align="center" prop="loginLocation" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.os')" align="center" prop="os" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.browser')" align="center" prop="browser" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.online.loginTime')" align="center" prop="loginTime" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.loginTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="强退" placement="top">
+            <el-tooltip :content="$t('monitor.online.forceLogout')" placement="top">
               <el-button
                 v-hasPermi="['monitor:online:forceLogout']"
                 link
@@ -86,7 +86,7 @@
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" avatar />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -108,6 +108,9 @@ import { OnlineQuery, OnlineVO } from '@/api/monitor/online/types';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { parseTime } from '@/utils/ruoyi';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const { sys_device_type } = toRefs<any>(useDict('sys_device_type'));
 
@@ -144,11 +147,13 @@ const resetQuery = () => {
 };
 /** 强退按钮操作 */
 const handleForceLogout = async (row: Partial<OnlineVO>) => {
-  const [err] = await to(modal.confirm('是否确认强退名称为"' + row.userName + '"的用户?') as any);
+  const [err] = await to(
+    modal.confirm(t('monitor.online.confirmForceLogout', { name: row.userName })) as any
+  );
   if (!err) {
     await forceLogout(row.tokenId);
     await getList();
-    modal.msgSuccess('删除成功');
+    modal.msgSuccess(t('common.deleteSuccess'));
   }
 };
 

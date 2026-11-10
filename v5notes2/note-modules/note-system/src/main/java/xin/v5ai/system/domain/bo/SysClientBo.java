@@ -28,7 +28,7 @@ public class SysClientBo implements Serializable {
     /**
      * id
      */
-    @NotNull(message = "id不能为空", groups = {EditGroup.class})
+    @NotNull(message = "{client.id.not.null}", groups = {EditGroup.class})
     private Long id;
 
     /**
@@ -39,19 +39,19 @@ public class SysClientBo implements Serializable {
     /**
      * 客户端key
      */
-    @NotBlank(message = "客户端key不能为空", groups = {AddGroup.class, EditGroup.class})
+    @NotBlank(message = "{client.key.not.blank}", groups = {AddGroup.class, EditGroup.class})
     private String clientKey;
 
     /**
      * 客户端秘钥
      */
-    @NotBlank(message = "客户端秘钥不能为空", groups = {AddGroup.class, EditGroup.class})
+    @NotBlank(message = "{client.secret.not.blank}", groups = {AddGroup.class, EditGroup.class})
     private String clientSecret;
 
     /**
      * 授权类型
      */
-    @NotNull(message = "授权类型不能为空", groups = {AddGroup.class, EditGroup.class})
+    @NotNull(message = "{client.grant.not.blank}", groups = {AddGroup.class, EditGroup.class})
     private List<String> grantTypeList;
 
     /**

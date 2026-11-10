@@ -12,6 +12,7 @@ import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.exception.SseException;
 import xin.v5ai.common.core.exception.base.BaseException;
+import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.core.utils.SpringUtils;
 import xin.v5ai.common.core.utils.StreamUtils;
 import xin.v5ai.common.json.utils.JsonUtils;
@@ -72,7 +73,7 @@ public class GlobalExceptionHandler {
     public String handleNotLoginException(SseException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.debug("请求地址'{}',认证失败'{}',无法访问系统资源", requestURI, e.getMessage());
-        return JsonUtils.toJsonString(R.fail(HttpStatus.HTTP_UNAUTHORIZED, "认证失败，无法访问系统资源"));
+        return JsonUtils.toJsonString(R.fail(HttpStatus.HTTP_UNAUTHORIZED, MessageUtils.message("auth.sse.failed")));
     }
 
     /**
@@ -82,7 +83,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleServletException(ServletException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return R.fail("发生未知异常，请联系管理员");
+        return R.fail(MessageUtils.message("error.unknown"));
     }
 
     /**
@@ -101,7 +102,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleMissingPathVariableException(MissingPathVariableException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求路径中缺少必需的路径变量'{}',发生系统异常.", requestURI);
-        return R.fail(String.format("请求路径中缺少必需的路径变量[%s]", e.getVariableName()));
+        return R.fail(MessageUtils.message("request.path.variable.missing", e.getVariableName()));
     }
 
     /**
@@ -111,7 +112,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求参数类型不匹配'{}',发生系统异常.", requestURI);
-        return R.fail(String.format("请求参数类型不匹配，参数[%s]要求类型为：'%s'，但输入值为：'%s'", e.getName(), e.getRequiredType().getName(), e.getValue()));
+        return R.fail(MessageUtils.message("request.type.mismatch", e.getName(), e.getRequiredType().getName(), e.getValue()));
     }
 
     /**
@@ -121,7 +122,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleNoHandlerFoundException(NoHandlerFoundException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}'不存在.", requestURI);
-        return R.fail(HttpStatus.HTTP_NOT_FOUND, "请求地址不存在");
+        return R.fail(HttpStatus.HTTP_NOT_FOUND, MessageUtils.message("request.not.found"));
     }
 
     /**
@@ -154,7 +155,7 @@ public class GlobalExceptionHandler {
         String requestURI = request.getRequestURI();
         String errorId = RandomUtil.randomNumbers(8);
         log.error("请求地址'{}',发生未知异常, 错误编号: {}", requestURI, errorId, e);
-        return R.fail("发生未知异常，请联系管理员 [错误编号: " + errorId + "]");
+        return R.fail(MessageUtils.message("error.unknown.withId", errorId));
     }
 
     /**
@@ -165,7 +166,7 @@ public class GlobalExceptionHandler {
         String requestURI = request.getRequestURI();
         String errorId = RandomUtil.randomNumbers(8);
         log.error("请求地址'{}',发生系统异常, 错误编号: {}", requestURI, errorId, e);
-        return R.fail("发生系统异常，请联系管理员 [错误编号: " + errorId + "]");
+        return R.fail(MessageUtils.message("error.system.withId", errorId));
     }
 
     /**
@@ -216,7 +217,7 @@ public class GlobalExceptionHandler {
     public R<Void> handleJsonParseException(JsonParseException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}' 发生 JSON 解析异常: {}", requestURI, e.getMessage());
-        return R.fail(HttpStatus.HTTP_BAD_REQUEST, "请求数据格式错误");
+        return R.fail(HttpStatus.HTTP_BAD_REQUEST, MessageUtils.message("request.json.invalid"));
     }
 
     /**
@@ -225,7 +226,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public R<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e, HttpServletRequest request) {
         log.error("请求地址'{}', 参数解析失败: {}", request.getRequestURI(), e.getMessage());
-        return R.fail(HttpStatus.HTTP_BAD_REQUEST, "请求参数格式错误");
+        return R.fail(HttpStatus.HTTP_BAD_REQUEST, MessageUtils.message("request.body.invalid"));
     }
 
     /**
@@ -234,7 +235,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExpressionException.class)
     public R<Void> handleSpelException(ExpressionException e, HttpServletRequest request) {
         log.error("请求地址'{}'，SpEL解析异常: {}", request.getRequestURI(), e.getMessage());
-        return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "SpEL解析失败：" + e.getMessage());
+        return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, MessageUtils.message("request.spel.failed", e.getMessage()));
     }
 
 }

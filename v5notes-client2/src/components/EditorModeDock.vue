@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Floating mode tag from the J design. It sits at the right edge of the editor,
@@ -7,6 +8,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
  * double click. It never participates in the toolbar layout, so the reading
  * column keeps its full width. The dashed line marks the safe rail it belongs to.
  */
+const { t } = useI18n()
 const props = defineProps<{
   mode: 'edit' | 'preview'
   sourceMode: boolean
@@ -28,7 +30,7 @@ const railRight = ref(140)
 const dragging = ref(false)
 const hovering = ref(false)
 const isEditing = computed(() => props.mode !== 'preview')
-const stateLabel = computed(() => (props.sourceMode ? '源码' : '编辑中'))
+const stateLabel = computed(() => (props.sourceMode ? t('dock.source') : t('dock.editing')))
 const minTop = computed(() => (props.mode === 'edit' ? 48 : 8))
 const railShown = computed(() => isEditing.value || hovering.value || dragging.value)
 
@@ -160,23 +162,23 @@ watch(() => [props.mode, props.sourceMode], () => { void nextTick(() => clamp())
     @click.capture="onClickCapture"
     @dblclick="onDoubleClick"
   >
-    <span class="mode-dock-grip" aria-hidden="true" title="上下拖动移动位置；双击这里归位"><i></i><i></i><i></i></span>
-    <button v-if="!isEditing" class="mode-dock-edit" type="button" title="编辑（⌘1）" aria-label="切换到编辑模式" @click="emit('edit')">
+    <span class="mode-dock-grip" aria-hidden="true" :title="t('dock.drag')"><i></i><i></i><i></i></span>
+    <button v-if="!isEditing" class="mode-dock-edit" type="button" :title="t('dock.editTitle')" :aria-label="t('dock.switchToEdit')" @click="emit('edit')">
       <span class="mode-dock-ic">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5a2.12 2.12 0 0 1 3 0Z"/></svg>
       </span>
-      <span>编辑</span>
+      <span>{{ t('dock.edit') }}</span>
     </button>
     <div v-else class="mode-dock-bar">
       <span class="mode-dock-dot" :class="{ 'is-dirty': dirty }" role="img" :title="stateLabel" :aria-label="stateLabel"></span>
-      <button class="mode-dock-done" type="button" :disabled="dirty" :title="dirty ? '请先保存，再完成' : '完成：回到预览'" :aria-label="dirty ? '请先保存再完成' : '完成编辑并回到预览'" @click="emit('done')">
+      <button class="mode-dock-done" type="button" :disabled="dirty" :title="dirty ? t('dock.saveFirstTitle') : t('dock.doneTitle')" :aria-label="dirty ? t('dock.saveFirst') : t('dock.donePreview')" @click="emit('done')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.6 12.4 4.6 4.6L19.4 6.6"/></svg>
-        <span>完成</span>
+        <span>{{ t('dock.done') }}</span>
       </button>
       <span class="mode-dock-sep" aria-hidden="true"></span>
-      <button class="mode-dock-save" type="button" :title="dirty ? '保存笔记' : '笔记已保存'" :aria-label="dirty ? '保存笔记' : '笔记已保存'" @click="emit('save')">
+      <button class="mode-dock-save" type="button" :title="dirty ? t('dock.saveNote') : t('dock.noteSaved')" :aria-label="dirty ? t('dock.saveNote') : t('dock.noteSaved')" @click="emit('save')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 3.5h9.6L19 8.4v11.1a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1z"/><path d="M8 3.8v5.4h6.6V3.8M6.8 20.5v-7h8.4v7"/></svg>
-        <span>{{ dirty ? '保存' : '已保存' }}</span>
+        <span>{{ dirty ? t('dock.save') : t('dock.saved') }}</span>
       </button>
     </div>
   </div>

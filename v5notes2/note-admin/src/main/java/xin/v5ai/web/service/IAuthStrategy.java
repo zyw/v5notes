@@ -1,6 +1,7 @@
 package xin.v5ai.web.service;
 
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.util.ObjectUtil;
 import xin.v5ai.common.core.exception.ServiceException;
@@ -32,7 +33,7 @@ public interface IAuthStrategy {
         // 授权类型和客户端id
         String beanName = grantType + BASE_NAME;
         if (!SpringUtils.containsBean(beanName)) {
-            throw new ServiceException("授权类型不正确!");
+            throw new ServiceException(MessageUtils.message("auth.type.invalid"));
         }
         IAuthStrategy instance = SpringUtils.getBean(beanName);
         return instance.login(body, client);

@@ -91,7 +91,7 @@ describe('editor commands', () => {
 
   it('keeps group order stable and never emits an empty group', () => {
     const groups = groupCommands(visibleCommands(buildEditorCommands(actions()), previewContext))
-    expect(groups.map(group => group.name)).toEqual(['显示模式', '排版', '导出'])
+    expect(groups.map(group => group.name)).toEqual(['mode', 'type', 'export'])
     for (const group of groups) expect(group.items.length).toBeGreaterThan(0)
   })
 

@@ -1,5 +1,6 @@
 package xin.v5ai.notes.controller.client;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,7 @@ public class ClientNotesDirController extends BaseController {
     public R<Void> add(@Validated(AddGroup.class) @RequestBody NoteDirectoryBo bo) {
         // 归属校验：非根目录时，父目录必须属于当前用户
         if (bo.getPid() != null && bo.getPid() != 0L && !isOwnDirectory(bo.getPid())) {
-            return R.fail("无权使用该父目录");
+            return R.fail(MessageUtils.message("note.dir.parent.forbidden"));
         }
         return toAjax(noteDirectoryService.insertByBo(bo));
     }
@@ -63,12 +64,12 @@ public class ClientNotesDirController extends BaseController {
         // 归属校验：原目录必须属于当前用户
         NoteDirectoryVo existing = noteDirectoryService.queryById(bo.getId());
         if (existing == null || !LoginHelper.getUserId().equals(existing.getUserId())) {
-            return R.fail("无权操作该目录");
+            return R.fail(MessageUtils.message("note.dir.forbidden"));
         }
         // 若父目录发生变更，还需校验新父目录归属
         if (bo.getPid() != null && !bo.getPid().equals(existing.getPid())
             && bo.getPid() != 0L && !isOwnDirectory(bo.getPid())) {
-            return R.fail("无权使用该父目录");
+            return R.fail(MessageUtils.message("note.dir.parent.forbidden"));
         }
         return toAjax(noteDirectoryService.updateByBo(bo));
     }
@@ -80,7 +81,7 @@ public class ClientNotesDirController extends BaseController {
      */
     @Log(title = "Client目录", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         noteTrashService.moveDirectories(List.of(ids), true);
         return R.ok();
@@ -92,11 +93,11 @@ public class ClientNotesDirController extends BaseController {
      * @param id 主键
      */
     @GetMapping("/{id}")
-    public R<NoteDirectoryVo> getInfo(@NotNull(message = "主键不能为空")
+    public R<NoteDirectoryVo> getInfo(@NotNull(message = "{id.not.null}")
                                       @PathVariable Long id) {
         NoteDirectoryVo vo = noteDirectoryService.queryById(id);
         if (vo == null || !LoginHelper.getUserId().equals(vo.getUserId())) {
-            return R.fail("无权访问该目录");
+            return R.fail(MessageUtils.message("note.dir.access.forbidden"));
         }
         return R.ok(vo);
     }

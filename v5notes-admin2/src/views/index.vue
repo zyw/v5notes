@@ -3,15 +3,14 @@
     <!-- 页头 -->
     <header class="dash-head">
       <div class="head-copy">
-        <p class="eyebrow">Workspace overview · {{ dayLabel }}</p>
-        <h1>工作台</h1>
+        <p class="eyebrow">{{ $t('dashboard.kicker.overview') }} · {{ dayLabel }}</p>
+        <h1>{{ $t('dashboard.title') }}</h1>
         <p class="sub">
-          内容资产、用户活跃与系统脉搏。今日新增 <b>{{ num(kpi.notesToday) }}</b> 篇笔记，<b>{{ num(kpi.editsToday) }}</b>
-          次编辑，数据截至 {{ clockLabel }}。
+          {{ $t('dashboard.subtitle', { notes: num(kpi.notesToday), edits: num(kpi.editsToday), time: clockLabel }) }}
         </p>
       </div>
       <div class="head-tools">
-        <div class="seg" role="tablist" aria-label="统计区间">
+        <div class="seg" role="tablist" :aria-label="$t('dashboard.rangeAria')">
           <button
             v-for="item in ranges"
             :key="item.value"
@@ -26,7 +25,7 @@
         </div>
         <button class="ghost-btn" type="button" :disabled="loading" @click="load(true)">
           <el-icon class="ghost-icon"><Refresh /></el-icon>
-          刷新
+          {{ $t('common.refresh') }}
         </button>
       </div>
     </header>
@@ -34,16 +33,16 @@
     <!-- 错误态 -->
     <div v-if="errorMsg" class="dash-error">
       <span>{{ errorMsg }}</span>
-      <button type="button" @click="load(true)">重试</button>
+      <button type="button" @click="load(true)">{{ $t('dashboard.retry') }}</button>
     </div>
 
     <!-- 数据带 -->
-    <section class="band" aria-label="核心指标">
+    <section class="band" :aria-label="$t('dashboard.kpiAria')">
       <div class="band-cell">
-        <div class="lab"><i class="dot dot-primary" />笔记总数</div>
-        <div class="band-row"><span class="v">{{ num(kpi.notes) }}</span><span class="u">篇</span></div>
+        <div class="lab"><i class="dot dot-primary" />{{ $t('dashboard.notesTotal') }}</div>
+        <div class="band-row"><span class="v">{{ num(kpi.notes) }}</span><span class="u">{{ $t('dashboard.unitNote') }}</span></div>
         <div class="band-meta">
-          <span class="delta">+{{ num(kpi.notesDelta7d) }}</span>近 7 天 · +{{ kpi.notesDeltaPct }}%
+          <span class="delta">+{{ num(kpi.notesDelta7d) }}</span>{{ $t('dashboard.last7delta') }}{{ kpi.notesDeltaPct }}%
         </div>
         <svg class="spark" viewBox="0 0 58 20" preserveAspectRatio="none" aria-hidden="true">
           <path :d="sparkNotes" :stroke="palette.primary" />
@@ -51,25 +50,25 @@
       </div>
 
       <div class="band-cell">
-        <div class="lab"><i class="dot dot-success" />活跃用户</div>
-        <div class="band-row"><span class="v">{{ num(kpi.activeUsers7d) }}</span><span class="u">人</span></div>
-        <div class="band-meta">今日登录 <b>{{ num(kpi.loginsToday) }}</b> · 在线 {{ num(kpi.online) }}</div>
+        <div class="lab"><i class="dot dot-success" />{{ $t('dashboard.activeUsers') }}</div>
+        <div class="band-row"><span class="v">{{ num(kpi.activeUsers7d) }}</span><span class="u">{{ $t('dashboard.unitPerson') }}</span></div>
+        <div class="band-meta">{{ $t('dashboard.loginMeta', { count: num(kpi.loginsToday), online: num(kpi.online) }) }}</div>
         <svg class="spark" viewBox="0 0 58 20" preserveAspectRatio="none" aria-hidden="true">
           <path :d="sparkActive" :stroke="palette.success" />
         </svg>
       </div>
 
       <div class="band-cell">
-        <div class="lab"><i class="dot dot-info" />今日编辑</div>
-        <div class="band-row"><span class="v">{{ num(kpi.editsToday) }}</span><span class="u">次</span></div>
-        <div class="band-meta">今日新增 <b>{{ num(kpi.notesToday) }}</b> 篇 · 操作 {{ num(kpi.operlogToday) }}</div>
+        <div class="lab"><i class="dot dot-info" />{{ $t('dashboard.editsToday') }}</div>
+        <div class="band-row"><span class="v">{{ num(kpi.editsToday) }}</span><span class="u">{{ $t('dashboard.unitTimes') }}</span></div>
+        <div class="band-meta">{{ $t('dashboard.todayMeta', { count: num(kpi.notesToday), ops: num(kpi.operlogToday) }) }}</div>
         <svg class="spark" viewBox="0 0 58 20" preserveAspectRatio="none" aria-hidden="true">
           <path :d="sparkEdited" :stroke="palette.muted" />
         </svg>
       </div>
 
       <div class="band-cell">
-        <div class="lab"><i class="dot dot-warning" />存储占用</div>
+        <div class="lab"><i class="dot dot-warning" />{{ $t('dashboard.storage') }}</div>
         <div class="band-row"><span class="v">{{ storageDisplay.value }}</span><span class="u">{{ storageDisplay.unit }}</span></div>
         <div class="band-meta">{{ storageMeta }}</div>
         <svg class="spark" viewBox="0 0 58 20" preserveAspectRatio="none" aria-hidden="true">
@@ -78,11 +77,11 @@
       </div>
 
       <div class="band-cell status-cell">
-        <div class="lab"><i class="dot dot-primary ring" />目录规模</div>
-        <div class="status-top"><span class="v">{{ num(kpi.dirs) }}</span><span class="u">个目录</span></div>
+        <div class="lab"><i class="dot dot-primary ring" />{{ $t('dashboard.dirScale') }}</div>
+        <div class="status-top"><span class="v">{{ num(kpi.dirs) }}</span><span class="u">{{ $t('dashboard.unitDirs') }}</span></div>
         <div class="pulse-list">
-          <div><span>空目录</span><b>{{ num(kpi.emptyDirs) }}</b></div>
-          <div><span>本周新增笔记</span><b>{{ num(kpi.notesDelta7d) }}</b></div>
+          <div><span>{{ $t('dashboard.emptyDirs') }}</span><b>{{ num(kpi.emptyDirs) }}</b></div>
+          <div><span>{{ $t('dashboard.notesWeek') }}</span><b>{{ num(kpi.notesDelta7d) }}</b></div>
         </div>
       </div>
     </section>
@@ -91,10 +90,10 @@
     <div class="dash-row row-a">
       <section class="panel">
         <div class="panel-head">
-          <div class="t"><h2>内容增长</h2><span class="k">Last {{ range }} days</span></div>
+          <div class="t"><h2>{{ $t('dashboard.growth') }}</h2><span class="k">{{ $t('dashboard.kicker.lastDays', { range }) }}</span></div>
           <div class="legend-inline">
-            <span><i :style="{ background: palette.primary }" />新增笔记</span>
-            <span><i :style="{ background: palette.muted }" />编辑次数</span>
+            <span><i :style="{ background: palette.primary }" />{{ $t('dashboard.newNotes') }}</span>
+            <span><i :style="{ background: palette.muted }" />{{ $t('dashboard.editCount') }}</span>
           </div>
         </div>
         <dashboard-chart :option="trendOption" height="196px" class="trend-main" />
@@ -103,8 +102,8 @@
 
       <section class="panel">
         <div class="panel-head">
-          <div class="t"><h2>目录分布</h2><span class="k">Top {{ dirRank.length }}</span></div>
-          <div class="r"><a href="#" @click.prevent="goNotes">全部 {{ num(kpi.dirs) }} 个</a></div>
+          <div class="t"><h2>{{ $t('dashboard.dirSpread') }}</h2><span class="k">{{ $t('dashboard.kicker.top', { count: dirRank.length }) }}</span></div>
+          <div class="r"><a href="#" @click.prevent="goNotes">{{ $t('dashboard.allDirs', { count: num(kpi.dirs) }) }}</a></div>
         </div>
         <dashboard-chart :option="dirOption" height="292px" />
       </section>
@@ -114,17 +113,17 @@
     <div class="dash-row row-b">
       <section class="panel">
         <div class="panel-head">
-          <div class="t"><h2>最近更新</h2><span class="k">Latest notes</span></div>
-          <div class="r"><a href="#" @click.prevent="goNotes">进入笔记管理</a></div>
+          <div class="t"><h2>{{ $t('dashboard.recent') }}</h2><span class="k">{{ $t('dashboard.kicker.latest') }}</span></div>
+          <div class="r"><a href="#" @click.prevent="goNotes">{{ $t('dashboard.openNotes') }}</a></div>
         </div>
         <table class="notes-table">
           <thead>
             <tr>
-              <th style="width: 36%">笔记</th>
-              <th style="width: 17%">目录</th>
-              <th style="width: 14%">作者</th>
-              <th style="width: 12%">字数</th>
-              <th style="width: 21%; text-align: right">更新</th>
+              <th style="width: 36%">{{ $t('notes.note') }}</th>
+              <th style="width: 17%">{{ $t('notes.directory') }}</th>
+              <th style="width: 14%">{{ $t('dashboard.colAuthor') }}</th>
+              <th style="width: 12%">{{ $t('dashboard.colChars') }}</th>
+              <th style="width: 21%; text-align: right">{{ $t('dashboard.colUpdated') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -133,13 +132,13 @@
                 <el-icon class="note-icon"><Document /></el-icon>
                 <span :title="note.name">{{ note.name }}</span>
               </td>
-              <td class="dir">{{ note.dirName || '未归类' }}</td>
+              <td class="dir">{{ note.dirName || $t('dashboard.uncategorized') }}</td>
               <td class="ellipsis">{{ note.authorName || '—' }}</td>
               <td class="num">{{ num(note.chars) }}</td>
               <td class="upd">{{ relativeTime(note.updatedAt) }}</td>
             </tr>
             <tr v-if="!recentNotes.length">
-              <td colspan="5" class="empty-cell">暂无笔记</td>
+              <td colspan="5" class="empty-cell">{{ $t('dashboard.noNotes') }}</td>
             </tr>
           </tbody>
         </table>
@@ -147,7 +146,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <div class="t"><h2>登录设备</h2><span class="k">Last 7 days</span></div>
+          <div class="t"><h2>{{ $t('dashboard.devices') }}</h2><span class="k">{{ $t('dashboard.kicker.last7') }}</span></div>
         </div>
         <div class="device-wrap">
           <dashboard-chart :option="deviceOption" height="132px" class="device-chart" />
@@ -163,7 +162,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <div class="t"><h2>系统脉搏</h2><span class="k">Live</span></div>
+          <div class="t"><h2>{{ $t('dashboard.pulse') }}</h2><span class="k">{{ $t('dashboard.kicker.live') }}</span></div>
         </div>
         <div class="pulse">
           <div v-for="row in pulseRows" :key="row.name" class="pulse-row">
@@ -174,9 +173,9 @@
           </div>
         </div>
         <div class="quick">
-          <a href="#" @click.prevent="go('/monitor/online')">在线用户</a>
-          <a href="#" @click.prevent="go('/monitor/operlog')">操作日志</a>
-          <a href="#" @click.prevent="go('/monitor/cache')">缓存监控</a>
+          <a href="#" @click.prevent="go('/monitor/online')">{{ $t('dashboard.linkOnline') }}</a>
+          <a href="#" @click.prevent="go('/monitor/operlog')">{{ $t('dashboard.linkOperlog') }}</a>
+          <a href="#" @click.prevent="go('/monitor/cache')">{{ $t('dashboard.linkCache') }}</a>
         </div>
       </section>
     </div>
@@ -187,6 +186,7 @@
 import { graphic } from 'echarts';
 import type { EChartsOption } from 'echarts';
 import { Document, Refresh } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import DashboardChart from '@/components/DashboardChart/index.vue';
 import { getDashboardOverview } from '@/api/notes/dashboard';
@@ -194,13 +194,14 @@ import type { DashboardKpi, DashboardOverview } from '@/api/notes/dashboard/type
 import modal from '@/plugins/modal';
 
 const router = useRouter();
+const { t } = useI18n();
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
-const RANGE_OPTIONS = [
-  { label: '近 7 天', value: 7 },
-  { label: '近 30 天', value: 30 },
-  { label: '近 90 天', value: 90 }
-];
+const ranges = computed(() => [
+  { label: t('dashboard.range7'), value: 7 },
+  { label: t('dashboard.range30'), value: 30 },
+  { label: t('dashboard.range90'), value: 90 }
+]);
 
 const EMPTY_KPI: DashboardKpi = {
   notes: 0,
@@ -224,7 +225,6 @@ const EMPTY_KPI: DashboardKpi = {
   operlogToday: 0
 };
 
-const ranges = RANGE_OPTIONS;
 const range = ref(30);
 const loading = ref(false);
 const overview = ref<DashboardOverview | null>(null);
@@ -304,9 +304,9 @@ const storageDisplay = computed(() => {
 
 const storageMeta = computed(() => {
   const files = Number(kpi.value.files) || 0;
-  if (!files) return '暂无文件';
+  if (!files) return t('dashboard.noFiles');
   const avg = Number(kpi.value.avgFileMB) || 0;
-  return `${files.toLocaleString('en-US')} 个文件 · 平均 ${avg.toFixed(1)} MB`;
+  return t('dashboard.storageMeta', { files: files.toLocaleString('en-US'), avg: avg.toFixed(1) });
 });
 
 const relativeTime = (iso: string | undefined) => {
@@ -314,10 +314,10 @@ const relativeTime = (iso: string | undefined) => {
   const time = new Date(iso).getTime();
   if (Number.isNaN(time)) return '—';
   const diff = Date.now() - time;
-  if (diff < 60_000) return '刚刚';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)} 天前`;
+  if (diff < 60_000) return t('dashboard.justNow');
+  if (diff < 3_600_000) return t('dashboard.minutesAgo', { n: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000) return t('dashboard.hoursAgo', { n: Math.floor(diff / 3_600_000) });
+  if (diff < 7 * 86_400_000) return t('dashboard.daysAgo', { n: Math.floor(diff / 86_400_000) });
   const date = new Date(time);
   return `${date.getMonth() + 1}/${date.getDate()}`;
 };
@@ -381,8 +381,8 @@ const trendOption = computed<EChartsOption>(() => {
         const point = points[item?.dataIndex ?? 0];
         if (!point) return '';
         return `<div style="font-family:${MONO};font-size:11px;color:${p.muted};margin-bottom:4px">${point.date}</div>
-          <div style="font-size:12px">新增 <b>${point.created}</b> 篇</div>
-          <div style="font-size:12px">编辑 <b>${num(point.edited)}</b> 次</div>`;
+          <div style="font-size:12px">${t('dashboard.tooltipCreated', { count: `<b>${point.created}</b>` })}</div>
+          <div style="font-size:12px">${t('dashboard.tooltipEdited', { count: `<b>${num(point.edited)}</b>` })}</div>`;
       }
     },
     xAxis: {
@@ -400,7 +400,7 @@ const trendOption = computed<EChartsOption>(() => {
     },
     series: [
       {
-        name: '新增笔记',
+        name: t('dashboard.newNotes'),
         type: 'line',
         data: points.map(item => item.created),
         smooth: 0.22,
@@ -415,7 +415,7 @@ const trendOption = computed<EChartsOption>(() => {
         endLabel: {
           show: true,
           distance: 6,
-          formatter: (params: any) => `${params.value} 篇`,
+          formatter: (params: any) => t('dashboard.countNotes', { count: params.value }),
           color: p.primary,
           fontSize: 11,
           fontWeight: 600,
@@ -439,7 +439,7 @@ const editsOption = computed<EChartsOption>(() => {
       formatter: (params: any) => {
         const item = Array.isArray(params) ? params[0] : params;
         const point = points[item?.dataIndex ?? 0];
-        return point ? `${point.date} · 编辑 <b>${num(point.edited)}</b> 次` : '';
+        return point ? `${point.date} · ${t('dashboard.tooltipEdited', { count: `<b>${num(point.edited)}</b>` })}` : '';
       }
     },
     xAxis: {
@@ -453,7 +453,7 @@ const editsOption = computed<EChartsOption>(() => {
     yAxis: { type: 'value', show: false, min: 0 },
     series: [
       {
-        name: '编辑次数',
+        name: t('dashboard.editCount'),
         type: 'line',
         data: points.map(item => item.edited),
         smooth: 0.22,
@@ -475,7 +475,9 @@ const dirOption = computed<EChartsOption>(() => {
       trigger: 'item',
       formatter: (params: any) => {
         const item = items[params.dataIndex];
-        return item ? `${item.name}<br/>笔记 <b>${num(item.notes)}</b> 篇 · 近 7 天活跃 ${num(item.active7d)} 篇次` : '';
+        return item
+          ? `${item.name}<br/>${t('dashboard.dirTooltip', { notes: `<b>${num(item.notes)}</b>`, active: num(item.active7d) })}`
+          : '';
       }
     },
     xAxis: { type: 'value', show: false, max: (value: any) => value.max * 1.05 },
@@ -525,7 +527,8 @@ const deviceOption = computed<EChartsOption>(() => {
     tooltip: {
       ...tooltipBase.value,
       trigger: 'item',
-      formatter: (params: any) => `${params.name} · ${num(params.value)} 次登录（${params.percent}%）`
+      formatter: (params: any) =>
+        t('dashboard.deviceTooltip', { name: params.name, count: num(params.value), percent: params.percent })
     },
     series: [
       {
@@ -535,7 +538,7 @@ const deviceOption = computed<EChartsOption>(() => {
         label: {
           show: true,
           position: 'center',
-          formatter: [`{a|${num(total)}}`, '{b|次登录}'].join('\n'),
+          formatter: [`{a|${num(total)}}`, `{b|${t('dashboard.loginCount')}}`].join('\n'),
           rich: {
             a: { fontSize: 17, fontWeight: 600, color: p.title, fontFamily: MONO, lineHeight: 22 },
             b: { fontSize: 10, color: p.muted, lineHeight: 14 }
@@ -565,36 +568,36 @@ const pulseRows = computed(() => {
   const successRate = system?.successRate ?? 0;
   rows.push(
     successRate > 0
-      ? { name: '接口成功率', value: `${successRate}%`, width: Math.min(100, successRate), note: '' }
-      : { name: '接口成功率', value: '—', width: null, note: '口径待接入' }
+      ? { name: t('dashboard.successRate'), value: `${successRate}%`, width: Math.min(100, successRate), note: '' }
+      : { name: t('dashboard.successRate'), value: '—', width: null, note: t('dashboard.metricPending') }
   );
 
   const p95 = system?.p95ms ?? 0;
   rows.push(
     p95 > 0
-      ? { name: 'P95 响应', value: `${p95} ms`, width: Math.min(100, (p95 / p95Budget) * 100), note: '' }
-      : { name: 'P95 响应', value: '—', width: null, note: '口径待接入' }
+      ? { name: t('dashboard.p95'), value: `${p95} ms`, width: Math.min(100, (p95 / p95Budget) * 100), note: '' }
+      : { name: t('dashboard.p95'), value: '—', width: null, note: t('dashboard.metricPending') }
   );
 
   const cacheHit = system?.cacheHit;
   rows.push(
     cacheHit != null && cacheHit > 0
-      ? { name: '缓存命中率', value: `${cacheHit}%`, width: Math.min(100, cacheHit), note: '' }
-      : { name: '缓存命中率', value: '—', width: null, note: '暂无缓存读写数据' }
+      ? { name: t('dashboard.cacheHit'), value: `${cacheHit}%`, width: Math.min(100, cacheHit), note: '' }
+      : { name: t('dashboard.cacheHit'), value: '—', width: null, note: t('dashboard.noCache') }
   );
 
   rows.push({
-    name: '当前在线',
-    value: `${num(online)} 人`,
+    name: t('dashboard.onlineNow'),
+    value: t('dashboard.people', { count: num(online) }),
     width: null,
-    note: online > 0 && online <= users ? `占用户 ${((online / users) * 100).toFixed(1)}%` : '活跃会话数'
+    note: online > 0 && online <= users ? t('dashboard.userShare', { pct: ((online / users) * 100).toFixed(1) }) : t('dashboard.activeSessions')
   });
 
   rows.push({
-    name: '今日操作',
-    value: `${num(system?.operlogToday ?? kpi.value.operlogToday)} 次`,
+    name: t('dashboard.opsToday'),
+    value: t('dashboard.times', { count: num(system?.operlogToday ?? kpi.value.operlogToday) }),
     width: null,
-    note: '含后台与客户端'
+    note: t('dashboard.opsScope')
   });
 
   return rows;
@@ -607,9 +610,9 @@ const load = async (notify = false) => {
   try {
     const res = await getDashboardOverview(range.value);
     overview.value = res.data ?? null;
-    if (notify) modal.msgSuccess('数据已刷新');
+    if (notify) modal.msgSuccess(t('dashboard.refreshed'));
   } catch (error: any) {
-    errorMsg.value = error?.message || '首页数据加载失败，请稍后重试';
+    errorMsg.value = error?.message || t('dashboard.loadFailed');
     if (!overview.value) modal.msgError(errorMsg.value);
   } finally {
     loading.value = false;

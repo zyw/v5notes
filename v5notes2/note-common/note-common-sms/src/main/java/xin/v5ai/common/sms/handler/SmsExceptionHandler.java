@@ -4,6 +4,7 @@ import cn.hutool.http.HttpStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.core.utils.MessageUtils;
 import org.dromara.sms4j.comm.exception.SmsBlendException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -24,7 +25,7 @@ public class SmsExceptionHandler {
     public R<Void> handleSmsBlendException(SmsBlendException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生sms短信异常.", requestURI, e);
-        return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "短信发送失败，请稍后再试...");
+        return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, MessageUtils.message("sms.send.failed"));
     }
 
 }

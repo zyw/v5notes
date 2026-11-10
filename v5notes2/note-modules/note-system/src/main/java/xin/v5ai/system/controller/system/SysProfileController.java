@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import jakarta.validation.constraints.NotBlank;
@@ -64,16 +65,16 @@ public class SysProfileController extends BaseController {
         user.setUserId(LoginHelper.getUserId());
         String username = LoginHelper.getUsername();
         if (StringUtils.isNotEmpty(user.getPhoneNumber()) && !userService.checkPhoneUnique(user)) {
-            return R.fail("修改用户'" + username + "'失败，手机号码已存在");
+            return R.fail(MessageUtils.message("user.edit.phone.exists", username));
         }
         if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user)) {
-            return R.fail("修改用户'" + username + "'失败，邮箱账号已存在");
+            return R.fail(MessageUtils.message("user.edit.email.exists", username));
         }
         int rows = DataPermissionHelper.ignore(() -> userService.updateUserProfile(user));
         if (rows > 0) {
             return R.ok();
         }
-        return R.fail("修改个人信息异常，请联系管理员");
+        return R.fail(MessageUtils.message("user.profile.failed"));
     }
 
     /**
@@ -90,16 +91,16 @@ public class SysProfileController extends BaseController {
         SysUserVo user = userService.selectUserById(LoginHelper.getUserId());
         String password = user.getPassword();
         if (!BCrypt.checkpw(bo.oldPassword(), password)) {
-            return R.fail("修改密码失败，旧密码错误");
+            return R.fail(MessageUtils.message("user.password.old.wrong"));
         }
         if (BCrypt.checkpw(bo.newPassword(), password)) {
-            return R.fail("新密码不能与旧密码相同");
+            return R.fail(MessageUtils.message("user.password.same"));
         }
         int rows = DataPermissionHelper.ignore(() -> userService.resetUserPwd(user.getUserId(), BCrypt.hashpw(bo.newPassword())));
         if (rows > 0) {
             return R.ok();
         }
-        return R.fail("修改密码异常，请联系管理员");
+        return R.fail(MessageUtils.message("user.password.failed"));
     }
 
     /**
@@ -119,8 +120,8 @@ public class SysProfileController extends BaseController {
      * @param newPassword 新密码
      */
     public record SysUserPasswordBo(
-        @NotBlank(message = "旧密码不能为空") String oldPassword,
-        @NotBlank(message = "新密码不能为空") String newPassword) {
+        @NotBlank(message = "{user.old.password.not.blank}") String oldPassword,
+        @NotBlank(message = "{user.new.password.not.blank}") String newPassword) {
     }
 
 }

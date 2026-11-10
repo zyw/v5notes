@@ -30,31 +30,31 @@ public class S3FileClientConfig implements FileClientConfig {
     /**
      * 节点地址
      */
-    @NotNull(message = "endpoint 不能为空")
+    @NotNull(message = "{file.endpoint.not.blank}")
     private String endpoint;
 
     /**
      * 自定义域名
      */
-    @URL(message = "domain 必须是 URL 格式")
+    @URL(message = "{file.domain.invalid}")
     private String domain;
 
     /**
      * 存储 Bucket
      */
-    @NotNull(message = "bucket 不能为空")
+    @NotNull(message = "{file.bucket.not.blank}")
     private String bucket;
 
     /**
      * 访问 Key
      */
-    @NotNull(message = "accessKey 不能为空")
+    @NotNull(message = "{file.access.key.not.blank}")
     private String accessKey;
 
     /**
      * 访问 Secret
      */
-    @NotNull(message = "accessSecret 不能为空")
+    @NotNull(message = "{file.access.secret.not.blank}")
     private String accessSecret;
 
     /**

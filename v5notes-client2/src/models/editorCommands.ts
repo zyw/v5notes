@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 export type WorkspaceMode = 'edit' | 'source' | 'preview'
 export type ExportFormat = 'html' | 'pdf' | 'pdf-image' | 'markdown' | 'image'
 
@@ -43,7 +45,7 @@ export interface CommandGroup {
   items: EditorCommand[]
 }
 
-export const GROUP_ORDER = ['显示模式', '视图', '排版', '导出'] as const
+export const GROUP_ORDER = ['mode', 'view', 'type', 'export'] as const
 
 /**
  * The command palette is generated from the current workspace state instead of
@@ -54,9 +56,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
   return [
     {
       id: 'mode.edit',
-      group: '显示模式',
-      label: '回到编辑',
-      hint: '所见即所得，继续修改正文',
+      group: 'mode',
+      label: t('commands.edit'),
+      hint: t('commands.editHint'),
       shortcut: '⌘1',
       keywords: '编辑 所见即所得 wysiwyg 返回',
       available: context => context.mode !== 'edit',
@@ -64,9 +66,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'mode.source',
-      group: '显示模式',
-      label: '源码模式',
-      hint: '直接编辑 Markdown 原文',
+      group: 'mode',
+      label: t('commands.source'),
+      hint: t('commands.sourceHint'),
       shortcut: '⌘2',
       keywords: '源码 markdown source',
       available: context => context.mode === 'edit',
@@ -74,9 +76,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'mode.preview',
-      group: '显示模式',
-      label: '预览',
-      hint: '只读，按发布的样子看',
+      group: 'mode',
+      label: t('commands.preview'),
+      hint: t('commands.previewHint'),
       shortcut: '⌘3',
       keywords: '预览 阅读 preview',
       available: context => context.mode !== 'preview',
@@ -84,33 +86,33 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'view.focus',
-      group: '视图',
-      label: '专注写作',
-      hint: '收起目录，只留正文',
+      group: 'view',
+      label: t('commands.focus'),
+      hint: t('commands.focusHint'),
       shortcut: '⌘.',
       keywords: '专注 写作 focus',
       badgeTone: 'state',
-      badge: context => (context.focusMode ? '已开启' : undefined),
+      badge: context => (context.focusMode ? t('commands.on') : undefined),
       available: context => context.mode !== 'preview',
       run: () => actions.toggleFocus(),
     },
     {
       id: 'view.toolbar',
-      group: '视图',
-      label: '编辑器工具条',
-      hint: '格式按钮的显示与隐藏',
+      group: 'view',
+      label: t('commands.toolbar'),
+      hint: t('commands.toolbarHint'),
       shortcut: '⌘/',
       keywords: '工具条 格式 隐藏 显示 toolbar',
       badgeTone: 'state',
-      badge: context => (context.toolbarVisible ? '已显示' : '已隐藏'),
+      badge: context => (context.toolbarVisible ? t('commands.shown') : t('commands.hidden')),
       available: context => context.mode === 'edit',
       run: () => actions.toggleToolbar(),
     },
     {
       id: 'view.history',
-      group: '视图',
-      label: '历史记录',
-      hint: '查看与恢复旧版本',
+      group: 'view',
+      label: t('commands.history'),
+      hint: t('commands.historyHint'),
       shortcut: '⌘Y',
       keywords: '历史 版本 history',
       available: context => context.hasNote && context.mode !== 'preview',
@@ -118,9 +120,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'font.increase',
-      group: '排版',
-      label: '增大字号',
-      hint: '每次增加 1 px',
+      group: 'type',
+      label: t('commands.fontUp'),
+      hint: t('commands.fontUpHint'),
       shortcut: '⌘+',
       keywords: '字号 放大 font',
       badge: context => `${context.fontSize} px`,
@@ -130,9 +132,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'font.decrease',
-      group: '排版',
-      label: '减小字号',
-      hint: '最小 13 px',
+      group: 'type',
+      label: t('commands.fontDown'),
+      hint: t('commands.fontDownHint'),
       shortcut: '⌘−',
       keywords: '字号 缩小 font',
       keepOpen: true,
@@ -141,9 +143,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'export.html',
-      group: '导出',
-      label: '导出 HTML 网页',
-      hint: '带样式，可离线打开',
+      group: 'export',
+      label: t('commands.html'),
+      hint: t('commands.htmlHint'),
       keywords: '导出 html 网页',
       badge: () => '.html',
       available: context => context.hasNote,
@@ -151,9 +153,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'export.pdf',
-      group: '导出',
-      label: '导出 PDF',
-      hint: '矢量排版，文字可选中；不可用时自动改图片版',
+      group: 'export',
+      label: t('commands.pdf'),
+      hint: t('commands.pdfHint'),
       keywords: '导出 pdf 矢量 打印',
       badge: () => '.pdf',
       available: context => context.hasNote,
@@ -161,9 +163,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'export.pdfImage',
-      group: '导出',
-      label: '导出 PDF（图片版）',
-      hint: '整篇渲染成图片，全平台结果一致',
+      group: 'export',
+      label: t('commands.pdfImage'),
+      hint: t('commands.pdfImageHint'),
       keywords: '导出 pdf 图片 光栅',
       badge: () => '.pdf',
       available: context => context.hasNote,
@@ -171,9 +173,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'export.markdown',
-      group: '导出',
-      label: '导出 Markdown',
-      hint: '原始 .md，跨工具通用',
+      group: 'export',
+      label: t('commands.markdown'),
+      hint: t('commands.markdownHint'),
       keywords: '导出 markdown md 源文件',
       badge: () => '.md',
       available: context => context.hasNote,
@@ -181,9 +183,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
     },
     {
       id: 'export.image',
-      group: '导出',
-      label: '导出图片长图',
-      hint: '整篇渲染成一张 PNG',
+      group: 'export',
+      label: t('commands.image'),
+      hint: t('commands.imageHint'),
       keywords: '导出 图片 png 长图',
       badge: () => '.png',
       available: context => context.hasNote,
@@ -218,14 +220,14 @@ export function filterCommands(commands: EditorCommand[], query: string): Editor
 }
 
 export function paletteModeLabel(context: CommandContext): string {
-  if (context.mode === 'preview') return '预览 · 只读'
-  if (context.mode === 'source') return '源码模式'
-  return '所见即所得'
+  if (context.mode === 'preview') return t('commands.modePreviewReadonly')
+  if (context.mode === 'source') return t('commands.modeSource')
+  return t('commands.modeWysiwyg')
 }
 
 /** Bottom toast copy shown after a mode switch; mirrors the v3 design wording. */
 export function modeSwitchLabel(mode: WorkspaceMode): string {
-  if (mode === 'preview') return '预览模式'
-  if (mode === 'source') return '源码模式'
-  return '所见即所得'
+  if (mode === 'preview') return t('commands.modePreview')
+  if (mode === 'source') return t('commands.modeSource')
+  return t('commands.modeWysiwyg')
 }

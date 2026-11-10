@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
@@ -226,7 +227,7 @@ public class SysPostServiceImpl implements ISysPostService, PostService {
         List<SysPost> list = postMapper.selectByIds(postIds);
         for (SysPost post : list) {
             if (this.countUserPostById(post.getPostId()) > 0) {
-                throw new ServiceException("{}已分配，不能删除!", post.getPostName());
+                throw new ServiceException(MessageUtils.message("post.delete.assigned", post.getPostName()));
             }
         }
         return postMapper.deleteByIds(postIds);

@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.servlet.http.HttpServletResponse;
@@ -103,7 +104,7 @@ public class SysDictDataController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysDictDataBo dict) {
         if (!dictDataService.checkDictDataUnique(dict)) {
-            return R.fail("新增字典数据'" + dict.getDictValue() + "'失败，字典键值已存在");
+            return R.fail(MessageUtils.message("dict.data.add.exists", dict.getDictValue()));
         }
         dictDataService.insertDictData(dict);
         return R.ok();
@@ -121,7 +122,7 @@ public class SysDictDataController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysDictDataBo dict) {
         if (!dictDataService.checkDictDataUnique(dict)) {
-            return R.fail("修改字典数据'" + dict.getDictValue() + "'失败，字典键值已存在");
+            return R.fail(MessageUtils.message("dict.data.edit.exists", dict.getDictValue()));
         }
         dictDataService.updateDictData(dict);
         return R.ok();

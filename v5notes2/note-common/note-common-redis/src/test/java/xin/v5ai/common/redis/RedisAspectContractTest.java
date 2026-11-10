@@ -80,6 +80,9 @@ class RedisAspectContractTest {
         context.getBeanFactory().registerSingleton("redissonClient", redissonClient);
         context.getBeanFactory().registerSingleton("cacheManager", cacheManager);
         context.getBeanFactory().registerSingleton("jsonMapper", JsonMapper.builder().build());
+        org.springframework.context.i18n.LocaleContextHolder.setLocale(java.util.Locale.getDefault());
+        context.getStaticMessageSource().addMessage("repeat.interval.invalid", java.util.Locale.getDefault(),
+            "重复提交间隔时间不能小于'1'秒");
         context.refresh();
         new SpringUtil().setApplicationContext(context);
     }

@@ -1,5 +1,6 @@
 package xin.v5ai.common.core.utils;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.date.BetweenFormatter;
 import cn.hutool.core.date.DateUnit;
@@ -77,7 +78,7 @@ public class DateUtils extends DateUtil {
 
         // 校验结束时间不能早于开始时间
         if (end.before(start)) {
-            throw new ServiceException("结束日期不能早于开始日期");
+            throw new ServiceException(MessageUtils.message("date.end.before.start"));
         }
 
         long diffMillis = end.getTime() - start.getTime();

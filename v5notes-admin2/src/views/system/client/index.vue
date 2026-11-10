@@ -4,34 +4,34 @@
       <el-card shadow="hover" class="search-panel" :class="{ 'is-collapsed': !showSearch }">
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
-            <div><h3>筛选条件</h3></div>
+            <div><h3>{{ $t('common.filter') }}</h3></div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="85px" class="query-form">
-          <el-form-item label="客户端key" prop="clientKey">
+          <el-form-item :label="$t('system.client.clientKey')" prop="clientKey">
             <el-input
               v-model="queryParams.clientKey"
-              placeholder="请输入客户端key"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.client.clientKey') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="客户端秘钥" prop="clientSecret">
+          <el-form-item :label="$t('system.client.clientSecret')" prop="clientSecret">
             <el-input
               v-model="queryParams.clientSecret"
-              placeholder="请输入客户端秘钥"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.client.clientSecret') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="状态" prop="status">
-            <el-select v-model="queryParams.status" placeholder="状态" clearable>
+          <el-form-item :label="$t('common.status')" prop="status">
+            <el-select v-model="queryParams.status" :placeholder="$t('common.status')" clearable>
               <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -41,12 +41,12 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <h3>客户端列表</h3>
-            <p>共 {{ total }} 个客户端，维护 OAuth 客户端标识、授权类型、白名单与 Token 超时策略。</p>
+            <h3>{{ $t('system.client.listTitle') }}</h3>
+            <p>{{ $t('system.client.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
             <el-button v-hasPermi="['system:client:add']" type="primary" plain icon="Plus" @click="handleAdd">
-              新增
+              {{ $t('common.add') }}
             </el-button>
             <el-button
               v-hasPermi="['system:client:edit']"
@@ -56,7 +56,7 @@
               :disabled="single"
               @click="handleUpdate()"
             >
-              修改
+              {{ $t('common.edit') }}
             </el-button>
             <el-button
               v-hasPermi="['system:client:remove']"
@@ -66,10 +66,10 @@
               :disabled="multiple"
               @click="handleDelete()"
             >
-              删除
+              {{ $t('common.delete') }}
             </el-button>
             <el-button v-hasPermi="['system:client:export']" type="warning" plain icon="Download" @click="handleExport">
-              导出
+              {{ $t('common.export') }}
             </el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList"></right-toolbar>
           </div>
@@ -85,20 +85,20 @@
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column v-if="false" label="id" align="center" prop="id" />
-        <el-table-column label="客户端id" align="center" prop="clientId" />
-        <el-table-column label="客户端key" align="center" prop="clientKey" />
-        <el-table-column label="客户端秘钥" align="center" prop="clientSecret" />
-        <el-table-column label="授权类型" align="center">
+        <el-table-column :label="$t('system.client.clientId')" align="center" prop="clientId" />
+        <el-table-column :label="$t('system.client.clientKey')" align="center" prop="clientKey" />
+        <el-table-column :label="$t('system.client.clientSecret')" align="center" prop="clientSecret" />
+        <el-table-column :label="$t('system.client.grantType')" align="center">
           <template #default="scope">
             <dict-tag class="grant-type-tag" :options="sys_grant_type" :value="scope.row.grantTypeList" />
           </template>
         </el-table-column>
-        <el-table-column label="设备类型" align="center">
+        <el-table-column :label="$t('system.client.deviceType')" align="center">
           <template #default="scope">
             <dict-tag :options="sys_device_type" :value="scope.row.deviceType" />
           </template>
         </el-table-column>
-        <el-table-column label="白名单路径" align="center">
+        <el-table-column :label="$t('system.client.pathWhitelist')" align="center">
           <template #default="scope">
             <div class="rule-tag-list">
               <el-tag
@@ -110,12 +110,12 @@
                 {{ path }}
               </el-tag>
               <span v-if="!getRuleList(scope.row.accessPathList, scope.row.accessPath).length" class="rule-empty">
-                全部路径
+                {{ $t('system.client.allPaths') }}
               </span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="白名单IP" align="center">
+        <el-table-column :label="$t('system.client.ipWhitelistCol')" align="center">
           <template #default="scope">
             <div class="rule-tag-list">
               <el-tag
@@ -128,14 +128,14 @@
                 {{ ip }}
               </el-tag>
               <span v-if="!getRuleList(scope.row.ipWhitelistList, scope.row.ipWhitelist).length" class="rule-empty">
-                全部IP
+                {{ $t('system.client.allIps') }}
               </span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Token活跃超时时间" align="center" prop="activeTimeout" />
-        <el-table-column label="Token固定超时时间" align="center" prop="timeout" />
-        <el-table-column key="status" label="状态" align="center">
+        <el-table-column :label="$t('system.client.activeTimeout')" align="center" prop="activeTimeout" />
+        <el-table-column :label="$t('system.client.fixedTimeout')" align="center" prop="timeout" />
+        <el-table-column key="status" :label="$t('common.status')" align="center">
           <template #default="scope">
             <el-switch
               v-model="scope.row.status"
@@ -145,9 +145,9 @@
             ></el-switch>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="修改" placement="top">
+            <el-tooltip :content="$t('common.edit')" placement="top">
               <el-button
                 v-hasPermi="['system:client:edit']"
                 link
@@ -156,7 +156,7 @@
                 @click="handleUpdate(scope.row)"
               ></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button
                 v-hasPermi="['system:client:remove']"
                 link
@@ -169,7 +169,7 @@
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -185,19 +185,19 @@
     <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      eyebrow="客户端配置"
-      subtitle="配置客户端的密钥、授权类型、设备类型与访问白名单"
+      :eyebrow="$t('system.client.eyebrow')"
+      :subtitle="$t('system.client.subtitle')"
       size="680px"
-      submit-text="确定"
+      :submit-text="$t('common.confirm')"
       :submitting="buttonLoading"
-      hint="带 * 为必填项，保存后立即生效"
+      :hint="$t('system.client.requiredHint')"
       @submit="submitForm"
       @closed="cancel"
     >
       <template #hero>
         <div class="drawer-hero">
           <div class="drawer-hero__top">
-            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 客户端</span>
+            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />{{ $t('system.client.brand') }}</span>
             <span class="drawer-hero__divider">·</span>
             <span class="drawer-hero__action">{{ dialog.title }}</span>
           </div>
@@ -209,7 +209,7 @@
                 <span class="drawer-hero__tag">{{ deviceTypeLabel }}</span>
                 <span>{{ statusLabel }}</span>
                 <span v-if="accessPathText">{{ accessPathText }}</span>
-                <span v-else>全部路径</span>
+                <span v-else>{{ $t('system.client.allPaths') }}</span>
               </div>
             </div>
           </div>
@@ -218,21 +218,21 @@
 
       <el-form ref="clientFormRef" :model="form" :rules="rules" label-position="top" class="client-form">
         <section class="form-section">
-          <h4>基本信息</h4>
+          <h4>{{ $t('common.basicInfo') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
-              <el-form-item label="客户端key" prop="clientKey">
-                <el-input v-model="form.clientKey" :disabled="form.id != null" placeholder="请输入客户端key" />
+              <el-form-item :label="$t('system.client.clientKey')" prop="clientKey">
+                <el-input v-model="form.clientKey" :disabled="form.id != null" :placeholder="$t('common.pleaseInput', { label: $t('system.client.clientKey') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="客户端秘钥" prop="clientSecret">
-                <el-input v-model="form.clientSecret" :disabled="form.id != null" placeholder="请输入客户端秘钥" />
+              <el-form-item :label="$t('system.client.clientSecret')" prop="clientSecret">
+                <el-input v-model="form.clientSecret" :disabled="form.id != null" :placeholder="$t('common.pleaseInput', { label: $t('system.client.clientSecret') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="授权类型" prop="grantTypeList">
-                <el-select v-model="form.grantTypeList" multiple placeholder="请输入授权类型">
+              <el-form-item :label="$t('system.client.grantType')" prop="grantTypeList">
+                <el-select v-model="form.grantTypeList" multiple :placeholder="$t('common.pleaseInput', { label: $t('system.client.grantType') })">
                   <el-option
                     v-for="dict in sys_grant_type"
                     :key="dict.value"
@@ -243,8 +243,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="设备类型" prop="deviceType">
-                <el-select v-model="form.deviceType" placeholder="请输入设备类型">
+              <el-form-item :label="$t('system.client.deviceType')" prop="deviceType">
+                <el-select v-model="form.deviceType" :placeholder="$t('common.pleaseInput', { label: $t('system.client.deviceType') })">
                   <el-option
                     v-for="dict in sys_device_type"
                     :key="dict.value"
@@ -258,19 +258,19 @@
         </section>
 
         <section class="form-section">
-          <h4>访问控制</h4>
+          <h4>{{ $t('system.client.accessSection') }}</h4>
           <el-row :gutter="18">
             <el-col :span="24">
               <el-form-item prop="accessPath">
                 <template #label>
                   <span>
-                    <el-tooltip content="多个路径可按换行、逗号或分号分隔；为空表示允许访问所有接口路径" placement="top">
+                    <el-tooltip :content="$t('system.client.pathTip')" placement="top">
                       <el-icon><question-filled /></el-icon>
                     </el-tooltip>
-                    允许访问路径
+                    {{ $t('system.client.allowPath') }}
                   </span>
                 </template>
-                <el-input v-model="form.accessPath" type="textarea" :rows="4" placeholder="示例：/app/**" />
+                <el-input v-model="form.accessPath" type="textarea" :rows="4" :placeholder="$t('system.client.pathExample')" />
               </el-form-item>
             </el-col>
             <el-col :span="24">
@@ -278,19 +278,19 @@
                 <template #label>
                   <span>
                     <el-tooltip
-                      content="支持精确IP、通配符和CIDR；多个规则可按换行、逗号或分号分隔；为空表示允许所有IP"
+                      :content="$t('system.client.ipTip')"
                       placement="top"
                     >
                       <el-icon><question-filled /></el-icon>
                     </el-tooltip>
-                    IP白名单
+                    {{ $t('system.client.ipWhitelist') }}
                   </span>
                 </template>
                 <el-input
                   v-model="form.ipWhitelist"
                   type="textarea"
                   :rows="4"
-                  placeholder="示例：127.0.0.1&#10;192.168.*.*&#10;10.0.0.0/24"
+                  :placeholder="$t('system.client.ipExample')"
                 />
               </el-form-item>
             </el-col>
@@ -298,42 +298,42 @@
         </section>
 
         <section class="form-section">
-          <h4>超时配置</h4>
+          <h4>{{ $t('system.client.timeoutSection') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
               <el-form-item prop="activeTimeout">
                 <template #label>
                   <span>
-                    <el-tooltip content="指定时间无操作则过期（单位：秒），默认30分钟（1800秒）" placement="top">
+                    <el-tooltip :content="$t('system.client.activeTip')" placement="top">
                       <el-icon><question-filled /></el-icon>
                     </el-tooltip>
-                    Token活跃超时时间
+                    {{ $t('system.client.activeTimeout') }}
                   </span>
                 </template>
-                <el-input v-model="form.activeTimeout" placeholder="请输入Token活跃超时时间" />
+                <el-input v-model="form.activeTimeout" :placeholder="$t('common.pleaseInput', { label: $t('system.client.activeTimeout') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item prop="timeout">
                 <template #label>
                   <span>
-                    <el-tooltip content="指定时间必定过期（单位：秒），默认七天（604800秒）" placement="top">
+                    <el-tooltip :content="$t('system.client.fixedTip')" placement="top">
                       <el-icon><question-filled /></el-icon>
                     </el-tooltip>
-                    Token固定超时时间
+                    {{ $t('system.client.fixedTimeout') }}
                   </span>
                 </template>
-                <el-input v-model="form.timeout" placeholder="请输入Token固定超时时间" />
+                <el-input v-model="form.timeout" :placeholder="$t('common.pleaseInput', { label: $t('system.client.fixedTimeout') })" />
               </el-form-item>
             </el-col>
           </el-row>
         </section>
 
         <section class="form-section">
-          <h4>状态</h4>
+          <h4>{{ $t('common.status') }}</h4>
           <el-row :gutter="18">
             <el-col :span="24">
-              <el-form-item label="状态">
+              <el-form-item :label="$t('common.status')">
                 <el-radio-group v-model="form.status">
                   <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">
                     {{ dict.label }}
@@ -362,6 +362,9 @@ import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
 const { sys_grant_type } = toRefs<any>(useDict('sys_grant_type'));
@@ -408,17 +411,18 @@ const data = reactive<PageData<ClientForm, ClientQuery>>({
     timeout: undefined,
     status: undefined
   },
-  rules: {
-    id: [{ required: true, message: 'id不能为空', trigger: 'blur' }],
-    clientId: [{ required: true, message: '客户端id不能为空', trigger: 'blur' }],
-    clientKey: [{ required: true, message: '客户端key不能为空', trigger: 'blur' }],
-    clientSecret: [{ required: true, message: '客户端秘钥不能为空', trigger: 'blur' }],
-    grantTypeList: [{ required: true, message: '授权类型不能为空', trigger: 'change' }],
-    deviceType: [{ required: true, message: '设备类型不能为空', trigger: 'change' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+const rules = computed<ElFormRules>(() => ({
+  id: [{ required: true, message: t('system.client.required', { label: t('system.client.idLabel') }), trigger: 'blur' }],
+  clientId: [{ required: true, message: t('system.client.required', { label: t('system.client.clientId') }), trigger: 'blur' }],
+  clientKey: [{ required: true, message: t('system.client.required', { label: t('system.client.clientKey') }), trigger: 'blur' }],
+  clientSecret: [{ required: true, message: t('system.client.required', { label: t('system.client.clientSecret') }), trigger: 'blur' }],
+  grantTypeList: [{ required: true, message: t('system.client.required', { label: t('system.client.grantType') }), trigger: 'change' }],
+  deviceType: [{ required: true, message: t('system.client.required', { label: t('system.client.deviceType') }), trigger: 'change' }]
+}));
 const { dialog, resetForm, openDialog, showDialog, closeDialog } = useFormDialog({
   form,
   formRef: clientFormRef,
@@ -426,15 +430,15 @@ const { dialog, resetForm, openDialog, showDialog, closeDialog } = useFormDialog
 });
 
 /** 抽屉头部：客户端主名称字段为 clientKey */
-const clientName = computed(() => form.value.clientKey || '未命名客户端');
-const clientInitial = computed(() => (form.value.clientKey?.trim() || '客').slice(0, 1));
+const clientName = computed(() => form.value.clientKey || t('system.client.unnamed'));
+const clientInitial = computed(() => (form.value.clientKey?.trim() || t('system.client.initial')).slice(0, 1));
 const deviceTypeLabel = computed(() => {
   const dict = sys_device_type.value?.find((d: any) => d.value === form.value.deviceType);
-  return dict?.label || '未设置设备类型';
+  return dict?.label || t('system.client.noDevice');
 });
 const statusLabel = computed(() => {
   const dict = sys_normal_disable.value?.find((d: any) => d.value === form.value.status);
-  return dict?.label || '正常';
+  return dict?.label || t('common.normal');
 });
 const accessPathText = computed(() => form.value.accessPath?.trim() || '');
 
@@ -483,7 +487,7 @@ const handleQuery = () => {
 
 /** 新增按钮操作 */
 const handleAdd = () => {
-  openDialog('添加客户端管理');
+  openDialog(t('system.client.addTitle'));
 };
 
 /** 修改按钮操作 */
@@ -492,7 +496,7 @@ const handleUpdate = async (row?: Partial<ClientVO>) => {
   const clientId = row?.id || ids.value[0];
   const res = await getClient(clientId);
   Object.assign(form.value, res.data);
-  showDialog('修改客户端管理');
+  showDialog(t('system.client.editTitle'));
 };
 
 /** 提交按钮 */
@@ -506,7 +510,7 @@ const submitForm = () => {
           await addClient(form.value);
         }
       });
-      modal.msgSuccess('修改成功');
+      modal.msgSuccess(t('common.editSuccess'));
       closeDialog();
       await getList();
     }
@@ -516,9 +520,9 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: Partial<ClientVO>) => {
   const clientIds = row?.id || ids.value;
-  await modal.confirm('是否确认删除客户端管理编号为"' + clientIds + '"的数据项？');
+  await modal.confirm(t('system.client.confirmDelete', { id: clientIds }));
   await delClient(clientIds);
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
   await getList();
 };
 
@@ -535,11 +539,11 @@ const handleExport = () => {
 
 /** 状态修改  */
 const handleStatusChange = async (row: Partial<ClientVO>) => {
-  const text = row.status === '0' ? '启用' : '停用';
+  const text = row.status === '0' ? t('common.enable') : t('common.disable');
   try {
-    await modal.confirm('确认要"' + text + '"吗?');
+    await modal.confirm(t('system.client.confirmStatus', { action: text }));
     await changeStatus(row.clientId, row.status);
-    modal.msgSuccess(text + '成功');
+    modal.msgSuccess(t('system.client.statusSuccess', { action: text }));
   } catch (err) {
     row.status = row.status === '0' ? '1' : '0';
   }

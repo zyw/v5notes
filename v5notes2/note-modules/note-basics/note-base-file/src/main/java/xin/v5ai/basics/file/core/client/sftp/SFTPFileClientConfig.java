@@ -17,34 +17,34 @@ public class SFTPFileClientConfig implements FileClientConfig {
     /**
      * 基础路径
      */
-    @NotEmpty(message = "基础路径不能为空")
+    @NotEmpty(message = "{file.base.path.not.blank}")
     private String basePath;
 
     /**
      * 自定义域名
      */
-    @NotEmpty(message = "domain 不能为空")
-    @URL(message = "domain 必须是 URL 格式")
+    @NotEmpty(message = "{file.domain.not.blank}")
+    @URL(message = "{file.domain.invalid}")
     private String domain;
 
     /**
      * 主机地址
      */
-    @NotEmpty(message = "host 不能为空")
+    @NotEmpty(message = "{file.host.not.blank}")
     private String host;
     /**
      * 主机端口
      */
-    @NotNull(message = "port 不能为空")
+    @NotNull(message = "{file.port.not.null}")
     private Integer port;
     /**
      * 用户名
      */
-    @NotEmpty(message = "用户名不能为空")
+    @NotEmpty(message = "{file.username.not.blank}")
     private String username;
     /**
      * 密码
      */
-    @NotEmpty(message = "密码不能为空")
+    @NotEmpty(message = "{file.password.not.blank}")
     private String password;
 }

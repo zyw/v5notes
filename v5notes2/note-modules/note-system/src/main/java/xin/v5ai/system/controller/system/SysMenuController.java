@@ -1,5 +1,6 @@
 package xin.v5ai.system.controller.system;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
@@ -120,11 +121,11 @@ public class SysMenuController extends BaseController {
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysMenuBo menu) {
         if (!menuService.checkMenuNameUnique(menu)) {
-            return R.fail("新增菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
+            return R.fail(MessageUtils.message("menu.add.name.exists", menu.getMenuName()));
         } else if (SystemConstants.YES.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
-            return R.fail("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
+            return R.fail(MessageUtils.message("menu.add.url", menu.getMenuName()));
         } else if (!menuService.checkRouteConfigUnique(menu)) {
-            return R.fail("新增菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
+            return R.fail(MessageUtils.message("menu.add.route.exists", menu.getMenuName()));
         }
         return toAjax(menuService.insertMenu(menu));
     }
@@ -142,13 +143,13 @@ public class SysMenuController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysMenuBo menu) {
         if (!menuService.checkMenuNameUnique(menu)) {
-            return R.fail("修改菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
+            return R.fail(MessageUtils.message("menu.edit.name.exists", menu.getMenuName()));
         } else if (SystemConstants.YES.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
-            return R.fail("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
+            return R.fail(MessageUtils.message("menu.edit.url", menu.getMenuName()));
         } else if (menu.getMenuId().equals(menu.getParentId())) {
-            return R.fail("修改菜单'" + menu.getMenuName() + "'失败，上级菜单不能选择自己");
+            return R.fail(MessageUtils.message("menu.edit.self", menu.getMenuName()));
         } else if (!menuService.checkRouteConfigUnique(menu)) {
-            return R.fail("修改菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
+            return R.fail(MessageUtils.message("menu.edit.route.exists", menu.getMenuName()));
         }
         return toAjax(menuService.updateMenu(menu));
     }
@@ -165,10 +166,10 @@ public class SysMenuController extends BaseController {
     @DeleteMapping("/{menuId}")
     public R<Void> remove(@PathVariable("menuId") Long menuId) {
         if (menuService.hasChildByMenuId(menuId)) {
-            return R.warn("存在子菜单,不允许删除");
+            return R.warn(MessageUtils.message("menu.delete.children"));
         }
         if (menuService.checkMenuExistRole(menuId)) {
-            return R.warn("菜单已分配,不允许删除");
+            return R.warn(MessageUtils.message("menu.delete.assigned"));
         }
         return toAjax(menuService.deleteMenuById(menuId));
     }
@@ -195,7 +196,7 @@ public class SysMenuController extends BaseController {
     public R<Void> remove(@PathVariable("menuIds") Long[] menuIds) {
         List<Long> menuIdList = List.of(menuIds);
         if (menuService.hasChildByMenuId(menuIdList)) {
-            return R.warn("存在子菜单,不允许删除");
+            return R.warn(MessageUtils.message("menu.delete.children"));
         }
         menuService.deleteMenuById(menuIdList);
         return R.ok();

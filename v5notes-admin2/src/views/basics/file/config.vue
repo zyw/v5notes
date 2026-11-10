@@ -4,28 +4,28 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-            <el-form-item label="配置名" prop="name">
-              <el-input v-model="queryParams.name" placeholder="请输入配置名" clearable style="width: 240px" @keyup.enter="handleQuery" />
+            <el-form-item :label="$t('file.config.name')" prop="name">
+              <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('file.config.name') })" clearable style="width: 240px" @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="存储器" prop="storage">
-              <el-select v-model="queryParams.storage" placeholder="请输入存储器" style="width: 240px" @change="handleQuery">
+            <el-form-item :label="$t('file.config.storage')" prop="storage">
+              <el-select v-model="queryParams.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 240px" @change="handleQuery">
                 <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
               </el-select>
             </el-form-item>
-            <el-form-item label="创建时间">
+            <el-form-item :label="$t('common.createTime')">
               <el-date-picker
                 v-model="queryParams.createTime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
                 type="daterange"
                 range-separator="-"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
+                :start-placeholder="$t('file.config.startTime')"
+                :end-placeholder="$t('file.config.endTime')"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+              <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+              <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -35,18 +35,18 @@
     <el-card shadow="hover" class="table-panel">
       <template #header>
         <div class="table-heading file-table-heading">
-          <h3>存储配置列表</h3>
-          <p>共 {{ total }} 个存储配置，管理本地 / FTP / SFTP / S3 等存储的连接参数。</p>
+          <h3>{{ $t('file.config.title') }}</h3>
+          <p>{{ $t('file.config.summary', { total }) }}</p>
         </div>
         <el-row :gutter="10" class="mb8 file-table-toolbar">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:fileConfig:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
+            <el-button v-hasPermi="['basics:fileConfig:add']" type="primary" plain icon="Plus" @click="handleAdd">{{ $t('common.add') }}</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:fileConfig:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
+            <el-button v-hasPermi="['basics:fileConfig:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">{{ $t('common.edit') }}</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['basics:fileConfig:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
+            <el-button v-hasPermi="['basics:fileConfig:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">{{ $t('common.delete') }}</el-button>
           </el-col>
           <right-toolbar v-model:show-search="showSearch" @query-table="getList" />
         </el-row>
@@ -59,31 +59,31 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="序号" type="index" width="50" :index="hIndex" />
-        <el-table-column label="配置名" align="center" prop="name" />
-        <el-table-column label="存储器" align="center" prop="storage">
+        <el-table-column :label="$t('common.serial')" type="index" width="50" :index="hIndex" />
+        <el-table-column :label="$t('file.config.name')" align="center" prop="name" />
+        <el-table-column :label="$t('file.config.storage')" align="center" prop="storage">
           <template #default="scope">
             <el-tag type="primary">{{ storageFormatter(scope.row) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="主配置" align="center" prop="master">
+        <el-table-column :label="$t('common.remark')" align="center" prop="remark" />
+        <el-table-column :label="$t('file.config.master')" align="center" prop="master">
           <template #default="scope">
-            <el-tag round :type="scope.row.master ? 'success' : 'info'" disable-transitions>{{ scope.row.master ? '是' : '否' }}</el-tag>
+            <el-tag round :type="scope.row.master ? 'success' : 'info'" disable-transitions>{{ scope.row.master ? $t('common.yes') : $t('common.no') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="160" />
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="设为主配置" placement="top">
+            <el-tooltip :content="$t('file.config.setMaster')" placement="top">
               <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" @click="handleMaster(scope.row as FileConfigVO)">
                 <svg-icon icon-class="master" />
               </el-button>
             </el-tooltip>
-            <el-tooltip content="修改" placement="top">
+            <el-tooltip :content="$t('common.edit')" placement="top">
               <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row as FileConfigVO)"></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button v-hasPermi="['basics:fileConfig:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row as FileConfigVO)"></el-button>
             </el-tooltip>
           </template>
@@ -97,11 +97,11 @@
     <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      eyebrow="文件配置"
-      subtitle="配置文件存储的存储器与连接参数"
+      :eyebrow="$t('file.config.eyebrow')"
+      :subtitle="$t('file.config.subtitle')"
       size="680px"
-      submit-text="确定"
-      hint="带 * 为必填项，保存后立即生效"
+      :submit-text="$t('common.confirm')"
+      :hint="$t('file.config.hint')"
       :submitting="buttonLoading"
       @submit="submitForm"
       @closed="cancel"
@@ -109,17 +109,17 @@
       <template #hero>
         <div class="file-config-hero">
           <div class="file-config-hero__top">
-            <span class="file-config-hero__brand"><img :src="logoUrl" alt="" />V5Notes 文件配置</span>
+            <span class="file-config-hero__brand"><img :src="logoUrl" alt="" />{{ $t('file.config.brand') }}</span>
             <span class="file-config-hero__divider">·</span>
             <span class="file-config-hero__action">{{ dialog.title }}</span>
           </div>
           <div class="file-config-hero__profile">
-            <div class="file-config-hero__icon">{{ (form.name || '配').slice(0, 1) }}</div>
+            <div class="file-config-hero__icon">{{ (form.name || $t('file.config.fallbackIcon')).slice(0, 1) }}</div>
             <div>
-              <div class="file-config-hero__name">{{ form.name || '未命名配置' }}</div>
+              <div class="file-config-hero__name">{{ form.name || $t('file.config.unnamed') }}</div>
               <div class="file-config-hero__meta">
                 <span class="file-config-hero__tag">{{ storageLabel }}</span>
-                <span>{{ form.remark || '未设置备注' }}</span>
+                <span>{{ form.remark || $t('file.config.noRemark') }}</span>
               </div>
             </div>
           </div>
@@ -128,113 +128,113 @@
 
       <el-form ref="fileConfigFormRef" :model="form" :rules="rules" label-position="top" class="file-config-form">
         <section class="form-section">
-          <h4>基本信息</h4>
+          <h4>{{ $t('common.basicInfo') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
-              <el-form-item label="配置名" prop="name">
-                <el-input v-model="form.name" placeholder="请输入配置名" />
+              <el-form-item :label="$t('file.config.name')" prop="name">
+                <el-input v-model="form.name" :placeholder="$t('common.pleaseInput', { label: $t('file.config.name') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="存储器" prop="storage">
-                <el-select v-model="form.storage" placeholder="请输入存储器" style="width: 100%">
+              <el-form-item :label="$t('file.config.storage')" prop="storage">
+                <el-select v-model="form.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 100%">
                   <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="Number(item.dictValue)" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="备注" prop="remark">
-                <el-input v-model="form.remark" placeholder="请输入备注" />
+              <el-form-item :label="$t('common.remark')" prop="remark">
+                <el-input v-model="form.remark" :placeholder="$t('common.pleaseInput', { label: $t('common.remark') })" />
               </el-form-item>
             </el-col>
           </el-row>
         </section>
 
         <section class="form-section">
-          <h4>存储配置</h4>
+          <h4>{{ $t('file.config.storageSection') }}</h4>
           <el-row :gutter="18">
             <template v-if="form.storage == 100">
               <el-col :span="12">
-                <el-form-item label="基础路径" prop="config.basePath">
-                  <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
+                <el-form-item :label="$t('file.config.basePath')" prop="config.basePath">
+                  <el-input v-model="form.config.basePath" :placeholder="$t('common.pleaseInput', { label: $t('file.config.basePath') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="自定义域名" prop="config.domain">
-                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                <el-form-item :label="$t('file.config.domain')" prop="config.domain">
+                  <el-input v-model="form.config.domain" :placeholder="$t('common.pleaseInput', { label: $t('file.config.domain') })" />
                 </el-form-item>
               </el-col>
             </template>
             <template v-if="form.storage == 101">
               <el-col :span="24">
-                <el-form-item label="自定义域名" prop="config.domain">
-                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                <el-form-item :label="$t('file.config.domain')" prop="config.domain">
+                  <el-input v-model="form.config.domain" :placeholder="$t('common.pleaseInput', { label: $t('file.config.domain') })" />
                 </el-form-item>
               </el-col>
             </template>
             <template v-if="form.storage == 102 || form.storage == 103">
               <el-col :span="12">
-                <el-form-item label="基础路径" prop="config.basePath">
-                  <el-input v-model="form.config.basePath" placeholder="请输入基础路径" />
+                <el-form-item :label="$t('file.config.basePath')" prop="config.basePath">
+                  <el-input v-model="form.config.basePath" :placeholder="$t('common.pleaseInput', { label: $t('file.config.basePath') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="主机地址" prop="config.host">
-                  <el-input v-model="form.config.host" placeholder="请输入主机地址" />
+                <el-form-item :label="$t('file.config.host')" prop="config.host">
+                  <el-input v-model="form.config.host" :placeholder="$t('common.pleaseInput', { label: $t('file.config.host') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="主机端口" prop="config.port">
-                  <el-input-number v-model="form.config.port" :min="1" :max="65535" placeholder="请输入主机端口" />
+                <el-form-item :label="$t('file.config.port')" prop="config.port">
+                  <el-input-number v-model="form.config.port" :min="1" :max="65535" :placeholder="$t('common.pleaseInput', { label: $t('file.config.port') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="用户名" prop="config.username">
-                  <el-input v-model="form.config.username" placeholder="请输入用户名" />
+                <el-form-item :label="$t('file.config.username')" prop="config.username">
+                  <el-input v-model="form.config.username" :placeholder="$t('common.pleaseInput', { label: $t('file.config.username') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="密码" prop="config.password">
-                  <el-input v-model="form.config.password" placeholder="请输入密码" />
+                <el-form-item :label="$t('file.config.password')" prop="config.password">
+                  <el-input v-model="form.config.password" :placeholder="$t('common.pleaseInput', { label: $t('file.config.password') })" />
                 </el-form-item>
               </el-col>
               <el-col v-if="form.storage == 102" :span="12">
-                <el-form-item label="连接模式" prop="config.mode">
+                <el-form-item :label="$t('file.config.mode')" prop="config.mode">
                   <el-radio-group v-model="form.config.mode">
-                    <el-radio value="Active">主动模式</el-radio>
-                    <el-radio value="Passive">被动模式</el-radio>
+                    <el-radio value="Active">{{ $t('file.config.active') }}</el-radio>
+                    <el-radio value="Passive">{{ $t('file.config.passive') }}</el-radio>
                   </el-radio-group>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="自定义域名" prop="config.domain">
-                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                <el-form-item :label="$t('file.config.domain')" prop="config.domain">
+                  <el-input v-model="form.config.domain" :placeholder="$t('common.pleaseInput', { label: $t('file.config.domain') })" />
                 </el-form-item>
               </el-col>
             </template>
             <template v-if="form.storage == 104">
               <el-col :span="12">
-                <el-form-item label="节点地址" prop="config.endpoint">
-                  <el-input v-model="form.config.endpoint" placeholder="请输入节点地址" />
+                <el-form-item :label="$t('file.config.endpoint')" prop="config.endpoint">
+                  <el-input v-model="form.config.endpoint" :placeholder="$t('common.pleaseInput', { label: $t('file.config.endpoint') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="存储 bucket" prop="config.bucket">
-                  <el-input v-model="form.config.bucket" placeholder="请输入存储 bucket" />
+                <el-form-item :label="$t('file.config.bucket')" prop="config.bucket">
+                  <el-input v-model="form.config.bucket" :placeholder="$t('common.pleaseInput', { label: $t('file.config.bucket') })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="accessKey" prop="config.accessKey">
-                  <el-input v-model="form.config.accessKey" placeholder="请输入accessKey" />
+                  <el-input v-model="form.config.accessKey" :placeholder="$t('common.pleaseInput', { label: 'accessKey' })" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="accessSecret" prop="config.accessSecret">
-                  <el-input v-model="form.config.accessSecret" placeholder="请输入accessSecret" />
+                  <el-input v-model="form.config.accessSecret" :placeholder="$t('common.pleaseInput', { label: 'accessSecret' })" />
                 </el-form-item>
               </el-col>
               <el-col :span="24">
-                <el-form-item label="桶权限类型" prop="config.accessPolicy">
+                <el-form-item :label="$t('file.config.accessPolicy')" prop="config.accessPolicy">
                   <el-radio-group v-model="form.config.accessPolicy">
                     <el-radio value="0">private</el-radio>
                     <el-radio value="1">public</el-radio>
@@ -243,8 +243,8 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="自定义域名">
-                  <el-input v-model="form.config.domain" placeholder="请输入自定义域名" />
+                <el-form-item :label="$t('file.config.domain')">
+                  <el-input v-model="form.config.domain" :placeholder="$t('common.pleaseInput', { label: $t('file.config.domain') })" />
                 </el-form-item>
               </el-col>
             </template>
@@ -265,6 +265,9 @@ import modal from '@/plugins/modal';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
 import type { FormRules } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const fileConfigList = ref<FileConfigVO[]>([]);
 const buttonLoading = ref(false);
@@ -301,31 +304,32 @@ const data = reactive<PageData<FileConfigForm, FileConfigQuery>>({
     storage: undefined,
     createTime: undefined
   },
-  rules: {
-    name: [{ required: true, message: '配置名不能为空', trigger: 'blur' }],
-    storage: [{ required: true, message: '存储器不能为空', trigger: 'blur' }],
-    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }],
-    config: {
-      basePath: [{ required: true, message: '基础路径不能为空', trigger: 'blur' }],
-      host: [{ required: true, message: '主机地址不能为空', trigger: 'blur' }],
-      port: [{ required: true, message: '主机端口不能为空', trigger: 'blur' }],
-      username: [{ required: true, message: '用户名不能为空', trigger: 'blur' }],
-      password: [{ required: true, message: '密码不能为空', trigger: 'blur' }],
-      mode: [{ required: true, message: '连接模式不能为空', trigger: 'change' }],
-      endpoint: [{ required: true, message: '节点地址不能为空', trigger: 'blur' }],
-      bucket: [{ required: true, message: '存储 bucket 不能为空', trigger: 'blur' }],
-      accessKey: [{ required: true, message: 'accessKey 不能为空', trigger: 'blur' }],
-      accessSecret: [{ required: true, message: 'accessSecret 不能为空', trigger: 'blur' }],
-      domain: [{ required: true, message: '自定义域名不能为空', trigger: 'blur' }]
-    } as FormRules
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+const rules = computed<ElFormRules>(() => ({
+  name: [{ required: true, message: t('file.config.nameRequired'), trigger: 'blur' }],
+  storage: [{ required: true, message: t('file.config.storageRequired'), trigger: 'blur' }],
+  remark: [{ required: true, message: t('file.config.remarkRequired'), trigger: 'blur' }],
+  config: {
+    basePath: [{ required: true, message: t('file.config.basePathRequired'), trigger: 'blur' }],
+    host: [{ required: true, message: t('file.config.hostRequired'), trigger: 'blur' }],
+    port: [{ required: true, message: t('file.config.portRequired'), trigger: 'blur' }],
+    username: [{ required: true, message: t('file.config.usernameRequired'), trigger: 'blur' }],
+    password: [{ required: true, message: t('file.config.passwordRequired'), trigger: 'blur' }],
+    mode: [{ required: true, message: t('file.config.modeRequired'), trigger: 'change' }],
+    endpoint: [{ required: true, message: t('file.config.endpointRequired'), trigger: 'blur' }],
+    bucket: [{ required: true, message: t('file.config.bucketRequired'), trigger: 'blur' }],
+    accessKey: [{ required: true, message: t('file.config.accessKeyRequired'), trigger: 'blur' }],
+    accessSecret: [{ required: true, message: t('file.config.accessSecretRequired'), trigger: 'blur' }],
+    domain: [{ required: true, message: t('file.config.domainRequired'), trigger: 'blur' }]
+  } as FormRules
+}));
 
 const storageLabel = computed(() => {
   const dict = dicts.value.find((item: any) => Number(item.dictValue) === form.value.storage);
-  return dict?.dictLabel || '未选择';
+  return dict?.dictLabel || t('file.config.notSelected');
 });
 
 const hIndex = (index: number) => {
@@ -381,7 +385,7 @@ const handleSelectionChange = (selection: FileConfigVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = '添加文件配置';
+  dialog.title = t('file.config.addTitle');
 };
 
 /** 修改按钮操作 */
@@ -391,7 +395,7 @@ const handleUpdate = async (row?: FileConfigVO) => {
   const res = await getFileConfig(configId);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = '修改文件配置';
+  dialog.title = t('file.config.editTitle');
 };
 
 /** 提交按钮 */
@@ -404,7 +408,7 @@ const submitForm = () => {
       } else {
         await addFileConfig(form.value).finally(() => (buttonLoading.value = false));
       }
-      modal.msgSuccess('操作成功');
+      modal.msgSuccess(t('common.actionSuccess'));
       dialog.visible = false;
       await getList();
     }
@@ -416,13 +420,13 @@ const handleDelete = async (row?: FileConfigVO) => {
   const configIds = row?.id || ids.value;
   const configNames = row?.name || fileConfigList.value.filter((item) => ids.value.includes(item.id)).map((item) => item.name);
   const result = await modal
-    .confirm('是否确认删除文件配置编号为"' + configNames + '"的数据项？')
+    .confirm(t('file.config.confirmDelete', { name: String(configNames) }))
     .catch((err) => err)
     .finally(() => (loading.value = false));
 
   if (result === 'confirm') {
     await delFileConfig(configIds);
-    modal.msgSuccess('删除成功');
+    modal.msgSuccess(t('common.deleteSuccess'));
     await getList();
   }
 };
@@ -437,7 +441,7 @@ const getDictData = async () => {
 const handleMaster = async (row: FileConfigVO) => {
   const masterId = row.id;
   const res = await updateMasterConfig(masterId);
-  modal.msgSuccess(res.code === 200 ? '设置主配置成功' : '取消主配置成功');
+  modal.msgSuccess(res.code === 200 ? t('file.config.setMasterSuccess') : t('file.config.cancelMasterSuccess'));
   await getList();
 };
 

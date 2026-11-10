@@ -3,14 +3,14 @@
     <el-card shadow="hover" class="search-panel auth-role-info">
       <template #header>
         <div class="panel-heading">
-          <div><h3>基本信息</h3></div>
+          <div><h3>{{ $t('common.basicInfo') }}</h3></div>
         </div>
       </template>
       <el-form :model="form" :inline="true" class="query-form auth-role-form">
-        <el-form-item label="用户昵称" prop="nickName">
+        <el-form-item :label="$t('system.user.nickName')" prop="nickName">
           <el-input v-model="form.nickName" disabled />
         </el-form-item>
-        <el-form-item label="登录账号" prop="userName">
+        <el-form-item :label="$t('system.user.loginAccount')" prop="userName">
           <el-input v-model="form.userName" disabled />
         </el-form-item>
       </el-form>
@@ -20,11 +20,11 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <h3>角色信息</h3>
+            <h3>{{ $t('system.user.roleInfo') }}</h3>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" @click="submitForm()">提交</el-button>
-            <el-button @click="close()">返回</el-button>
+            <el-button type="primary" @click="submitForm()">{{ $t('common.submit') }}</el-button>
+            <el-button @click="close()">{{ $t('common.back') }}</el-button>
           </div>
         </div>
       </template>
@@ -38,7 +38,7 @@
         @row-click="clickRow"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column label="序号" width="55" type="index" align="center">
+        <el-table-column :label="$t('common.serial')" width="55" type="index" align="center">
           <template #default="scope">
             <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
           </template>
@@ -49,10 +49,10 @@
           :selectable="checkSelectable"
           width="55"
         ></el-table-column>
-        <el-table-column label="角色编号" align="center" prop="roleId" />
-        <el-table-column label="角色名称" align="center" prop="roleName" />
-        <el-table-column label="权限字符" align="center" prop="roleKey" />
-        <el-table-column label="创建时间" align="center" prop="createTime" width="180">
+        <el-table-column :label="$t('system.user.roleId')" align="center" prop="roleId" />
+        <el-table-column :label="$t('system.role.roleName')" align="center" prop="roleName" />
+        <el-table-column :label="$t('system.role.roleKey')" align="center" prop="roleKey" />
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.createTime) }}</span>
           </template>
@@ -71,6 +71,9 @@ import { UserForm } from '@/api/system/user/types';
 import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
 import { parseTime } from '@/utils/ruoyi';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const route = useRoute();
 
@@ -127,7 +130,7 @@ const submitForm = async () => {
   const userId = form.value.userId;
   const rIds = roleIds.value.join(',');
   await updateAuthRole({ userId: userId as string, roleIds: rIds });
-  modal.msgSuccess('授权成功');
+  modal.msgSuccess(t('system.user.authSuccess'));
   close();
 };
 

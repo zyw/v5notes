@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
@@ -298,7 +299,7 @@ public class SysDeptServiceImpl implements ISysDeptService, DeptService {
             return;
         }
         if (deptMapper.countDeptById(deptId) == 0) {
-            throw new ServiceException("没有权限访问部门数据！");
+            throw new ServiceException(MessageUtils.message("dept.data.forbidden"));
         }
     }
 
@@ -314,10 +315,10 @@ public class SysDeptServiceImpl implements ISysDeptService, DeptService {
         SysDept info = deptMapper.selectById(bo.getParentId());
         // 如果父节点不存在或不为正常状态,则不允许新增子节点
         if (ObjectUtil.isNull(info)) {
-            throw new ServiceException("父部门不存在");
+            throw new ServiceException(MessageUtils.message("dept.parent.missing"));
         }
         if (!SystemConstants.NORMAL.equals(info.getStatus())) {
-            throw new ServiceException("部门停用，不允许新增");
+            throw new ServiceException(MessageUtils.message("dept.disabled"));
         }
         SysDept dept = MapstructUtils.convert(bo, SysDept.class);
         dept.setAncestors(info.getAncestors() + StringUtils.SEPARATOR + dept.getParentId());
@@ -340,7 +341,7 @@ public class SysDeptServiceImpl implements ISysDeptService, DeptService {
         SysDept dept = MapstructUtils.convert(bo, SysDept.class);
         SysDept oldDept = deptMapper.selectById(dept.getDeptId());
         if (ObjectUtil.isNull(oldDept)) {
-            throw new ServiceException("部门不存在，无法修改");
+            throw new ServiceException(MessageUtils.message("dept.missing.edit"));
         }
         if (!oldDept.getParentId().equals(dept.getParentId())) {
             // 如果是新父部门 则校验是否具有新父部门权限 避免越权

@@ -1,5 +1,6 @@
 package xin.v5ai.common.core.enums;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.util.StrUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -144,15 +145,15 @@ public enum BusinessStatusEnum {
      */
     public static void checkStartStatus(String status) {
         if (WAITING.getStatus().equals(status)) {
-            throw new ServiceException("该单据已提交过申请,正在审批中！");
+            throw new ServiceException(MessageUtils.message("workflow.waiting"));
         } else if (FINISH.getStatus().equals(status)) {
-            throw new ServiceException("该单据已完成申请！");
+            throw new ServiceException(MessageUtils.message("workflow.finished"));
         } else if (INVALID.getStatus().equals(status)) {
-            throw new ServiceException("该单据已作废！");
+            throw new ServiceException(MessageUtils.message("workflow.invalid"));
         } else if (TERMINATION.getStatus().equals(status)) {
-            throw new ServiceException("该单据已终止！");
+            throw new ServiceException(MessageUtils.message("workflow.terminated"));
         } else if (StringUtils.isBlank(status)) {
-            throw new ServiceException("流程状态为空！");
+            throw new ServiceException(MessageUtils.message("workflow.empty"));
         }
     }
 
@@ -163,17 +164,17 @@ public enum BusinessStatusEnum {
      */
     public static void checkCancelStatus(String status) {
         if (CANCEL.getStatus().equals(status)) {
-            throw new ServiceException("该单据已撤销！");
+            throw new ServiceException(MessageUtils.message("workflow.cancelled"));
         } else if (FINISH.getStatus().equals(status)) {
-            throw new ServiceException("该单据已完成申请！");
+            throw new ServiceException(MessageUtils.message("workflow.finished"));
         } else if (INVALID.getStatus().equals(status)) {
-            throw new ServiceException("该单据已作废！");
+            throw new ServiceException(MessageUtils.message("workflow.invalid"));
         } else if (TERMINATION.getStatus().equals(status)) {
-            throw new ServiceException("该单据已终止！");
+            throw new ServiceException(MessageUtils.message("workflow.terminated"));
         } else if (BACK.getStatus().equals(status)) {
-            throw new ServiceException("该单据已退回！");
+            throw new ServiceException(MessageUtils.message("workflow.backed"));
         } else if (StringUtils.isBlank(status)) {
-            throw new ServiceException("流程状态为空！");
+            throw new ServiceException(MessageUtils.message("workflow.empty"));
         }
     }
 
@@ -184,17 +185,17 @@ public enum BusinessStatusEnum {
      */
     public static void checkBackStatus(String status) {
         if (BACK.getStatus().equals(status)) {
-            throw new ServiceException("该单据已退回！");
+            throw new ServiceException(MessageUtils.message("workflow.backed"));
         } else if (FINISH.getStatus().equals(status)) {
-            throw new ServiceException("该单据已完成申请！");
+            throw new ServiceException(MessageUtils.message("workflow.finished"));
         } else if (INVALID.getStatus().equals(status)) {
-            throw new ServiceException("该单据已作废！");
+            throw new ServiceException(MessageUtils.message("workflow.invalid"));
         } else if (TERMINATION.getStatus().equals(status)) {
-            throw new ServiceException("该单据已终止！");
+            throw new ServiceException(MessageUtils.message("workflow.terminated"));
         } else if (CANCEL.getStatus().equals(status)) {
-            throw new ServiceException("该单据已撤销！");
+            throw new ServiceException(MessageUtils.message("workflow.cancelled"));
         } else if (StringUtils.isBlank(status)) {
-            throw new ServiceException("流程状态为空！");
+            throw new ServiceException(MessageUtils.message("workflow.empty"));
         }
     }
 
@@ -205,13 +206,13 @@ public enum BusinessStatusEnum {
      */
     public static void checkInvalidStatus(String status) {
         if (FINISH.getStatus().equals(status)) {
-            throw new ServiceException("该单据已完成申请！");
+            throw new ServiceException(MessageUtils.message("workflow.finished"));
         } else if (INVALID.getStatus().equals(status)) {
-            throw new ServiceException("该单据已作废！");
+            throw new ServiceException(MessageUtils.message("workflow.invalid"));
         } else if (TERMINATION.getStatus().equals(status)) {
-            throw new ServiceException("该单据已终止！");
+            throw new ServiceException(MessageUtils.message("workflow.terminated"));
         } else if (StringUtils.isBlank(status)) {
-            throw new ServiceException("流程状态为空！");
+            throw new ServiceException(MessageUtils.message("workflow.empty"));
         }
     }
 

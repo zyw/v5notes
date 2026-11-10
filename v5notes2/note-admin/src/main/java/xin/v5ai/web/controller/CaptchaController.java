@@ -1,5 +1,6 @@
 package xin.v5ai.web.controller;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaIgnore;
 import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.captcha.generator.MathGenerator;
@@ -62,7 +63,7 @@ public class CaptchaController {
     @GetMapping("/resource/sms/code")
     public R<Void> smsCode(@NotBlank(message = "{user.phonenumber.not.blank}") String phoneNumber) {
         if (!RegexValidator.isMobile(phoneNumber)) {
-            return R.fail("请输入正确的手机号！");
+            return R.fail(MessageUtils.message("sms.phone.invalid"));
         }
         String key = GlobalConstants.CAPTCHA_CODE_KEY + phoneNumber;
         String code = RandomUtil.randomNumbers(4);
@@ -75,7 +76,7 @@ public class CaptchaController {
         if (!smsResponse.isSuccess()) {
             log.error("验证码短信发送异常 => {}", smsResponse);
             Object data = smsResponse.getData();
-            return R.fail(data == null ? "验证码短信发送失败" : data.toString());
+            return R.fail(data == null ? MessageUtils.message("sms.send.captcha.failed") : data.toString());
         }
         RedisUtils.setCacheObject(key, code, Duration.ofMinutes(Constants.CAPTCHA_EXPIRATION));
         return R.ok();
@@ -90,10 +91,10 @@ public class CaptchaController {
     @GetMapping("/resource/email/code")
     public R<Void> emailCode(@NotBlank(message = "{user.email.not.blank}") String email) {
         if (!mailProperties.getEnabled()) {
-            return R.fail("当前系统没有开启邮箱功能！");
+            return R.fail(MessageUtils.message("auth.email.disabled"));
         }
         if (!RegexValidator.isEmail(email)) {
-            return R.fail("请输入正确的邮箱地址！");
+            return R.fail(MessageUtils.message("email.invalid"));
         }
         SpringUtils.getAopProxy(this).emailCodeImpl(email);
         return R.ok();

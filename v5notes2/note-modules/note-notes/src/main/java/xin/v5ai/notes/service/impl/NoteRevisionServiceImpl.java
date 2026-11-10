@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.exception.ServiceException;
+import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.satoken.utils.LoginHelper;
@@ -43,9 +44,13 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class NoteRevisionServiceImpl implements INoteRevisionService {
 
-    private static final String MISSING_REVISION = "版本不存在";
+    private static final String MISSING_REVISION = "note.revision.missing";
 
-    private static final String FORBIDDEN_NOTE = "无权操作该笔记";
+    private static final String FORBIDDEN_NOTE = "note.forbidden";
+
+    private static final String NOTE_MISSING = "note.missing";
+
+    private static final String NOTE_TRASHED = "note.trashed";
 
     private final NoteRevisionMapper revisionMapper;
 
@@ -145,7 +150,7 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public NoteRestoreVo restoreForAdmin(Long noteId, Long revisionId) {
-        NoteNotes note = lockNote(noteId, "笔记不存在");
+        NoteNotes note = lockNote(noteId, NOTE_MISSING);
         NoteRevision target = requireRevision(noteId, revisionId);
         String currentContent = NoteContentDigest.text(note.getContent());
         return applyRestore(note, target, currentContent, currentHash(note, currentContent));
@@ -197,7 +202,7 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     }
 
     private NoteHashVo write(NoteNotesBo bo, boolean client) {
-        NoteNotes note = lockNote(bo.getId(), client ? FORBIDDEN_NOTE : "笔记不存在");
+        NoteNotes note = lockNote(bo.getId(), client ? FORBIDDEN_NOTE : NOTE_MISSING);
         String currentContent = NoteContentDigest.text(note.getContent());
         String currentHash = currentHash(note, currentContent);
         boolean force = Boolean.TRUE.equals(bo.getForce());
@@ -222,10 +227,10 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
 
     private void requireBaseHash(String baseHash) {
         if (StringUtils.isBlank(baseHash)) {
-            throw new ServiceException("缺少正文版本", HttpStatus.BAD_REQUEST);
+            throw new ServiceException(MessageUtils.message("note.revision.content.missing"), HttpStatus.BAD_REQUEST);
         }
         if (!NoteContentDigest.isHash(baseHash)) {
-            throw new ServiceException("正文版本无效", HttpStatus.BAD_REQUEST);
+            throw new ServiceException(MessageUtils.message("note.revision.content.invalid"), HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -318,22 +323,22 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private NoteNotes lockNote(Long id, String missingMessage) {
         NoteTrashSubject row = trashMapper.lockNote(id);
         if (row == null) {
-            throw new ServiceException(missingMessage);
+            throw new ServiceException(MessageUtils.message(missingMessage));
         }
         boolean clientNote = FORBIDDEN_NOTE.equals(missingMessage);
         boolean history = MISSING_REVISION.equals(missingMessage);
         if ((clientNote || history) && !Objects.equals(row.getUserId(), LoginHelper.getUserId())) {
-            throw new ServiceException(missingMessage);
+            throw new ServiceException(MessageUtils.message(missingMessage));
         }
         if (!NoteTrashPaths.live(row.getDelFlag())) {
-            if (clientNote || "笔记不存在".equals(missingMessage)) {
-                throw new ServiceException("笔记已在回收站");
+            if (clientNote || NOTE_MISSING.equals(missingMessage)) {
+                throw new ServiceException(MessageUtils.message(NOTE_TRASHED));
             }
-            throw new ServiceException(missingMessage);
+            throw new ServiceException(MessageUtils.message(missingMessage));
         }
         NoteNotes note = noteNotesMapper.selectById(id);
         if (note == null) {
-            throw new ServiceException(missingMessage);
+            throw new ServiceException(MessageUtils.message(missingMessage));
         }
         return note;
     }
@@ -341,7 +346,7 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private NoteNotes requireNote(Long id, String missingMessage) {
         NoteNotes note = noteNotesMapper.selectById(id);
         if (note == null || !Objects.equals(note.getUserId(), LoginHelper.getUserId())) {
-            throw new ServiceException(missingMessage);
+            throw new ServiceException(MessageUtils.message(missingMessage));
         }
         return note;
     }
@@ -349,7 +354,7 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private NoteNotes requireAdminNote(Long id) {
         NoteNotes note = noteNotesMapper.selectById(id);
         if (note == null) {
-            throw new ServiceException("笔记不存在");
+            throw new ServiceException(MessageUtils.message(NOTE_MISSING));
         }
         return note;
     }
@@ -357,11 +362,11 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private NoteRevision requireRevision(Long noteId, Long revisionId) {
         NoteRevision revision = revisionMapper.selectById(revisionId);
         if (revision == null || !Objects.equals(revision.getNoteId(), noteId)) {
-            throw new ServiceException(MISSING_REVISION);
+            throw new ServiceException(MessageUtils.message(MISSING_REVISION));
         }
         NoteNotes note = noteNotesMapper.selectById(noteId);
         if (note == null || !Objects.equals(revision.getUserId(), note.getUserId())) {
-            throw new ServiceException(MISSING_REVISION);
+            throw new ServiceException(MessageUtils.message(MISSING_REVISION));
         }
         return revision;
     }

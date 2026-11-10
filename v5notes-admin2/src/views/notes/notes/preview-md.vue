@@ -4,11 +4,11 @@
       <el-card shadow="hover">
         <div class="note-title-bar">
           <el-text size="large">
-            <el-tooltip class="box-item" effect="dark" content="编辑笔记" placement="top">
+            <el-tooltip class="box-item" effect="dark" :content="$t('notes.list.edit')" placement="top">
               <el-link :icon="Edit" @click="handleEditNotes">&nbsp;{{ notesName }}</el-link>
             </el-tooltip>
           </el-text>
-          <el-button v-hasPermi="['notes:notes:query']" :disabled="notesId == null" icon="Clock" @click="historyVisible = true">历史版本</el-button>
+          <el-button v-hasPermi="['notes:notes:query']" :disabled="notesId == null" icon="Clock" @click="historyVisible = true">{{ $t('notes.history.title') }}</el-button>
         </div>
       </el-card>
     </div>
@@ -20,13 +20,23 @@
 </template>
 
 <script setup lang="ts" name="PreviewMd">
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Edit } from '@element-plus/icons-vue';
 import { ElLoading } from 'element-plus';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { getNotes } from '@/api/notes/notes';
 import NoteHistoryDrawer from '@/views/notes/notes/history-drawer.vue';
+
+const { t, locale } = useI18n();
+
+const vditorLang = () => {
+  if (locale.value === 'zh_TW' || locale.value === 'en_US') {
+    return locale.value;
+  }
+  return 'zh_CN' as const;
+};
 
 const notesId = ref<string | number>();
 const notesName = ref('');
@@ -40,7 +50,7 @@ const previewNotes = async (id: string | number) => {
   const loading = ElLoading.service({
     target: '.editor-container',
     lock: true,
-    text: '加载中。。。'
+    text: t('notes.editor.loading')
   });
   try {
     const res = await getNotes(id);
@@ -53,7 +63,8 @@ const previewNotes = async (id: string | number) => {
     if (previewEl) {
       await Vditor.preview(previewEl, notesContent.value, {
         mode: 'light',
-        anchor: 1
+        anchor: 1,
+        lang: vditorLang()
       });
     }
   } finally {
@@ -72,6 +83,17 @@ const onHistoryRestored = () => {
 };
 
 defineExpose({ previewNotes });
+
+watch(locale, () => {
+  const previewEl = document.getElementById('previewVditor') as HTMLDivElement | null;
+  if (previewEl && notesContent.value) {
+    Vditor.preview(previewEl, notesContent.value, {
+      mode: 'light',
+      anchor: 1,
+      lang: vditorLang()
+    });
+  }
+});
 
 onMounted(() => {});
 </script>

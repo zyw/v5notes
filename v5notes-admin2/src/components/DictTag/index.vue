@@ -11,7 +11,7 @@
           :index="index"
           :class="item.elTagClass"
         >
-          {{ item.label + ' ' }}
+          {{ labelOf(item.label) + ' ' }}
         </span>
         <el-tag
           v-else
@@ -29,7 +29,7 @@
           "
           :class="item.elTagClass"
         >
-          {{ item.label + ' ' }}
+          {{ labelOf(item.label) + ' ' }}
         </el-tag>
       </template>
     </template>
@@ -40,6 +40,8 @@
 </template>
 
 <script setup lang="ts">
+import { translateLabel } from '@/lang';
+
 interface Props {
   options: Array<DictDataOption>;
   value: number | string | Array<number | string>;
@@ -50,6 +52,8 @@ const props = withDefaults(defineProps<Props>(), {
   showValue: true,
   separator: ','
 });
+
+const labelOf = (label?: string) => translateLabel('dict', label);
 
 const values = computed(() => {
   if (props.value === '' || props.value === null || typeof props.value === 'undefined') return [];

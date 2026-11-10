@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +128,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
         if (row > 0) {
             return dictDataMapper.selectDictDataByType(data.getDictType());
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**
@@ -144,7 +145,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
         if (row > 0) {
             return dictDataMapper.selectDictDataByType(data.getDictType());
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**

@@ -41,32 +41,32 @@ public class SysMenuBo implements Serializable {
     /**
      * 菜单名称
      */
-    @NotBlank(message = "菜单名称不能为空")
-    @Size(min = 0, max = 50, message = "菜单名称长度不能超过{max}个字符")
+    @NotBlank(message = "{menu.name.not.blank}")
+    @Size(min = 0, max = 50, message = "{menu.name.length}")
     private String menuName;
 
     /**
      * 显示顺序
      */
-    @NotNull(message = "显示顺序不能为空")
+    @NotNull(message = "{dept.order.not.null}")
     private Integer orderNum;
 
     /**
      * 路由地址
      */
-    @Size(min = 0, max = 200, message = "路由地址不能超过{max}个字符")
+    @Size(min = 0, max = 200, message = "{menu.path.length}")
     private String path;
 
     /**
      * 组件路径
      */
-    @Size(min = 0, max = 200, message = "组件路径不能超过{max}个字符")
+    @Size(min = 0, max = 200, message = "{menu.component.length}")
     private String component;
 
     /**
      * 路由参数
      */
-    @JsonPattern(type = JsonType.OBJECT, message = "路由参数必须符合JSON格式")
+    @JsonPattern(type = JsonType.OBJECT, message = "{menu.query.json}")
     private String queryParam;
 
     /**
@@ -82,7 +82,7 @@ public class SysMenuBo implements Serializable {
     /**
      * 菜单类型（M目录 C菜单 F按钮）
      */
-    @NotBlank(message = "菜单类型不能为空")
+    @NotBlank(message = "{menu.type.not.blank}")
     private String menuType;
 
     /**
@@ -99,8 +99,8 @@ public class SysMenuBo implements Serializable {
      * 权限标识
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @Size(min = 0, max = 100, message = "权限标识长度不能超过{max}个字符")
-    @Pattern(regexp = RegexConstants.PERMISSION_STRING, message = "权限标识必须符合 tool:build:list 格式")
+    @Size(min = 0, max = 100, message = "{menu.perms.length}")
+    @Pattern(regexp = RegexConstants.PERMISSION_STRING, message = "{menu.perms.pattern}")
     private String perms;
 
     /**
@@ -111,13 +111,13 @@ public class SysMenuBo implements Serializable {
     /**
      * 激活菜单路径
      */
-    @Size(min = 0, max = 255, message = "激活菜单路径长度不能超过{max}个字符")
+    @Size(min = 0, max = 255, message = "{menu.active.length}")
     private String activeMenu;
 
     /**
      * 扩展字段
      */
-    @Size(min = 0, max = 2000, message = "扩展字段长度不能超过{max}个字符")
+    @Size(min = 0, max = 2000, message = "{menu.ext.length}")
     private String ext;
 
     /**

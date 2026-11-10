@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 /**
  * 服务器连接的配置。官方地址只以代码常量的形式存在，
  * 页面上只显示「官方服务器」，不渲染 URL 明文。
@@ -15,15 +17,15 @@ export interface ServerSettings {
 /** 去掉首尾空白与末尾斜杠并校验协议；无效时抛出可直接展示给用户的错误。 */
 export function normalizeServer(value: string): string {
   const trimmed = value.trim().replace(/\/+$/, '')
-  if (!trimmed) throw new Error('请输入服务器地址')
+  if (!trimmed) throw new Error(t('settings.serverRequired'))
   let parsed: URL
   try {
     parsed = new URL(trimmed)
   } catch {
-    throw new Error('请输入完整的服务器地址，例如 https://notes.example.com')
+    throw new Error(t('settings.serverExample'))
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error('服务器地址需要以 http:// 或 https:// 开头')
+    throw new Error(t('settings.serverProtocol'))
   }
   return trimmed
 }

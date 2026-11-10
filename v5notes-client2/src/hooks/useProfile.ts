@@ -1,4 +1,5 @@
 import { reactive, ref } from 'vue'
+import { t } from '../i18n'
 import type { createApi, UserProfile, UserProfileUpdate } from '../service/api'
 
 type NotesApi = ReturnType<typeof createApi>
@@ -42,11 +43,11 @@ export function useProfile(api: NotesApi) {
     if (!file) return
     profileError.value = ''
     if (!file.type.startsWith('image/')) {
-      profileError.value = '请选择图片文件'
+      profileError.value = t('profile.chooseImage')
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      profileError.value = '头像不能超过 2 MB'
+      profileError.value = t('profile.avatarTooLarge')
       return
     }
     avatarBusy.value = true
@@ -55,7 +56,7 @@ export function useProfile(api: NotesApi) {
       profileForm.avatar = uploaded.url
       profileAvatarUrl.value = uploaded.url
     } catch (cause) {
-      profileError.value = cause instanceof Error ? cause.message : '头像上传失败，请重试'
+      profileError.value = cause instanceof Error ? cause.message : t('profile.avatarFailed')
     } finally {
       avatarBusy.value = false
     }
@@ -73,19 +74,19 @@ export function useProfile(api: NotesApi) {
     profileForm.phonenumber = profileForm.phonenumber?.trim() || ''
     profileForm.email = profileForm.email?.trim() || ''
     if (!profileForm.nickName) {
-      profileError.value = '昵称不能为空'
+      profileError.value = t('profile.nicknameRequired')
       return
     }
     if (profileForm.nickName.length > 30) {
-      profileError.value = '昵称不能超过 30 个字符'
+      profileError.value = t('profile.nicknameTooLong')
       return
     }
     if (profileForm.phonenumber && !/^1[3-9]\d{9}$/.test(profileForm.phonenumber)) {
-      profileError.value = '请输入有效的手机号码'
+      profileError.value = t('profile.phoneInvalid')
       return
     }
     if (profileForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) {
-      profileError.value = '请输入有效的邮箱地址'
+      profileError.value = t('profile.emailInvalid')
       return
     }
     profileBusy.value = true
@@ -94,7 +95,7 @@ export function useProfile(api: NotesApi) {
       await refreshProfile()
       profileDialogOpen.value = false
     } catch (cause) {
-      profileError.value = cause instanceof Error ? cause.message : '保存个人信息失败，请重试'
+      profileError.value = cause instanceof Error ? cause.message : t('profile.saveFailed')
     } finally {
       profileBusy.value = false
     }

@@ -1,5 +1,6 @@
 package xin.v5ai.common.mybatis.core.page;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
@@ -100,7 +101,7 @@ public class PageQuery implements Serializable {
         String[] orderByArr = orderBy.split(StringUtils.SEPARATOR);
         String[] isAscArr = orderDirection.split(StringUtils.SEPARATOR);
         if (isAscArr.length != 1 && isAscArr.length != orderByArr.length) {
-            throw new ServiceException("排序参数有误");
+            throw new ServiceException(MessageUtils.message("sort.invalid"));
         }
 
         List<OrderItem> list = new ArrayList<>();
@@ -113,7 +114,7 @@ public class PageQuery implements Serializable {
             } else if ("desc".equals(isAscStr)) {
                 list.add(OrderItem.desc(orderByStr));
             } else {
-                throw new ServiceException("排序参数有误");
+                throw new ServiceException(MessageUtils.message("sort.invalid"));
             }
         }
         return list;

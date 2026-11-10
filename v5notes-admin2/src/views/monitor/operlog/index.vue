@@ -5,64 +5,64 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('monitor.kicker.search') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="操作地址" prop="operIp">
-            <el-input v-model="queryParams.operIp" placeholder="请输入操作地址" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.oper.operIp')" prop="operIp">
+            <el-input v-model="queryParams.operIp" :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.operIp') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="系统模块" prop="title">
-            <el-input v-model="queryParams.title" placeholder="请输入系统模块" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.oper.module')" prop="title">
+            <el-input v-model="queryParams.title" :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.module') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="操作人员" prop="operName">
+          <el-form-item :label="$t('monitor.oper.operName')" prop="operName">
             <el-input
               v-model="queryParams.operName"
-              placeholder="请输入操作人员"
+              :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.operName') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="客户端" prop="clientKey">
-            <el-input v-model="queryParams.clientKey" placeholder="请输入客户端" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.oper.client')" prop="clientKey">
+            <el-input v-model="queryParams.clientKey" :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.client') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="设备类型" prop="deviceType">
-            <el-select v-model="queryParams.deviceType" placeholder="请选择设备类型" clearable>
+          <el-form-item :label="$t('monitor.oper.deviceType')" prop="deviceType">
+            <el-select v-model="queryParams.deviceType" :placeholder="$t('common.pleaseSelect', { label: $t('monitor.oper.deviceType') })" clearable>
               <el-option v-for="dict in sys_device_type" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="浏览器" prop="browser">
-            <el-input v-model="queryParams.browser" placeholder="请输入浏览器" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.oper.browser')" prop="browser">
+            <el-input v-model="queryParams.browser" :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.browser') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="操作系统" prop="os">
-            <el-input v-model="queryParams.os" placeholder="请输入操作系统" clearable @keyup.enter="handleQuery" />
+          <el-form-item :label="$t('monitor.oper.os')" prop="os">
+            <el-input v-model="queryParams.os" :placeholder="$t('common.pleaseInput', { label: $t('monitor.oper.os') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
-          <el-form-item label="类型" prop="businessType">
-            <el-select v-model="queryParams.businessType" placeholder="操作类型" clearable>
+          <el-form-item :label="$t('common.type')" prop="businessType">
+            <el-select v-model="queryParams.businessType" :placeholder="$t('monitor.oper.operType')" clearable>
               <el-option v-for="dict in sys_oper_type" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="状态" prop="status">
-            <el-select v-model="queryParams.status" placeholder="操作状态" clearable>
+          <el-form-item :label="$t('common.status')" prop="status">
+            <el-select v-model="queryParams.status" :placeholder="$t('monitor.oper.operStatus')" clearable>
               <el-option v-for="dict in sys_common_status" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="操作时间" style="width: 308px">
+          <el-form-item :label="$t('monitor.oper.operTime')" style="width: 308px">
             <el-date-picker
               v-model="dateRange"
               value-format="YYYY-MM-DD HH:mm:ss"
               type="daterange"
               range-separator="-"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              :start-placeholder="$t('common.startDate')"
+              :end-placeholder="$t('common.endDate')"
               :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
             ></el-date-picker>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -72,9 +72,9 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Operation Logs</span>
-            <h3>操作日志</h3>
-            <p>共 {{ total }} 条记录，支持类型过滤、详情查看、批量清空和导出。</p>
+            <span class="panel-kicker">{{ $t('monitor.kicker.oper') }}</span>
+            <h3>{{ $t('monitor.oper.title') }}</h3>
+            <p>{{ $t('monitor.oper.summary', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
             <el-button
@@ -85,7 +85,7 @@
               :disabled="multiple"
               @click="handleDelete()"
             >
-              删除
+              {{ $t('common.delete') }}
             </el-button>
             <el-button
               v-hasPermi="['monitor:operlog:remove']"
@@ -94,7 +94,7 @@
               icon="WarnTriangleFilled"
               @click="handleClean"
             >
-              清空
+              {{ $t('common.clear') }}
             </el-button>
             <el-button
               v-hasPermi="['monitor:operlog:export']"
@@ -103,7 +103,7 @@
               icon="Download"
               @click="handleExport"
             >
-              导出
+              {{ $t('common.export') }}
             </el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList"></right-toolbar>
           </div>
@@ -121,15 +121,15 @@
         @sort-change="handleSortChange"
       >
         <el-table-column type="selection" width="50" align="center" />
-        <el-table-column label="日志编号" align="center" prop="operId" />
-        <el-table-column label="系统模块" align="center" prop="title" :show-overflow-tooltip="true" />
-        <el-table-column label="操作类型" align="center" prop="businessType">
+        <el-table-column :label="$t('monitor.oper.logId')" align="center" prop="operId" />
+        <el-table-column :label="$t('monitor.oper.module')" align="center" prop="title" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.operType')" align="center" prop="businessType">
           <template #default="scope">
             <dict-tag :options="sys_oper_type" :value="scope.row.businessType" />
           </template>
         </el-table-column>
         <el-table-column
-          label="操作人员"
+          :label="$t('monitor.oper.operName')"
           align="center"
           width="110"
           prop="operName"
@@ -137,23 +137,23 @@
           sortable="custom"
           :sort-orders="['descending', 'ascending']"
         />
-        <el-table-column label="部门" align="center" prop="deptName" width="130" :show-overflow-tooltip="true" />
-        <el-table-column label="客户端" align="center" prop="clientKey" width="110" :show-overflow-tooltip="true" />
-        <el-table-column label="设备类型" align="center" prop="deviceType" width="110" :show-overflow-tooltip="true">
+        <el-table-column :label="$t('monitor.oper.dept')" align="center" prop="deptName" width="130" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.client')" align="center" prop="clientKey" width="110" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.deviceType')" align="center" prop="deviceType" width="110" :show-overflow-tooltip="true">
           <template #default="scope">
             <dict-tag :options="sys_device_type" :value="scope.row.deviceType" />
           </template>
         </el-table-column>
-        <el-table-column label="浏览器" align="center" prop="browser" width="110" :show-overflow-tooltip="true" />
-        <el-table-column label="操作系统" align="center" prop="os" width="110" :show-overflow-tooltip="true" />
-        <el-table-column label="操作地址" align="center" prop="operIp" width="130" :show-overflow-tooltip="true" />
-        <el-table-column label="操作状态" align="center" prop="status">
+        <el-table-column :label="$t('monitor.oper.browser')" align="center" prop="browser" width="110" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.os')" align="center" prop="os" width="110" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.operIp')" align="center" prop="operIp" width="130" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('monitor.oper.operStatus')" align="center" prop="status">
           <template #default="scope">
             <dict-tag :options="sys_common_status" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column
-          label="操作日期"
+          :label="$t('monitor.oper.operDate')"
           align="center"
           prop="operTime"
           width="180"
@@ -165,7 +165,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="消耗时间"
+          :label="$t('monitor.oper.costTime')"
           align="center"
           prop="costTime"
           width="110"
@@ -174,12 +174,12 @@
           :sort-orders="['descending', 'ascending']"
         >
           <template #default="scope">
-            <span>{{ scope.row.costTime }}毫秒</span>
+            <span>{{ $t('monitor.oper.costMs', { time: scope.row.costTime }) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" fixed="right" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="详细" placement="top">
+            <el-tooltip :content="$t('monitor.oper.view')" placement="top">
               <el-button
                 v-hasPermi="['monitor:operlog:query']"
                 link
@@ -192,7 +192,7 @@
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -224,6 +224,9 @@ import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
 import { parseTime, selectDictLabel } from '@/utils/ruoyi';
 import OperInfoDialog from './operInfoDialog.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const { sys_oper_type, sys_common_status, sys_device_type } = toRefs<any>(
   useDict('sys_oper_type', 'sys_common_status', 'sys_device_type')
@@ -340,18 +343,18 @@ const handleView = (row: Partial<OperLogVO>) => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: Partial<OperLogVO>) => {
   const operIds = row?.operId || ids.value;
-  await modal.confirm('是否确认删除日志编号为"' + operIds + '"的数据项?');
+  await modal.confirm(t('monitor.oper.confirmDelete', { name: String(operIds) }));
   await delOperlog(operIds);
   await getList();
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
 };
 
 /** 清空按钮操作 */
 const handleClean = async () => {
-  await modal.confirm('是否确认清空所有操作日志数据项?');
+  await modal.confirm(t('monitor.oper.confirmClean'));
   await cleanOperlog();
   await getList();
-  modal.msgSuccess('清空成功');
+  modal.msgSuccess(t('monitor.oper.cleanSuccess'));
 };
 
 /** 导出按钮操作 */

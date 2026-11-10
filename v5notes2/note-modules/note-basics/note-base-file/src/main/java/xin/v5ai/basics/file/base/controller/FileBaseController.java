@@ -1,5 +1,6 @@
 package xin.v5ai.basics.file.base.controller;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaIgnore;
@@ -67,7 +68,7 @@ public class FileBaseController extends BaseController {
             .id(info.getId())
             .build();
 
-        return R.ok("上传成功",vo);
+        return R.ok(MessageUtils.message("file.upload.success"), vo);
     }
 
     /**
@@ -91,7 +92,7 @@ public class FileBaseController extends BaseController {
     @SaCheckPermission("basics:file:remove")
     @Log(title = "文件路径", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotEmpty(message = "主键不能为空")
+    public R<Void> remove(@NotEmpty(message = "{id.not.null}")
                           @PathVariable Long[] ids) {
         return toAjax(fileInfoService.deleteWithValidByIds(List.of(ids), true));
     }

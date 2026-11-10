@@ -1,5 +1,6 @@
 package xin.v5ai.notes.controller.client;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,7 +42,7 @@ public class ClientNotesTrashController extends BaseController {
     public R<NoteTrashRestoreVo> restore(@PathVariable Long id) {
         NoteTrashRestoreVo restored = noteTrashService.restore(id, LoginHelper.getUserId());
         if (Boolean.TRUE.equals(restored.getRelocated())) {
-            return R.ok("原目录已不在，已恢复到根目录", restored);
+            return R.ok(MessageUtils.message("note.restore.root"), restored);
         }
         return R.ok(restored);
     }
@@ -62,6 +63,6 @@ public class ClientNotesTrashController extends BaseController {
         if (failed == 0) {
             return R.ok(result);
         }
-        return R.ok(failed + " 条清除失败", result);
+        return R.ok(MessageUtils.message("note.purge.failed", failed), result);
     }
 }

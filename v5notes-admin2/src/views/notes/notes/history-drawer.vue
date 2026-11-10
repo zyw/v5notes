@@ -8,17 +8,17 @@
     <template #hero>
       <div class="drawer-hero">
         <div class="drawer-hero__top">
-          <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 笔记</span>
+          <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />{{ $t('notes.history.brand') }}</span>
           <span class="drawer-hero__divider">·</span>
-          <span class="drawer-hero__action">历史版本</span>
+          <span class="drawer-hero__action">{{ $t('notes.history.title') }}</span>
         </div>
         <div class="drawer-hero__profile">
           <div class="drawer-hero__icon">{{ initial }}</div>
           <div class="drawer-hero__info">
-            <div class="drawer-hero__name">{{ noteName || '未命名笔记' }}</div>
+            <div class="drawer-hero__name">{{ noteName || $t('notes.history.unnamed') }}</div>
             <div class="drawer-hero__meta">
-              <span class="drawer-hero__tag">最多保留 50 个版本</span>
-              <span>{{ total }} 个版本</span>
+              <span class="drawer-hero__tag">{{ $t('notes.history.keep') }}</span>
+              <span>{{ $t('notes.history.count', { total }) }}</span>
             </div>
           </div>
         </div>
@@ -27,10 +27,10 @@
 
     <div v-loading="loading" class="history-layout">
       <aside class="history-pane">
-        <h4>版本列表</h4>
+        <h4>{{ $t('notes.history.list') }}</h4>
         <div class="history-list">
           <el-alert v-if="error" :title="error" type="error" :closable="false" />
-          <el-empty v-else-if="!loading && rows.length === 0" description="还没有历史版本" />
+          <el-empty v-else-if="!loading && rows.length === 0" :description="$t('notes.history.empty')" />
           <button
             v-for="row in rows"
             :key="String(row.id)"
@@ -41,22 +41,22 @@
           >
             <span class="history-item-time">
               {{ formatTime(row.createTime) }}
-              <span v-if="row.head" class="history-item-tag">当前</span>
+              <span v-if="row.head" class="history-item-tag">{{ $t('notes.history.current') }}</span>
             </span>
-            <span class="history-item-excerpt">{{ row.excerpt || '（空正文）' }}</span>
+            <span class="history-item-excerpt">{{ row.excerpt || $t('notes.history.emptyBody') }}</span>
             <span class="history-item-size">{{ formatSize(row.size) }}</span>
           </button>
-          <el-button v-if="canLoadMore" class="history-more" text :loading="loading" @click="loadMore">加载更多</el-button>
+          <el-button v-if="canLoadMore" class="history-more" text :loading="loading" @click="loadMore">{{ $t('notes.history.loadMore') }}</el-button>
         </div>
       </aside>
       <section class="history-pane history-preview-pane">
-        <h4>正文预览</h4>
+        <h4>{{ $t('notes.history.preview') }}</h4>
         <div ref="previewEl" class="history-preview"></div>
       </section>
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
+      <el-button @click="visible = false">{{ $t('common.close') }}</el-button>
       <el-button
         v-hasPermi="['notes:notes:edit']"
         type="primary"
@@ -64,7 +64,7 @@
         :loading="restoring"
         @click="confirmRestore"
       >
-        恢复此版本
+        {{ $t('notes.history.restoreThis') }}
       </el-button>
     </template>
   </FormDrawer>
@@ -72,6 +72,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
@@ -80,6 +81,8 @@ import type { NoteRevisionDetailVO, NoteRevisionVO } from '@/api/notes/notes/typ
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
 import { isHandledRequestError } from '@/utils/request';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   modelValue: boolean;
@@ -109,16 +112,16 @@ const previewEl = ref<HTMLDivElement>();
 const pageSize = 20;
 let loadSeq = 0;
 
-const initial = computed(() => (props.noteName || '笔').trim().slice(0, 1) || '笔');
+const initial = computed(() => (props.noteName || t('notes.glyph')).trim().slice(0, 1) || t('notes.glyph'));
 const canLoadMore = computed(() => rows.value.length < total.value);
 const hint = computed(() => {
   if (selected.value?.head) {
-    return '这是当前正文';
+    return t('notes.history.hintCurrent');
   }
   if (selected.value) {
-    return '恢复前的正文会先记入历史，编辑区里尚未保存的修改会被替换';
+    return t('notes.history.hintReplace');
   }
-  return '选择一个版本查看正文';
+  return t('notes.history.hintPick');
 });
 
 watch(
@@ -162,7 +165,7 @@ async function load(reset: boolean) {
       }
     }
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '历史加载失败';
+    error.value = cause instanceof Error ? cause.message : t('notes.history.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -183,7 +186,7 @@ async function select(row: NoteRevisionVO, seq = loadSeq) {
     await renderPreview(selected.value.content ?? '');
   } catch (cause) {
     if (!isHandledRequestError(cause)) {
-      error.value = cause instanceof Error ? cause.message : '版本读取失败';
+      error.value = cause instanceof Error ? cause.message : t('notes.history.readFailed');
     }
   }
 }
@@ -211,23 +214,23 @@ async function confirmRestore() {
     return;
   }
   try {
-    await ElMessageBox.confirm(
-      '恢复后，这一版会成为当前正文。恢复前的正文会先记入历史，最多保留 50 个版本。编辑区里尚未保存的修改会被替换。',
-      '恢复历史版本',
-      { type: 'warning', confirmButtonText: '恢复', cancelButtonText: '取消' }
-    );
+    await ElMessageBox.confirm(t('notes.history.restoreMessage'), t('notes.history.restoreTitle'), {
+      type: 'warning',
+      confirmButtonText: t('notes.history.restore'),
+      cancelButtonText: t('common.cancel')
+    });
   } catch {
     return;
   }
   restoring.value = true;
   try {
     await restoreNoteRevision(props.noteId, selected.value.id);
-    ElMessage.success('已恢复为该版本');
+    ElMessage.success(t('notes.history.restored'));
     visible.value = false;
     emit('restored');
   } catch (cause) {
     if (!isHandledRequestError(cause)) {
-      ElMessage.error(cause instanceof Error ? cause.message : '恢复失败');
+      ElMessage.error(cause instanceof Error ? cause.message : t('notes.history.restoreFailed'));
     }
   } finally {
     restoring.value = false;

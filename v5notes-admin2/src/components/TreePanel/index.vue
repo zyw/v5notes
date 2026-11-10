@@ -18,7 +18,7 @@
         </div>
       </template>
       <template v-if="!modelCollapsed">
-        <el-input v-model="filterText" :placeholder="placeholder" prefix-icon="Search" clearable />
+        <el-input v-model="filterText" :placeholder="placeholder || $t('common.pleaseInput', { label: $t('common.name') })" prefix-icon="Search" clearable />
         <div ref="treeWrapRef" class="dept-tree-wrap">
           <el-tree-v2
             ref="treeRef"
@@ -36,7 +36,7 @@
             <template #default="{ node }">
               <span class="tree-node-label" :class="{ 'is-disabled': isNodeDisabled(node.data) }">
                 <span>{{ node.label }}</span>
-                <el-tooltip v-if="isNodeDisabled(node.data)" content="停用" placement="top">
+                <el-tooltip v-if="isNodeDisabled(node.data)" :content="$t('common.disable')" placement="top">
                   <el-icon class="tree-node-disabled-icon"><CircleCloseFilled /></el-icon>
                 </el-tooltip>
               </span>
@@ -75,7 +75,6 @@ const props = withDefaults(
     collapsed?: boolean;
   }>(),
   {
-    placeholder: '请输入名称',
     nodeKey: 'id',
     treeProps: () => ({ label: 'label', children: 'children' }),
     disabledField: 'disabled',

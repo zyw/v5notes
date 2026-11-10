@@ -5,36 +5,36 @@
         <template #header>
           <div class="panel-heading search-panel-toggle" @click.stop="showSearch = !showSearch">
             <div>
-              <span class="panel-kicker">Search Filters</span>
-              <h3>筛选条件</h3>
+              <span class="panel-kicker">{{ $t('system.notice.searchKicker') }}</span>
+              <h3>{{ $t('common.filter') }}</h3>
             </div>
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
-          <el-form-item label="公告标题" prop="noticeTitle">
+          <el-form-item :label="$t('system.notice.title')" prop="noticeTitle">
             <el-input
               v-model="queryParams.noticeTitle"
-              placeholder="请输入公告标题"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.notice.title') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="操作人员" prop="createByName">
+          <el-form-item :label="$t('system.notice.operator')" prop="createByName">
             <el-input
               v-model="queryParams.createByName"
-              placeholder="请输入操作人员"
+              :placeholder="$t('common.pleaseInput', { label: $t('system.notice.operator') })"
               clearable
               @keyup.enter="handleQuery"
             />
           </el-form-item>
-          <el-form-item label="类型" prop="noticeType">
-            <el-select v-model="queryParams.noticeType" placeholder="公告类型" clearable>
+          <el-form-item :label="$t('common.type')" prop="noticeType">
+            <el-select v-model="queryParams.noticeType" :placeholder="$t('system.notice.noticeType')" clearable>
               <el-option v-for="dict in sys_notice_type" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
+            <el-button icon="Refresh" @click="resetQuery">{{ $t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -44,13 +44,13 @@
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <span class="panel-kicker">Notice Dataset</span>
-            <h3>公告列表</h3>
-            <p>共 {{ total }} 条记录，支持类型筛选、内容编辑和状态管理。</p>
+            <span class="panel-kicker">{{ $t('system.notice.datasetKicker') }}</span>
+            <h3>{{ $t('system.notice.listTitle') }}</h3>
+            <p>{{ $t('system.notice.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
             <el-button v-hasPermi="['system:notice:add']" type="primary" plain icon="Plus" @click="handleAdd">
-              新增
+              {{ $t('common.add') }}
             </el-button>
             <el-button
               v-hasPermi="['system:notice:edit']"
@@ -60,7 +60,7 @@
               :disabled="single"
               @click="handleUpdate()"
             >
-              修改
+              {{ $t('common.edit') }}
             </el-button>
             <el-button
               v-hasPermi="['system:notice:remove']"
@@ -70,7 +70,7 @@
               :disabled="multiple"
               @click="handleDelete()"
             >
-              删除
+              {{ $t('common.delete') }}
             </el-button>
             <right-toolbar v-model:show-search="showSearch" :search="false" @query-table="getList"></right-toolbar>
           </div>
@@ -85,32 +85,32 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="false" label="序号" align="center" prop="noticeId" width="100" />
-        <el-table-column label="公告标题" align="center" prop="noticeTitle" :show-overflow-tooltip="true" />
-        <el-table-column label="公告类型" align="center" prop="noticeType" width="100">
+        <el-table-column v-if="false" :label="$t('common.serial')" align="center" prop="noticeId" width="100" />
+        <el-table-column :label="$t('system.notice.title')" align="center" prop="noticeTitle" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('system.notice.noticeType')" align="center" prop="noticeType" width="100">
           <template #default="scope">
             <dict-tag :options="sys_notice_type" :value="scope.row.noticeType" />
           </template>
         </el-table-column>
-        <el-table-column label="状态" align="center" prop="status" width="100">
+        <el-table-column :label="$t('common.status')" align="center" prop="status" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">
-              {{ scope.row.status === '0' ? '已发送' : '未发送' }}
+              {{ scope.row.status === '0' ? $t('system.notice.sent') : $t('system.notice.unsent') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建者" align="center" prop="createByName" width="100" />
-        <el-table-column label="创建时间" align="center" prop="createTime" width="160">
+        <el-table-column :label="$t('system.notice.creator')" align="center" prop="createByName" width="100" />
+        <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="160">
           <template #default="scope">
             <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="详情" placement="top">
+            <el-tooltip :content="$t('common.detail')" placement="top">
               <el-button link type="primary" icon="View" @click="handleDetail(scope.row)"></el-button>
             </el-tooltip>
-            <el-tooltip v-if="scope.row.status === '1'" content="发送" placement="top">
+            <el-tooltip v-if="scope.row.status === '1'" :content="$t('system.notice.send')" placement="top">
               <el-button
                 v-hasPermi="['system:notice:edit']"
                 link
@@ -119,7 +119,7 @@
                 @click="handleSend(scope.row)"
               ></el-button>
             </el-tooltip>
-            <el-tooltip content="修改" placement="top">
+            <el-tooltip :content="$t('common.edit')" placement="top">
               <el-button
                 v-hasPermi="['system:notice:edit']"
                 link
@@ -128,7 +128,7 @@
                 @click="handleUpdate(scope.row)"
               ></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip :content="$t('common.delete')" placement="top">
               <el-button
                 v-hasPermi="['system:notice:remove']"
                 link
@@ -141,7 +141,7 @@
         </el-table-column>
         <template #empty>
           <table-skeleton v-if="loading" :rows="8" />
-          <div v-else class="empty-hint">暂无数据</div>
+          <div v-else class="empty-hint">{{ $t('common.noData') }}</div>
         </template>
       </el-table>
 
@@ -157,25 +157,25 @@
     <FormDrawer
       v-model="dialog.visible"
       :title="dialog.title"
-      eyebrow="V5Notes · 通知公告"
-      subtitle="配置通知公告的标题、类型、内容与显示状态"
+      :eyebrow="$t('system.notice.eyebrow')"
+      :subtitle="$t('system.notice.subtitle')"
       size="680px"
-      submit-text="确定"
-      hint="带 * 为必填项，保存后立即生效"
+      :submit-text="$t('common.confirm')"
+      :hint="$t('system.notice.requiredHint')"
       @submit="submitForm"
       @closed="cancel"
     >
       <template #hero>
         <div class="drawer-hero">
           <div class="drawer-hero__top">
-            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />V5Notes · 通知公告</span>
+            <span class="drawer-hero__brand"><img :src="logoUrl" alt="" />{{ $t('system.notice.brand') }}</span>
             <span class="drawer-hero__divider">·</span>
             <span class="drawer-hero__action">{{ dialog.title }}</span>
           </div>
           <div class="drawer-hero__profile">
-            <div class="drawer-hero__icon">{{ (form.noticeTitle || '通').slice(0, 1) }}</div>
+            <div class="drawer-hero__icon">{{ (form.noticeTitle || $t('system.notice.initial')).slice(0, 1) }}</div>
             <div class="drawer-hero__info">
-              <div class="drawer-hero__name">{{ form.noticeTitle || '未命名公告' }}</div>
+              <div class="drawer-hero__name">{{ form.noticeTitle || $t('system.notice.unnamed') }}</div>
               <div class="drawer-hero__meta">
                 <span class="drawer-hero__tag">{{ noticeTypeLabel }}</span>
                 <span>{{ noticeStatusLabel }}</span>
@@ -187,16 +187,16 @@
 
       <el-form ref="noticeFormRef" :model="form" :rules="rules" label-position="top" class="notice-form">
         <section class="form-section">
-          <h4>基本信息</h4>
+          <h4>{{ $t('common.basicInfo') }}</h4>
           <el-row :gutter="18">
             <el-col :span="12">
-              <el-form-item label="公告标题" prop="noticeTitle">
-                <el-input v-model="form.noticeTitle" placeholder="请输入公告标题" />
+              <el-form-item :label="$t('system.notice.title')" prop="noticeTitle">
+                <el-input v-model="form.noticeTitle" :placeholder="$t('common.pleaseInput', { label: $t('system.notice.title') })" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="公告类型" prop="noticeType">
-                <el-select v-model="form.noticeType" placeholder="请选择">
+              <el-form-item :label="$t('system.notice.noticeType')" prop="noticeType">
+                <el-select v-model="form.noticeType" :placeholder="$t('system.notice.choose')">
                   <el-option
                     v-for="dict in sys_notice_type"
                     :key="dict.value"
@@ -210,8 +210,8 @@
         </section>
 
         <section class="form-section">
-          <h4>公告内容</h4>
-          <el-form-item label="内容">
+          <h4>{{ $t('system.notice.contentSection') }}</h4>
+          <el-form-item :label="$t('common.content')">
             <editor v-model="form.noticeContent" :min-height="192" />
           </el-form-item>
         </section>
@@ -220,7 +220,7 @@
 
     <el-dialog
       v-model="detailDialog.visible"
-      title="公告详情"
+      :title="$t('system.notice.detailTitle')"
       width="820px"
       append-to-body
       @closed="handleDetailDialogClosed" class="app-dialog">
@@ -228,13 +228,13 @@
         <div class="app-dialog-hero">
           <div class="app-dialog-hero__top">
             <img src="@/assets/logo/logo.png" alt="" />
-            <span>V5Notes 通知公告</span>
+            <span>{{ $t('system.notice.detailBrand') }}</span>
           </div>
           <div class="app-dialog-hero__main">
-            <div class="app-dialog-hero__icon">{{ (detailForm.noticeTitle || '公').slice(0, 1) }}</div>
+            <div class="app-dialog-hero__icon">{{ (detailForm.noticeTitle || $t('system.notice.detailInitial')).slice(0, 1) }}</div>
             <div>
-              <div class="app-dialog-hero__name">{{ detailForm.noticeTitle || '公告详情' }}</div>
-              <div class="app-dialog-hero__meta"><span>{{ detailForm.status === '0' ? '已发送' : '未发送' }} · {{ detailForm.createByName || '-' }}</span></div>
+              <div class="app-dialog-hero__name">{{ detailForm.noticeTitle || $t('system.notice.detailTitle') }}</div>
+              <div class="app-dialog-hero__meta"><span>{{ detailForm.status === '0' ? $t('system.notice.sent') : $t('system.notice.unsent') }} · {{ detailForm.createByName || '-' }}</span></div>
             </div>
           </div>
         </div>
@@ -245,19 +245,19 @@
           <div class="notice-detail__title">{{ detailForm.noticeTitle || '-' }}</div>
           <div class="notice-detail__meta">
             <div class="notice-detail__meta-item">
-              <span class="notice-detail__meta-label">类型：</span>
+              <span class="notice-detail__meta-label">{{ $t('system.notice.typeLabel') }}</span>
               <dict-tag :options="sys_notice_type" :value="detailForm.noticeType" />
             </div>
             <div class="notice-detail__meta-item">
-              <span class="notice-detail__meta-label">状态：</span>
-              <span>{{ detailForm.status === '0' ? '已发送' : '未发送' }}</span>
+              <span class="notice-detail__meta-label">{{ $t('system.notice.statusLabel') }}</span>
+              <span>{{ detailForm.status === '0' ? $t('system.notice.sent') : $t('system.notice.unsent') }}</span>
             </div>
             <div class="notice-detail__meta-item">
-              <span class="notice-detail__meta-label">创建者：</span>
+              <span class="notice-detail__meta-label">{{ $t('system.notice.creatorLabel') }}</span>
               <span>{{ detailForm.createByName || '-' }}</span>
             </div>
             <div class="notice-detail__meta-item">
-              <span class="notice-detail__meta-label">创建时间：</span>
+              <span class="notice-detail__meta-label">{{ $t('system.notice.createTimeLabel') }}</span>
               <span>{{ parseTime(detailForm.createTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</span>
             </div>
           </div>
@@ -287,6 +287,9 @@ import { parseTime } from '@/utils/ruoyi';
 import { sanitizeHtml } from '@/utils/sanitize';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import logoUrl from '@/assets/logo/logo.png';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const { sys_notice_type } = toRefs<any>(useDict('sys_notice_type'));
 const route = useRoute();
@@ -300,7 +303,7 @@ const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const noticeFormRef = ref<ElFormInstance>();
 const routeDetailSyncing = ref(false);
-const emptyNoticeContent = '<p>暂无公告内容</p>';
+const emptyNoticeContent = computed(() => `<p>${t('system.notice.emptyContent')}</p>`);
 
 const initFormData: NoticeForm = {
   noticeId: undefined,
@@ -312,11 +315,11 @@ const initFormData: NoticeForm = {
   createByName: ''
 };
 const detailForm = ref<NoticeVO>({} as NoticeVO);
-const safeNoticeContent = computed(() => sanitizeHtml(detailForm.value.noticeContent || emptyNoticeContent));
+const safeNoticeContent = computed(() => sanitizeHtml(detailForm.value.noticeContent || emptyNoticeContent.value));
 const noticeTypeLabel = computed(() => {
-  return sys_notice_type.value.find((d: any) => d.value === form.value.noticeType)?.label || '未设置类型';
+  return sys_notice_type.value.find((d: any) => d.value === form.value.noticeType)?.label || t('system.notice.noType');
 });
-const noticeStatusLabel = computed(() => (form.value.status === '0' ? '已发送' : '未发送'));
+const noticeStatusLabel = computed(() => (form.value.status === '0' ? t('system.notice.sent') : t('system.notice.unsent')));
 const data = reactive<PageData<NoticeForm, NoticeQuery>>({
   form: { ...initFormData },
   queryParams: {
@@ -327,13 +330,14 @@ const data = reactive<PageData<NoticeForm, NoticeQuery>>({
     status: '',
     noticeType: ''
   },
-  rules: {
-    noticeTitle: [{ required: true, message: '公告标题不能为空', trigger: 'blur' }],
-    noticeType: [{ required: true, message: '公告类型不能为空', trigger: 'change' }]
-  }
+  rules: {}
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form } = toRefs(data);
+const rules = computed<ElFormRules>(() => ({
+  noticeTitle: [{ required: true, message: t('system.notice.required', { label: t('system.notice.title') }), trigger: 'blur' }],
+  noticeType: [{ required: true, message: t('system.notice.required', { label: t('system.notice.noticeType') }), trigger: 'change' }]
+}));
 const { ids, single, multiple, handleSelectionChange } = useTableSelection<NoticeVO>(item => item.noticeId);
 const {
   dialog,
@@ -350,7 +354,7 @@ const {
   dialog: detailDialog,
   openDialog: openDetailDialog,
   closeDialog: closeDetailDialog
-} = useDialogState('公告详情');
+} = useDialogState();
 
 /** 查询公告列表 */
 const getList = async () => {
@@ -380,7 +384,7 @@ const { resetQuery } = useSearchReset({
 });
 /** 新增按钮操作 */
 const handleAdd = () => {
-  openDialog('添加公告');
+  openDialog(t('system.notice.addTitle'));
 };
 /**修改按钮操作 */
 const handleUpdate = async (row?: Partial<NoticeVO>) => {
@@ -388,7 +392,7 @@ const handleUpdate = async (row?: Partial<NoticeVO>) => {
   const noticeId = row?.noticeId || ids.value[0];
   const { data } = await getNotice(noticeId);
   Object.assign(form.value, data);
-  showDialog('修改公告');
+  showDialog(t('system.notice.editTitle'));
 };
 /** 详情按钮操作 */
 const handleDetail = async (row: Partial<NoticeVO>) => {
@@ -396,11 +400,11 @@ const handleDetail = async (row: Partial<NoticeVO>) => {
 };
 /** 发送按钮操作：新增/编辑后不立即发送，点发送才发出 */
 const handleSend = async (row: Partial<NoticeVO>) => {
-  await modal.confirm('确定发送公告"' + row.noticeTitle + '"吗？');
+  await modal.confirm(t('system.notice.confirmSend', { name: row.noticeTitle }));
   const { data } = await getNotice(row.noticeId!);
   data.status = '0';
   await updateNotice(data);
-  modal.msgSuccess('发送成功');
+  modal.msgSuccess(t('system.notice.sendSuccess'));
   await getList();
 };
 /** 打开详情 */
@@ -408,7 +412,7 @@ const openDetail = async (noticeId: string | number) => {
   const { data } = await getNotice(noticeId);
   data.noticeContent = await resolveOssContent(data.noticeContent);
   detailForm.value = data;
-  openDetailDialog();
+  openDetailDialog(t('system.notice.detailTitle'));
 };
 /** 详情弹窗关闭后移除路由参数 */
 const handleDetailDialogClosed = async () => {
@@ -430,7 +434,7 @@ const submitForm = () => {
   noticeFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       form.value.noticeId ? await updateNotice(form.value) : await addNotice(form.value);
-      modal.msgSuccess('操作成功');
+      modal.msgSuccess(t('common.actionSuccess'));
       closeDialog();
       await getList();
     }
@@ -439,10 +443,10 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: Partial<NoticeVO>) => {
   const noticeIds = row?.noticeId || ids.value;
-  await modal.confirm('是否确认删除公告编号为"' + noticeIds + '"的数据项？');
+  await modal.confirm(t('system.notice.confirmDelete', { id: noticeIds }));
   await delNotice(noticeIds);
   await getList();
-  modal.msgSuccess('删除成功');
+  modal.msgSuccess(t('common.deleteSuccess'));
 };
 
 onMounted(() => {

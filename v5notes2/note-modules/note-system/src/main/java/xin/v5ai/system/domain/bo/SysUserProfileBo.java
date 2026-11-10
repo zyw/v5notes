@@ -27,21 +27,21 @@ public class SysUserProfileBo implements Serializable {
     /**
      * 用户昵称
      */
-    @Xss(message = "用户昵称不能包含脚本字符")
-    @Size(min = 0, max = 30, message = "用户昵称长度不能超过{max}个字符")
+    @Xss(message = "{user.nick.script}")
+    @Size(min = 0, max = 30, message = "{user.nick.length}")
     private String nickName;
 
     /**
      * 用户邮箱
      */
-    @Email(message = "邮箱格式不正确")
-    @Size(min = 0, max = 50, message = "邮箱长度不能超过{max}个字符")
+    @Email(message = "{user.email.incorrect}")
+    @Size(min = 0, max = 50, message = "{dept.email.length}")
     private String email;
 
     /**
      * 手机号码
      */
-    @Pattern(regexp = RegexConstants.MOBILE, message = "手机号格式不正确")
+    @Pattern(regexp = RegexConstants.MOBILE, message = "{user.mobile.invalid}")
     private String phoneNumber;
 
     /**

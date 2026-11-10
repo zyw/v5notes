@@ -1,5 +1,6 @@
 package xin.v5ai.system.service.impl;
 
+import xin.v5ai.common.core.utils.MessageUtils;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.ObjectUtil;
@@ -134,7 +135,7 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
         if (row > 0) {
             return config.getConfigValue();
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**
@@ -163,7 +164,7 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
         if (row > 0) {
             return config.getConfigValue();
         }
-        throw new ServiceException("操作失败");
+        throw new ServiceException(MessageUtils.message("operation.failed"));
     }
 
     /**
@@ -176,7 +177,7 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
         List<SysConfig> list = configMapper.selectByIds(configIds);
         list.forEach(config -> {
             if (StringUtils.equals(SystemConstants.YES, config.getConfigType())) {
-                throw new ServiceException("内置参数【{}】不能删除", config.getConfigKey());
+                throw new ServiceException(MessageUtils.message("config.builtin.delete", config.getConfigKey()));
             }
             CacheUtils.evict(CacheNames.SYS_CONFIG, config.getConfigKey());
         });
