@@ -1,7 +1,7 @@
 -- =============================================================================
 -- v5notes2 数据迁移脚本：旧库(v5notes-prod) -> 新库(v5notes2)
--- 适用：同一 MySQL 实例，旧库与新库同时存在（新库由 ry_vue.sql + notes2.sql 初始化）
--- 执行顺序：1) ry_vue.sql  2) notes2.sql  3) 本脚本
+-- 适用：同一 MySQL 实例，旧库与新库同时存在（新库由 v5notes_vue.sql + notes2.sql 初始化）
+-- 执行顺序：1) v5notes_vue.sql  2) notes2.sql  3) 本脚本
 -- 注意：如库名不同，请全局替换 `v5notes-prod`(源) 与 v5notes2(目标)。
 -- 本脚本不迁移旧 sys_menu（原因见文末说明），保留 6.1.0 种子菜单 + notes2.sql 的笔记/文件菜单。
 -- =============================================================================
@@ -98,7 +98,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- SELECT (SELECT COUNT(*) FROM basics_file) AS files_new, (SELECT COUNT(*) FROM `v5notes-prod`.basics_file) AS files_old;
 --
 -- 说明：不迁移旧 sys_menu。因为 6.1.0 的管理后台组件路径、权限标识、菜单列（active_menu/ext）
--- 与 5.2.2 不同，旧菜单会导致新管理前端路由/页面 404。保留 target 的 ry_vue.sql 种子菜单，
+-- 与 5.2.2 不同，旧菜单会导致新管理前端路由/页面 404。保留 target 的 v5notes_vue.sql 种子菜单，
 -- 再由 notes2.sql 插入与 v6 兼容的笔记/文件菜单；超级管理员(role_id=1)默认拥有全部菜单。
 -- 如需把笔记/文件菜单授权给特定非超级管理员角色，请在 notes2.sql 或此处追加 sys_role_menu。
 -- =============================================================================

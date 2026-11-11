@@ -141,7 +141,7 @@ export function createApi(
     login: (username: string, password: string) => {
       const encrypted = encryptLogin(JSON.stringify({
         tenantId: '000000', username, password, clientId: config().clientId,
-        grantType: 'clientPassword', deviceType: 'pc_client',
+        grantType: 'clientPassword', deviceType: 'client',
       }), import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey)
       return call<{ access_token: string; refresh_token?: string; expire_in?: number }>(
         '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)

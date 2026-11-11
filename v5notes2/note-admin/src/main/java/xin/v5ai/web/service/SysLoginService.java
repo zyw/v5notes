@@ -14,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import me.zhyd.oauth.model.AuthUser;
 import xin.v5ai.common.core.constant.CacheNames;
 import xin.v5ai.common.core.constant.Constants;
+import xin.v5ai.common.core.enums.DeviceType;
 import xin.v5ai.common.core.enums.LoginType;
+import xin.v5ai.common.core.enums.UserType;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.exception.user.UserException;
 import xin.v5ai.common.core.utils.*;
@@ -198,6 +200,41 @@ public class SysLoginService {
         sysUser.setLoginDate(LocalDateTime.now());
         sysUser.setUpdateBy(userId);
         DataPermissionHelper.ignore(() -> userMapper.updateById(sysUser));
+    }
+
+    /**
+     * 登录端由客户端设备类型决定，必须与用户类型一致。
+     * <p>{@code admin} 只允许 {@code sys_user}，{@code client} 只允许 {@code cli_user}。
+     * 尚未刷新缓存的历史值 {@code pc}、{@code pc_client} 按同样规则处理。</p>
+     *
+     * @param client   本次登录携带的客户端
+     * @param username 登录账号，用于记录失败日志
+     * @param userType 用户类型
+     */
+    public void checkClientUserType(SysClientVo client, String username, String userType) {
+        String deviceType = client == null ? null : client.getDeviceType();
+        if (StringUtils.equals(expectedUserType(deviceType), userType)) {
+            return;
+        }
+        log.info("登录用户：{} 用户类型 {} 与客户端设备类型 {} 不匹配.", username, userType, deviceType);
+        recordLoginInfo(username, Constants.LOGIN_FAIL, MessageUtils.message("user.type.mismatch"));
+        throw new UserException("user.type.mismatch");
+    }
+
+    /**
+     * 设备类型对应的唯一可登录用户类型。无法识别时返回 {@code null}，登录会被拒绝。
+     *
+     * @param deviceType 客户端设备类型
+     * @return 允许的用户类型
+     */
+    private static String expectedUserType(String deviceType) {
+        if (DeviceType.ADMIN.getDevice().equals(deviceType) || DeviceType.PC.getDevice().equals(deviceType)) {
+            return UserType.SYS_USER.getUserType();
+        }
+        if (DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType)) {
+            return UserType.CLIENT_USER.getUserType();
+        }
+        return null;
     }
 
     /**

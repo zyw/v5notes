@@ -41,7 +41,7 @@ java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
 ### Flyway
 
 - 全新库：`spring.flyway.enabled=true`，按版本顺序执行：
-  - `V1__base_schema.sql`：基础表，来源于 `script/sql/ry_vue.sql` 与 `script/sql/postgres/postgres_ry_vue.sql`，已去掉 `CREATE DATABASE` 和 `USE`。
+  - `V1__base_schema.sql`：基础表，来源于 `script/sql/v5notes_vue.sql` 与 `script/sql/postgres/postgres_ry_vue.sql`，已去掉 `CREATE DATABASE` 和 `USE`。
   - `V2__v5notes_schema.sql`：笔记、文件、菜单、字典、`sys_client`、`basics_file_config`，由 `script/sql/notes2.sql` 派生。
   - 历史表为 `flyway_schema_history`。
 - 已有库：`baseline-on-migrate: true`。首次启动按当前状态建立 baseline，避免重复执行 V1，之后只执行尚未应用的版本。若库中已有笔记和文件表，先把 `spring.flyway.baseline-version` 设为 `2`，或手工建立 baseline，否则 V2 会重建这些表。
@@ -54,7 +54,7 @@ java -jar note-admin/target/v5notes2.jar --spring.profiles.active=dev
 ### 手工初始化
 
 1. 新建 MySQL 8 数据库 `v5notes2`。
-2. 依次执行 `script/sql/ry_vue.sql`、`script/sql/notes2.sql`。
+2. 依次执行 `script/sql/v5notes_vue.sql`、`script/sql/notes2.sql`。
 3. 从旧库迁移数据时执行 `script/sql/migrate_data_from_old.sql`，说明见该文件头部。
 
 ## 与旧版本的差异

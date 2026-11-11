@@ -1,2 +1,2 @@
 -- 当前部署由 API 启动时的 Flyway 创建并升级表结构。
--- 不要在这里导入 script/sql/ry_vue.sql 或 notes2.sql，否则会和 Flyway 重复建表。
+-- 不要在这里导入 script/sql/v5notes_vue.sql 或 notes2.sql，否则会和 Flyway 重复建表。
