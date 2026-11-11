@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppTheme } from '../hooks/useAppTheme'
+import {
+  type AuthFieldErrorKey,
+  validateEmail,
+  validateEmailCode,
+  validateLoginAccount,
+  validatePassword,
+} from '../models/authValidation'
 
 const props = defineProps<{
   server: string
@@ -10,12 +17,25 @@ const props = defineProps<{
   password: string
   busy: boolean
   error: string
+  authMode: 'login' | 'register'
+  registerEnabled: boolean
+  email: string
+  emailCode: string
+  codeBusy: boolean
+  codeWait: number
+  enteringAfterRegister?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:username': [value: string]
   'update:password': [value: string]
+  'update:email': [value: string]
+  'update:emailCode': [value: string]
   submit: []
+  register: []
+  'send-code': []
+  'show-register': []
+  'show-login': []
   settings: []
 }>()
 
@@ -23,6 +43,11 @@ const { t } = useI18n()
 const { mode, resolved, cycleTheme } = useAppTheme()
 
 const brandIcon = new URL('../assets/brand-icon.png', import.meta.url).href
+const codeInputRef = ref<HTMLInputElement | null>(null)
+const codeNotice = ref('')
+const codeSentOnce = ref(false)
+const passwordVisible = ref(false)
+const fieldErrors = reactive<Partial<Record<'account' | 'password' | 'email' | 'emailCode', AuthFieldErrorKey | null>>>({})
 
 /** 官方地址不出现在页面上，只显示“官方服务器”；自定义地址显示主机名。 */
 const serverLabel = computed(() => props.useOfficial
@@ -33,10 +58,83 @@ const themeText = computed(() => t(
   mode.value === 'auto' ? 'login.themeAuto' : mode.value === 'light' ? 'login.themeLight' : 'login.themeDark',
 ))
 const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
+
+const isRegister = computed(() => props.authMode === 'register')
+const verifyStepActive = computed(() => codeSentOnce.value || Boolean(props.emailCode.trim()))
+
+const submitLabel = computed(() => {
+  if (props.enteringAfterRegister) return t('login.entering')
+  if (props.busy) return t(isRegister.value ? 'login.registering' : 'login.connecting')
+  return t(isRegister.value ? 'login.registerSubmit' : 'login.enter')
+})
+
+const codeButtonLabel = computed(() => {
+  if (props.codeBusy) return t('login.sendingCode')
+  if (props.codeWait > 0) return t('login.resendCode', { seconds: props.codeWait })
+  return t('login.sendCode')
+})
+
+const fieldErrorText = (key: AuthFieldErrorKey | null | undefined) => (key ? t(`login.${key}`) : '')
+
+function clearFieldErrors() {
+  fieldErrors.account = null
+  fieldErrors.password = null
+  fieldErrors.email = null
+  fieldErrors.emailCode = null
+}
+
+function validateLoginFields(): boolean {
+  fieldErrors.account = validateLoginAccount(props.username)
+  fieldErrors.password = validatePassword(props.password, 'login')
+  return !fieldErrors.account && !fieldErrors.password
+}
+
+function validateRegisterFields(): boolean {
+  fieldErrors.email = validateEmail(props.email)
+  fieldErrors.password = validatePassword(props.password, 'register')
+  fieldErrors.emailCode = validateEmailCode(props.emailCode)
+  return !fieldErrors.email && !fieldErrors.password && !fieldErrors.emailCode
+}
+
+function onSubmit() {
+  if (isRegister.value) {
+    if (!validateRegisterFields()) return
+    emit('register')
+    return
+  }
+  if (!validateLoginFields()) return
+  emit('submit')
+}
+
+function onSendCode() {
+  fieldErrors.email = validateEmail(props.email)
+  if (fieldErrors.email) return
+  emit('send-code')
+}
+
+watch(() => props.authMode, () => {
+  codeNotice.value = ''
+  codeSentOnce.value = false
+  passwordVisible.value = false
+  clearFieldErrors()
+})
+
+watch(() => props.codeWait, async (next, prev) => {
+  if (prev === 0 && next > 0) {
+    codeSentOnce.value = true
+    codeNotice.value = t('login.codeSent')
+    await nextTick()
+    codeInputRef.value?.focus()
+  }
+})
+
+watch(() => props.error, (value) => {
+  if (value) codeNotice.value = ''
+})
 </script>
 
 <template>
-  <div class="login-screen" :data-theme="resolved" :data-theme-mode="mode">
+  <div class="login-screen" :data-theme="resolved" :data-theme-mode="mode" :data-auth="authMode">
     <div class="login-atmos" aria-hidden="true">
       <div class="login-atmos-light">
         <span class="atmos-wash"></span>
@@ -90,10 +188,10 @@ const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
       <section class="login-copy">
         <div class="login-lead">
           <h1>
-            <span class="login-headline-lead">{{ t('login.headlineLead') }}</span><br />
-            <span class="login-headline-rest">{{ t('login.headlineRest') }}</span>
+            <span class="login-headline-lead">{{ t(isRegister ? 'login.registerHeadlineLead' : 'login.headlineLead') }}</span><br />
+            <span class="login-headline-rest">{{ t(isRegister ? 'login.registerHeadlineRest' : 'login.headlineRest') }}</span>
           </h1>
-          <p class="login-sub">{{ t('login.subtitle') }}</p>
+          <p class="login-sub">{{ t(isRegister ? 'login.registerSubtitle' : 'login.subtitle') }}</p>
         </div>
 
         <div class="login-stage" aria-hidden="true">
@@ -140,27 +238,150 @@ const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
         </div>
       </section>
 
-      <form class="login-card" @submit.prevent="emit('submit')">
-        <span class="login-card-kicker">{{ t('login.connect') }}</span>
+      <form class="login-card" :class="{ 'is-register': isRegister }" @submit.prevent="onSubmit">
+        <div class="login-card-head">
+          <span class="login-card-kicker">{{ t(isRegister ? 'login.registerKicker' : 'login.connect') }}</span>
+          <p v-if="isRegister" class="login-card-hint">{{ t('login.registerHint') }}</p>
+        </div>
+
+        <ol v-if="isRegister" class="login-steps" :aria-label="t('login.registerKicker')">
+          <li class="login-step" :class="{ 'is-current': !verifyStepActive, 'is-done': verifyStepActive }">
+            <span class="login-step-index" aria-hidden="true">1</span>
+            <span>{{ t('login.registerStepAccount') }}</span>
+          </li>
+          <li class="login-step-rule" aria-hidden="true"></li>
+          <li class="login-step" :class="{ 'is-current': verifyStepActive }">
+            <span class="login-step-index" aria-hidden="true">2</span>
+            <span>{{ t('login.registerStepVerify') }}</span>
+          </li>
+        </ol>
+
         <div class="login-server" :class="{ 'is-custom': !useOfficial }">
           <span class="login-server-dot" aria-hidden="true" />
           <span>{{ t('login.server') }} · <strong>{{ serverLabel }}</strong></span>
           <button class="login-server-change" type="button" @click="emit('settings')">{{ t('login.change') }}</button>
         </div>
-        <label class="login-field">
-          <span>{{ t('login.username') }}</span>
-          <input :value="username" autocomplete="username" required @input="emit('update:username', ($event.target as HTMLInputElement).value.trim())" />
-        </label>
-        <label class="login-field">
-          <span>{{ t('login.password') }}</span>
-          <input :value="password" type="password" autocomplete="current-password" required @input="emit('update:password', ($event.target as HTMLInputElement).value)" />
-        </label>
-        <button class="login-submit" type="submit" :disabled="busy">
+
+        <div class="login-fields" :class="{ 'is-register': isRegister }">
+          <template v-if="!isRegister">
+            <label class="login-field" :class="{ 'has-error': fieldErrors.account }">
+              <span>{{ t('login.account') }}</span>
+              <input
+                :value="username"
+                type="text"
+                inputmode="email"
+                autocomplete="username"
+                :placeholder="t('login.accountHint')"
+                required
+                @input="emit('update:username', ($event.target as HTMLInputElement).value.trim()); fieldErrors.account = null"
+                @blur="fieldErrors.account = validateLoginAccount(username)"
+              />
+              <span v-if="fieldErrors.account" class="login-field-error">{{ fieldErrorText(fieldErrors.account) }}</span>
+            </label>
+          </template>
+
+          <template v-else>
+            <label class="login-field" :class="{ 'has-error': fieldErrors.email }">
+              <span>{{ t('login.email') }}</span>
+              <input
+                :value="email"
+                type="email"
+                autocomplete="email"
+                required
+                @input="emit('update:email', ($event.target as HTMLInputElement).value.trim()); fieldErrors.email = null"
+                @blur="fieldErrors.email = validateEmail(email)"
+              />
+              <span v-if="fieldErrors.email" class="login-field-error">{{ fieldErrorText(fieldErrors.email) }}</span>
+            </label>
+          </template>
+
+          <label class="login-field" :class="{ 'has-error': fieldErrors.password }">
+            <span>{{ t('login.password') }}</span>
+            <div class="login-password-wrap">
+              <input
+                :value="password"
+                :type="passwordVisible ? 'text' : 'password'"
+                :autocomplete="isRegister ? 'new-password' : 'current-password'"
+                required
+                @input="emit('update:password', ($event.target as HTMLInputElement).value); fieldErrors.password = null"
+                @blur="fieldErrors.password = validatePassword(password, isRegister ? 'register' : 'login')"
+              />
+              <button
+                class="login-password-toggle"
+                type="button"
+                :aria-label="passwordVisible ? t('login.hidePassword') : t('login.showPassword')"
+                :title="passwordVisible ? t('login.hidePassword') : t('login.showPassword')"
+                @click="passwordVisible = !passwordVisible"
+              >
+                <svg v-if="!passwordVisible" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
+                  <path d="M9.9 5.1A11.4 11.4 0 0 1 12 4.8c6.5 0 10 7.2 10 7.2a18.5 18.5 0 0 1-2.2 3.1" />
+                  <path d="M6.7 6.7C4.2 8.4 2.5 10.8 2 12c0 0 3.5 7.2 10 7.2 1.4 0 2.7-.3 3.9-.8" />
+                </svg>
+              </button>
+            </div>
+            <span v-if="isRegister && !fieldErrors.password" class="login-field-hint">{{ t('login.passwordHint') }}</span>
+            <span v-if="fieldErrors.password" class="login-field-error">{{ fieldErrorText(fieldErrors.password) }}</span>
+          </label>
+
+          <template v-if="isRegister">
+            <div class="login-code-row">
+              <label class="login-field" :class="{ 'has-error': fieldErrors.emailCode }">
+                <span>{{ t('login.emailCode') }}</span>
+                <input
+                  ref="codeInputRef"
+                  :value="emailCode"
+                  inputmode="numeric"
+                  maxlength="6"
+                  autocomplete="one-time-code"
+                  required
+                  @input="emit('update:emailCode', ($event.target as HTMLInputElement).value.trim()); fieldErrors.emailCode = null"
+                  @blur="fieldErrors.emailCode = validateEmailCode(emailCode)"
+                />
+                <span v-if="fieldErrors.emailCode" class="login-field-error">{{ fieldErrorText(fieldErrors.emailCode) }}</span>
+              </label>
+              <button
+                class="login-code-send"
+                type="button"
+                :class="{ 'is-waiting': codeWait > 0 }"
+                :disabled="codeBusy || codeWait > 0 || busy"
+                @click="onSendCode"
+              >
+                {{ codeButtonLabel }}
+              </button>
+            </div>
+            <p v-if="codeNotice && !error" class="login-notice" role="status">{{ codeNotice }}</p>
+          </template>
+        </div>
+
+        <button class="login-submit" type="submit" :disabled="busy || enteringAfterRegister">
           <span class="login-cta-mark" aria-hidden="true">
             <svg viewBox="0 0 20 20"><path d="M4.5 10h7M8.5 6.5 12 10l-3.5 3.5" /><path d="M15.5 4.5v11" /></svg>
           </span>
-          {{ busy ? t('login.connecting') : t('login.enter') }}
+          {{ submitLabel }}
         </button>
+
+        <div class="login-footer-row">
+          <button
+            v-if="authMode === 'login' && registerEnabled && !enteringAfterRegister"
+            class="login-switch"
+            type="button"
+            @click="emit('show-register')"
+          >
+            {{ t('login.createAccount') }}
+            <span aria-hidden="true">→</span>
+          </button>
+          <button v-else-if="isRegister" class="login-switch" type="button" @click="emit('show-login')">
+            <span aria-hidden="true">←</span>
+            {{ t('login.backToLogin') }}
+          </button>
+        </div>
+
         <p v-if="error" class="login-error" role="alert">{{ error }}</p>
       </form>
     </div>
@@ -173,4 +394,3 @@ const themeTitle = computed(() => `${t('login.theme')} · ${themeText.value}`)
     </footer>
   </div>
 </template>
-

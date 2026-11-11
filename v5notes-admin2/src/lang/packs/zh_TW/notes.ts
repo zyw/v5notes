@@ -172,7 +172,23 @@ export default {
     times: '{count} 次',
     opsScope: '含後台與用戶端',
     refreshed: '資料已重新整理',
-    loadFailed: '首頁資料載入失敗，請稍後重試'
+    loadFailed: '首頁資料載入失敗，請稍後重試',
+    storageRank: '客戶端空間占用',
+    storageMore: '更多',
+    storageEmpty: '暫無客戶端使用者',
+    storageUser: '使用者',
+    storageKeywordPh: '請輸入使用者名稱或暱稱',
+    storageSource: '來源',
+    storageAllSources: '全部來源',
+    storageNotes: '筆記',
+    storageFiles: '檔案',
+    storageUsed: '合計',
+    storageDataset: 'Storage Dataset',
+    storageTitle: '客戶端使用者占用空間',
+    storageListDesc: '共 {total} 位客戶端使用者，按占用空間從大到小排列。',
+    sourceSysAdd: '管理端新增',
+    sourceClientRegister: '客戶端註冊',
+    sourceAdminRegister: '管理端註冊'
   },
   docs: {
     kicker: {

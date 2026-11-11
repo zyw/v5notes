@@ -18,6 +18,7 @@ import xin.v5ai.notes.domain.NoteTrashSubject;
 import xin.v5ai.notes.domain.vo.NoteTrashItemVo;
 import xin.v5ai.notes.domain.vo.NoteTrashRestoreVo;
 import xin.v5ai.notes.mapper.NoteTrashMapper;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteRevisionService;
 import xin.v5ai.notes.service.INoteTrashService;
 import xin.v5ai.notes.util.NoteTrashPaths;
@@ -68,6 +69,8 @@ public class NoteTrashServiceImpl implements INoteTrashService {
 
     private final INoteRevisionService revisionService;
 
+    private final IClientTrialService trialService;
+
     private final ObjectProvider<INoteTrashService> self;
 
     @Override
@@ -117,6 +120,8 @@ public class NoteTrashServiceImpl implements INoteTrashService {
         String type = typeOf(trash);
         Long parentId = resolveParent(trash.getOriginalParentId(), userId);
         boolean relocated = trash.getOriginalParentId() != null && trash.getOriginalParentId() != 0L && parentId == 0L;
+        long extra = TYPE_NOTE.equals(type) ? trialService.noteBytes(trash.getObjectId()) : trialService.trashNoteBytes(trash.getId());
+        trialService.assertCanWrite(userId, extra);
         if (TYPE_NOTE.equals(type)) {
             if (trashMapper.restoreNote(trash.getObjectId(), trash.getId(), userId, parentId) != 1) {
                 throw new ServiceException(MessageUtils.message(TRASH_MISSING));

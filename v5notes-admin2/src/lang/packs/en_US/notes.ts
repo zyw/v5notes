@@ -173,7 +173,23 @@ export default {
     times: '{count}',
     opsScope: 'Admin and client',
     refreshed: 'Data refreshed',
-    loadFailed: 'Could not load the dashboard. Try again later.'
+    loadFailed: 'Could not load the dashboard. Try again later.',
+    storageRank: 'Client storage',
+    storageMore: 'More',
+    storageEmpty: 'No client users',
+    storageUser: 'User',
+    storageKeywordPh: 'Enter username or nickname',
+    storageSource: 'Source',
+    storageAllSources: 'All sources',
+    storageNotes: 'Notes',
+    storageFiles: 'Files',
+    storageUsed: 'Total',
+    storageDataset: 'Storage Dataset',
+    storageTitle: 'Client storage usage',
+    storageListDesc: '{total} client users, sorted by storage usage.',
+    sourceSysAdd: 'Added in admin',
+    sourceClientRegister: 'Client registration',
+    sourceAdminRegister: 'Admin registration'
   },
   docs: {
     kicker: {

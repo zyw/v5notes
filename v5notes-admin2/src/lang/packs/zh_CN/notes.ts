@@ -172,7 +172,23 @@ export default {
     times: '{count} 次',
     opsScope: '含后台与客户端',
     refreshed: '数据已刷新',
-    loadFailed: '首页数据加载失败，请稍后重试'
+    loadFailed: '首页数据加载失败，请稍后重试',
+    storageRank: '客户端空间占用',
+    storageMore: '更多',
+    storageEmpty: '暂无客户端用户',
+    storageUser: '用户',
+    storageKeywordPh: '请输入用户名称或昵称',
+    storageSource: '来源',
+    storageAllSources: '全部来源',
+    storageNotes: '笔记',
+    storageFiles: '文件',
+    storageUsed: '合计',
+    storageDataset: 'Storage Dataset',
+    storageTitle: '客户端用户占用空间',
+    storageListDesc: '共 {total} 位客户端用户，按占用空间从大到小排列。',
+    sourceSysAdd: '管理端添加',
+    sourceClientRegister: '客户端注册',
+    sourceAdminRegister: '管理端注册'
   },
   docs: {
     kicker: {

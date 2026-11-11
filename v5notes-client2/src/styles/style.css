@@ -346,7 +346,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .empty-actions svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .secondary-action { padding: 10px 16px; border: 1px solid #e1e6df; border-radius: 8px; color: #526355; background: #fffefa; }
 .secondary-action:hover { background: #f5f7f2; }
-.error-bar, .session-alert { padding: 10px 24px; background: #fbefe7; color: #a34c39; font-size: 12px; }
+.error-bar, .session-alert, .trial-alert { padding: 10px 24px; background: #fbefe7; color: #a34c39; font-size: 12px; }
 .error-bar button, .session-alert button { float: right; }
 .modal-backdrop { position: fixed; inset: 0; background: #1e3829a6; display: grid; place-items: center; z-index: 100; padding: 76px 15px 15px; }
 .modal { width: min(440px, 100%); background: #fffefa; border-radius: 16px; padding: 32px; box-shadow: 0 25px 70px #0003; }
@@ -782,7 +782,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
   .workspace { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
   .sidebar, .editor-header, .strip-tools, .mode-dock, .toolbar-reveal, .outline-sidebar, .focus-hud,
-  .notice-bar, .error-bar, .session-alert, .palette-backdrop, .modal-backdrop, .empty-editor,
+  .notice-bar, .error-bar, .session-alert, .trial-alert, .palette-backdrop, .modal-backdrop, .empty-editor,
   .v5md .v5-toolbar, .v5md .v5-slash-menu, .v5md .v5-block-menu, .v5md .v5-block-handle,
   .v5md .v5-tablebar, .v5md .v5-outline, .v5md .v5-findbar, .v5md .v5-image-resize,
   .v5md .v5-drop-line { display: none !important; }

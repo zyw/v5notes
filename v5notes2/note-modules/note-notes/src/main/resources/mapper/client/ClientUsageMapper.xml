@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.notes.mapper.ClientUsageMapper">
+
+    <select id="selectAccount" resultType="xin.v5ai.notes.domain.vo.ClientAccountRow">
+        SELECT user_source AS userSource,
+               create_time AS createTime
+        FROM sys_user
+        WHERE user_id = #{userId}
+          AND del_flag = '0'
+    </select>
+
+    <select id="selectUserUsage" resultType="xin.v5ai.notes.domain.vo.ClientUsageBytesVo">
+        SELECT CAST(COALESCE((SELECT SUM(OCTET_LENGTH(content))
+                              FROM note_notes
+                              WHERE del_flag = '0'
+                                AND user_id = #{userId}), 0) AS SIGNED) AS noteBytes,
+               CAST(COALESCE((SELECT SUM(size)
+                              FROM basics_file
+                              WHERE del_flag = '0'
+                                AND create_by = #{userId}), 0) AS SIGNED) AS fileBytes
+    </select>
+
+    <select id="selectNoteBytes" resultType="java.lang.Long">
+        SELECT CAST(COALESCE(OCTET_LENGTH(content), 0) AS SIGNED)
+        FROM note_notes
+        WHERE id = #{noteId}
+    </select>
+
+    <select id="selectTrashNoteBytes" resultType="java.lang.Long">
+        SELECT CAST(COALESCE(SUM(OCTET_LENGTH(content)), 0) AS SIGNED)
+        FROM note_notes
+        WHERE trash_id = #{trashId}
+          AND del_flag &lt;&gt; '0'
+    </select>
+
+    <select id="selectClientStorageRank" resultType="xin.v5ai.notes.domain.vo.ClientStorageRankVo">
+        SELECT u.user_id AS userId,
+               u.user_name AS userName,
+               u.nick_name AS nickName,
+               u.user_source AS userSource,
+               COALESCE(n.note_bytes, 0) AS noteBytes,
+               COALESCE(f.file_bytes, 0) AS fileBytes,
+               COALESCE(n.note_bytes, 0) + COALESCE(f.file_bytes, 0) AS usedBytes
+        FROM sys_user u
+                 LEFT JOIN (SELECT user_id, SUM(OCTET_LENGTH(content)) AS note_bytes
+                            FROM note_notes
+                            WHERE del_flag = '0'
+                            GROUP BY user_id) n ON n.user_id = u.user_id
+                 LEFT JOIN (SELECT create_by AS user_id, SUM(size) AS file_bytes
+                            FROM basics_file
+                            WHERE del_flag = '0'
+                            GROUP BY create_by) f ON f.user_id = u.user_id
+        WHERE u.del_flag = '0'
+          AND u.user_type = 'cli_user'
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_name LIKE concat('%', #{keyword}, '%')
+              OR u.nick_name LIKE concat('%', #{keyword}, '%'))
+        </if>
+        <if test="userSource != null and userSource != ''">
+            AND u.user_source = #{userSource}
+        </if>
+        ORDER BY usedBytes DESC, u.user_id ASC
+    </select>
+
+</mapper>

@@ -81,7 +81,7 @@ insert into sys_dept values(1761000000000000109, 1761000000000000102, '0,1761000
 create table sys_user (
     user_id           bigint(20)      not null                   comment '用户ID',
     dept_id           bigint(20)      default null               comment '部门ID',
-    user_name         varchar(30)     not null                   comment '用户账号',
+    user_name         varchar(50)     not null                   comment '用户账号（客户端可为邮箱）',
     nick_name         varchar(30)     not null                   comment '用户昵称',
     user_type         varchar(10)     default 'sys_user'         comment '用户类型（sys_user系统用户）',
     email             varchar(50)     default ''                 comment '用户邮箱',

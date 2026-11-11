@@ -93,6 +93,16 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
     }
 
     /**
+     * 获取客户端自助注册开关。
+     *
+     * @return true开启，false关闭
+     */
+    @Override
+    public boolean selectClientRegisterEnabled() {
+        return Convert.toBool(this.getConfigValue("client.account.registerUser"));
+    }
+
+    /**
      * 查询参数配置列表
      *
      * @param config 参数配置信息

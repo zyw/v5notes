@@ -347,7 +347,8 @@ html[data-theme='dark'] .danger-eyebrow { color: #ffb4a8; }
 html[data-theme='dark'] .danger-button { color: #ffe9e4; background: var(--dk-danger-bg); }
 html[data-theme='dark'] .danger-button:hover { background: #a5463a; }
 html[data-theme='dark'] .error-bar,
-html[data-theme='dark'] .session-alert { background: rgba(180, 80, 60, .18); color: #ffb4a8; }
+html[data-theme='dark'] .session-alert,
+html[data-theme='dark'] .trial-alert { background: rgba(180, 80, 60, .18); color: #ffb4a8; }
 html[data-theme='dark'] .notice-bar { background: var(--dk-accent-soft); color: var(--dk-accent-bright); }
 
 /* 设置弹窗 */

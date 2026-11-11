@@ -399,6 +399,15 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
+              <el-form-item :label="$t('system.user.userSource')" prop="userSource">
+                <el-select v-model="form.userSource" :placeholder="$t('common.pleaseSelect', { label: $t('system.user.userSource') })">
+                  <el-option :label="$t('system.user.sourceSysAdd')" value="sys_add" />
+                  <el-option :label="$t('system.user.sourceClientRegister')" value="client_register" />
+                  <el-option :label="$t('system.user.sourceAdminRegister')" value="admin_register" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
               <el-form-item :label="$t('system.user.userType')" prop="userType">
                 <el-select v-model="form.userType" :placeholder="$t('common.pleaseSelect', { label: $t('system.user.userType') })">
                   <el-option
@@ -720,6 +729,7 @@ const initFormData: UserForm = {
   email: undefined,
   gender: undefined,
   userType: 'sys_user',
+  userSource: 'sys_add',
   status: '0',
   remark: '',
   postIds: [],
@@ -782,6 +792,7 @@ const rules = computed<ElFormRules>(() => ({
     }
   ],
   userType: [{ required: true, message: t('system.user.required', { label: t('system.user.userType') }), trigger: 'change' }],
+  userSource: [{ required: true, message: t('system.user.required', { label: t('system.user.userSource') }), trigger: 'change' }],
   roleIds: [{ required: true, message: t('system.user.roleRequired'), trigger: 'blur' }]
 }));
 const { ids, single, multiple, handleSelectionChange } = useTableSelection<UserVO>(item => item.userId);
@@ -1077,6 +1088,7 @@ const handleUpdate = async (row?: Partial<UserForm>) => {
   setDialogTitle(t('system.user.editTitle'));
   openUserDialog();
   Object.assign(form.value, data.user);
+  form.value.userSource = data.user.userSource || 'sys_add';
   postOptions.value = data.posts;
   roleOptions.value = Array.from(
     new Map([...data.roles, ...data.user.roles].map(role => [role.roleId, role])).values()

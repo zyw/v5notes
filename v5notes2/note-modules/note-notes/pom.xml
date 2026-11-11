@@ -79,6 +79,11 @@
             <groupId>xin.v5ai</groupId>
             <artifactId>note-common-encrypt</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-system</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

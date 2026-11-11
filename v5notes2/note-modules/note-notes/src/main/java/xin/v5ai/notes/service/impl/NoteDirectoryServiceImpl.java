@@ -19,6 +19,7 @@ import xin.v5ai.notes.domain.vo.NoteDirectoryVo;
 import xin.v5ai.notes.domain.vo.NotesTreeVo;
 import xin.v5ai.notes.mapper.NoteDirectoryMapper;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteTrashService;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     private final NoteDirectoryMapper baseMapper;
     private final NoteNotesMapper notesMapper;
     private final INoteTrashService trashService;
+    private final IClientTrialService trialService;
 
     /**
      * 查询目录
@@ -102,6 +104,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
         add.setUserId(LoginHelper.getUserId());
         Long deptId = add.getDeptId();
         add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
+        trialService.assertCanWrite(add.getUserId(), 0);
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
@@ -119,6 +122,7 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     @Override
     public Boolean updateByBo(NoteDirectoryBo bo) {
         NoteDirectory update = MapstructUtils.convert(bo, NoteDirectory.class);
+        trialService.assertCanWrite(LoginHelper.getUserId(), 0);
         validEntityBeforeSave(update);
         return baseMapper.updateById(update) > 0;
     }

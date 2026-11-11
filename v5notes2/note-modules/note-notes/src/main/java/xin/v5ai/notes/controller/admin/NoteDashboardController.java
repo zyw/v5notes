@@ -7,10 +7,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.web.core.BaseController;
+import xin.v5ai.notes.domain.vo.ClientStorageRankVo;
 import xin.v5ai.notes.domain.vo.dashboard.DashboardOverviewVo;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteDashboardService;
+
+import java.util.List;
 
 /**
  * 首页聚合统计
@@ -28,6 +34,8 @@ public class NoteDashboardController extends BaseController {
 
     private final INoteDashboardService dashboardService;
 
+    private final IClientTrialService trialService;
+
     /**
      * 首页聚合统计
      *
@@ -38,5 +46,31 @@ public class NoteDashboardController extends BaseController {
     @GetMapping("/overview")
     public R<DashboardOverviewVo> overview(@RequestParam(defaultValue = "30") Integer range) {
         return R.ok(dashboardService.overview(range));
+    }
+
+    /**
+     * 客户端用户占用空间前几名。
+     *
+     * @param limit 条数，默认 8，最大 50
+     * @return 按占用从大到小
+     */
+    @SaCheckPermission("notes:dashboard:query")
+    @GetMapping("/storage-top")
+    public R<List<ClientStorageRankVo>> storageTop(@RequestParam(defaultValue = "8") Integer limit) {
+        return R.ok(trialService.top(limit));
+    }
+
+    /**
+     * 全部客户端用户占用空间，按占用从大到小。
+     *
+     * @param keyword    用户账号或昵称，模糊匹配
+     * @param userSource 用户来源，精确匹配
+     * @param pageQuery  分页
+     * @return 分页列表
+     */
+    @SaCheckPermission("notes:dashboard:query")
+    @GetMapping("/storage")
+    public R<PageResult<ClientStorageRankVo>> storage(String keyword, String userSource, PageQuery pageQuery) {
+        return R.ok(trialService.page(keyword, userSource, pageQuery));
     }
 }

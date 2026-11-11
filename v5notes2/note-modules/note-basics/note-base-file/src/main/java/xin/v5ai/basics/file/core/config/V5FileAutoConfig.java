@@ -1,15 +1,14 @@
 package xin.v5ai.basics.file.core.config;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import xin.v5ai.basics.file.core.client.DefaultFileClientFactory;
 import xin.v5ai.basics.file.core.client.FileClientFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /**
- * 文件配置自动化配置类
- * @author 芋道源码
+ * 文件模块自动化配置：注册 {@link FileClientFactory}。
  */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration
 public class V5FileAutoConfig {
 
     @Bean

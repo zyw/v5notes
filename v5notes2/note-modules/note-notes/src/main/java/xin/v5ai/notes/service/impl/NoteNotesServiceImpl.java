@@ -22,10 +22,12 @@ import xin.v5ai.notes.domain.vo.NoteNotesVo;
 import xin.v5ai.notes.domain.vo.NotesContentVo;
 import xin.v5ai.notes.domain.vo.NotesSearchVo;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
 import xin.v5ai.notes.service.INoteRevisionService;
 import xin.v5ai.notes.service.INoteTrashService;
+import xin.v5ai.notes.util.NoteContentDigest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +53,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     private final INoteRevisionService revisionService;
 
     private final INoteTrashService trashService;
+
+    private final IClientTrialService trialService;
 
     // markdown标签匹配正则
     private final static String MARKDOWN_REGEX = "\\*\\*(.*?)\\*\\*|__(.*?)__|~~(.*?)~~|`(.*?)`|\\[(.*?)\\]\\((.*?)\\)|!\\[(.*?)\\]\\((.*?)\\)|<.*?>|#{1,6}(.*?)|^-{3,}|-{3,}";
@@ -139,6 +143,7 @@ public class NoteNotesServiceImpl implements INoteNotesService {
         add.setUserId(LoginHelper.getUserId());
         Long deptId = add.getDeptId();
         add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
+        trialService.assertCanWrite(add.getUserId(), NoteContentDigest.utf8Size(add.getContent()));
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {

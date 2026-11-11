@@ -12,7 +12,7 @@ import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
 const { t, locale } = useI18n()
-const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
+const { sessionExpired, reauthenticate, error, notice, trialExpired, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -518,6 +518,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
 <template>
     <main class="editor-pane" :class="{ 'is-resizing-outline': resizingOutline }" :style="{ '--outline-width': `${outlineVisible ? outlineWidth : 0}px`, '--doc-size': `${fontSize}px` }" @pointermove="resizeOutline" @pointerup="stopOutlineResize" @pointercancel="stopOutlineResize">
       <div v-if="sessionExpired" class="session-alert">{{ t('editor.sessionExpired') }}<button @click="reauthenticate">{{ t('editor.reauthenticate') }}</button></div>
+      <div v-if="trialExpired" class="trial-alert" role="status">{{ t('trial.expired') }}</div>
       <div v-if="notice" class="notice-bar">{{ notice }} <button @click="notice = ''">×</button></div>
       <div v-if="error" class="error-bar" role="alert">{{ error }} <button @click="error = ''">×</button></div>
       <Teleport to="body">

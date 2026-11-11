@@ -100,12 +100,15 @@ cd ../v5notes2/docker && docker compose up -d --build
 | `V5NOTES_REDIS_PORT` | `spring.data.redis.port` | Redis 端口，默认 `6379` |
 | `V5NOTES_REDIS_DATABASE` | `spring.data.redis.database` | Redis 库编号 |
 | `V5NOTES_REDIS_PASSWORD` | `spring.data.redis.password` | Redis 密码 |
-| `V5NOTES_MAIL_ENABLED` | `mail.enabled` | 是否启用邮件发送，默认 `false` |
-| `V5NOTES_MAIL_HOST` | `mail.host` | SMTP 服务器地址 |
-| `V5NOTES_MAIL_PORT` | `mail.port` | SMTP 端口 |
+| `V5NOTES_MAIL_ENABLED` | `mail.enabled` | 是否启用邮件发送；dev 默认 `true`，prod 默认 `false` |
+| `V5NOTES_MAIL_DRY_RUN` | `mail.dry-run` | 开发联调：`true` 时不连 SMTP，验证码写入 Redis 并打日志；prod 必须 `false` |
+| `V5NOTES_MAIL_HOST` | `mail.host` | SMTP 服务器地址，默认 `smtp.163.com` |
+| `V5NOTES_MAIL_PORT` | `mail.port` | SMTP 端口，默认 `465` |
 | `V5NOTES_MAIL_FROM` | `mail.from` | 发件人地址 |
 | `V5NOTES_MAIL_USER` | `mail.user` | SMTP 登录用户名 |
-| `V5NOTES_MAIL_PASSWORD` | `mail.pass` | SMTP 登录密码 |
+| `V5NOTES_MAIL_PASSWORD` | `mail.pass` | SMTP 授权码（不是登录密码） |
+| `V5NOTES_MAIL_STARTTLS` | `mail.starttlsEnable` | 465/SSL 下应为 `false` |
+| `V5NOTES_MAIL_SSL` | `mail.sslEnable` | 465 端口通常为 `true` |
 | `V5NOTES_SMS_ALIBABA_ACCESS_KEY_ID` | `sms.blends.config1.access-key-id` | 阿里云短信 AccessKey |
 | `V5NOTES_SMS_ALIBABA_ACCESS_KEY_SECRET` | `sms.blends.config1.access-key-secret` | 阿里云短信 AccessKey Secret |
 | `V5NOTES_SMS_ALIBABA_SIGNATURE` | `sms.blends.config1.signature` | 阿里云短信签名 |

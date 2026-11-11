@@ -3,6 +3,8 @@ package xin.v5ai;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import xin.v5ai.common.mail.config.properties.MailProperties;
 
 /**
  * 启动程序
@@ -11,6 +13,7 @@ import org.springframework.boot.context.metrics.buffering.BufferingApplicationSt
  */
 
 @SpringBootApplication
+@EnableConfigurationProperties(MailProperties.class)
 public class V5Notes2Application {
 
     /**

@@ -179,6 +179,36 @@
         </div>
       </section>
     </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div class="t"><h2>{{ $t('dashboard.storageRank') }}</h2><span class="k">{{ $t('dashboard.kicker.top', { count: storageRows.length }) }}</span></div>
+        <div class="r"><a href="#" @click.prevent="go('/notes/storage')">{{ $t('dashboard.storageMore') }}</a></div>
+      </div>
+      <table class="notes-table">
+        <thead>
+          <tr>
+            <th style="width: 34%">{{ $t('dashboard.storageUser') }}</th>
+            <th style="width: 22%">{{ $t('dashboard.storageSource') }}</th>
+            <th style="width: 14%">{{ $t('dashboard.storageNotes') }}</th>
+            <th style="width: 14%">{{ $t('dashboard.storageFiles') }}</th>
+            <th style="width: 16%; text-align: right">{{ $t('dashboard.storageUsed') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in storageRows" :key="row.userId">
+            <td class="name"><span :title="row.userName">{{ row.nickName || row.userName }}</span></td>
+            <td>{{ sourceLabel(row.userSource) }}</td>
+            <td class="num">{{ formatBytes(row.noteBytes) }}</td>
+            <td class="num">{{ formatBytes(row.fileBytes) }}</td>
+            <td class="upd">{{ formatBytes(row.usedBytes) }}</td>
+          </tr>
+          <tr v-if="!storageRows.length">
+            <td colspan="5" class="empty-cell">{{ $t('dashboard.storageEmpty') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 </template>
 
@@ -189,8 +219,8 @@ import { Document, Refresh } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import DashboardChart from '@/components/DashboardChart/index.vue';
-import { getDashboardOverview } from '@/api/notes/dashboard';
-import type { DashboardKpi, DashboardOverview } from '@/api/notes/dashboard/types';
+import { getClientStorageTop, getDashboardOverview } from '@/api/notes/dashboard';
+import type { ClientStorageRank, DashboardKpi, DashboardOverview } from '@/api/notes/dashboard/types';
 import modal from '@/plugins/modal';
 
 const router = useRouter();
@@ -604,6 +634,36 @@ const pulseRows = computed(() => {
 });
 
 /* ---------- 数据加载 ---------- */
+const storageRows = ref<ClientStorageRank[]>([]);
+
+const sourceLabel = (source?: string) => {
+  if (source === 'client_register') return t('dashboard.sourceClientRegister');
+  if (source === 'admin_register') return t('dashboard.sourceAdminRegister');
+  return t('dashboard.sourceSysAdd');
+};
+
+const formatBytes = (value?: number) => {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let size = bytes / 1024;
+  let index = 0;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+  return `${size >= 10 ? size.toFixed(0) : size.toFixed(1)} ${units[index]}`;
+};
+
+const loadStorage = async () => {
+  try {
+    const res = await getClientStorageTop(8);
+    storageRows.value = res.data ?? [];
+  } catch {
+    storageRows.value = [];
+  }
+};
+
 const load = async (notify = false) => {
   loading.value = true;
   errorMsg.value = '';
@@ -617,6 +677,7 @@ const load = async (notify = false) => {
   } finally {
     loading.value = false;
   }
+  await loadStorage();
 };
 
 const changeRange = (value: number) => {

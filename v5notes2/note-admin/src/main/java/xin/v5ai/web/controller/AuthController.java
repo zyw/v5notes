@@ -32,6 +32,7 @@ import xin.v5ai.system.domain.vo.SysClientVo;
 import xin.v5ai.system.service.ISysClientService;
 import xin.v5ai.system.service.ISysConfigService;
 import xin.v5ai.system.service.ISysSocialService;
+import xin.v5ai.web.domain.bo.ClientRegisterBody;
 import xin.v5ai.web.domain.bo.RefreshTokenBody;
 import xin.v5ai.web.domain.vo.LoginVo;
 import xin.v5ai.web.service.AuthTokenService;
@@ -198,6 +199,29 @@ public class AuthController {
             return R.fail(MessageUtils.message("auth.register.disabled"));
         }
         registerService.register(user);
+        return R.ok();
+    }
+
+    /**
+     * 客户端自助注册是否开启。登录页据此决定是否展示注册入口。
+     *
+     * @return true 开启
+     */
+    @GetMapping("/client/register-enabled")
+    public R<Boolean> clientRegisterEnabled() {
+        return R.ok(configService.selectClientRegisterEnabled());
+    }
+
+    /**
+     * 客户端自助注册。成功后用户类型为 cli_user，来源为 client_register。
+     *
+     * @param body 注册信息
+     * @return 操作结果
+     */
+    @ApiEncrypt
+    @PostMapping("/client/register")
+    public R<Void> clientRegister(@Validated @RequestBody ClientRegisterBody body) {
+        registerService.registerClient(body);
         return R.ok();
     }
 
