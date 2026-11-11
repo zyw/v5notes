@@ -85,6 +85,8 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     private LambdaQueryWrapper<NoteDirectory> buildQueryWrapper(NoteDirectoryBo bo) {
         Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<NoteDirectory> lqw = Wrappers.lambdaQuery();
+        lqw.eq(bo.getUserId() != null, NoteDirectory::getUserId, bo.getUserId());
+        applyUserNameFilter(lqw, "note_directory", bo.getUserName());
         lqw.eq(bo.getPid() != null, NoteDirectory::getPid, bo.getPid());
         lqw.like(StringUtils.isNotBlank(bo.getName()), NoteDirectory::getName, bo.getName());
         lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
@@ -101,7 +103,9 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
     @Override
     public Boolean insertByBo(NoteDirectoryBo bo) {
         NoteDirectory add = MapstructUtils.convert(bo, NoteDirectory.class);
-        add.setUserId(LoginHelper.getUserId());
+        if (add.getUserId() == null) {
+            add.setUserId(LoginHelper.getUserId());
+        }
         Long deptId = add.getDeptId();
         add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
         trialService.assertCanWrite(add.getUserId(), 0);
@@ -150,22 +154,32 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
 
     @Override
     public List<NotesTreeVo> dirTreeList() {
-        return dirTreeList(null);
+        return dirTreeList(null, null);
     }
 
     @Override
     public List<NotesTreeVo> dirTreeList(Long userId) {
-        return assembleTree(listDirectories(userId), List.of());
+        return dirTreeList(userId, null);
+    }
+
+    @Override
+    public List<NotesTreeVo> dirTreeList(Long userId, String userName) {
+        return assembleTree(listDirectories(userId, userName), List.of());
     }
 
     @Override
     public List<NotesTreeVo> notesTreeList() {
-        return notesTreeList(null);
+        return notesTreeList(null, null);
     }
 
     @Override
     public List<NotesTreeVo> notesTreeList(Long userId) {
-        return assembleTree(listDirectories(userId), listNotes(userId));
+        return notesTreeList(userId, null);
+    }
+
+    @Override
+    public List<NotesTreeVo> notesTreeList(Long userId, String userName) {
+        return assembleTree(listDirectories(userId, userName), listNotes(userId, userName));
     }
 
     @Override
@@ -181,16 +195,26 @@ public class NoteDirectoryServiceImpl implements INoteDirectoryService {
         return result;
     }
 
-    private List<NoteDirectory> listDirectories(Long userId) {
+    private List<NoteDirectory> listDirectories(Long userId, String userName) {
         LambdaQueryWrapper<NoteDirectory> query = Wrappers.lambdaQuery();
         query.eq(userId != null, NoteDirectory::getUserId, userId);
+        applyUserNameFilter(query, "note_directory", userName);
         return baseMapper.selectList(query);
     }
 
-    private List<NoteNotes> listNotes(Long userId) {
+    private List<NoteNotes> listNotes(Long userId, String userName) {
         LambdaQueryWrapper<NoteNotes> query = Wrappers.lambdaQuery();
         query.eq(userId != null, NoteNotes::getUserId, userId);
+        applyUserNameFilter(query, "note_notes", userName);
         return notesMapper.selectList(query);
+    }
+
+    private static void applyUserNameFilter(LambdaQueryWrapper<?> query, String tableName, String userName) {
+        if (StringUtils.isBlank(userName)) {
+            return;
+        }
+        query.apply("exists (select 1 from sys_user u where u.user_id = " + tableName + ".user_id and u.user_name like concat('%', {0}, '%'))",
+            userName);
     }
 
     private List<NotesTreeVo> assembleTree(List<NoteDirectory> directories, List<NoteNotes> notes) {

@@ -81,6 +81,15 @@ public interface INoteDirectoryService {
     List<NotesTreeVo> dirTreeList(Long userId);
 
     /**
+     * 管理端按所属用户筛选目录树
+     *
+     * @param userId   用户 ID；可空
+     * @param userName 用户账号模糊匹配；可空
+     * @return 目录树
+     */
+    List<NotesTreeVo> dirTreeList(Long userId, String userName);
+
+    /**
      * 获取目录笔记树
      * @return
      */
@@ -92,6 +101,15 @@ public interface INoteDirectoryService {
      * @return 目录笔记树
      */
     List<NotesTreeVo> notesTreeList(Long userId);
+
+    /**
+     * 管理端按所属用户筛选目录笔记树
+     *
+     * @param userId   用户 ID；可空
+     * @param userName 用户账号模糊匹配；可空
+     * @return 目录笔记树
+     */
+    List<NotesTreeVo> notesTreeList(Long userId, String userName);
 
     /**
      * 获取子目录id

@@ -141,6 +141,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="objectType != null and objectType != ''">
                 and t.object_type = #{objectType}
             </if>
+            <if test="userId != null">
+                and t.user_id = #{userId}
+            </if>
             <if test="userName != null and userName != ''">
                 and u.user_name like concat('%', #{userName}, '%')
             </if>

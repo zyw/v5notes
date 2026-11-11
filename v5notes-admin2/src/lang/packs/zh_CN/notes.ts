@@ -20,6 +20,8 @@ export default {
       editTitle: '修改目录',
       deleteConfirm: '删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"{ids}"的数据项？'
     },
+    owner: '所属账号',
+    ownerAccount: '所属用户账号',
     trash: {
       nameOrDir: '笔记或目录名称',
       allTypes: '全部类型',
@@ -47,7 +49,10 @@ export default {
       emptySuccess: '清空成功'
     },
     tree: {
-      searchLabel: '目录或笔记名称'
+      searchLabel: '目录或笔记名称',
+      selectOwner: '选择所属账号',
+      selectOwnerHint: '请先选择所属账号，再查看该用户的目录树',
+      emptyOwner: '该用户暂无目录或笔记'
     },
     list: {
       keyword: '关键字',

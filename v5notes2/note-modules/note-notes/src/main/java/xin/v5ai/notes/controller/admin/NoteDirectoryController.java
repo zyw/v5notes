@@ -105,20 +105,18 @@ public class NoteDirectoryController extends BaseController {
     }
 
     /**
-     * 目录树
-     * @return
+     * 目录树；可选按所属用户筛选，避免管理端跨用户混树
      */
     @GetMapping("/tree-dir")
-    public R<List<NotesTreeVo>> dirTreeList() {
-        return R.ok(noteDirectoryService.dirTreeList());
+    public R<List<NotesTreeVo>> dirTreeList(Long userId, String userName) {
+        return R.ok(noteDirectoryService.dirTreeList(userId, userName));
     }
 
     /**
-     * 目录和笔记树
-     * @return
+     * 目录和笔记树；可选按所属用户筛选
      */
     @GetMapping("/tree")
-    public R<List<NotesTreeVo>> notesTreeList() {
-        return R.ok(noteDirectoryService.notesTreeList());
+    public R<List<NotesTreeVo>> notesTreeList(Long userId, String userName) {
+        return R.ok(noteDirectoryService.notesTreeList(userId, userName));
     }
 }

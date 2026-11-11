@@ -188,7 +188,7 @@ export function createApi(
       if (data !== null && typeof data === 'object' && 'id' in data) return asId(data.id)
       return asId(data)
     },
-    update: (note: Note, force = false) =>
+    update: (note: Note, force = false, skipHistory = false) =>
       call<{ contentHash: string }>('/client/notes', {
         method: 'PUT',
         body: JSON.stringify({
@@ -198,6 +198,7 @@ export function createApi(
           content: note.content,
           baseHash: note.contentHash ?? '',
           force,
+          skipHistory,
         }),
       }),
     revisions: (noteId: string, pageNum = 1) =>

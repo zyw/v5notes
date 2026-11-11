@@ -16,6 +16,8 @@ export interface TrashVO {
 export interface TrashQuery extends PageQuery {
   name?: string;
   objectType?: string;
+  /** 所属用户 ID，精确筛选 */
+  userId?: string | number;
   userName?: string;
 }
 

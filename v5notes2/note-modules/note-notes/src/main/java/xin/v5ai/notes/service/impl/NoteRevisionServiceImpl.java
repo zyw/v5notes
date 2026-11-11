@@ -27,6 +27,7 @@ import xin.v5ai.notes.mapper.NoteRevisionMapper;
 import xin.v5ai.notes.mapper.NoteTrashMapper;
 import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteRevisionService;
+import xin.v5ai.notes.service.NoteRevisionRules;
 import xin.v5ai.notes.util.NoteContentDigest;
 import xin.v5ai.notes.util.NoteTrashPaths;
 import org.springframework.stereotype.Service;
@@ -219,12 +220,13 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
         trialService.assertCanWrite(note.getUserId(), extra);
         String newHash = NoteContentDigest.sha256(incoming);
         boolean contentChanged = !newHash.equals(currentHash);
-        if (contentChanged) {
+        boolean appendHistory = NoteRevisionRules.appendOnSave(contentChanged, bo.getSkipHistory());
+        if (appendHistory) {
             snapshotCurrentIfMissing(note, currentContent, currentHash);
             insertRevision(note, incoming, newHash);
         }
         updateNote(note.getId(), bo.getName(), bo.getDirId(), incoming, newHash, bo.getContent() != null || contentChanged || StringUtils.isBlank(note.getContentHash()));
-        if (contentChanged) {
+        if (appendHistory) {
             trim(note.getId());
         }
         NoteHashVo vo = new NoteHashVo();

@@ -614,7 +614,7 @@ function showConflict(cause: unknown, action: 'save' | 'restore', revisionId?: s
 
 async function commitPreviewChange(value: string): Promise<void> {
   try {
-    await draft.commit(value, note => api.update(note))
+    await draft.commit(value, note => api.update(note, false, true))
   } catch (cause) {
     if (!showConflict(cause, 'save')) report(cause)
     return

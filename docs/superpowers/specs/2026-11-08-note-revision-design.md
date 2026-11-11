@@ -1,6 +1,6 @@
 # 笔记版本历史设计
 
-每次成功保存且正文发生变化时，追加一条不可修改的全文快照。`note_notes.content` 继续表示最新正文。用户可以按时间查看历史、只读预览、与当前正文对比，并把某一版恢复成最新正文。恢复本身再写一条新快照，因此恢复后仍能回到恢复前的内容。
+每次成功保存且正文发生变化时，默认追加一条不可修改的全文快照；预览勾选任务等 `skipHistory` 保存只更新最新正文，不追加版本。`note_notes.content` 继续表示最新正文。用户可以按时间查看历史、只读预览、与当前正文对比，并把某一版恢复成最新正文。恢复本身再写一条新快照，因此恢复后仍能回到恢复前的内容。
 
 编辑器里的撤销只保留在当前这次打开中。本文档解决的是保存之后、刷新之后、或另一处已经覆盖之后，正文仍然找得回来。
 
@@ -18,7 +18,7 @@
 本期不做：
 
 - 真正的 Git 仓库、分支、合并、提交说明。
-- 按键记录，或把自动保存的每一次击键都记成版本。当前保存点是 Ctrl+S，以及退出编辑前的那一次保存。
+- 按键记录，或把自动保存的每一次击键都记成版本。当前记入历史的保存点是 Ctrl+S，以及退出编辑前的那一次保存。预览勾选任务会静默保存正文，但带 `skipHistory`，不占用历史配额。
 - 版本里记录标题、目录变更。改名或只改目录且正文哈希不变时，不新增版本。
 - 回收站。删除后版本如何保留、何时清除，见 [笔记回收站设计](2026-11-08-note-trash-design.md)。
 - 管理后台的历史界面。管理端保存仍会写版本，见「管理端」。
@@ -43,8 +43,9 @@
 保存规则：
 
 1. 正文哈希与库中当前哈希相同：只更新标题、目录等字段，不新增版本。
-2. 正文哈希变了，且库中当前正文还没有对应版本：先把当前正文插成一条版本，再把新正文插成下一条，然后更新笔记。升级前已经存在的笔记，第一次修改时因此还能回到升级前的正文。
-3. 正文哈希变了，且当前正文已经是最新版本：只追加新正文这一条，再更新笔记。
+2. 正文哈希变了，且请求带 `skipHistory: true`（预览勾选任务等）：只更新 `note_notes` 正文与哈希，不追加、不裁剪版本。下次普通保存若发现最新版本哈希落后于当前正文，仍会先补记当前正文。
+3. 正文哈希变了，且库中当前正文还没有对应版本：先把当前正文插成一条版本，再把新正文插成下一条，然后更新笔记。升级前已经存在的笔记，第一次修改时因此还能回到升级前的正文。
+4. 正文哈希变了，且当前正文已经是最新版本：只追加新正文这一条，再更新笔记。
 
 恢复规则：
 
@@ -201,14 +202,15 @@ FOR UPDATE
 
 ### 客户端保存
 
-`PUT /client/notes` 增加两个不落库的字段：
+`PUT /client/notes` 增加三个不落库的字段：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `baseHash` | string | 打开笔记或上次成功保存时拿到的 `contentHash` |
 | `force` | boolean | 默认 `false`。`true` 时忽略哈希不一致，仍先补记库中当前正文 |
+| `skipHistory` | boolean | 默认 `false`。`true` 时只更新正文，不追加历史（预览勾选任务） |
 
-`baseHash`、`force` 不得映射进 `NoteNotes`。请求对象和实体字段分开，避免 Mapstruct 把客户端传来的哈希写进 `content_hash`。库中的 `content_hash` 只由服务端根据正文计算。
+`baseHash`、`force`、`skipHistory` 不得映射进 `NoteNotes`。请求对象和实体字段分开，避免 Mapstruct 把客户端传来的哈希写进 `content_hash`。库中的 `content_hash` 只由服务端根据正文计算。
 
 客户端保存必须带 `baseHash`。缺省返回 `code = 400`，文案「缺少正文版本」。
 
@@ -219,13 +221,14 @@ FOR UPDATE
 3. 用本次请求正文计算 `newHash`。`content` 为 `null` 时按空字符串。
 4. `force` 不为 `true`，且 `baseHash` 与 `currentHash` 不同：不写库，返回冲突。
 5. `newHash` 与 `currentHash` 相同：更新标题和目录；若 `content_hash` 原来为空则补上。不插入版本。返回 `newHash`。
-6. 若不存在版本，或最新一条的 `content_hash` 不等于 `currentHash`：插入一条当前正文的版本。
-7. 插入一条新正文的版本。
-8. 更新 `note_notes.content`、`content_hash`，以及请求里的标题、目录。
-9. 裁剪到 50 条。
-10. 返回新的 `contentHash`。
+6. `skipHistory` 为 `true`：更新 `note_notes.content`、`content_hash` 以及请求里的标题、目录；不插入版本、不裁剪。返回 `newHash`。
+7. 若不存在版本，或最新一条的 `content_hash` 不等于 `currentHash`：插入一条当前正文的版本。
+8. 插入一条新正文的版本。
+9. 更新 `note_notes.content`、`content_hash`，以及请求里的标题、目录。
+10. 裁剪到 50 条。
+11. 返回新的 `contentHash`。
 
-第 6 步和第 7 步都算进 50 条。一次保存最多新增两条。
+第 7 步和第 8 步都算进 50 条。一次普通保存最多新增两条。`skipHistory` 保存不新增。
 
 裁剪在 MySQL 里要用包一层的子查询，否则不能在 `DELETE` 的子查询里直接引用正在删除的表：
 
@@ -483,7 +486,7 @@ WHERE note_id = ?
 | `NoteDirectoryServiceImpl.recursiveDelete` | 删笔记时带上版本删除 |
 | `controller/client/ClientNotesController` | 列表、详情、恢复，以及保存时校验 `baseHash` |
 | `controller/admin/NoteNotesController` | 保存改为强制补记路径 |
-| `domain/bo`、`domain/vo` | 请求字段和返回字段。`baseHash`、`force` 只出现在客户端保存请求里 |
+| `domain/bo`、`domain/vo` | 请求字段和返回字段。`baseHash`、`force`、`skipHistory` 只出现在客户端保存请求里 |
 
 客户端，均在 `v5notes-client2`：
 

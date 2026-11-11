@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import xin.v5ai.common.translation.annotation.Translation;
+import xin.v5ai.common.translation.constant.TransConstant;
 import xin.v5ai.notes.domain.NoteNotes;
 
 import java.io.Serial;
@@ -31,6 +33,13 @@ public class NoteNotesVo extends NewNotesVo {
      */
     @ExcelProperty(value = "笔记所属用户")
     private Long userId;
+
+    /**
+     * 所属用户账号
+     */
+    @ExcelProperty(value = "所属账号")
+    @Translation(type = TransConstant.USER_ID_TO_NAME, mapper = "userId")
+    private String userName;
 
     /**
      * 内容

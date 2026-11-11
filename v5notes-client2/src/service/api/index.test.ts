@@ -18,7 +18,19 @@ describe('client API', () => {
     expect(saved.id).toBe('934509293439939393')
     expect(saved.baseHash).toBe('')
     expect(saved.force).toBe(false)
+    expect(saved.skipHistory).toBe(false)
     expect((calls[1][1].headers as Record<string, string>).Authorization).toBe('Bearer token')
+  })
+
+  it('marks preview task saves so they skip history quota', async () => {
+    let body = ''
+    const api = createApi(() => ({ server: 'https://notes.test/', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async (_url, init) => {
+        body = String(init?.body ?? '')
+        return new Response(JSON.stringify({ code: 200, data: { contentHash: 'b'.repeat(64) } }), { status: 200 })
+      }) as typeof fetch)
+    await api.update({ id: '2', dirId: '0', name: '笔记', content: '- [x] 任务', contentHash: 'a'.repeat(64) }, false, true)
+    expect(JSON.parse(body).skipHistory).toBe(true)
   })
 
   it('reports an expired session without discarding the draft', async () => {

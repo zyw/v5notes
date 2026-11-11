@@ -105,8 +105,8 @@ public class NoteTrashServiceImpl implements INoteTrashService {
     }
 
     @Override
-    public PageResult<NoteTrashItemVo> listForAdmin(String name, String objectType, String userName, PageQuery pageQuery) {
-        Page<NoteTrash> page = trashMapper.selectAdminPage(page(pageQuery, 10, 100), blankToNull(name), objectTypeOf(objectType), blankToNull(userName));
+    public PageResult<NoteTrashItemVo> listForAdmin(String name, String objectType, Long userId, String userName, PageQuery pageQuery) {
+        Page<NoteTrash> page = trashMapper.selectAdminPage(page(pageQuery, 10, 100), blankToNull(name), objectTypeOf(objectType), userId, blankToNull(userName));
         return PageResult.build(toItems(page.getRecords()), page.getTotal());
     }
 

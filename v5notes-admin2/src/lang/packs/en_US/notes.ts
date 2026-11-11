@@ -20,6 +20,8 @@ export default {
       editTitle: 'Edit folder',
       deleteConfirm: 'Deleting a folder also deletes every subfolder and note inside it. Delete folder "{ids}"?'
     },
+    owner: 'Account',
+    ownerAccount: 'owner account',
     trash: {
       nameOrDir: 'a note or folder name',
       allTypes: 'All types',
@@ -47,7 +49,10 @@ export default {
       emptySuccess: 'Trash emptied'
     },
     tree: {
-      searchLabel: 'a folder or note name'
+      searchLabel: 'a folder or note name',
+      selectOwner: 'Select account',
+      selectOwnerHint: 'Select an account to view that user’s folder tree',
+      emptyOwner: 'This account has no folders or notes yet'
     },
     list: {
       keyword: 'Keyword',
