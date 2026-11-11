@@ -37,9 +37,9 @@ export function useProfile(api: NotesApi) {
     remark: '',
   })
 
-  const cloudPlanKind = computed<CloudPlanKind>(() => {
+  const cloudPlanKind = computed<CloudPlanKind | null>(() => {
     const quota = accountQuota.value
-    if (!quota) return 'unlimited'
+    if (!quota) return null
     if (quota.planName) return 'plan'
     if (!quota.limited) return 'unlimited'
     return quota.expired ? 'trialExpired' : 'trial'
@@ -89,6 +89,7 @@ export function useProfile(api: NotesApi) {
   async function openProfile(): Promise<void> {
     if (!currentUser.value) return
     fillProfileForm(currentUser.value)
+    accountQuota.value = null
     profileError.value = ''
     profileDialogOpen.value = true
     profileBusy.value = true

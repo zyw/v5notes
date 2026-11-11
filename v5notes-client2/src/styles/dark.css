@@ -338,10 +338,26 @@ html[data-theme='dark'] .profile-field input:not([type='radio']):focus,
 html[data-theme='dark'] .profile-field textarea:focus,
 html[data-theme='dark'] .image-library-search input:focus { border-color: #7fc9bf; box-shadow: 0 0 0 3px rgba(127, 201, 191, .14); outline: none; }
 html[data-theme='dark'] .profile-field input:disabled { color: var(--dk-faint); background: rgba(255, 255, 255, .03); }
-html[data-theme='dark'] .profile-avatar-editor { border-bottom-color: var(--dk-line-soft); }
+html[data-theme='dark'] .profile-avatar-large { border-color: var(--dk-line); background: linear-gradient(160deg, rgba(127, 201, 191, .18), rgba(127, 201, 191, .08)); }
 html[data-theme='dark'] .avatar-hint { color: var(--dk-faint); }
+html[data-theme='dark'] .profile-cloud.is-trialExpired {
+  border-color: rgba(180, 80, 60, .35);
+  background: linear-gradient(160deg, rgba(180, 80, 60, .14), rgba(180, 80, 60, .06));
+}
+html[data-theme='dark'] .profile-cloud.is-plan {
+  border-color: rgba(110, 170, 200, .28);
+  background: linear-gradient(160deg, rgba(110, 170, 200, .12), rgba(110, 170, 200, .04));
+}
+html[data-theme='dark'] .profile-cloud .conn-pill.is-plan { background: rgba(110, 170, 200, .18); color: #c9e6f5; }
+html[data-theme='dark'] .profile-cloud .conn-pill.is-danger { background: rgba(180, 80, 60, .22); color: #ffb4a8; }
+html[data-theme='dark'] .profile-cloud-metric { border-color: var(--dk-line-soft); background: rgba(255, 255, 255, .04); }
+html[data-theme='dark'] .profile-cloud-label { color: var(--dk-faint); }
+html[data-theme='dark'] .profile-cloud-metric strong { color: var(--dk-ink); }
+html[data-theme='dark'] .profile-storage-bar { background: rgba(255, 255, 255, .08); }
 html[data-theme='dark'] .profile-field { color: var(--dk-ink-3); }
 html[data-theme='dark'] .profile-sex label { color: var(--dk-ink-3); }
+html[data-theme='dark'] .profile-footer > button:not(.primary) { color: var(--dk-ink-3); }
+html[data-theme='dark'] .profile-footer > button:not(.primary):hover:not(:disabled) { background: var(--dk-hover); color: var(--dk-accent-bright); }
 html[data-theme='dark'] .dialog-error { color: var(--dk-danger) !important; }
 html[data-theme='dark'] .danger-eyebrow { color: #ffb4a8; }
 html[data-theme='dark'] .danger-button { color: #ffe9e4; background: var(--dk-danger-bg); }
