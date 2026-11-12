@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8" /><title>seeding…</title></head>
+<body>
+<script>
+  const params = new URLSearchParams(location.search)
+  const theme = params.get('theme') || 'light'
+  localStorage.setItem('v5notes-token', 'mock-token')
+  localStorage.setItem('v5notes-refresh-token', '')
+  localStorage.setItem('v5notes-server', 'http://127.0.0.1:1421')
+  localStorage.setItem('v5notes-username', 'zyw')
+  localStorage.setItem('v5notes-last-note', '1101')
+  localStorage.setItem('v5notes-last-dir', '0')
+  localStorage.setItem('v5notes-theme', theme)
+  localStorage.setItem('v5notes-login-theme', theme)
+  location.replace('/?theme=' + theme)
+</script>
+</body></html>

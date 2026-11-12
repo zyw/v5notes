@@ -20,6 +20,8 @@ export default {
       editTitle: '修改目錄',
       deleteConfirm: '刪除目錄將刪除目錄下全部的子目錄和筆記！！！是否確認刪除目錄編號為「{ids}」的資料項？'
     },
+    owner: '所屬帳號',
+    ownerAccount: '所屬使用者帳號',
     trash: {
       nameOrDir: '筆記或目錄名稱',
       allTypes: '全部類型',
@@ -47,7 +49,10 @@ export default {
       emptySuccess: '清空成功'
     },
     tree: {
-      searchLabel: '目錄或筆記名稱'
+      searchLabel: '目錄或筆記名稱',
+      selectOwner: '選擇所屬帳號',
+      selectOwnerHint: '請先選擇所屬帳號，再查看該使用者的目錄樹',
+      emptyOwner: '該使用者暫無目錄或筆記'
     },
     list: {
       keyword: '關鍵字',
@@ -172,7 +177,23 @@ export default {
     times: '{count} 次',
     opsScope: '含後台與用戶端',
     refreshed: '資料已重新整理',
-    loadFailed: '首頁資料載入失敗，請稍後重試'
+    loadFailed: '首頁資料載入失敗，請稍後重試',
+    storageRank: '客戶端空間占用',
+    storageMore: '更多',
+    storageEmpty: '暫無客戶端使用者',
+    storageUser: '使用者',
+    storageKeywordPh: '請輸入使用者名稱或暱稱',
+    storageSource: '來源',
+    storageAllSources: '全部來源',
+    storageNotes: '筆記',
+    storageFiles: '檔案',
+    storageUsed: '合計',
+    storageDataset: 'Storage Dataset',
+    storageTitle: '客戶端使用者占用空間',
+    storageListDesc: '共 {total} 位客戶端使用者，按占用空間從大到小排列。',
+    sourceSysAdd: '管理端新增',
+    sourceClientRegister: '客戶端註冊',
+    sourceAdminRegister: '管理端註冊'
   },
   docs: {
     kicker: {

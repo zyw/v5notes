@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.common.core.constant.CacheNames;
 import xin.v5ai.common.core.constant.SystemConstants;
+import xin.v5ai.common.core.enums.UserSource;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.utils.*;
@@ -304,6 +305,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertUser(SysUserBo user) {
+        fillUserSource(user);
         SysUser sysUser = MapstructUtils.convert(user, SysUser.class);
         // 新增用户信息
         int rows = userMapper.insert(sysUser);
@@ -325,8 +327,18 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     public boolean registerUser(SysUserBo user) {
         user.setCreateBy(0L);
         user.setUpdateBy(0L);
+        fillUserSource(user);
         SysUser sysUser = MapstructUtils.convert(user, SysUser.class);
         return userMapper.insert(sysUser) > 0;
+    }
+
+    /**
+     * 未指定来源时按管理端添加处理，避免历史入口把用户误记成客户端注册。
+     */
+    private void fillUserSource(SysUserBo user) {
+        if (StringUtils.isBlank(user.getUserSource())) {
+            user.setUserSource(UserSource.SYS_ADD.getCode());
+        }
     }
 
     /**

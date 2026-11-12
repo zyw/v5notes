@@ -25,7 +25,9 @@ import xin.v5ai.notes.exception.NoteContentConflictException;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
 import xin.v5ai.notes.mapper.NoteRevisionMapper;
 import xin.v5ai.notes.mapper.NoteTrashMapper;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteRevisionService;
+import xin.v5ai.notes.service.NoteRevisionRules;
 import xin.v5ai.notes.util.NoteContentDigest;
 import xin.v5ai.notes.util.NoteTrashPaths;
 import org.springframework.stereotype.Service;
@@ -57,6 +59,8 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private final NoteNotesMapper noteNotesMapper;
 
     private final NoteTrashMapper trashMapper;
+
+    private final IClientTrialService trialService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -188,6 +192,8 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
     private NoteRestoreVo applyRestore(NoteNotes note, NoteRevision target, String currentContent, String currentHash) {
         String restored = NoteContentDigest.text(target.getContent());
         String restoredHash = NoteContentDigest.sha256(restored);
+        long extra = Math.max(0, NoteContentDigest.utf8Size(restored) - NoteContentDigest.utf8Size(currentContent));
+        trialService.assertCanWrite(note.getUserId(), extra);
         if (!restoredHash.equals(currentHash)) {
             snapshotCurrentIfMissing(note, currentContent, currentHash);
             insertCopy(note, target, restored, restoredHash);
@@ -210,14 +216,17 @@ public class NoteRevisionServiceImpl implements INoteRevisionService {
             throw new NoteContentConflictException(currentHash, note.getUpdateTime());
         }
         String incoming = bo.getContent() == null ? currentContent : bo.getContent();
+        long extra = Math.max(0, NoteContentDigest.utf8Size(incoming) - NoteContentDigest.utf8Size(currentContent));
+        trialService.assertCanWrite(note.getUserId(), extra);
         String newHash = NoteContentDigest.sha256(incoming);
         boolean contentChanged = !newHash.equals(currentHash);
-        if (contentChanged) {
+        boolean appendHistory = NoteRevisionRules.appendOnSave(contentChanged, bo.getSkipHistory());
+        if (appendHistory) {
             snapshotCurrentIfMissing(note, currentContent, currentHash);
             insertRevision(note, incoming, newHash);
         }
         updateNote(note.getId(), bo.getName(), bo.getDirId(), incoming, newHash, bo.getContent() != null || contentChanged || StringUtils.isBlank(note.getContentHash()));
-        if (contentChanged) {
+        if (appendHistory) {
             trim(note.getId());
         }
         NoteHashVo vo = new NoteHashVo();

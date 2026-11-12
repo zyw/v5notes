@@ -31,6 +31,16 @@ public class NoteDirectoryBo extends BaseEntity {
     private Long id;
 
     /**
+     * 所属用户 ID；查询时精确筛选，新增时可指定归属客户端用户
+     */
+    private Long userId;
+
+    /**
+     * 所属用户账号；仅用于管理端模糊筛选，不入库
+     */
+    private String userName;
+
+    /**
      * 目录名称
      */
     @NotBlank(message = "{note.dir.name.not.blank}", groups = { AddGroup.class, EditGroup.class })

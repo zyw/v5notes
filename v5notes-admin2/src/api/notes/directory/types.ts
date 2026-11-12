@@ -10,6 +10,11 @@ export interface DirectoryVO {
   userId: string | number;
 
   /**
+   * 所属用户账号
+   */
+  userName?: string;
+
+  /**
    * 目录名称
    */
   name: string;
@@ -62,6 +67,11 @@ export interface DirectoryQuery extends PageQuery {
    * 目录所属用户ID
    */
   userId?: string | number;
+
+  /**
+   * 所属用户账号（模糊）
+   */
+  userName?: string;
 
   /**
    * 目录名称

@@ -91,6 +91,24 @@ export interface DashboardSystem {
   operlogToday: number;
 }
 
+export interface ClientStorageRank {
+  userId: string;
+  userName: string;
+  nickName: string;
+  userSource: string;
+  noteBytes: number;
+  fileBytes: number;
+  usedBytes: number;
+}
+
+/** 客户端用户占用空间分页查询 */
+export interface ClientStorageQuery extends PageQuery {
+  /** 用户账号或昵称，模糊匹配 */
+  keyword?: string;
+  /** 用户来源：sys_add / client_register */
+  userSource?: string;
+}
+
 export interface DashboardOverview {
   range: number;
   /** ISO-8601 */

@@ -1,5 +1,14 @@
 export default {
   file: {
+    preview: {
+      eyebrow: '檔案預覽',
+      hint: '線上預覽',
+      unnamed: '未命名檔案',
+      emptyText: '檔案內容為空',
+      unsupported: '暫不支援該格式線上預覽，請下載後查看',
+      loadFail: '預覽載入失敗',
+      missingId: '缺少檔案編號'
+    },
     list: {
       originalName: '原名',
       fileOriginName: '檔案原名',

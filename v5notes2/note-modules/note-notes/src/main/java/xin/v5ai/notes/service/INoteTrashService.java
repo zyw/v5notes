@@ -29,9 +29,10 @@ public interface INoteTrashService {
     PageResult<NoteTrashItemVo> list(Long userId, PageQuery pageQuery);
 
     /**
-     * 管理端列出全部用户的回收站。userName 按账号模糊匹配。
+     * 管理端列出全部用户的回收站。
+     * userId 精确匹配；userName 按账号模糊匹配。
      */
-    PageResult<NoteTrashItemVo> listForAdmin(String name, String objectType, String userName, PageQuery pageQuery);
+    PageResult<NoteTrashItemVo> listForAdmin(String name, String objectType, Long userId, String userName, PageQuery pageQuery);
 
     NoteTrashRestoreVo restore(Long trashId, Long userId);
 

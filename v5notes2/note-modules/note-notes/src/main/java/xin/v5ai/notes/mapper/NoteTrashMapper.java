@@ -53,7 +53,7 @@ public interface NoteTrashMapper extends BaseMapper<NoteTrash> {
 
     List<Long> selectAllIds();
 
-    Page<NoteTrash> selectAdminPage(Page<NoteTrash> page, @Param("name") String name, @Param("objectType") String objectType, @Param("userName") String userName);
+    Page<NoteTrash> selectAdminPage(Page<NoteTrash> page, @Param("name") String name, @Param("objectType") String objectType, @Param("userId") Long userId, @Param("userName") String userName);
 
     List<Long> selectExpiredIds(@Param("now") LocalDateTime now);
 }

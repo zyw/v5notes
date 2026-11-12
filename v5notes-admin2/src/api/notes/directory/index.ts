@@ -62,21 +62,23 @@ export const delDirectory = (id: string | number | Array<string | number>) => {
 };
 
 /**
- * 目录Tree列表
+ * 目录Tree列表；可选按所属用户筛选
  */
-export const dirTree = (): AxiosPromise<NotesTreeVo[]> => {
+export const dirTree = (query?: { userId?: string | number; userName?: string }): AxiosPromise<NotesTreeVo[]> => {
   return request({
     url: '/notes/directory/tree-dir',
-    method: 'get'
+    method: 'get',
+    params: query
   });
 };
 
 /**
- * 云笔记Tree目录列表
+ * 云笔记Tree目录列表；可选按所属用户筛选
  */
-export const dirNotesTree = (): AxiosPromise<NotesTreeVo[]> => {
+export const dirNotesTree = (query?: { userId?: string | number; userName?: string }): AxiosPromise<NotesTreeVo[]> => {
   return request({
     url: '/notes/directory/tree',
-    method: 'get'
+    method: 'get',
+    params: query
   });
 };

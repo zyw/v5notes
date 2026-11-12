@@ -22,10 +22,12 @@ import xin.v5ai.notes.domain.vo.NoteNotesVo;
 import xin.v5ai.notes.domain.vo.NotesContentVo;
 import xin.v5ai.notes.domain.vo.NotesSearchVo;
 import xin.v5ai.notes.mapper.NoteNotesMapper;
+import xin.v5ai.notes.service.IClientTrialService;
 import xin.v5ai.notes.service.INoteDirectoryService;
 import xin.v5ai.notes.service.INoteNotesService;
 import xin.v5ai.notes.service.INoteRevisionService;
 import xin.v5ai.notes.service.INoteTrashService;
+import xin.v5ai.notes.util.NoteContentDigest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +53,8 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     private final INoteRevisionService revisionService;
 
     private final INoteTrashService trashService;
+
+    private final IClientTrialService trialService;
 
     // markdown标签匹配正则
     private final static String MARKDOWN_REGEX = "\\*\\*(.*?)\\*\\*|__(.*?)__|~~(.*?)~~|`(.*?)`|\\[(.*?)\\]\\((.*?)\\)|!\\[(.*?)\\]\\((.*?)\\)|<.*?>|#{1,6}(.*?)|^-{3,}|-{3,}";
@@ -115,11 +119,11 @@ public class NoteNotesServiceImpl implements INoteNotesService {
                 .or()
                 .like(NoteNotes::getContent, searchValue)
             );
-//        lqw.and(wapper -> {
-//            wapper.eq(bo.getDirId() != null, NoteNotes::getDirId, bo.getDirId());
-//            wapper.between(params.get("beginTime") != null && params.get("endTime") != null,
-//                NoteNotes::getCreateTime, params.get("beginTime"), params.get("endTime"));
-//        });
+        lqw.eq(bo.getUserId() != null, NoteNotes::getUserId, bo.getUserId());
+        if (StringUtils.isNotBlank(bo.getUserName())) {
+            lqw.apply("exists (select 1 from sys_user u where u.user_id = note_notes.user_id and u.user_name like concat('%', {0}, '%'))",
+                bo.getUserName());
+        }
         lqw.eq(bo.getDirId() != null, NoteNotes::getDirId, bo.getDirId());
         lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
             NoteNotes::getCreateTime, params.get("beginTime"), params.get("endTime"));
@@ -136,9 +140,12 @@ public class NoteNotesServiceImpl implements INoteNotesService {
     @Transactional(rollbackFor = Exception.class)
     public Boolean insertByBo(NoteNotesBo bo) {
         NoteNotes add = MapstructUtils.convert(bo, NoteNotes.class);
-        add.setUserId(LoginHelper.getUserId());
+        if (add.getUserId() == null) {
+            add.setUserId(LoginHelper.getUserId());
+        }
         Long deptId = add.getDeptId();
         add.setDeptId(deptId == null ? LoginHelper.getDeptId() : deptId);
+        trialService.assertCanWrite(add.getUserId(), NoteContentDigest.utf8Size(add.getContent()));
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {

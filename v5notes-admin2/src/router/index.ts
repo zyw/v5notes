@@ -53,6 +53,20 @@ export const constantRoutes: RouteRecordRaw[] = [
     hidden: true
   },
   {
+    path: '/notes/storage',
+    component: Layout,
+    hidden: true,
+    permissions: ['notes:dashboard:query'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/notes/storage/index.vue'),
+        name: 'ClientStorage',
+        meta: { title: '客户端空间占用', activeMenu: '/index', icon: '' }
+      }
+    ]
+  },
+  {
     path: '/basics/file-config',
     component: Layout,
     hidden: true,

@@ -7,12 +7,13 @@ import EditorModeDock from './EditorModeDock.vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { editorLocale } from '../i18n'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
 const { t, locale } = useI18n()
-const { sessionExpired, reauthenticate, error, notice, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
+const { sessionExpired, reauthenticate, error, notice, trialExpired, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -374,11 +375,57 @@ function onFindKeydown(event: KeyboardEvent): void {
   }
 }
 
+interface FindFieldCaret {
+  field: HTMLInputElement
+  start: number
+  end: number
+  value: string
+}
+
+function focusedFindField(): FindFieldCaret | null {
+  const field = document.activeElement
+  if (!(field instanceof HTMLInputElement) || !field.closest('.find-panel')) return null
+  return {
+    field,
+    start: field.selectionStart ?? field.value.length,
+    end: field.selectionEnd ?? field.value.length,
+    value: field.value,
+  }
+}
+
+function editorHoldsCaret(editor: { getContentElement(): HTMLElement }): boolean {
+  const surface = editor.getContentElement()
+  const active = document.activeElement
+  if (active === surface || (active instanceof Node && surface.contains(active))) return true
+  const node = document.getSelection()?.anchorNode
+  return !!node && (node === surface || surface.contains(node))
+}
+
+function restoreFindFieldCaret(editor: { getContentElement(): HTMLElement }, caret: FindFieldCaret): void {
+  const apply = () => {
+    const { field, start, end, value } = caret
+    if (!field.isConnected || field.value !== value || !editorHoldsCaret(editor)) return
+    field.focus({ preventScroll: true })
+    const max = field.value.length
+    field.setSelectionRange(Math.min(start, max), Math.min(end, max))
+  }
+  apply()
+  queueMicrotask(apply)
+  requestAnimationFrame(apply)
+}
+
+function onFindQueryInput(event: Event): void {
+  if (event instanceof InputEvent && event.isComposing) return
+  refreshFind(false)
+}
+
 function refreshFind(advance: boolean, direction: 1 | -1 = 1): void {
   const editor = editorInstance.value
   if (!editor) return
+  const caret = focusedFindField()
   const result = editor.findNextMatch(findQuery.value, findOptions.value, direction, advance)
   showFindResult(editor.getMarkdown(), result)
+  if (caret) restoreFindFieldCaret(editor, caret)
 }
 
 function showFindResult(doc: string, result: { hit: { from: number, to: number, index: number, total: number } | null, error: string | null }): void {
@@ -472,6 +519,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
 <template>
     <main class="editor-pane" :class="{ 'is-resizing-outline': resizingOutline }" :style="{ '--outline-width': `${outlineVisible ? outlineWidth : 0}px`, '--doc-size': `${fontSize}px` }" @pointermove="resizeOutline" @pointerup="stopOutlineResize" @pointercancel="stopOutlineResize">
       <div v-if="sessionExpired" class="session-alert">{{ t('editor.sessionExpired') }}<button @click="reauthenticate">{{ t('editor.reauthenticate') }}</button></div>
+      <div v-if="trialExpired" class="trial-alert" role="status">{{ t('trial.expired') }}</div>
       <div v-if="notice" class="notice-bar">{{ notice }} <button @click="notice = ''">×</button></div>
       <div v-if="error" class="error-bar" role="alert">{{ error }} <button @click="error = ''">×</button></div>
       <Teleport to="body">
@@ -555,7 +603,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>
@@ -583,7 +631,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               <div class="find-fields">
                 <button type="button" class="find-expand" :aria-expanded="replaceExpanded" :aria-label="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" :title="replaceExpanded ? t('editor.collapseReplace') : t('editor.expandReplace')" @click="replaceExpanded = !replaceExpanded"><svg viewBox="0 0 20 20" aria-hidden="true"><path :d="replaceExpanded ? 'm5.5 7.5 4.5 4.5 4.5-4.5' : 'm7.5 5.5 4.5 4.5-4.5 4.5'"/></svg></button>
                 <div class="find-field-stack">
-                  <input ref="findInput" v-model="findQuery" type="search" :aria-label="t('editor.findLabel')" :placeholder="t('editor.findLabel')" @input="refreshFind(false)" />
+                  <input ref="findInput" v-model="findQuery" type="search" :aria-label="t('editor.findLabel')" :placeholder="t('editor.findLabel')" @input="onFindQueryInput" />
                   <div class="find-options">
                     <button type="button" class="find-toggle" :class="{ 'is-on': caseSensitive }" :aria-pressed="caseSensitive" :title="t('editor.matchCase')" :aria-label="t('editor.matchCase')" @click="toggleFindOption('case')">Aa</button>
                     <button type="button" class="find-toggle" :class="{ 'is-on': wholeWord }" :aria-pressed="wholeWord" :title="t('editor.wholeWord')" :aria-label="t('editor.wholeWord')" @click="toggleFindOption('word')">ab</button>

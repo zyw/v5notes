@@ -20,12 +20,14 @@ import xin.v5ai.basics.file.service.IFileInfoService;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.mybatis.core.page.PageQuery;
+import xin.v5ai.common.core.service.ClientStorageGuard;
 import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.common.core.utils.MapstructUtils;
 import xin.v5ai.common.core.utils.file.FileUtils;
 import xin.v5ai.common.log.annotation.Log;
 import xin.v5ai.common.log.enums.BusinessType;
 import xin.v5ai.common.web.core.BaseController;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -49,6 +51,8 @@ public class FileBaseController extends BaseController {
 
     private final IFileInfoService fileInfoService;
 
+    private final ObjectProvider<ClientStorageGuard> storageGuard;
+
     /**
      * 上传文件
      */
@@ -59,6 +63,7 @@ public class FileBaseController extends BaseController {
     public R<FileUploadVo> upload(@Validated FileUploadBo bo) throws Exception {
         MultipartFile file = bo.getFile();
         String path = bo.getPath();
+        storageGuard.ifAvailable(guard -> guard.assertCanWrite(LoginHelper.getUserId(), Math.max(file.getSize(), 0L)));
         FileInfo info = fileInfoService.uploadByBo(file.getOriginalFilename(), path, IoUtil.readBytes(file.getInputStream()));
         FileInfoVo fileInfoVo = fileInfoService.matchingUrl(MapstructUtils.convert(info, FileInfoVo.class));
 

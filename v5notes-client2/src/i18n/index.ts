@@ -59,6 +59,11 @@ export function contentLanguage(): string {
   }
 }
 
+/** Map app locale onto @v5md/view's built-in UI languages (`zh-CN` | `en`). */
+export function editorLocale(locale: string = currentLocale()): 'zh-CN' | 'en' {
+  return locale === 'en' ? 'en' : 'zh-CN'
+}
+
 export function readStoredLocale(storage: Pick<Storage, 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): string | null {
   try {
     return storage?.getItem(LOCALE_STORAGE_KEY) ?? null

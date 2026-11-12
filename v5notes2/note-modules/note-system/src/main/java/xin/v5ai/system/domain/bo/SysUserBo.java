@@ -46,7 +46,7 @@ public class SysUserBo implements Serializable {
      */
     @Xss(message = "{user.script}")
     @NotBlank(message = "{user.account.not.blank}")
-    @Size(min = 2, max = 30, message = "{user.account.length}")
+    @Size(min = 2, max = 50, message = "{user.account.length}")
     private String userName;
 
     /**
@@ -66,6 +66,11 @@ public class SysUserBo implements Serializable {
      * 用户类型（sys_user系统用户）
      */
     private String userType;
+
+    /**
+     * 用户来源（sys_add 管理端添加，client_register 客户端注册，admin_register 管理端注册）
+     */
+    private String userSource;
 
     /**
      * 用户邮箱

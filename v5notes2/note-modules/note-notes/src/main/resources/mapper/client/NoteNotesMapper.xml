@@ -13,23 +13,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <bind name="keyword" value="'%' + search + '%'" />
         SELECT
             id,
-            user_id,
-            NAME,
+            name,
             dir_id,
-            content,
-            del_flag,
-            tenant_id,
-            create_dept,
-            create_by,
-            create_time,
-            update_by,
-            update_time
+            content
         FROM
             note_notes
         WHERE
           del_flag = '0'
           AND user_id = #{userId}
-          AND (NAME LIKE #{keyword} OR content LIKE #{keyword} )
+          AND (name LIKE #{keyword} OR content LIKE #{keyword})
         ORDER BY
             update_time DESC
     </select>

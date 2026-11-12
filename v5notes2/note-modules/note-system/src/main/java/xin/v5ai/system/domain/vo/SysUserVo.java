@@ -54,6 +54,11 @@ public class SysUserVo implements Serializable {
     private String userType;
 
     /**
+     * 用户来源（sys_add 管理端添加，client_register 客户端注册，admin_register 管理端注册）
+     */
+    private String userSource;
+
+    /**
      * 用户邮箱
      */
     @Sensitive(strategy = SensitiveStrategy.EMAIL, perms = "system:user:edit")

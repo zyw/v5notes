@@ -1,5 +1,14 @@
 export default {
   file: {
+    preview: {
+      eyebrow: 'File preview',
+      hint: 'Online preview',
+      unnamed: 'Untitled file',
+      emptyText: 'This file is empty',
+      unsupported: 'This format cannot be previewed online. Please download it instead.',
+      loadFail: 'Failed to load preview',
+      missingId: 'Missing file id'
+    },
     list: {
       originalName: 'Original name',
       fileOriginName: 'original file name',

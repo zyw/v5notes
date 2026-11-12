@@ -32,6 +32,16 @@ public class NoteNotesBo extends BaseEntity {
     private Long id;
 
     /**
+     * 所属用户 ID；查询时精确筛选，新增时可指定归属客户端用户
+     */
+    private Long userId;
+
+    /**
+     * 所属用户账号；仅用于管理端模糊筛选，不入库
+     */
+    private String userName;
+
+    /**
      * 笔记名
      */
     @NotBlank(message = "{note.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
@@ -63,6 +73,11 @@ public class NoteNotesBo extends BaseEntity {
      * 为 true 时忽略哈希不一致，仍先补记库中正文。
      */
     private Boolean force;
+
+    /**
+     * 为 true 时只更新正文，不追加历史版本（预览勾选任务等）。
+     */
+    private Boolean skipHistory;
 
     /**
      * 搜索值（按笔记名/内容模糊匹配）

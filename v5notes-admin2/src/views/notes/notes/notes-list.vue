@@ -42,7 +42,7 @@
             <p>{{ $t('notes.list.listDesc', { total }) }}</p>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['notes:notes:add']">{{ $t('common.add') }}</el-button>
+            <el-button type="primary" plain icon="Plus" :disabled="!queryParams.userId" @click="handleAdd" v-hasPermi="['notes:notes:add']">{{ $t('common.add') }}</el-button>
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['notes:notes:edit']">{{ $t('common.edit') }}</el-button>
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['notes:notes:remove']">{{ $t('common.delete') }}</el-button>
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['notes:notes:export']">{{ $t('common.export') }}</el-button>
@@ -60,8 +60,9 @@
       />
       <el-table v-else v-loading="loading && (notesList).length > 0" class="data-table" :data="notesList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column :label="$t('notes.list.name')" align="left" prop="name" min-width="300" width="auto" />
-        <el-table-column :label="$t('notes.list.fileSize')" align="center" prop="fileSize" width="150" />
+        <el-table-column :label="$t('notes.list.name')" align="left" prop="name" min-width="220" width="auto" />
+        <el-table-column :label="$t('notes.owner')" align="center" prop="userName" width="140" :show-overflow-tooltip="true" />
+        <el-table-column :label="$t('notes.list.fileSize')" align="center" prop="fileSize" width="120" />
         <el-table-column :label="$t('notes.list.modifiedAt')" align="center" prop="updateTime" width="180" />
         <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width" width="240">
           <template #default="scope">
@@ -176,7 +177,15 @@ const historyNoteName = ref('');
 const queryFormRef = ref<ElFormInstance>();
 const notesFormRef = ref<ElFormInstance>();
 
-const emit = defineEmits(['clearQuery', 'viewOrEdtor']);
+const props = defineProps<{
+  /** 左侧树选中的所属用户，列表与新增归属均按此隔离 */
+  ownerUserId?: string | number;
+}>();
+
+const emit = defineEmits<{
+  clearQuery: [];
+  viewOrEdtor: [info: { type: string; notesId: string | number }];
+}>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -207,6 +216,7 @@ const data = reactive<PageData<NotesForm, NotesQuery>>({
     pageNum: 1,
     pageSize: 10,
     searchValue: undefined,
+    userId: undefined,
     dirId: undefined,
     params: {}
   },
@@ -253,6 +263,22 @@ const reset = () => {
   notesFormRef.value?.resetFields();
 };
 
+/** 左侧切换所属账号后同步列表范围 */
+const applyOwner = (userId?: string | number) => {
+  queryParams.value.userId = userId;
+  queryParams.value.dirId = undefined;
+  queryParams.value.pageNum = 1;
+  emit('clearQuery');
+  if (userId == null || userId === '') {
+    notesList.value = [];
+    total.value = 0;
+    loading.value = false;
+    errorInfo.value = null;
+    return;
+  }
+  getList();
+};
+
 /** 点击外层目录树查询 */
 const handleDirIdQuery = (dirId: string | number) => {
   queryParams.value.dirId = dirId;
@@ -262,6 +288,11 @@ const handleDirIdQuery = (dirId: string | number) => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  if (queryParams.value.userId == null || queryParams.value.userId === '') {
+    notesList.value = [];
+    total.value = 0;
+    return;
+  }
   getList();
 };
 
@@ -272,6 +303,7 @@ const resetQuery = () => {
   queryParams.value.pageNum = 1;
   queryParams.value.searchValue = undefined;
   queryParams.value.dirId = undefined;
+  // 所属账号由左侧树控制，重置时不清除
   handleQuery();
 };
 
@@ -285,6 +317,7 @@ const handleSelectionChange = (selection: NotesVO[]) => {
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
+  form.value.userId = queryParams.value.userId ?? props.ownerUserId;
   dialog.visible = true;
   dialog.title = t('notes.list.addTitle');
 };
@@ -345,7 +378,12 @@ const handleClose = () => {
 };
 
 const dirTreeList = async () => {
-  const res = await dirTree();
+  const ownerId = queryParams.value.userId ?? props.ownerUserId;
+  if (ownerId == null || ownerId === '') {
+    dirTreeData.value[0].children = [];
+    return;
+  }
+  const res = await dirTree({ userId: ownerId });
   dirTreeData.value[0].children = res.data;
 };
 
@@ -354,11 +392,17 @@ const handleViewOrEdit = (type: string, notesId: number) => {
 };
 
 defineExpose({
-  handleDirIdQuery
+  handleDirIdQuery,
+  applyOwner
 });
 
 onMounted(() => {
-  getList();
+  // 首屏由父组件在选好所属账号后调用 applyOwner，避免先拉全库再刷新
+  if (props.ownerUserId != null && props.ownerUserId !== '') {
+    applyOwner(props.ownerUserId);
+  } else {
+    loading.value = false;
+  }
 });
 </script>
 

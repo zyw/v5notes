@@ -4,7 +4,6 @@ import xin.v5ai.common.core.utils.MessageUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.basics.file.core.client.FileClient;
@@ -45,8 +44,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
 
     private final FileConfigMapper baseMapper;
 
-    @Resource
-    private FileClientFactory clientFactory;
+    private final FileClientFactory clientFactory;
 
     /**
      * {@link FileClient} 缓存。6.1.0 的 common-core 不再提供 buildAsyncReloadingCache，
@@ -157,7 +155,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
         if(isValid){
             //TODO 做一些业务上的校验,判断是否需要校验
         }
-        boolean flag = baseMapper.deleteBatchIds(ids) > 0;
+        boolean flag = baseMapper.deleteByIds(ids) > 0;
 
         if (flag) {
             // 清空缓存

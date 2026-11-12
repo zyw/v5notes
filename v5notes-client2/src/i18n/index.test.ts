@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectLocale, resolveLocale, t } from '.'
+import { detectLocale, editorLocale, resolveLocale, t } from '.'
 import { i18n } from '.'
 
 describe('locale selection', () => {
@@ -11,6 +11,12 @@ describe('locale selection', () => {
     expect(resolveLocale('', 'zh-CN')).toBe('zh-CN')
     expect(detectLocale('en-GB')).toBe('en')
     expect(detectLocale('fr-FR')).toBe('zh-CN')
+  })
+
+  it('maps the app language onto the editor UI language', () => {
+    expect(editorLocale('en')).toBe('en')
+    expect(editorLocale('zh-CN')).toBe('zh-CN')
+    expect(editorLocale('zh-TW')).toBe('zh-CN')
   })
 
   it('translates the active interface language', () => {

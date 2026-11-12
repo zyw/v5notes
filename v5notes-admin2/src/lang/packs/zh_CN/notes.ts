@@ -20,6 +20,8 @@ export default {
       editTitle: '修改目录',
       deleteConfirm: '删除目录将删除目录下全部的子目录和笔记！！！是否确认删除目录编号为"{ids}"的数据项？'
     },
+    owner: '所属账号',
+    ownerAccount: '所属用户账号',
     trash: {
       nameOrDir: '笔记或目录名称',
       allTypes: '全部类型',
@@ -47,7 +49,10 @@ export default {
       emptySuccess: '清空成功'
     },
     tree: {
-      searchLabel: '目录或笔记名称'
+      searchLabel: '目录或笔记名称',
+      selectOwner: '选择所属账号',
+      selectOwnerHint: '请先选择所属账号，再查看该用户的目录树',
+      emptyOwner: '该用户暂无目录或笔记'
     },
     list: {
       keyword: '关键字',
@@ -172,7 +177,23 @@ export default {
     times: '{count} 次',
     opsScope: '含后台与客户端',
     refreshed: '数据已刷新',
-    loadFailed: '首页数据加载失败，请稍后重试'
+    loadFailed: '首页数据加载失败，请稍后重试',
+    storageRank: '客户端空间占用',
+    storageMore: '更多',
+    storageEmpty: '暂无客户端用户',
+    storageUser: '用户',
+    storageKeywordPh: '请输入用户名称或昵称',
+    storageSource: '来源',
+    storageAllSources: '全部来源',
+    storageNotes: '笔记',
+    storageFiles: '文件',
+    storageUsed: '合计',
+    storageDataset: 'Storage Dataset',
+    storageTitle: '客户端用户占用空间',
+    storageListDesc: '共 {total} 位客户端用户，按占用空间从大到小排列。',
+    sourceSysAdd: '管理端添加',
+    sourceClientRegister: '客户端注册',
+    sourceAdminRegister: '管理端注册'
   },
   docs: {
     kicker: {

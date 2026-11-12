@@ -20,6 +20,8 @@ export default {
       editTitle: 'Edit folder',
       deleteConfirm: 'Deleting a folder also deletes every subfolder and note inside it. Delete folder "{ids}"?'
     },
+    owner: 'Account',
+    ownerAccount: 'owner account',
     trash: {
       nameOrDir: 'a note or folder name',
       allTypes: 'All types',
@@ -47,7 +49,10 @@ export default {
       emptySuccess: 'Trash emptied'
     },
     tree: {
-      searchLabel: 'a folder or note name'
+      searchLabel: 'a folder or note name',
+      selectOwner: 'Select account',
+      selectOwnerHint: 'Select an account to view that user’s folder tree',
+      emptyOwner: 'This account has no folders or notes yet'
     },
     list: {
       keyword: 'Keyword',
@@ -173,7 +178,23 @@ export default {
     times: '{count}',
     opsScope: 'Admin and client',
     refreshed: 'Data refreshed',
-    loadFailed: 'Could not load the dashboard. Try again later.'
+    loadFailed: 'Could not load the dashboard. Try again later.',
+    storageRank: 'Client storage',
+    storageMore: 'More',
+    storageEmpty: 'No client users',
+    storageUser: 'User',
+    storageKeywordPh: 'Enter username or nickname',
+    storageSource: 'Source',
+    storageAllSources: 'All sources',
+    storageNotes: 'Notes',
+    storageFiles: 'Files',
+    storageUsed: 'Total',
+    storageDataset: 'Storage Dataset',
+    storageTitle: 'Client storage usage',
+    storageListDesc: '{total} client users, sorted by storage usage.',
+    sourceSysAdd: 'Added in admin',
+    sourceClientRegister: 'Client registration',
+    sourceAdminRegister: 'Admin registration'
   },
   docs: {
     kicker: {

@@ -4,6 +4,8 @@ import org.apache.fesod.sheet.annotation.ExcelIgnoreUnannotated;
 import org.apache.fesod.sheet.annotation.ExcelProperty;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
+import xin.v5ai.common.translation.annotation.Translation;
+import xin.v5ai.common.translation.constant.TransConstant;
 import xin.v5ai.notes.domain.NoteDirectory;
 
 import java.io.Serial;
@@ -37,6 +39,13 @@ public class NoteDirectoryVo implements Serializable {
      */
     @ExcelProperty(value = "目录所属用户ID")
     private Long userId;
+
+    /**
+     * 所属用户账号
+     */
+    @ExcelProperty(value = "所属账号")
+    @Translation(type = TransConstant.USER_ID_TO_NAME, mapper = "userId")
+    private String userName;
 
     /**
      * 目录名称

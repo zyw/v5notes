@@ -11,6 +11,23 @@
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
+          <el-form-item :label="$t('notes.trash.owner')" prop="userId">
+            <el-select
+              v-model="queryParams.userId"
+              filterable
+              clearable
+              :loading="ownerLoading"
+              :placeholder="$t('common.pleaseSelect', { label: $t('notes.ownerAccount') })"
+              style="width: 220px"
+            >
+              <el-option
+                v-for="item in ownerOptions"
+                :key="item.userId"
+                :label="ownerLabel(item)"
+                :value="item.userId"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item :label="$t('common.name')" prop="name">
             <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('notes.trash.nameOrDir') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
@@ -19,9 +36,6 @@
               <el-option :label="$t('notes.note')" value="1" />
               <el-option :label="$t('notes.directory')" value="2" />
             </el-select>
-          </el-form-item>
-          <el-form-item :label="$t('notes.trash.owner')" prop="userName">
-            <el-input v-model="queryParams.userName" :placeholder="$t('common.pleaseInput', { label: $t('notes.trash.ownerAccount') })" clearable @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery">{{ $t('common.search') }}</el-button>
@@ -71,10 +85,14 @@
           </template>
         </el-table-column>
         <el-table-column :label="$t('notes.trash.daysLeft')" align="center" prop="daysLeft" width="100" />
-        <el-table-column :label="$t('common.operate')" align="center" width="160" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" width="100" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button v-hasPermi="['notes:trash:restore']" link type="primary" @click="handleRestore(scope.row)">{{ $t('notes.trash.restore') }}</el-button>
-            <el-button v-hasPermi="['notes:trash:remove']" link type="danger" @click="handlePurge(scope.row)">{{ $t('notes.trash.purge') }}</el-button>
+            <el-tooltip :content="$t('notes.trash.restore')" placement="top">
+              <el-button v-hasPermi="['notes:trash:restore']" link type="primary" icon="RefreshLeft" @click="handleRestore(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip :content="$t('notes.trash.purge')" placement="top">
+              <el-button v-hasPermi="['notes:trash:remove']" link type="danger" icon="Delete" @click="handlePurge(scope.row)"></el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>
@@ -98,6 +116,7 @@
 import { useI18n } from 'vue-i18n';
 import ErrorState from '@/components/ErrorState/ErrorState.vue';
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
+import { useClientOwnerOptions } from '@/composables/useClientOwnerOptions';
 import { emptyTrash, listTrash, purgeTrash, restoreTrash } from '@/api/notes/trash';
 import type { TrashQuery, TrashVO } from '@/api/notes/trash/types';
 import modal from '@/plugins/modal';
@@ -106,6 +125,7 @@ import type { ErrorInfo } from '@/utils/errorKind';
 import { parseTime } from '@/utils/ruoyi';
 
 const { t } = useI18n();
+const { ownerOptions, ownerLoading, ownerLabel, loadOwnerOptions } = useClientOwnerOptions();
 
 const trashList = ref<TrashVO[]>([]);
 const loading = ref(true);
@@ -121,7 +141,7 @@ const queryParams = ref<TrashQuery>({
   pageSize: 10,
   name: undefined,
   objectType: undefined,
-  userName: undefined
+  userId: undefined
 });
 
 const isDirectory = (row: TrashVO) => String(row.objectType ?? '').trim() === '2';
@@ -206,7 +226,8 @@ const handleEmpty = async () => {
   modal.msgSuccess(res.msg && res.msg !== '操作成功' ? res.msg : t('notes.trash.emptySuccess'));
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await loadOwnerOptions();
   getList();
 });
 </script>

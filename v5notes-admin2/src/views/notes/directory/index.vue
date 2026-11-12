@@ -11,6 +11,24 @@
           </div>
         </template>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" class="query-form">
+          <el-form-item :label="$t('notes.owner')" prop="userId">
+            <el-select
+              v-model="queryParams.userId"
+              filterable
+              clearable
+              :loading="ownerLoading"
+              :placeholder="$t('common.pleaseSelect', { label: $t('notes.ownerAccount') })"
+              style="width: 220px"
+              @change="handleOwnerChange"
+            >
+              <el-option
+                v-for="item in ownerOptions"
+                :key="item.userId"
+                :label="ownerLabel(item)"
+                :value="item.userId"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item :label="$t('notes.dir.parent')" prop="pid">
             <el-tree-select
               v-model="queryParams.pid"
@@ -73,6 +91,7 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="ID" align="center" prop="id" v-if="true" />
         <el-table-column :label="$t('notes.dir.name')" align="center" prop="name" />
+        <el-table-column :label="$t('notes.owner')" align="center" prop="userName" width="140" :show-overflow-tooltip="true" />
         <el-table-column :label="$t('common.description')" align="center" prop="descr" />
         <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="180">
           <template #default="scope">
@@ -159,6 +178,7 @@ import SubmitButton from '@/components/Loading/SubmitButton.vue';
 import ErrorState from '@/components/ErrorState/ErrorState.vue';
 import { classifyRequestError } from '@/utils/errorKind';
 import type { ErrorInfo } from '@/utils/errorKind';
+import { useClientOwnerOptions } from '@/composables/useClientOwnerOptions';
 import { addDirectory, delDirectory, dirTree, getDirectory, listDirectory, updateDirectory } from '@/api/notes/directory';
 import type { DirectoryForm, DirectoryQuery, DirectoryVO, NotesTreeVo } from '@/api/notes/directory/types';
 import modal from '@/plugins/modal';
@@ -166,6 +186,7 @@ import { download } from '@/utils/request';
 import { addDateRange, parseTime } from '@/utils/ruoyi';
 
 const { t } = useI18n();
+const { ownerOptions, ownerLoading, ownerLabel, loadOwnerOptions } = useClientOwnerOptions();
 
 const dateRange = ref<any>(['', '']);
 
@@ -212,6 +233,7 @@ const data = reactive<PageData<DirectoryForm, DirectoryQuery>>({
     pageNum: 1,
     pageSize: 10,
     name: undefined,
+    userId: undefined,
     pid: undefined,
     params: {}
   },
@@ -252,9 +274,15 @@ const reset = () => {
   directoryFormRef.value?.resetFields();
 };
 
+/** 切换所属账号后清空父目录条件，避免跨用户残留 */
+const handleOwnerChange = () => {
+  queryParams.value.pid = undefined;
+};
+
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  dirTreeList();
   getList();
 };
 
@@ -276,6 +304,7 @@ const handleSelectionChange = (selection: DirectoryVO[]) => {
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
+  form.value.userId = queryParams.value.userId;
   dialog.visible = true;
   dialog.title = t('notes.dir.addTitle');
 };
@@ -324,11 +353,14 @@ const handleExport = () => {
 };
 
 const dirTreeList = async () => {
-  const res = await dirTree();
+  const res = await dirTree({
+    userId: queryParams.value.userId
+  });
   dirTreeData.value[0].children = res.data;
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await loadOwnerOptions();
   dirTreeList();
   getList();
 });

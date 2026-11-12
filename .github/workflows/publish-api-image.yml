@@ -1,0 +1,67 @@
+name: Publish v5notes2 API image
+
+on:
+  push:
+    tags:
+      # Avoid the existing desktop update workflow's v* tag pattern.
+      - 'api-v5notes2-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'zyw/v5notes' &&
+      (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: onedev.v5ai.xin/docker-imgs/v5notes2-api
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Package API
+        working-directory: v5notes2
+        run: |
+          sh ./mvnw --batch-mode -DskipTests package
+          test -s note-admin/target/v5notes2.jar
+
+      - name: Set image tags
+        id: image
+        shell: bash
+        run: |
+          tags="$IMAGE:sha-$GITHUB_SHA"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#api-v5notes2-}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo 'Expected a tag such as api-v5notes2-2.0.0' >&2
+              exit 1
+            fi
+            tags="$tags,$IMAGE:$version"
+          fi
+          printf 'tags=%s\n' "$tags" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: onedev.v5ai.xin
+          username: ${{ vars.ONEDEV_USERNAME }}
+          password: ${{ secrets.ONEDEV_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./v5notes2
+          file: v5notes2/docker/server/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.tags }}

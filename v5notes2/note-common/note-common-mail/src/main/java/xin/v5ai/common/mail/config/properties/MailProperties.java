@@ -19,6 +19,12 @@ public class MailProperties {
     private Boolean enabled;
 
     /**
+     * 开发联调：不连接 SMTP，仅由业务侧写入验证码并打日志。
+     * 仅建议本地/测试开启，生产必须为 false。
+     */
+    private Boolean dryRun = false;
+
+    /**
      * SMTP服务器域名
      */
     private String host;

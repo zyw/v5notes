@@ -81,7 +81,7 @@
                   v-model="row.configValue"
                   :placeholder="$t('common.pleaseInput', { label: $t('system.config.value') })"
                   @blur="handleInlineSave(row)"
-                  @keyup.enter="handleInlineSave(row)"
+                  @keyup.enter="($event.target as HTMLInputElement).blur()"
                 />
               </template>
             </el-table-column>
@@ -233,6 +233,10 @@ const { loading, withLoading } = useLoading(true);
 const { showSearch } = useSearchToggle();
 const total = ref(0);
 const activeTab = ref('');
+/** 内联编辑前的原始值，用于判断是否变更及取消时回滚 */
+const inlineOriginalValues = new Map<string, string>();
+/** 正在保存的参数键，避免回车/失焦并发触发 */
+const inlineSavingKeys = new Set<string>();
 
 const queryFormRef = ref<ElFormInstance>();
 const configFormRef = ref<ElFormInstance>();
@@ -276,12 +280,23 @@ const { resetQuery } = useSearchReset({
   }
 });
 
+/** 同步内联编辑基准值 */
+const syncInlineOriginalValues = (rows: ConfigVO[]) => {
+  inlineOriginalValues.clear();
+  rows.forEach((item) => {
+    if (item.configKey) {
+      inlineOriginalValues.set(String(item.configKey), item.configValue ?? '');
+    }
+  });
+};
+
 /** 查询参数列表 */
 const getList = async () => {
   await withLoading(async () => {
     const res = await listConfig({ ...queryParams.value });
     configList.value = res.data?.rows ?? [];
     total.value = res.data?.total;
+    syncInlineOriginalValues(configList.value);
   });
 };
 /** 取消按钮 */
@@ -314,12 +329,35 @@ const handleUpdate = async (row?: Partial<ConfigVO>) => {
 };
 /** 内联保存参数值 */
 const handleInlineSave = async (row: Partial<ConfigVO>) => {
-  if (!row.configKey) {
+  const configKey = row.configKey;
+  if (!configKey) {
     return;
   }
-  await modal.confirm(t('system.config.confirmSave', { name: row.configKey }));
-  await updateConfigByKey(row.configKey, row.configValue ?? '');
-  modal.msgSuccess(t('common.editSuccess'));
+  const key = String(configKey);
+  const nextValue = row.configValue ?? '';
+  const prevValue = inlineOriginalValues.get(key);
+  if (prevValue !== undefined && prevValue === nextValue) {
+    return;
+  }
+  if (inlineSavingKeys.has(key)) {
+    return;
+  }
+  inlineSavingKeys.add(key);
+  try {
+    await modal.confirm(t('system.config.confirmSave', { name: configKey }));
+    await updateConfigByKey(configKey, nextValue);
+    inlineOriginalValues.set(key, nextValue);
+    modal.msgSuccess(t('common.editSuccess'));
+  } catch (error) {
+    // 取消确认时回滚；接口错误由 request 拦截器提示，保留编辑值便于重试
+    if (error === 'cancel' || error === 'close') {
+      if (prevValue !== undefined) {
+        row.configValue = prevValue;
+      }
+    }
+  } finally {
+    inlineSavingKeys.delete(key);
+  }
 };
 /** 提交按钮 */
 const submitForm = () => {

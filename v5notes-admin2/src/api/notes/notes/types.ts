@@ -10,6 +10,11 @@ export interface NotesVO {
   userId: string | number;
 
   /**
+   * 所属用户账号
+   */
+  userName?: string;
+
+  /**
    * 笔记名
    */
   name: string;
@@ -92,6 +97,16 @@ export interface NotesQuery extends PageQuery {
    * 笔记名
    */
   searchValue?: string;
+
+  /**
+   * 所属用户 ID
+   */
+  userId?: string | number;
+
+  /**
+   * 所属用户账号（模糊）
+   */
+  userName?: string;
 
   /**
    * 所属目录ID

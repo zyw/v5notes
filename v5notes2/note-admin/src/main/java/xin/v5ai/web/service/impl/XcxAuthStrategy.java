@@ -78,6 +78,7 @@ public class XcxAuthStrategy implements IAuthStrategy {
         loginUser.setUsername(user.getUserName());
         loginUser.setNickname(user.getNickName());
         loginUser.setUserType(user.getUserType());
+        loginService.checkClientUserType(client, user.getUserName(), loginUser.getUserType());
         loginUser.setClientKey(client.getClientKey());
         loginUser.setDeviceType(client.getDeviceType());
         loginUser.setOpenid(openid);

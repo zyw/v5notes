@@ -1,8 +1,8 @@
 -- =============================================================================
 -- v5notes2 业务脚本：云笔记 + 基础文件模块
 -- -----------------------------------------------------------------------------
--- 执行前置：已导入 script/sql/ry_vue.sql（6.1.0 初始化脚本）
--- 执行顺序：ry_vue.sql -> ry_job.sql(可选) -> note2.sql(本脚本，位于 script/sql/notes2.sql)
+-- 执行前置：已导入 script/sql/v5notes_vue.sql（6.1.0 初始化脚本）
+-- 执行顺序：v5notes_vue.sql -> ry_job.sql(可选) -> note2.sql(本脚本，位于 script/sql/notes2.sql)
 --
 -- 与 5.2.2 的差异（重要）：
 --   1. 6.1.0 已移除多租户：所有表**不含 tenant_id 列**；
@@ -296,9 +296,8 @@ WHERE menu_id IN (7, 118, 1600, 1601, 1602, 1603, 1604, 1605, 1620, 1621, 1622, 
 -- 4、字典（6.1.0 的 sys_dict_type / sys_dict_data 无 tenant_id 列）
 -- -----------------------------------------------------------------------------
 DELETE FROM sys_dict_data
-WHERE dict_type IN ('user_type', 'basics_file_storage')
-   OR (dict_type = 'sys_grant_type' AND dict_value = 'clientPassword')
-   OR (dict_type = 'sys_device_type' AND dict_value = 'pc_client');
+WHERE dict_type IN ('user_type', 'basics_file_storage', 'sys_device_type')
+   OR (dict_type = 'sys_grant_type' AND dict_value = 'clientPassword');
 DELETE FROM sys_dict_type WHERE dict_type IN ('user_type', 'basics_file_storage');
 
 -- 4.1 用户类型 user_type：sys_user / cli_user
@@ -326,28 +325,36 @@ VALUES (139, 1, '本地磁盘', '100', 'basics_file_storage', '', '', 'Y', 17610
        (142, 4, 'SFTP服务器', '103', 'basics_file_storage', '', '', 'N', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, 'SFTP 服务器'),
        (143, 5, 'S3对象存储', '104', 'basics_file_storage', '', '', 'N', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, 'S3 对象存储');
 
--- 4.3 补充授权类型 / 设备类型字典项（客户端登录需要 clientPassword、pc_client）
+-- 4.3 授权类型 clientPassword；设备类型只保留 admin / client
 INSERT INTO sys_dict_data (dict_code, dict_sort, dict_label, dict_value, dict_type, css_class, list_class, is_default,
                            create_dept, create_by, create_time, update_by, update_time, remark)
 VALUES (1851901153796288514, 0, '客户端密码认证', 'clientPassword', 'sys_grant_type', 'el-check-tag', 'default', 'N',
         1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, '客户端密码认证'),
-       (1851635425633472514, 5, 'PC客户端', 'pc_client', 'sys_device_type', '', 'default', 'N',
-        1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, 'PC客户端');
+       (1761600000000000035, 1, '管理端', 'admin', 'sys_device_type', '', 'default', 'N',
+        1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, '管理端，只允许 sys_user 登录'),
+       (1761600000000000036, 2, '客户端', 'client', 'sys_device_type', '', 'default', 'N',
+        1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL, 'PC客户端、APP客户端、小程序客户端等，只允许 cli_user 登录');
+UPDATE sys_dict_type
+SET remark = '登录端类型：admin 管理端，client 客户端'
+WHERE dict_type = 'sys_device_type';
 
 -- -----------------------------------------------------------------------------
 -- 5、sys_client（显式列名，含 6.1.0 新增的 access_path / ip_whitelist）
 -- -----------------------------------------------------------------------------
--- 5.1 云笔记客户端（clientPassword / pc_client）：v5notes-client2 与旧 Electron 客户端使用
+-- 只保留两条：管理端登录客户端、客户端登录客户端
+DELETE FROM sys_client WHERE client_id NOT IN ('d9df3c0228c05e5c61db46348bcadf6e', 'e5cd7e4891bf95d1d19206ce24a7b32e');
 DELETE FROM sys_client WHERE client_id IN ('d9df3c0228c05e5c61db46348bcadf6e', 'e5cd7e4891bf95d1d19206ce24a7b32e');
+
+-- 5.1 客户端登录（clientPassword / client）：v5notes-client2 登录时携带该 client_id
 INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
                         active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
-VALUES (1851635079091687426, 'd9df3c0228c05e5c61db46348bcadf6e', 'client', 'client123', 'clientPassword', 'pc_client',
+VALUES (1851635079091687426, 'd9df3c0228c05e5c61db46348bcadf6e', 'client', 'client123', 'clientPassword', 'client',
         NULL, NULL, -1, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
 
--- 5.2 管理端 PC 客户端（password / pc）：v5notes-admin2 使用
+-- 5.2 管理端登录（password / admin）：v5notes-admin2 登录时携带该 client_id
 INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
                         active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
-VALUES (1762000000000000001, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'pc',
+VALUES (1762000000000000001, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'admin',
         NULL, NULL, 1800, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
 
 -- -----------------------------------------------------------------------------

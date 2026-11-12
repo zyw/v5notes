@@ -191,7 +191,7 @@ public class FileInfoServiceImpl implements IFileInfoService {
             }
         });
 
-        return baseMapper.deleteBatchIds(ids) > 0;
+        return baseMapper.deleteByIds(ids) > 0;
     }
 
     @Override

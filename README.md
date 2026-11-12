@@ -18,6 +18,7 @@ V5Notes 是一套可以私有部署的 Markdown 云笔记。桌面客户端负�
 
 - [它解决什么问题](#它解决什么问题)
 - [三端如何配合](#三端如何配合)
+- [界面截图](#界面截图)
 - [功能一览](#功能一览)
 - [技术栈](#技术栈)
 - [环境准备](#环境准备)
@@ -27,6 +28,7 @@ V5Notes 是一套可以私有部署的 Markdown 云笔记。桌面客户端负�
 - [配置](#配置)
 - [常见问题](#常见问题)
 - [上线前检查](#上线前检查)
+- [后期功能规划](#后期功能规划)
 
 ## 它解决什么问题
 
@@ -60,6 +62,58 @@ flowchart LR
 | [`v5notes-client2`](v5notes-client2/) | 在 Windows、macOS、Linux 上阅读和编辑 Markdown | Vue 3.5、TypeScript、Tauri 2 |
 
 客户端走 `/client/notes/**`，管理后台走 `/notes/**`、`/system/**` 和 `/basics/**`。同一套笔记服务同时服务两端，雪花 ID 从接口到页面始终按字符串处理。
+
+## 界面截图
+
+以下截图来自实际运行的界面。桌面客户端负责写作，管理后台负责成员、笔记和系统状态。
+
+### 桌面客户端
+
+| 登录（浅色） | 登录（深色） |
+|:---:|:---:|
+| ![桌面客户端登录页：连接工作区、用户名和密码，浅色主题](images/client/登录-浅.png) | ![桌面客户端登录页，深色主题](images/client/登录-深.png) |
+
+| 工作区首页 | 深色主题 |
+|:---:|:---:|
+| ![工作区首页：左侧目录树与新建笔记入口](images/client/home-img.png) | ![深色主题下的阅读视图](images/client/home-dark.png) |
+
+| 编辑模式 | 预览模式 |
+|:---:|:---:|
+| ![所见即所得编辑模式，工具栏和已保存状态](images/client/编辑模式.png) | ![只读预览模式，右上角可切回编辑](images/client/预览模式.png) |
+
+| 源码模式 | 查找 |
+|:---:|:---:|
+| ![源码模式：直接编辑 Markdown 原文](images/client/源码模式.png) | ![右侧查找面板与命中结果列表](images/client/查找.png) |
+
+| 大纲 | 命令面板 |
+|:---:|:---:|
+| ![右侧大纲面板，按标题层级跳转](images/client/大纲操作.png) | ![命令面板：切换显示模式、视图、排版和导出](images/client/命令面板.png) |
+
+| 回收站 | 历史版本 |
+|:---:|:---:|
+| ![回收站：剩余 30 天，可恢复或彻底删除](images/client/回收站.png) | ![历史版本：版本列表、正文预览与恢复](images/client/历史版本.png) |
+
+| 设置 |
+|:---:|
+| ![设置：连接、语言、主题与工作区偏好](images/client/设置.png) |
+
+### 管理后台
+
+| 登录（浅色） | 登录（深色） |
+|:---:|:---:|
+| ![管理后台登录页：账号、密码、验证码，浅色主题](images/admin/login-light.png) | ![管理后台登录页，深色主题](images/admin/login-dark.png) |
+
+| 工作台（浅色） | 工作台（深色） |
+|:---:|:---:|
+| ![工作台：笔记总数、活跃用户、今日编辑与内容增长](images/admin/home-light.png) | ![深色主题下的工作台](images/admin/home-dark.png) |
+
+| 笔记管理 | 成员管理 |
+|:---:|:---:|
+| ![笔记管理：目录树、筛选条件和笔记列表](images/admin/notes-light.png) | ![成员管理：部门结构、角色与访问范围](images/admin/user-light.png) |
+
+| 笔记历史版本 |
+|:---:|
+| ![从管理后台查看笔记历史版本并恢复](images/admin/his-light.png) |
 
 ## 功能一览
 
@@ -400,6 +454,13 @@ MySQL 数据目录已经初始化后，只改 `MYSQL_ROOT_PASSWORD` 不会改变
 - 不要把 `docker/.env`、生产配置和私钥提交进仓库。
 - 对公网只开放管理后台和 API。MySQL 的 `3306` 和 Redis 的 `6379` 留在内网。
 - 备份数据库数据目录和 `uploadfile`。笔记正文在数据库里，附件在文件目录里。
+
+## 后期功能规划
+
+下列能力已进入设计或规划，但尚未排进当前开发。若你需要其中某一项，请给仓库点 [Star](https://github.com/zyw/v5notes)，并在 [Issues](https://github.com/zyw/v5notes/issues) 里投票或留言，帮助我们决定优先顺序。
+
+1. **思维导图文件** — 在桌面客户端中创建、编辑、保存独立的思维导图文件，并与现有目录树、历史版本和回收站一起管理；后续还可在 Markdown 中引用同一张导图。设计方案见 [docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md](docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md)。
+2. **AI 功能** — 首期做 **AI 写作助手**：选区改写、摘要/提纲、续写；也可由 AI **创建新笔记**，或把当前文档整体改写成指定风格（如微信公众号、小红书）并**另存为新文档**，不覆盖原文。默认关闭，由用户配置模型端点；结果需确认后再写入。后期再考虑跨笔记问答、语义搜索等知识增强能力。设计方案见 [docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md](docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md)。
 
 ## 仓库
 

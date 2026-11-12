@@ -75,16 +75,34 @@ export interface UserProfile {
   userType?: string
   userName: string
   nickName: string
-  phonenumber?: string
+  phoneNumber?: string
   email?: string
-  sex?: string
+  gender?: string
   remark?: string
   /** 头像地址（后端直接存 URL 字符串） */
   avatar?: string
 }
 
-export interface UserProfileUpdate extends Omit<UserProfile, 'avatar'> {
+/** 与后端 SysUserProfileBo 对齐的可提交字段 */
+export interface UserProfileUpdate {
+  nickName: string
+  phoneNumber?: string
+  email?: string
+  gender?: string
   avatar: string
+}
+
+/** 与后端 ClientQuotaVo 对齐；plan* 预留给后续付费套餐 */
+export interface ClientQuota {
+  limited: boolean
+  expired: boolean
+  usedBytes: number
+  noteBytes?: number
+  fileBytes?: number
+  quotaBytes: number
+  expireAt?: string | null
+  planName?: string | null
+  planExpireAt?: string | null
 }
 
 export interface Page<T> {
@@ -136,16 +154,28 @@ export function createApi(
   return {
     ping: () => call<unknown>('/client/ping', {}, false),
     userInfo: async () => (await call<{ user: UserProfile }>('/system/user/getInfo')).user,
+    /** 个人中心详情（不脱敏），供资料弹窗编辑使用 */
+    userProfile: async () => (await call<{ user: UserProfile }>('/system/user/profile')).user,
     updateUserProfile: (profile: UserProfileUpdate) =>
-      call<void>('/system/user', { method: 'PUT', body: JSON.stringify(profile) }),
+      call<void>('/system/user/profile', { method: 'PUT', body: JSON.stringify(profile) }),
     login: (username: string, password: string) => {
       const encrypted = encryptLogin(JSON.stringify({
         tenantId: '000000', username, password, clientId: config().clientId,
-        grantType: 'clientPassword', deviceType: 'pc_client',
+        grantType: 'clientPassword', deviceType: 'client',
       }), import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey)
       return call<{ access_token: string; refresh_token?: string; expire_in?: number }>(
         '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)
     },
+    registerEnabled: async () => Boolean(await call<boolean>('/auth/client/register-enabled', {}, false)),
+    sendRegisterCode: (email: string) =>
+      call<void>(`/resource/email/code?${new URLSearchParams({ email, scene: 'register' })}`, {}, false),
+    register: (body: { password: string; email: string; emailCode: string }) => {
+      const encrypted = encryptLogin(JSON.stringify(body), import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey)
+      return call<void>('/auth/client/register', {
+        method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key },
+      }, false)
+    },
+    quota: () => call<ClientQuota>('/client/account/quota'),
     tree: () => call<TreeNode[]>('/client/notes/dir/tree'),
     list: (dirId: string, pageNum = 1) =>
       call<Page<Note>>(`/client/notes/list?${new URLSearchParams({ dirId, pageNum: String(pageNum), pageSize: '30' })}`),
@@ -158,7 +188,7 @@ export function createApi(
       if (data !== null && typeof data === 'object' && 'id' in data) return asId(data.id)
       return asId(data)
     },
-    update: (note: Note, force = false) =>
+    update: (note: Note, force = false, skipHistory = false) =>
       call<{ contentHash: string }>('/client/notes', {
         method: 'PUT',
         body: JSON.stringify({
@@ -168,6 +198,7 @@ export function createApi(
           content: note.content,
           baseHash: note.contentHash ?? '',
           force,
+          skipHistory,
         }),
       }),
     revisions: (noteId: string, pageNum = 1) =>

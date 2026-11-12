@@ -35,8 +35,8 @@ public class NoteTrashController extends BaseController {
 
     @SaCheckPermission("notes:trash:list")
     @GetMapping("/list")
-    public R<PageResult<NoteTrashItemVo>> list(String name, String objectType, String userName, PageQuery pageQuery) {
-        return R.ok(noteTrashService.listForAdmin(name, objectType, userName, pageQuery));
+    public R<PageResult<NoteTrashItemVo>> list(String name, String objectType, Long userId, String userName, PageQuery pageQuery) {
+        return R.ok(noteTrashService.listForAdmin(name, objectType, userId, userName, pageQuery));
     }
 
     @SaCheckPermission("notes:trash:restore")
