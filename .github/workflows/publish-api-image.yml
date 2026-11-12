@@ -19,6 +19,20 @@ jobs:
     env:
       IMAGE: onedev.v5ai.xin/docker-imgs/v5notes2-api
     steps:
+      - name: Check OneDev credentials
+        env:
+          ONEDEV_USERNAME: ${{ secrets.ONEDEV_USERNAME || vars.ONEDEV_USERNAME }}
+          ONEDEV_TOKEN: ${{ secrets.ONEDEV_TOKEN }}
+        run: |
+          missing=()
+          [[ -z "${ONEDEV_USERNAME}" ]] && missing+=('ONEDEV_USERNAME')
+          [[ -z "${ONEDEV_TOKEN}" ]] && missing+=('ONEDEV_TOKEN')
+          if ((${#missing[@]})); then
+            echo "Missing required Actions credentials: ${missing[*]}" >&2
+            echo "Add ONEDEV_USERNAME (secret or variable) and ONEDEV_TOKEN (secret) under Settings → Secrets and variables → Actions." >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -55,7 +69,7 @@ jobs:
       - uses: docker/login-action@v4
         with:
           registry: onedev.v5ai.xin
-          username: ${{ vars.ONEDEV_USERNAME }}
+          username: ${{ secrets.ONEDEV_USERNAME || vars.ONEDEV_USERNAME }}
           password: ${{ secrets.ONEDEV_TOKEN }}
 
       - name: Build and push
