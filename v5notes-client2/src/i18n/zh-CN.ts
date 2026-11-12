@@ -137,8 +137,8 @@ export const zhCN = {
   },
   sidebar: {
     notes: '笔记',
-    searchPlaceholder: '搜索笔记名称',
-    searchLabel: '搜索笔记',
+    searchPlaceholder: '搜索标题或正文',
+    searchLabel: '搜索标题或正文',
     closeSearch: '关闭搜索',
     search: '搜索',
     noteActions: '笔记操作',

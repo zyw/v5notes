@@ -7,7 +7,7 @@ import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
 import brandIcon from '../assets/brand-icon.png'
 const { t } = useI18n()
-const { directoryVisible, focusMode, sidebarSearchVisible, runSearch, query, searching, notes, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
+const { directoryVisible, focusMode, sidebarSearchVisible, scheduleSearch, runSearch, exitSearch, query, searching, notes, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
 
 const sortedTree = computed(() => sortTree(directories.value, noteSort.value))
 const flatNotes = computed(() => flattenNotes(directories.value, noteSort.value))
@@ -33,8 +33,8 @@ function closeProfileMenu(event: Event): void {
         <Transition name="inline-search">
         <form v-if="sidebarSearchVisible" class="search search-inline" @submit.prevent="runSearch">
           <span class="search-symbol" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg></span>
-          <input v-model="query" autofocus :placeholder="t('sidebar.searchPlaceholder')" :aria-label="t('sidebar.searchLabel')" @input="runSearch" />
-          <button type="button" :title="t('sidebar.closeSearch')" :aria-label="t('sidebar.closeSearch')" @click="query = ''; searching = false; notes = []; sidebarSearchVisible = false">×</button>
+          <input v-model="query" autofocus :placeholder="t('sidebar.searchPlaceholder')" :aria-label="t('sidebar.searchLabel')" @input="scheduleSearch" />
+          <button type="button" :title="t('sidebar.closeSearch')" :aria-label="t('sidebar.closeSearch')" @click="exitSearch(); sidebarSearchVisible = false">×</button>
         </form>
         </Transition>
         <div class="workspace-controls">
@@ -57,10 +57,14 @@ function closeProfileMenu(event: Event): void {
           <button type="button" :title="t('sidebar.newDirectory')" :aria-label="t('sidebar.newDirectory')" @click="addDirectory()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2H20a1 1 0 0 1 1 1v7.8a1.7 1.7 0 0 1-1.7 1.7H4.7A1.7 1.7 0 0 1 3 18.3V8a.5.5 0 0 1 .5-.5Z"/><path d="M16.5 3.5v6M13.5 6.5h6"/></svg></button>
         </div>
       </div>
-      <div v-if="searching" class="tree-heading search-heading"><span>{{ t('sidebar.results') }}</span><button @click="searching = false; query = ''">{{ t('sidebar.clear') }}</button></div>
+      <div v-if="searching" class="tree-heading search-heading"><span>{{ t('sidebar.results') }}</span><button type="button" @click="exitSearch()">{{ t('sidebar.clear') }}</button></div>
       <div v-if="searching" class="tree-scroll search-results">
         <button v-for="note in notes" :key="note.id" class="search-result" :class="{ active: selectedId === note.id }" :title="note.name" @click="openNote(note.id)">
-          <TreeIcon kind="note" /><span>{{ note.name }}</span>
+          <TreeIcon kind="note" />
+          <span class="search-result-text">
+            <span class="search-result-name">{{ note.name }}</span>
+            <span v-if="note.content" class="search-result-snippet">{{ note.content }}</span>
+          </span>
         </button>
         <p v-if="!notes.length" class="empty-list">{{ t('sidebar.noMatches') }}</p>
       </div>

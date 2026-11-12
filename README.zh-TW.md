@@ -28,6 +28,7 @@ V5Notes 是一套可以私有部署的 Markdown 雲端筆記。桌面用戶端�
 - [設定](#設定)
 - [常見問題](#常見問題)
 - [上線前檢查](#上線前檢查)
+- [後期功能規劃](#後期功能規劃)
 
 ## 它解決什麼問題
 
@@ -453,6 +454,13 @@ MySQL 資料目錄已經初始化後，只改 `MYSQL_ROOT_PASSWORD` 不會改變
 - 不要把 `docker/.env`、生產設定和私鑰提交進儲存庫。
 - 對公網只開放管理後台和 API。MySQL 的 `3306` 和 Redis 的 `6379` 留在內網。
 - 備份資料庫資料目錄和 `uploadfile`。筆記正文在資料庫裡，附件在檔案目錄裡。
+
+## 後期功能規劃
+
+下列能力已進入設計或規劃，但尚未排進目前開發。若你需要其中某一項，請給儲存庫點 [Star](https://github.com/zyw/v5notes)，並在 [Issues](https://github.com/zyw/v5notes/issues) 裡投票或留言，協助我們決定優先順序。
+
+1. **思維導圖檔案** — 在桌面用戶端中建立、編輯、儲存獨立的思維導圖檔案，並與現有目錄樹、歷史版本和回收桶一起管理；後續還可在 Markdown 中引用同一張導圖。設計方案見 [docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md](docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md)。
+2. **AI 功能** — 首期做 **AI 寫作助手**：選區改寫、摘要/大綱、續寫；也可由 AI **建立新筆記**，或把目前文件整體改寫成指定風格（如微信公眾號、小紅書）並**另存為新文件**，不覆蓋原文。預設關閉，由使用者設定模型端點；結果需確認後再寫入。後期再考慮跨筆記問答、語意搜尋等知識增強能力。設計方案見 [docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md](docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md)。
 
 ## 儲存庫
 

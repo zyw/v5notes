@@ -137,7 +137,6 @@ input { outline: none; }
 .tree-disclosure[aria-expanded="true"] svg { transform: rotate(90deg); }
 .tree-label { min-width: 0; flex: 1; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 3px; text-align: left; overflow: hidden; }
 .tree-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.search-result > span:last-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tree-hint { min-width: 0; max-width: 46%; overflow: hidden; color: #8b978c; font-size: 11px; font-weight: 400; white-space: nowrap; text-overflow: ellipsis; }
 .tree-icon { width: 17px; height: 17px; flex: 0 0 17px; color: #789380; }
 .directory-row .tree-icon { color: #5d8268; }
@@ -153,9 +152,14 @@ input { outline: none; }
 .tree-expand-enter-active, .tree-expand-leave-active { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .18s ease, opacity .16s ease; }
 .tree-expand-enter-from, .tree-expand-leave-to { grid-template-rows: 0fr; opacity: 0; }
 .search-results { padding-top: 2px; }
-.search-result { width: 100%; min-height: 37px; display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 28px; border-radius: 7px; color: #39473d; font-size: 13px; text-align: left; }
+.search-result { width: 100%; min-height: 37px; display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px 7px 28px; border-radius: 7px; color: #39473d; font-size: 13px; text-align: left; }
+.search-result > .tree-icon { margin-top: 2px; }
+.search-result-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.search-result-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.search-result-snippet { overflow: hidden; color: #8b978c; font-size: 11px; font-weight: 400; line-height: 1.45; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .search-result:hover { background: #ecefe9; }
 .search-result.active { background: #e2eae1; color: #254c3a; font-weight: 650; }
+.search-result.active .search-result-snippet { color: #6f8678; font-weight: 400; }
 .empty-list { padding: 18px 10px; color: #98a49a; font-size: 12px; line-height: 1.7; text-align: center; }
 .trash-entry { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: #526355; font-size: 13px; text-align: left; }
 .trash-entry svg, .rail-trash svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }

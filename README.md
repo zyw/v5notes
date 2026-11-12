@@ -28,6 +28,7 @@ V5Notes 是一套可以私有部署的 Markdown 云笔记。桌面客户端负�
 - [配置](#配置)
 - [常见问题](#常见问题)
 - [上线前检查](#上线前检查)
+- [后期功能规划](#后期功能规划)
 
 ## 它解决什么问题
 
@@ -453,6 +454,13 @@ MySQL 数据目录已经初始化后，只改 `MYSQL_ROOT_PASSWORD` 不会改变
 - 不要把 `docker/.env`、生产配置和私钥提交进仓库。
 - 对公网只开放管理后台和 API。MySQL 的 `3306` 和 Redis 的 `6379` 留在内网。
 - 备份数据库数据目录和 `uploadfile`。笔记正文在数据库里，附件在文件目录里。
+
+## 后期功能规划
+
+下列能力已进入设计或规划，但尚未排进当前开发。若你需要其中某一项，请给仓库点 [Star](https://github.com/zyw/v5notes)，并在 [Issues](https://github.com/zyw/v5notes/issues) 里投票或留言，帮助我们决定优先顺序。
+
+1. **思维导图文件** — 在桌面客户端中创建、编辑、保存独立的思维导图文件，并与现有目录树、历史版本和回收站一起管理；后续还可在 Markdown 中引用同一张导图。设计方案见 [docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md](docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md)。
+2. **AI 功能** — 首期做 **AI 写作助手**：选区改写、摘要/提纲、续写；也可由 AI **创建新笔记**，或把当前文档整体改写成指定风格（如微信公众号、小红书）并**另存为新文档**，不覆盖原文。默认关闭，由用户配置模型端点；结果需确认后再写入。后期再考虑跨笔记问答、语义搜索等知识增强能力。设计方案见 [docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md](docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md)。
 
 ## 仓库
 

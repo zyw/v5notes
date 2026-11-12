@@ -28,6 +28,7 @@ This document covers three directories: [`v5notes2`](v5notes2/), [`v5notes-admin
 - [Configuration](#configuration)
 - [FAQ](#faq)
 - [Before you go public](#before-you-go-public)
+- [Roadmap](#roadmap)
 
 ## What it solves
 
@@ -453,6 +454,13 @@ After MySQL has initialized its data directory, `MYSQL_ROOT_PASSWORD` does not r
 - Keep `docker/.env`, production config, and private keys out of the repository.
 - Publish the admin console and the API. Leave MySQL `3306` and Redis `6379` on the private network.
 - Back up the database directory and `uploadfile`. Note bodies live in the database. Attachments live on disk.
+
+## Roadmap
+
+These features are designed or planned, but not scheduled for current development. If you want one of them, please [Star](https://github.com/zyw/v5notes) the repository and vote or comment in [Issues](https://github.com/zyw/v5notes/issues) so we can prioritize.
+
+1. **Mind map files** — Create, edit, and save standalone mind maps in the desktop client, managed with the existing folder tree, revision history, and trash. Later, Markdown notes can reference the same map. Design: [docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md](docs/superpowers/specs/2026-11-12-v5notes-client2-mindmap-design.md).
+2. **AI features** — First ship an **AI writing assistant**: rewrite a selection, summarize/outline, continue writing; also let AI **create a new note**, or restyle the whole current document (for example WeChat Official Account or Xiaohongshu style) into a **new note without overwriting the original**. Off by default; users configure the model endpoint; apply results only after confirmation. Library Q&A and semantic search come later as knowledge features. Design: [docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md](docs/superpowers/specs/2026-11-12-v5notes-ai-writing-design.md).
 
 ## Repository
 

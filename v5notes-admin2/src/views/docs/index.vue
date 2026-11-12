@@ -93,14 +93,17 @@
             <el-table-column :label="$t('common.updateTime')" align="center" prop="updateTime" width="180">
               <template #default="{ row }"><span>{{ parseTime(row.updateTime) }}</span></template>
             </el-table-column>
-            <el-table-column :label="$t('common.operate')" align="center" width="140" fixed="right">
+            <el-table-column :label="$t('common.operate')" align="center" width="160" fixed="right">
               <template #default="{ row }">
                 <div class="docs-row-actions">
+                  <el-tooltip :content="$t('common.preview')" placement="top">
+                    <el-button link type="primary" icon="View" @click="handlePreview(row as FileVO)" />
+                  </el-tooltip>
                   <el-tooltip :content="$t('common.download')" placement="top">
-                    <el-button link type="primary" icon="Download" @click="handleDownload(row)" />
+                    <el-button link type="primary" icon="Download" @click="handleDownload(row as FileVO)" />
                   </el-tooltip>
                   <el-tooltip :content="$t('common.delete')" placement="top">
-                    <el-button link type="danger" icon="Delete" @click="handleDelete(row)" />
+                    <el-button link type="danger" icon="Delete" @click="handleDelete(row as FileVO)" />
                   </el-tooltip>
                 </div>
               </template>
@@ -120,6 +123,15 @@
         </el-col>
       </el-row>
     </el-card>
+
+    <FilePreviewDrawer
+      v-model="previewOpen"
+      :file-id="previewTarget?.id"
+      :file-name="previewTarget?.name"
+      :suffix="previewTarget?.suffix"
+      :url="previewTarget?.url"
+      @download="previewTarget && handleDownload(previewTarget)"
+    />
 
     <el-dialog v-model="uploadOpen" :title="$t('docs.uploadTitle')" width="440px" append-to-body class="app-dialog">
       <template #header>
@@ -155,10 +167,11 @@
 
 <script setup name="Docs" lang="ts">
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
+import FilePreviewDrawer from '@/components/FilePreviewDrawer/index.vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Document, Files, Folder, Memo, More, Picture, UploadFilled } from '@element-plus/icons-vue';
+import { Document, Files, Memo, More, Picture, UploadFilled } from '@element-plus/icons-vue';
 import { delFile, listFile } from '@/api/basics/file';
 import type { FileQuery, FileVO } from '@/api/basics/file/types';
 import { getToken } from '@/utils/auth';
@@ -174,6 +187,8 @@ const total = ref(0);
 const showSearch = ref(true);
 const fileList = ref<FileVO[]>([]);
 const activeType = ref('all');
+const previewOpen = ref(false);
+const previewTarget = ref<FileVO>();
 
 /** 左侧文件类型导航（图标 + 名称） */
 const docTypeItems = computed(() => [
@@ -253,6 +268,12 @@ const handleUploadSuccess = (response: any) => {
 
 const handleUploadError = () => {
   ElMessage.error(t('docs.uploadFail'));
+};
+
+/** 预览 */
+const handlePreview = (row: FileVO) => {
+  previewTarget.value = row;
+  previewOpen.value = true;
 };
 
 /** 下载（直接请求 basics 下载接口，携带登录令牌） */

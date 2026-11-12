@@ -42,6 +42,7 @@ const trialExpired = ref(false)
 let codeTimer: number | undefined
 const query = ref('')
 const searching = ref(false)
+let searchTimer: number | undefined
 const defaultDirectoryVisible = ref(localStorage.getItem('v5notes-default-directory-visible') !== 'false')
 const directoryVisible = ref(defaultDirectoryVisible.value)
 const defaultTreeExpanded = ref(localStorage.getItem('v5notes-default-tree-expanded') !== 'false')
@@ -694,8 +695,47 @@ async function overwriteConflict(): Promise<void> {
   }
 }
 
+function clearSearchTimer(): void {
+  if (searchTimer !== undefined) {
+    window.clearTimeout(searchTimer)
+    searchTimer = undefined
+  }
+}
+
+function exitSearch(): void {
+  clearSearchTimer()
+  query.value = ''
+  searching.value = false
+  notes.value = []
+  total.value = 0
+}
+
+function scheduleSearch(): void {
+  const q = query.value.trim()
+  if (!q) {
+    clearSearchTimer()
+    searching.value = false
+    notes.value = []
+    total.value = 0
+    return
+  }
+  searching.value = true
+  clearSearchTimer()
+  searchTimer = window.setTimeout(() => {
+    searchTimer = undefined
+    void refreshNotes().catch(report)
+  }, 250)
+}
+
 async function runSearch(): Promise<void> {
-  searching.value = Boolean(query.value.trim())
+  clearSearchTimer()
+  const q = query.value.trim()
+  searching.value = Boolean(q)
+  if (!q) {
+    notes.value = []
+    total.value = 0
+    return
+  }
   try { await refreshNotes() } catch (cause) { report(cause) }
 }
 
@@ -938,6 +978,7 @@ onBeforeUnmount(() => {
   unwatchClose?.()
   unlistenTrayExit?.()
   if (codeTimer !== undefined) window.clearInterval(codeTimer)
+  clearSearchTimer()
   if (answer) respond('cancel')
 })
 
@@ -951,5 +992,5 @@ const {
   prepareToInstall: () => mayLeave(),
 })
 
-return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, runSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, refreshProfile, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, refreshProfile, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
 }

@@ -93,6 +93,8 @@ html[data-theme='dark'] .empty-list { color: var(--dk-faint); }
 html[data-theme='dark'] .search-result { color: var(--dk-ink-3); }
 html[data-theme='dark'] .search-result:hover { background: var(--dk-hover); }
 html[data-theme='dark'] .search-result.active { background: var(--dk-accent-soft); color: #eaf7f2; }
+html[data-theme='dark'] .search-result-snippet { color: var(--dk-muted); }
+html[data-theme='dark'] .search-result.active .search-result-snippet { color: var(--dk-muted); }
 
 html[data-theme='dark'] .popover-menu { border-color: var(--dk-line); background: var(--dk-raised); box-shadow: 0 18px 44px rgba(0, 0, 0, .5); }
 html[data-theme='dark'] .popover-menu button { color: var(--dk-ink-2); }

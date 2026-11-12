@@ -139,8 +139,8 @@ export const zhTW: Messages = {
   },
   sidebar: {
     notes: '筆記',
-    searchPlaceholder: '搜尋筆記名稱',
-    searchLabel: '搜尋筆記',
+    searchPlaceholder: '搜尋標題或正文',
+    searchLabel: '搜尋標題或正文',
     closeSearch: '關閉搜尋',
     search: '搜尋',
     noteActions: '筆記操作',

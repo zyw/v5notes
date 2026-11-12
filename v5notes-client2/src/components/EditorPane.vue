@@ -7,6 +7,7 @@ import EditorModeDock from './EditorModeDock.vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { editorLocale } from '../i18n'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
@@ -602,7 +603,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>

@@ -139,8 +139,8 @@ export const en: Messages = {
   },
   sidebar: {
     notes: 'Notes',
-    searchPlaceholder: 'Search note names',
-    searchLabel: 'Search notes',
+    searchPlaceholder: 'Search titles or content',
+    searchLabel: 'Search titles or content',
     closeSearch: 'Close search',
     search: 'Search',
     noteActions: 'Note actions',

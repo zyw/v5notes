@@ -99,8 +99,11 @@
             <span>{{ parseTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
+        <el-table-column :label="$t('common.operate')" align="center" width="140" class-name="small-padding fixed-width">
           <template #default="scope">
+            <el-tooltip :content="$t('common.preview')" placement="top">
+              <el-button link type="primary" icon="View" @click="handlePreview(scope.row as FileVO)"></el-button>
+            </el-tooltip>
             <el-tooltip :content="$t('common.download')" placement="top">
               <el-button v-hasPermi="['basics:file:download']" link type="primary" icon="Download" @click="handleDownload(scope.row as FileVO)"></el-button>
             </el-tooltip>
@@ -117,6 +120,15 @@
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
+
+    <FilePreviewDrawer
+      v-model="previewOpen"
+      :file-id="previewTarget?.id"
+      :file-name="previewTarget?.name"
+      :suffix="previewTarget?.suffix"
+      :url="previewTarget?.url"
+      @download="previewTarget && handleDownload(previewTarget)"
+    />
 
     <!-- 添加或修改文件对象存储对话框 -->
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body class="app-dialog">
@@ -155,6 +167,7 @@
 <script setup name="BasicsFile" lang="ts">
 import TableSkeleton from '@/components/Skeleton/TableSkeleton.vue';
 import SubmitButton from '@/components/Loading/SubmitButton.vue';
+import FilePreviewDrawer from '@/components/FilePreviewDrawer/index.vue';
 import { useRouter } from 'vue-router';
 import { listFile, delFile } from '@/api/basics/file';
 import type { FileForm, FileQuery, FileVO } from '@/api/basics/file/types';
@@ -181,6 +194,8 @@ const multiple = ref(true);
 const total = ref(0);
 const type = ref(0);
 const previewListResource = ref(true);
+const previewOpen = ref(false);
+const previewTarget = ref<FileVO>();
 const dateRangeCreateTime = ref<[DateModelType, DateModelType]>(['', '']);
 
 const dialog = reactive<DialogOption>({
@@ -323,6 +338,12 @@ const handleImage = () => {
 const submitForm = () => {
   dialog.visible = false;
   getList();
+};
+
+/** 预览按钮操作 */
+const handlePreview = (row: FileVO) => {
+  previewTarget.value = row;
+  previewOpen.value = true;
 };
 
 /** 下载按钮操作 */
