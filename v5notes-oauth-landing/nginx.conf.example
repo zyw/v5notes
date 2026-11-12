@@ -1,0 +1,23 @@
+# 示例：将本目录部署为 oauth.example.com 的静态根目录
+server {
+  listen 443 ssl http2;
+  server_name oauth.example.com;
+
+  # ssl_certificate     /path/to/fullchain.pem;
+  # ssl_certificate_key /path/to/privkey.pem;
+
+  root /var/www/v5notes-oauth-landing;
+  index index.html;
+
+  # OAuth redirect 通常不带尾斜杠，必须显式落到回调页
+  location = /social-callback {
+    try_files /social-callback/index.html =404;
+  }
+
+  location / {
+    try_files $uri $uri/ =404;
+  }
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy no-referrer always;
+}

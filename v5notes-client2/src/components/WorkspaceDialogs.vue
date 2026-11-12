@@ -2,11 +2,14 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { providerLabelKey, providerTone } from '../models/socialAuth'
+import SocialProviderIcon from './SocialProviderIcon.vue'
 const { t } = useI18n()
 const {
   dialog, dialogValue, dialogError, dialogBusy, submitNameDialog, closeDialog, confirmDialog,
   profileDialogOpen, profileAvatarUrl, profileForm, avatarBusy, uploadProfileAvatar, removeProfileAvatar,
   profileError, profileBusy, saveProfile, closeProfile, accountQuota, cloudPlanKind, cloudStorageLabel,
+  socialBindings, socialBusy, bindableProviders, profileThirdPartyEnabled, startBindSocial, requestUnbindSocial,
   cloudStoragePercent, cloudExpireLabel, promptVisible, respond,
 } = useWorkspaceContext()
 
@@ -162,12 +165,71 @@ const cloudSectionClass = computed(() => (
             <label class="profile-field"><span>{{ t('profile.signature') }}</span><textarea v-model="profileForm.remark" rows="2" maxlength="200" :placeholder="t('profile.signaturePlaceholder')" /></label>
           </div>
         </section>
+
+        <section v-if="profileThirdPartyEnabled" class="settings-panel profile-social-panel" aria-labelledby="profile-social-title">
+          <div class="settings-panel-head">
+            <span class="settings-panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16">
+                <path d="M6.4 9.6 9.6 6.4" />
+                <path d="M7.1 11.3a2.5 2.5 0 0 1 0-3.5l1.5-1.5a2.5 2.5 0 1 1 3.5 3.5l-.9.9" />
+                <path d="M8.9 4.7a2.5 2.5 0 0 1 0 3.5L7.4 9.7a2.5 2.5 0 1 1-3.5-3.5l.9-.9" />
+              </svg>
+            </span>
+            <h3 id="profile-social-title">{{ t('profile.socialTitle') }}</h3>
+          </div>
+          <p class="profile-social-lead">{{ t('profile.socialHint') }}</p>
+
+          <div v-if="socialBindings.length" class="profile-social-bound">
+            <span class="profile-social-kicker">{{ t('profile.socialBound') }}</span>
+            <ul class="profile-social-list">
+              <li v-for="row in socialBindings" :key="row.id" class="profile-social-row" :data-tone="providerTone(row.source)">
+                <span class="profile-social-mark" aria-hidden="true">
+                  <img v-if="row.avatar" :src="row.avatar" alt="" />
+                  <SocialProviderIcon v-else :source="row.source" />
+                </span>
+                <div class="profile-social-meta">
+                  <strong>{{ t(providerLabelKey(row.source)) }}</strong>
+                  <span>{{ row.userName || row.nickName || row.source }}</span>
+                </div>
+                <button
+                  class="profile-social-unbind"
+                  type="button"
+                  :disabled="profileBusy || avatarBusy || socialBusy"
+                  @click="requestUnbindSocial(row)"
+                >
+                  {{ t('profile.socialUnbind') }}
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p v-else class="profile-social-empty">{{ t('profile.socialEmpty') }}</p>
+
+          <div v-if="bindableProviders.length" class="profile-social-bind">
+            <span class="profile-social-kicker">{{ t('profile.socialBindable') }}</span>
+            <div class="profile-social-actions">
+              <button
+                v-for="provider in bindableProviders"
+                :key="provider.source"
+                class="profile-social-chip"
+                type="button"
+                :data-tone="provider.tone"
+                :disabled="profileBusy || avatarBusy || socialBusy"
+                @click="startBindSocial(provider.source)"
+              >
+                <span class="profile-social-chip-icon" aria-hidden="true">
+                  <SocialProviderIcon :source="provider.source" />
+                </span>
+                <span>{{ t(provider.labelKey) }}</span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <footer class="settings-footer profile-footer">
         <p v-if="profileError" class="dialog-error" role="alert">{{ profileError }}</p>
-        <button type="button" :disabled="profileBusy || avatarBusy" @click="closeProfile">{{ t('common.cancel') }}</button>
-        <button class="primary" type="button" :disabled="profileBusy || avatarBusy" @click="saveProfile">{{ profileBusy ? t('common.saving') : t('common.save') }}</button>
+        <button type="button" :disabled="profileBusy || avatarBusy || socialBusy" @click="closeProfile">{{ t('common.cancel') }}</button>
+        <button class="primary" type="button" :disabled="profileBusy || avatarBusy || socialBusy" @click="saveProfile">{{ profileBusy ? t('common.saving') : t('common.save') }}</button>
       </footer>
     </section>
   </div>

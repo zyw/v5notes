@@ -105,6 +105,19 @@ export interface ClientQuota {
   planExpireAt?: string | null
 }
 
+/** 与后端 SysSocialVo 对齐；id 保持字符串 */
+export interface SocialBinding {
+  id: string
+  userId?: string
+  authId?: string
+  source: string
+  userName?: string
+  nickName?: string
+  email?: string
+  avatar?: string
+  createTime?: string
+}
+
 export interface Page<T> {
   rows: T[]
   total: number
@@ -166,7 +179,42 @@ export function createApi(
       return call<{ access_token: string; refresh_token?: string; expire_in?: number }>(
         '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)
     },
+    /** 获取第三方授权跳转 URL（JustAuth authorizeUrl）；app=client 使用客户端回调地址 */
+    socialAuthUrl: (source: string, app: 'client' | 'admin' = 'client') =>
+      call<string>(`/auth/binding/${encodeURIComponent(source)}?${new URLSearchParams({ app })}`, {}, false),
+    /** 当前用户已绑定的第三方账号 */
+    listSocial: () => call<SocialBinding[]>('/system/social/list'),
+    /** 已登录用户绑定第三方（OAuth 回调后） */
+    bindSocial: (body: { source: string; socialCode: string; socialState: string }) =>
+      call<void>('/auth/social/callback', {
+        method: 'POST',
+        body: JSON.stringify({
+          source: body.source,
+          socialCode: body.socialCode,
+          socialState: body.socialState,
+          clientId: config().clientId,
+          grantType: 'social',
+        }),
+      }),
+    /** 解绑第三方；socialId 为绑定记录主键，保持字符串 */
+    unbindSocial: (socialId: string) =>
+      call<void>(`/auth/unlock/${encodeURIComponent(socialId)}`, { method: 'DELETE' }),
+    /** 第三方登录 / 自动开户（grantType=social） */
+    loginSocial: (body: { source: string; socialCode: string; socialState: string }) => {
+      const encrypted = encryptLogin(JSON.stringify({
+        tenantId: '000000',
+        clientId: config().clientId,
+        grantType: 'social',
+        deviceType: 'client',
+        source: body.source,
+        socialCode: body.socialCode,
+        socialState: body.socialState,
+      }), import.meta.env.VITE_API_PUBLIC_KEY || defaultLoginKey)
+      return call<{ access_token: string; refresh_token?: string; expire_in?: number }>(
+        '/auth/login', { method: 'POST', body: encrypted.body, headers: { 'encrypt-key': encrypted.key } }, false)
+    },
     registerEnabled: async () => Boolean(await call<boolean>('/auth/client/register-enabled', {}, false)),
+    thirdPartyLoginEnabled: async () => Boolean(await call<boolean>('/auth/client/third-party-login-enabled', {}, false)),
     sendRegisterCode: (email: string) =>
       call<void>(`/resource/email/code?${new URLSearchParams({ email, scene: 'register' })}`, {}, false),
     register: (body: { password: string; email: string; emailCode: string }) => {

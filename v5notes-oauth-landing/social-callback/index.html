@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>V5Notes · 打开桌面应用</title>
+  <link rel="icon" href="../assets/brand-icon.png">
+  <style>
+    :root {
+      --paper: #fbf9f3;
+      --ink: #27342d;
+      --muted: #6b7b70;
+      --accent: #315b4a;
+      --accent-hover: #244636;
+      --line: #e4e6df;
+      --panel: #fffefa;
+      --danger: #a7483d;
+      --soft: #e9eee8;
+      --font: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 28px 18px;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 480px at 12% -10%, rgba(47, 169, 164, .10), transparent 55%),
+        radial-gradient(900px 420px at 92% 0%, rgba(49, 91, 74, .08), transparent 50%),
+        linear-gradient(180deg, #f7f5ef, var(--paper));
+      font: 16px/1.65 var(--font);
+    }
+    .card {
+      width: min(440px, 100%);
+      padding: 28px 26px 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(255, 254, 250, .92));
+      box-shadow: 0 10px 36px rgba(39, 52, 45, .08);
+      text-align: center;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .brand img { width: 36px; height: 36px; border-radius: 10px; display: block; }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      line-height: 1.35;
+    }
+    .lead {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .status {
+      display: none;
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status.is-visible { display: block; }
+    .status.is-error {
+      background: rgba(167, 72, 61, .08);
+      color: var(--danger);
+    }
+    .actions { display: grid; gap: 10px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 650;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+    .btn-ghost:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: rgba(49, 91, 74, .05); }
+    .hint {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .meta {
+      margin-top: 14px;
+      color: #8a958c;
+      font-size: 12px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      word-break: break-all;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card" id="app">
+    <div class="brand">
+      <img src="../assets/brand-icon.png" width="36" height="36" alt="">
+      <span>V5Notes</span>
+    </div>
+    <h1 id="title">正在打开桌面应用</h1>
+    <p class="lead" id="lead">授权已完成。若未自动打开 V5Notes，请点击下方按钮。</p>
+    <p class="status is-visible" id="status" role="status">正在唤起 V5Notes…</p>
+    <div class="actions">
+      <a class="btn btn-primary" id="openBtn" href="#">打开 V5Notes</a>
+      <a class="btn btn-ghost" id="downloadBtn" href="https://github.com/zyw/v5notes/releases" target="_blank" rel="noopener noreferrer">下载桌面端</a>
+    </div>
+    <p class="hint" id="hint">请保持桌面端已安装。打开应用后即可完成登录或绑定，本页可关闭。</p>
+    <p class="meta hidden" id="meta"></p>
+  </main>
+  <script>
+(function () {
+  var DEEP_PATH = '/social-callback'
+  var SCHEME = 'v5notes://app' + DEEP_PATH
+  var DOWNLOAD = 'https://github.com/zyw/v5notes/releases'
+
+  var copy = {
+    zh: {
+      titleOk: '正在打开桌面应用',
+      leadOk: '授权已完成。若未自动打开 V5Notes，请点击下方按钮。',
+      statusOk: '正在唤起 V5Notes…',
+      statusWait: '如果没有反应，请确认已安装桌面端，再点「打开 V5Notes」。',
+      open: '打开 V5Notes',
+      download: '下载桌面端',
+      hint: '请保持桌面端已安装。打开应用后即可完成登录或绑定，本页可关闭。',
+      titleMissing: '缺少授权参数',
+      leadMissing: '这个页面用于接收第三方登录回调并打开 V5Notes 桌面端。请从应用内重新发起登录。',
+      statusMissing: 'URL 中没有有效的 source / code / state。',
+      titleDenied: '授权未完成',
+      leadDenied: '第三方平台返回了错误，未能继续登录。请回到桌面端重试。'
+    },
+    en: {
+      titleOk: 'Opening the desktop app',
+      leadOk: 'Authorization finished. If V5Notes did not open, use the button below.',
+      statusOk: 'Launching V5Notes…',
+      statusWait: 'No response yet. Make sure the desktop app is installed, then try Open again.',
+      open: 'Open V5Notes',
+      download: 'Download desktop app',
+      hint: 'Keep the desktop app installed. You can close this tab after the app opens.',
+      titleMissing: 'Missing callback parameters',
+      leadMissing: 'This page receives OAuth callbacks and opens the V5Notes desktop app. Start again from the app.',
+      statusMissing: 'No valid source / code / state in the URL.',
+      titleDenied: 'Authorization failed',
+      leadDenied: 'The provider returned an error. Please retry from the desktop app.'
+    }
+  }
+
+  var lang = ((navigator.language || 'zh').toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en'
+  var t = copy[lang]
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+
+  var titleEl = document.getElementById('title')
+  var leadEl = document.getElementById('lead')
+  var statusEl = document.getElementById('status')
+  var openBtn = document.getElementById('openBtn')
+  var downloadBtn = document.getElementById('downloadBtn')
+  var hintEl = document.getElementById('hint')
+  var metaEl = document.getElementById('meta')
+
+  downloadBtn.href = DOWNLOAD
+  downloadBtn.textContent = t.download
+  openBtn.textContent = t.open
+  hintEl.textContent = t.hint
+
+  function readParams() {
+    var url = new URL(window.location.href)
+    var err = (url.searchParams.get('error') || url.searchParams.get('error_description') || '').trim()
+    var source = (url.searchParams.get('source') || '').trim()
+    var code = (url.searchParams.get('code') || '').trim()
+    var state = (url.searchParams.get('state') || '').trim()
+    return { error: err, source: source, code: code, state: state }
+  }
+
+  function buildDeepLink(params) {
+    var q = new URLSearchParams({
+      source: params.source,
+      code: params.code,
+      state: params.state
+    })
+    return SCHEME + '?' + q.toString()
+  }
+
+  function setError(title, lead, status) {
+    titleEl.textContent = title
+    leadEl.textContent = lead
+    statusEl.textContent = status
+    statusEl.classList.add('is-visible', 'is-error')
+    openBtn.classList.add('hidden')
+  }
+
+  var params = readParams()
+  if (params.error) {
+    setError(t.titleDenied, t.leadDenied, params.error)
+    return
+  }
+  if (!params.source || !params.code || !params.state) {
+    setError(t.titleMissing, t.leadMissing, t.statusMissing)
+    return
+  }
+
+  var deepLink = buildDeepLink(params)
+  openBtn.href = deepLink
+  titleEl.textContent = t.titleOk
+  leadEl.textContent = t.leadOk
+  statusEl.textContent = t.statusOk
+  statusEl.classList.add('is-visible')
+  metaEl.textContent = params.source
+  metaEl.classList.remove('hidden')
+
+  function handoff() {
+    // iframe 兜底：部分浏览器对自定义协议 location 跳转更挑剔
+    try {
+      var frame = document.createElement('iframe')
+      frame.style.display = 'none'
+      frame.src = deepLink
+      document.body.appendChild(frame)
+      setTimeout(function () {
+        try { document.body.removeChild(frame) } catch (e) {}
+      }, 1500)
+    } catch (e) {}
+    window.location.href = deepLink
+  }
+
+  openBtn.addEventListener('click', function (event) {
+    event.preventDefault()
+    handoff()
+  })
+
+  // 自动唤起一次
+  handoff()
+  setTimeout(function () {
+    if (!statusEl.classList.contains('is-error')) {
+      statusEl.textContent = t.statusWait
+    }
+  }, 2500)
+})()
+  </script>
+</body>
+</html>

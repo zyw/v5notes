@@ -840,6 +840,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_deep_link::init())
         .menu(|app| application_menu(app));
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -892,6 +893,12 @@ pub fn run() {
             app.manage(tray);
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             app.manage(HeldUpdate::default());
+            // Linux / Windows 开发态注册 deep link；macOS 需安装后的 bundle 才生效
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let _ = app.deep_link().register_all();
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

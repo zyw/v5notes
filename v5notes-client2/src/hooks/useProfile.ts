@@ -1,7 +1,9 @@
 import { computed, reactive, ref } from 'vue'
 import { t } from '../i18n'
 import { formatBytes } from '../models/appUpdate'
-import type { ClientQuota, createApi, UserProfile, UserProfileUpdate } from '../service/api'
+import { SOCIAL_PROVIDERS, setSocialOAuthIntent } from '../models/socialAuth'
+import type { ClientQuota, createApi, SocialBinding, UserProfile, UserProfileUpdate } from '../service/api'
+import { openExternalUrl } from '../utils/openExternal'
 
 type NotesApi = ReturnType<typeof createApi>
 
@@ -27,6 +29,10 @@ export function useProfile(api: NotesApi) {
   const profileError = ref('')
   const profileAvatarUrl = ref('')
   const accountQuota = ref<ClientQuota | null>(null)
+  const socialBindings = ref<SocialBinding[]>([])
+  const socialBusy = ref(false)
+  /** 资料页用：打开资料时刷新，与登录页开关同源但独立加载 */
+  const profileThirdPartyEnabled = ref(false)
   const profileForm = reactive<ProfileFormState>({
     userName: '',
     nickName: '',
@@ -36,6 +42,12 @@ export function useProfile(api: NotesApi) {
     avatar: '',
     remark: '',
   })
+
+  const boundSources = computed(() => new Set(socialBindings.value.map((row) => row.source)))
+
+  const bindableProviders = computed(() =>
+    SOCIAL_PROVIDERS.filter((provider) => !boundSources.value.has(provider.source)),
+  )
 
   const cloudPlanKind = computed<CloudPlanKind | null>(() => {
     const quota = accountQuota.value
@@ -86,10 +98,25 @@ export function useProfile(api: NotesApi) {
     profileAvatarUrl.value = profile.avatar || ''
   }
 
+  async function refreshSocialBindings(): Promise<void> {
+    try {
+      const [enabled, list] = await Promise.all([
+        api.thirdPartyLoginEnabled().catch(() => false),
+        api.listSocial().catch(() => [] as SocialBinding[]),
+      ])
+      profileThirdPartyEnabled.value = enabled
+      socialBindings.value = Array.isArray(list) ? list : []
+    } catch {
+      profileThirdPartyEnabled.value = false
+      socialBindings.value = []
+    }
+  }
+
   async function openProfile(): Promise<void> {
     if (!currentUser.value) return
     fillProfileForm(currentUser.value)
     accountQuota.value = null
+    socialBindings.value = []
     profileError.value = ''
     profileDialogOpen.value = true
     profileBusy.value = true
@@ -106,6 +133,7 @@ export function useProfile(api: NotesApi) {
       }
       fillProfileForm(currentUser.value)
       accountQuota.value = quota
+      await refreshSocialBindings()
     } catch (cause) {
       profileError.value = cause instanceof Error ? cause.message : t('profile.saveFailed')
     } finally {
@@ -114,8 +142,57 @@ export function useProfile(api: NotesApi) {
   }
 
   function closeProfile(): void {
-    if (profileBusy.value || avatarBusy.value) return
+    if (profileBusy.value || avatarBusy.value || socialBusy.value) return
     profileDialogOpen.value = false
+  }
+
+  async function startBindSocial(source: string): Promise<void> {
+    if (!profileThirdPartyEnabled.value) {
+      profileError.value = t('login.socialOff')
+      return
+    }
+    profileError.value = ''
+    socialBusy.value = true
+    try {
+      const authUrl = await api.socialAuthUrl(source, 'client')
+      if (!authUrl || typeof authUrl !== 'string') throw new Error(t('login.socialFailed'))
+      setSocialOAuthIntent('bind', source)
+      await openExternalUrl(authUrl)
+    } catch (cause) {
+      profileError.value = cause instanceof Error ? cause.message : t('login.socialFailed')
+    } finally {
+      socialBusy.value = false
+    }
+  }
+
+  async function unbindSocial(socialId: string): Promise<void> {
+    profileError.value = ''
+    socialBusy.value = true
+    try {
+      await api.unbindSocial(socialId)
+      await refreshSocialBindings()
+    } catch (cause) {
+      profileError.value = cause instanceof Error ? cause.message : t('profile.socialUnbindFailed')
+      throw cause
+    } finally {
+      socialBusy.value = false
+    }
+  }
+
+  async function completeBindSocial(source: string, socialCode: string, socialState: string): Promise<void> {
+    profileError.value = ''
+    socialBusy.value = true
+    try {
+      await api.bindSocial({ source, socialCode, socialState })
+      profileDialogOpen.value = true
+      await refreshSocialBindings()
+    } catch (cause) {
+      profileError.value = cause instanceof Error ? cause.message : t('login.socialFailed')
+      profileDialogOpen.value = true
+      throw cause
+    } finally {
+      socialBusy.value = false
+    }
   }
 
   async function uploadProfileAvatar(event: Event): Promise<void> {
@@ -194,7 +271,9 @@ export function useProfile(api: NotesApi) {
   return {
     currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError,
     profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel,
-    cloudStoragePercent, cloudExpireLabel, refreshProfile, openProfile, closeProfile,
-    uploadProfileAvatar, removeProfileAvatar, saveProfile,
+    cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled,
+    bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile,
+    uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, unbindSocial,
+    completeBindSocial,
   }
 }

@@ -1,6 +1,6 @@
 
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Editor } from '@v5md/view'
 import { t } from '../i18n'
@@ -9,7 +9,18 @@ import { ConflictError } from '../service/request'
 import { Draft } from '../models/draft'
 import { readNoteGroup, readNoteSort, type NoteGroupMode, type NoteSortMode } from '../models/sidebarBrowse'
 import { OFFICIAL_SERVER, normalizeServer, readServerSettings, writeServerSettings } from '../models/serverSettings'
+import {
+  clearSocialCallbackUrl,
+  clearSocialOAuthIntent,
+  hasSocialOAuthPending,
+  mapSocialLoginErrorKey,
+  maybeHandOffSocialCallbackToDesktop,
+  peekSocialOAuthIntent,
+  readSocialCallbackParams,
+  setSocialOAuthIntent,
+} from '../models/socialAuth'
 import { resolveDirty, type DirtyChoice } from './useDirtyNavigation'
+import { openExternalUrl } from '../utils/openExternal'
 import { setDirtyCheck, watchClose } from '../utils/window'
 import { useProfile } from './useProfile'
 import { useAppUpdate } from './useAppUpdate'
@@ -33,6 +44,7 @@ const busy = ref(false)
 const error = ref('')
 const authMode = ref<'login' | 'register'>('login')
 const registerEnabled = ref(false)
+const socialLoginEnabled = ref(false)
 const enteringAfterRegister = ref(false)
 const email = ref('')
 const emailCode = ref('')
@@ -40,6 +52,7 @@ const codeBusy = ref(false)
 const codeWait = ref(0)
 const trialExpired = ref(false)
 let codeTimer: number | undefined
+let unlistenDeepLink: (() => void) | undefined
 const query = ref('')
 const searching = ref(false)
 let searchTimer: number | undefined
@@ -106,8 +119,10 @@ const api = createApi(
 const {
   currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError,
   profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel,
-  cloudStoragePercent, cloudExpireLabel, refreshProfile, openProfile, closeProfile,
-  uploadProfileAvatar, removeProfileAvatar, saveProfile,
+  cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled,
+  bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile,
+  uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, unbindSocial,
+  completeBindSocial,
 } = useProfile(api)
 const content = computed({
   get: () => draft.note?.content ?? '',
@@ -402,6 +417,44 @@ function chooseDirectory(id: string): void {
   localStorage.setItem('v5notes-last-dir', id)
 }
 
+async function applyAuthSuccess(
+  result: { access_token: string; refresh_token?: string },
+  accountLabel: string,
+  options: { clearLastSelection: boolean } = { clearLastSelection: false },
+): Promise<void> {
+  if (options.clearLastSelection) {
+    localStorage.removeItem('v5notes-last-note')
+    localStorage.removeItem('v5notes-last-dir')
+    selectedDir.value = '0'
+  }
+  token.value = result.access_token
+  refreshToken.value = result.refresh_token || ''
+  password.value = ''
+  sessionExpired.value = false
+  writeServerSettings({ server: server.value, official: useOfficialServer.value })
+  if (accountLabel) {
+    username.value = accountLabel
+    localStorage.setItem('v5notes-username', accountLabel)
+  }
+  localStorage.setItem('v5notes-token', result.access_token)
+  if (result.refresh_token) localStorage.setItem('v5notes-refresh-token', result.refresh_token)
+  else localStorage.removeItem('v5notes-refresh-token')
+  await Promise.all([refreshDirectories(), refreshNotes(), refreshProfile(), refreshQuota()])
+  const profileName = currentUser.value?.userName || currentUser.value?.nickName
+  if (profileName) {
+    username.value = profileName
+    localStorage.setItem('v5notes-username', profileName)
+  }
+  const lastNoteId = localStorage.getItem('v5notes-last-note')
+  if (lastNoteId) await openNote(lastNoteId, true)
+}
+
+function reportSocial(cause: unknown): void {
+  const raw = cause instanceof Error ? cause.message : ''
+  const key = mapSocialLoginErrorKey(raw)
+  error.value = key ? t(key) : (raw || t('login.socialFailed'))
+}
+
 async function login(): Promise<void> {
   error.value = ''
   busy.value = true
@@ -423,24 +476,91 @@ async function login(): Promise<void> {
     }
     await api.ping()
     const result = await api.login(username.value, password.value)
-    if (!sameAccount) {
+    await applyAuthSuccess(result, username.value, { clearLastSelection: !sameAccount })
+  } catch (cause) { report(cause) } finally { busy.value = false }
+}
+
+/** 登录页发起第三方授权：拉 authorizeUrl 后跳转（Tauri 走系统浏览器）。 */
+async function startSocialLogin(source: string): Promise<void> {
+  error.value = ''
+  if (!socialLoginEnabled.value) {
+    error.value = t('login.socialOff')
+    return
+  }
+  busy.value = true
+  try {
+    const parsed = new URL(server.value)
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(t('login.protocol'))
+    await api.ping()
+    const authUrl = await api.socialAuthUrl(source, 'client')
+    if (!authUrl || typeof authUrl !== 'string') throw new Error(t('login.socialFailed'))
+    setSocialOAuthIntent('login', source)
+    await openExternalUrl(authUrl)
+    if (!isTauri()) busy.value = false
+  } catch (cause) {
+    reportSocial(cause)
+    busy.value = false
+  }
+}
+
+/** OAuth 回调：已登录且 intent=bind 则加绑，否则换票登录。 */
+async function handleSocialCallback(source: string, socialCode: string, socialState: string): Promise<void> {
+  const intent = peekSocialOAuthIntent()
+  if (token.value && intent === 'bind') {
+    busy.value = true
+    try {
+      await completeBindSocial(source, socialCode, socialState)
+      clearSocialOAuthIntent()
+    } catch (cause) {
+      const raw = cause instanceof Error ? cause.message : ''
+      const key = mapSocialLoginErrorKey(raw)
+      profileError.value = key ? t(key) : (raw || t('login.socialFailed'))
+    } finally {
+      busy.value = false
+      clearSocialCallbackUrl()
+    }
+    return
+  }
+  await completeSocialLogin(source, socialCode, socialState)
+}
+
+/** OAuth 回调页：用 code/state 换票并进入 workspace。 */
+async function completeSocialLogin(source: string, socialCode: string, socialState: string): Promise<void> {
+  error.value = ''
+  busy.value = true
+  authMode.value = 'login'
+  try {
+    await api.ping()
+    const previousUser = localStorage.getItem('v5notes-username') || ''
+    const result = await api.loginSocial({ source, socialCode, socialState })
+    await applyAuthSuccess(result, previousUser, { clearLastSelection: false })
+    const nextUser = currentUser.value?.userName || ''
+    if (previousUser && nextUser && previousUser !== nextUser) {
       localStorage.removeItem('v5notes-last-note')
       localStorage.removeItem('v5notes-last-dir')
       selectedDir.value = '0'
+      selectedId.value = ''
+      draft.clear()
     }
-    token.value = result.access_token
-    refreshToken.value = result.refresh_token || ''
-    password.value = ''
-    sessionExpired.value = false
-    writeServerSettings({ server: server.value, official: useOfficialServer.value })
-    localStorage.setItem('v5notes-username', username.value)
-    localStorage.setItem('v5notes-token', result.access_token)
-    if (result.refresh_token) localStorage.setItem('v5notes-refresh-token', result.refresh_token)
-    else localStorage.removeItem('v5notes-refresh-token')
-    await Promise.all([refreshDirectories(), refreshNotes(), refreshProfile(), refreshQuota()])
-    const lastNoteId = localStorage.getItem('v5notes-last-note')
-    if (lastNoteId) await openNote(lastNoteId, true)
-  } catch (cause) { report(cause) } finally { busy.value = false }
+    clearSocialOAuthIntent()
+  } catch (cause) {
+    reportSocial(cause)
+  } finally {
+    busy.value = false
+    clearSocialCallbackUrl()
+  }
+}
+
+function requestUnbindSocial(binding: { id: string; source: string; userName?: string }): void {
+  const label = binding.userName || binding.source
+  requestDelete(
+    t('profile.socialUnbind'),
+    t('profile.socialUnbindMessage', { name: label }),
+    t('profile.socialUnbindConfirm'),
+    async () => {
+      await unbindSocial(binding.id)
+    },
+  )
 }
 
 async function loadRegisterEnabled(): Promise<void> {
@@ -449,6 +569,18 @@ async function loadRegisterEnabled(): Promise<void> {
   } catch {
     registerEnabled.value = false
   }
+}
+
+async function loadSocialLoginEnabled(): Promise<void> {
+  try {
+    socialLoginEnabled.value = await api.thirdPartyLoginEnabled()
+  } catch {
+    socialLoginEnabled.value = false
+  }
+}
+
+async function loadAuthOptions(): Promise<void> {
+  await Promise.all([loadRegisterEnabled(), loadSocialLoginEnabled()])
 }
 
 async function refreshQuota(): Promise<void> {
@@ -922,7 +1054,7 @@ async function logout(): Promise<void> {
   notice.value = ''
   trialExpired.value = false
   authMode.value = 'login'
-  void loadRegisterEnabled()
+  void loadAuthOptions()
   directoryVisible.value = defaultDirectoryVisible.value
   focusMode.value = false
   })
@@ -936,7 +1068,7 @@ function reauthenticate(): void {
   sessionExpired.value = false
   trialExpired.value = false
   authMode.value = 'login'
-  void loadRegisterEnabled()
+  void loadAuthOptions()
 }
 
 function keydown(event: KeyboardEvent): void {
@@ -967,7 +1099,36 @@ onMounted(async () => {
       if (await mayLeave()) await invoke('exit_app')
     })
   }
-  if (!token.value) await loadRegisterEnabled()
+  const socialCallback = readSocialCallbackParams()
+  if (socialCallback) {
+    // 系统浏览器落地且无本页 pending → 视为桌面 OAuth 中转，唤起 App
+    if (!isTauri() && !hasSocialOAuthPending()) {
+      maybeHandOffSocialCallbackToDesktop()
+      error.value = t('login.socialCallback')
+    } else {
+      await handleSocialCallback(socialCallback.source, socialCallback.code, socialCallback.state)
+    }
+  }
+  if (isTauri()) {
+    try {
+      const { getCurrent, onOpenUrl } = await import('@tauri-apps/plugin-deep-link')
+      const applyDeepLink = async (urls: string[]) => {
+        for (const href of urls) {
+          const params = readSocialCallbackParams(href)
+          if (params) {
+            await handleSocialCallback(params.source, params.code, params.state)
+            break
+          }
+        }
+      }
+      const coldStart = await getCurrent().catch(() => null)
+      if (coldStart?.length) await applyDeepLink(coldStart)
+      unlistenDeepLink = await onOpenUrl((urls) => { void applyDeepLink(urls) })
+    } catch {
+      // 插件未安装或权限不足时忽略，仍可用 Web 回调
+    }
+  }
+  if (!token.value) await loadAuthOptions()
   await restoreSession()
 })
 onBeforeUnmount(() => {
@@ -977,6 +1138,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', keydown)
   unwatchClose?.()
   unlistenTrayExit?.()
+  unlistenDeepLink?.()
   if (codeTimer !== undefined) window.clearInterval(codeTimer)
   clearSearchTimer()
   if (answer) respond('cancel')
@@ -992,5 +1154,5 @@ const {
   prepareToInstall: () => mayLeave(),
 })
 
-return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, refreshProfile, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile }
+return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, socialLoginEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, startSocialLogin, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled, bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, requestUnbindSocial }
 }

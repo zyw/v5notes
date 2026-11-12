@@ -55,6 +55,13 @@ public interface ISysConfigService {
     boolean selectClientRegisterEnabled();
 
     /**
+     * 获取客户端第三方登录开关。
+     *
+     * @return true开启，false关闭
+     */
+    boolean selectClientThirdPartyLoginEnabled();
+
+    /**
      * 查询参数配置列表
      *
      * @param config 参数配置信息

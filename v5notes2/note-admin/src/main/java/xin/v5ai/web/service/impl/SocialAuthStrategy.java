@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.zhyd.oauth.model.AuthResponse;
 import me.zhyd.oauth.model.AuthUser;
 import xin.v5ai.common.core.constant.SystemConstants;
+import xin.v5ai.common.core.enums.DeviceType;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.exception.user.UserException;
 import xin.v5ai.common.core.utils.ValidatorUtils;
@@ -23,16 +24,19 @@ import xin.v5ai.system.domain.vo.SysClientVo;
 import xin.v5ai.system.domain.vo.SysSocialVo;
 import xin.v5ai.system.domain.vo.SysUserVo;
 import xin.v5ai.system.mapper.SysUserMapper;
+import xin.v5ai.system.service.ISysConfigService;
 import xin.v5ai.system.service.ISysSocialService;
 import xin.v5ai.web.domain.vo.LoginVo;
 import xin.v5ai.web.service.IAuthStrategy;
 import xin.v5ai.web.service.SysLoginService;
+import xin.v5ai.web.service.SysRegisterService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * 第三方授权策略
+ * 第三方授权策略。
+ * <p>管理端：须先绑定再登录。笔记客户端：未绑定则自动创建 cli_user 并登录。</p>
  *
  * @author thiszhc is 三三
  */
@@ -45,6 +49,8 @@ public class SocialAuthStrategy implements IAuthStrategy {
     private final ISysSocialService sysSocialService;
     private final SysUserMapper userMapper;
     private final SysLoginService loginService;
+    private final SysRegisterService registerService;
+    private final ISysConfigService configService;
 
     /**
      * 执行第三方授权登录，并校验授权账号与系统账号的绑定关系。
@@ -57,26 +63,36 @@ public class SocialAuthStrategy implements IAuthStrategy {
     public LoginVo login(String body, SysClientVo client) {
         SocialLoginBody loginBody = JsonUtils.parseObject(body, SocialLoginBody.class);
         ValidatorUtils.validate(loginBody);
+        if (isClientDevice(client) && !configService.selectClientThirdPartyLoginEnabled()) {
+            throw new ServiceException(MessageUtils.message("client.thirdPartyLogin.disabled"));
+        }
+        String app = isClientDevice(client) ? "client" : "admin";
         AuthResponse<AuthUser> response = SocialUtils.loginAuth(
             loginBody.getSource(), loginBody.getSocialCode(),
-            loginBody.getSocialState(), socialProperties);
+            loginBody.getSocialState(), socialProperties, app);
         if (!response.ok()) {
             throw new ServiceException(response.getMsg());
         }
         AuthUser authUserData = response.getData();
 
         List<SysSocialVo> list = sysSocialService.selectByAuthId(authUserData.getSource() + authUserData.getUuid());
-        if (CollUtil.isEmpty(list)) {
+        SysUserVo user;
+        if (CollUtil.isNotEmpty(list)) {
+            user = loadUser(list.getFirst().getUserId());
+        } else if (isClientDevice(client)) {
+            // 笔记客户端：社交登录即开户
+            SysUserVo created = registerService.registerClientBySocial(authUserData);
+            loginService.bindSocialUser(created.getUserId(), authUserData, false);
+            user = created;
+        } else {
             throw new ServiceException(MessageUtils.message("auth.social.unbound"));
         }
-        SysUserVo user = loadUser(list.getFirst().getUserId());
-        // 此处可根据登录用户的数据不同 自行创建 loginUser 属性不够用继承扩展就行了
+
         LoginUser loginUser = loginService.buildLoginUser(user);
         loginService.checkClientUserType(client, user.getUserName(), loginUser.getUserType());
         loginUser.setClientKey(client.getClientKey());
         loginUser.setDeviceType(client.getDeviceType());
         SaLoginParameter model = IAuthStrategy.buildLoginParameter(client);
-        // 生成token
         LoginHelper.login(loginUser, model);
 
         LoginVo loginVo = new LoginVo();
@@ -84,6 +100,11 @@ public class SocialAuthStrategy implements IAuthStrategy {
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
         loginVo.setClientId(client.getClientId());
         return loginVo;
+    }
+
+    private static boolean isClientDevice(SysClientVo client) {
+        String deviceType = client == null ? null : client.getDeviceType();
+        return DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType);
     }
 
     /**

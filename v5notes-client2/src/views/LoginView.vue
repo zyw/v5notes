@@ -9,6 +9,8 @@ import {
   validateLoginAccount,
   validatePassword,
 } from '../models/authValidation'
+import SocialProviderIcon from '../components/SocialProviderIcon.vue'
+import { hasSocialOAuthPending, readSocialCallbackParams, SOCIAL_PROVIDERS } from '../models/socialAuth'
 
 const props = defineProps<{
   server: string
@@ -19,6 +21,7 @@ const props = defineProps<{
   error: string
   authMode: 'login' | 'register'
   registerEnabled: boolean
+  socialLoginEnabled: boolean
   email: string
   emailCode: string
   codeBusy: boolean
@@ -36,6 +39,7 @@ const emit = defineEmits<{
   'send-code': []
   'show-register': []
   'show-login': []
+  'social-login': [source: string]
   settings: []
 }>()
 
@@ -64,9 +68,14 @@ const verifyStepActive = computed(() => codeSentOnce.value || Boolean(props.emai
 
 const submitLabel = computed(() => {
   if (props.enteringAfterRegister) return t('login.entering')
+  if (props.busy && readSocialCallbackParams()) return t('login.socialCallback')
+  if (props.busy && hasSocialOAuthPending()) return t('login.socialConnecting')
   if (props.busy) return t(isRegister.value ? 'login.registering' : 'login.connecting')
   return t(isRegister.value ? 'login.registerSubmit' : 'login.enter')
 })
+
+const showSocial = computed(() =>
+  !isRegister.value && !props.enteringAfterRegister && props.socialLoginEnabled)
 
 const codeButtonLabel = computed(() => {
   if (props.codeBusy) return t('login.sendingCode')
@@ -380,6 +389,24 @@ watch(() => props.error, (value) => {
             <span aria-hidden="true">←</span>
             {{ t('login.backToLogin') }}
           </button>
+        </div>
+
+        <div v-if="showSocial" class="login-social">
+          <div class="login-social-hint">{{ t('login.socialOther') }}</div>
+          <div class="login-social-prov" role="group" :aria-label="t('login.socialOther')">
+            <button
+              v-for="provider in SOCIAL_PROVIDERS"
+              :key="provider.source"
+              class="login-social-btn"
+              type="button"
+              :disabled="busy || enteringAfterRegister"
+              :title="t(provider.labelKey)"
+              @click="emit('social-login', provider.source)"
+            >
+              <SocialProviderIcon :source="provider.source" />
+              <span>{{ t(provider.labelKey) }}</span>
+            </button>
+          </div>
         </div>
 
         <p v-if="error" class="login-error" role="alert">{{ error }}</p>

@@ -192,82 +192,26 @@ sms:
 
 --- # 三方授权
 justauth:
-  # 前端外网访问地址
+  # 管理端前端地址
   address: http://localhost:80
+  # 笔记客户端回调基址（生产请改为公开 HTTPS 或 v5notes://app；各 OAuth 应用需登记对应 redirect）
+  client-address: http://localhost:1420
   type:
-    maxkey:
-      # maxkey 服务器地址
-      # 注意 如下均配置均不需要修改 maxkey 已经内置好了数据
-      server-url: http://sso.maxkey.top
-      client-id: 876892492581044224
-      client-secret: x1Y5MTMwNzIwMjMxNTM4NDc3Mzche8
-      redirect-uri: ${justauth.address}/social-callback?source=maxkey
-    topiam:
-      # topiam 服务器地址
-      server-url: http://127.0.0.1:1989/api/v1/authorize/y0q************spq***********8ol
-      client-id: 449c4*********937************759
-      client-secret: ac7***********1e0************28d
-      redirect-uri: ${justauth.address}/social-callback?source=topiam
-      scopes: [ openid, email, phone, profile ]
-    qq:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=qq
-      union-id: false
-    weibo:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=weibo
+    wechat_open:
+      client-id: ${V5NOTES_WECHAT_OPEN_CLIENT_ID:10**********6}
+      client-secret: ${V5NOTES_WECHAT_OPEN_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      redirect-uri: ${justauth.address}/social-callback?source=wechat_open
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98}
       client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac}
       redirect-uri: ${justauth.address}/social-callback?source=gitee
-    dingtalk:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=dingtalk
-    baidu:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=baidu
-    csdn:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=csdn
-    coding:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=coding
-      coding-group-name: xx
-    oschina:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=oschina
-    alipay_wallet:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=alipay_wallet
-      alipay-public-key: MIIB**************DAQAB
-    wechat_open:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=wechat_open
-    wechat_mp:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=wechat_mp
-    wechat_enterprise:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=wechat_enterprise
-      agent-id: 1000002
-    gitlab:
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=gitlab
-    gitea:
-      # gitea 服务器地址
-      server-url: https://demo.gitea.com
-      client-id: 10**********6
-      client-secret: 1f7d08**********5b7**********29e
-      redirect-uri: ${justauth.address}/social-callback?source=gitea
+    github:
+      client-id: ${V5NOTES_GITHUB_CLIENT_ID:10**********6}
+      client-secret: ${V5NOTES_GITHUB_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      redirect-uri: ${justauth.address}/social-callback?source=github
+      scopes: [ user, user:email ]
+    google:
+      client-id: ${V5NOTES_GOOGLE_CLIENT_ID:10**********6}
+      client-secret: ${V5NOTES_GOOGLE_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      redirect-uri: ${justauth.address}/social-callback?source=google
+      scopes: [ openid, email, profile ]
