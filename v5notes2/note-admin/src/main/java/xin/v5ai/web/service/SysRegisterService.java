@@ -131,16 +131,21 @@ public class SysRegisterService {
             throw new UserException("client.register.disabled");
         }
         String email = StringUtils.trim(authUser.getEmail());
-        if (StringUtils.isNotBlank(email)) {
+        // 有邮箱（≤50）：登录名用邮箱（与邮箱注册一致）；否则回退平台前缀 + uuid
+        boolean useEmailAsName = StringUtils.isNotBlank(email) && email.length() <= 50;
+        String userName;
+        if (useEmailAsName) {
             boolean nameUsed = userMapper.lambda().eq(SysUser::getUserName, email).exists();
             boolean emailUsed = userMapper.lambda().eq(SysUser::getEmail, email).exists();
             if (nameUsed || emailUsed) {
                 throw new ServiceException(MessageUtils.message("auth.social.email.occupied"));
             }
-        }
-        String userName = socialUserName(authUser.getSource(), authUser.getUuid());
-        if (userMapper.lambda().eq(SysUser::getUserName, userName).exists()) {
-            throw new UserException("user.register.save.error", userName);
+            userName = email;
+        } else {
+            userName = socialUserName(authUser.getSource(), authUser.getUuid());
+            if (userMapper.lambda().eq(SysUser::getUserName, userName).exists()) {
+                throw new UserException("user.register.save.error", userName);
+            }
         }
         SysUserBo sysUser = new SysUserBo();
         sysUser.setUserName(userName);
@@ -167,7 +172,19 @@ public class SysRegisterService {
     }
 
     /**
-     * 生成不超过 30 字符的社交登录名：短前缀 + 平台 uuid。
+     * 是否为无邮箱时生成的社交占位登录名（gt_/wx_/gh_/gg_ 等）。
+     */
+    public static boolean isSocialGeneratedUserName(String userName) {
+        String name = StringUtils.blankToDefault(userName, "");
+        return name.startsWith("gt_")
+            || name.startsWith("wx_")
+            || name.startsWith("gh_")
+            || name.startsWith("gg_")
+            || name.matches("^[a-zA-Z]{1,2}_[a-zA-Z0-9]+$");
+    }
+
+    /**
+     * 生成不超过 30 字符的社交登录名：短前缀 + 平台 uuid（仅无邮箱时使用）。
      */
     static String socialUserName(String source, String uuid) {
         String prefix = switch (StringUtils.blankToDefault(source, "").toLowerCase()) {
