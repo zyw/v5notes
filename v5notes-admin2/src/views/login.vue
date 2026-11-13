@@ -179,13 +179,17 @@
 
         <div v-if="socialLoginEnabled" class="alt">
           <div class="alt-hint">{{ $t('login.otherWays') }}</div>
-          <div class="prov">
-            <template v-for="(key, index) in providerKeys" :key="key">
-              <button type="button" :title="$t('login.social.' + key)" @click="doSocialLogin(key)">
-                {{ $t('login.socialShort.' + key) }}
-              </button>
-              <i v-if="index < providerKeys.length - 1" aria-hidden="true">·</i>
-            </template>
+          <div class="prov" role="group" :aria-label="$t('login.otherWays')">
+            <button
+              v-for="item in providers"
+              :key="item.source"
+              type="button"
+              :title="$t('login.social.' + item.source)"
+              @click="doSocialLogin(item.source)"
+            >
+              <svg-icon :icon-class="item.icon" class="prov-icon" />
+              <span>{{ $t('login.socialShort.' + item.source) }}</span>
+            </button>
           </div>
         </div>
       </el-form>
@@ -218,8 +222,13 @@ const router = useRouter();
 const { mode, resolved, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const currentYear = new Date().getFullYear();
-/** 与后端 justauth 配置及笔记客户端一致：微信开放平台、Gitee、GitHub、Google */
-const providerKeys = ['wechat_open', 'gitee', 'github', 'google'];
+/** 与后端 justauth、个人中心绑定列表一致：微信开放平台、Gitee、GitHub、Google */
+const providers = [
+  { source: 'wechat_open', icon: 'wechat' },
+  { source: 'gitee', icon: 'gitee' },
+  { source: 'github', icon: 'github' },
+  { source: 'google', icon: 'google' }
+] as const;
 
 const loginForm = ref<LoginData>({
   username: '',
@@ -830,17 +839,21 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 2px;
+  gap: 6px 4px;
   margin-top: 12px;
 
   button {
-    padding: 6px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
     border: 0;
     border-radius: 7px;
     background: none;
     color: #5f7067;
     font-family: inherit;
     font-size: 12.5px;
+    line-height: 1;
     cursor: pointer;
 
     &:hover {
@@ -854,11 +867,10 @@ onMounted(() => {
     }
   }
 
-  i {
-    align-self: center;
-    color: #d5ddd8;
-    font-size: 11px;
-    font-style: normal;
+  :deep(.prov-icon) {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
   }
 }
 
@@ -1230,10 +1242,6 @@ onMounted(() => {
 .login-page[data-theme='dark'] .prov button:hover {
   background: #17271f;
   color: #7fd6b0;
-}
-
-.login-page[data-theme='dark'] .prov i {
-  color: #33463d;
 }
 
 .login-page[data-theme='dark'] .panel-foot {

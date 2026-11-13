@@ -1,11 +1,8 @@
 package xin.v5ai.basics.file.domain.bo;
 
-import io.github.linpeilie.annotations.AutoMapping;
-import xin.v5ai.basics.file.domain.FileConfig;
 import xin.v5ai.common.mybatis.core.domain.BaseEntity;
 import xin.v5ai.common.core.validate.AddGroup;
 import xin.v5ai.common.core.validate.EditGroup;
-import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import jakarta.validation.constraints.*;
@@ -20,7 +17,6 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = FileConfig.class, reverseConvertGenerate = false)
 public class FileConfigBo extends BaseEntity {
 
     /**
@@ -51,7 +47,6 @@ public class FileConfigBo extends BaseEntity {
      * 存储配置
      */
     @NotNull(message = "{file.config.body.not.null}", groups = { AddGroup.class, EditGroup.class })
-    @AutoMapping(target = "config", ignore = true)
     private Map<String, Object> config;
 
 

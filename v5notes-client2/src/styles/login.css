@@ -488,52 +488,74 @@
 .login-social {
   display: grid;
   gap: 10px;
-  margin-top: 4px;
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  margin-top: 2px;
 }
 .login-social-hint {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.login-social-hint::before,
+.login-social-hint::after {
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--line) 88%, transparent);
+  content: '';
 }
 .login-social-prov {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
 }
 .login-social-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  flex: 1 1 calc(50% - 4px);
+  gap: 5px;
   min-width: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--line) 88%, var(--ink-2));
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
-  color: var(--ink-1);
+  padding: 7px 2px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: border-color .16s ease, color .16s ease, background .16s ease;
+  transition: color .16s ease, background .16s ease;
 }
-.login-social-icon {
+.login-social-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.login-social-btn .social-provider-icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   flex: none;
+  color: inherit;
 }
 .login-social-btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
 }
 .login-social-btn:disabled { opacity: .55; cursor: not-allowed; }
-.login-screen[data-theme='dark'] .login-social-btn {
-  background: rgba(255, 255, 255, .03);
+
+@media (max-width: 420px) {
+  .login-social-prov {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 6px;
+  }
+  .login-social-btn {
+    justify-content: flex-start;
+    padding: 7px 8px;
+  }
 }
 .login-error { margin: 0; font-size: 12px; line-height: 1.6; color: var(--danger); }
 

@@ -69,7 +69,7 @@ export const en: Messages = {
     connecting: 'Connecting…',
     enter: 'Open notes',
     protocol: 'Enter an HTTP or HTTPS server address',
-    socialOther: 'Other ways to sign in',
+    socialOther: 'Or continue with',
     socialWechat: 'WeChat',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',

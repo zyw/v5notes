@@ -4,6 +4,7 @@ import xin.v5ai.common.core.utils.MessageUtils;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaIgnore;
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
@@ -22,7 +23,6 @@ import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.core.service.ClientStorageGuard;
 import xin.v5ai.common.satoken.utils.LoginHelper;
-import xin.v5ai.common.core.utils.MapstructUtils;
 import xin.v5ai.common.core.utils.file.FileUtils;
 import xin.v5ai.common.log.annotation.Log;
 import xin.v5ai.common.log.enums.BusinessType;
@@ -65,7 +65,7 @@ public class FileBaseController extends BaseController {
         String path = bo.getPath();
         storageGuard.ifAvailable(guard -> guard.assertCanWrite(LoginHelper.getUserId(), Math.max(file.getSize(), 0L)));
         FileInfo info = fileInfoService.uploadByBo(file.getOriginalFilename(), path, IoUtil.readBytes(file.getInputStream()));
-        FileInfoVo fileInfoVo = fileInfoService.matchingUrl(MapstructUtils.convert(info, FileInfoVo.class));
+        FileInfoVo fileInfoVo = fileInfoService.matchingUrl(BeanUtil.copyProperties(info, FileInfoVo.class));
 
         FileUploadVo vo = FileUploadVo.builder()
             .url(fileInfoVo.getUrl())

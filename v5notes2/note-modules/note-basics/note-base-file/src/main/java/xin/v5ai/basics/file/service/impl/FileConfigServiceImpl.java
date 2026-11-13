@@ -15,8 +15,8 @@ import xin.v5ai.basics.file.domain.bo.FileConfigBo;
 import xin.v5ai.basics.file.domain.bo.FileConfigSearchBo;
 import xin.v5ai.basics.file.domain.vo.FileConfigVo;
 import xin.v5ai.basics.file.service.IFileConfigService;
+import cn.hutool.core.bean.BeanUtil;
 import xin.v5ai.common.core.exception.ServiceException;
-import xin.v5ai.common.core.utils.MapstructUtils;
 import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.core.utils.ValidatorUtils;
 import xin.v5ai.common.json.utils.JsonUtils;
@@ -96,7 +96,8 @@ public class FileConfigServiceImpl implements IFileConfigService {
      */
     @Override
     public Boolean insertByBo(FileConfigBo bo) {
-        FileConfig config = MapstructUtils.convert(bo, FileConfig.class);
+        // config 字段类型与 Bo 不同（Map vs FileClientConfig），单独解析后设置
+        FileConfig config = BeanUtil.copyProperties(bo, FileConfig.class, "config");
         config.setMaster(false); // 默认不是主配置
         config.setConfig(parseClientConfig(bo.getStorage(),bo.getConfig()));
         validEntityBeforeSave(config);
@@ -115,7 +116,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
         // 校验存在
         FileConfig config = validateFileConfigExists(bo.getId());
         // 更新
-        FileConfig update = MapstructUtils.convert(bo, FileConfig.class);
+        FileConfig update = BeanUtil.copyProperties(bo, FileConfig.class, "config");
         update.setConfig(parseClientConfig(config.getStorage(),bo.getConfig()));
         validEntityBeforeSave(update);
         boolean result = baseMapper.updateById(update) > 0;

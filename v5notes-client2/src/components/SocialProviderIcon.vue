@@ -3,40 +3,38 @@ defineProps<{ source: string }>()
 </script>
 
 <template>
-  <!-- 微信 -->
+  <!-- 填充统一 currentColor：登录页用灰色，个人中心由父级 tone 上色 -->
   <svg
     v-if="source === 'wechat_open'"
-    class="login-social-icon"
+    class="social-provider-icon"
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
     <path
-      fill="#07C160"
+      fill="currentColor"
       d="M9.02 3.2C4.78 3.2 1.35 6.1 1.35 9.68c0 1.95 1.04 3.71 2.67 4.9l-.4 1.5c-.05.18.1.35.28.3l2.2-.95c.72.2 1.5.31 2.3.31.28 0 .55-.01.82-.04A4.84 4.84 0 0 1 9.5 13.5c0-2.95 2.74-5.34 6.12-5.34.16 0 .32 0 .47.02C15.3 5.48 12.4 3.2 9.02 3.2Zm-2.1 3.5a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9Zm4.2 0a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9Z"
     />
     <path
-      fill="#07C160"
+      fill="currentColor"
       d="M15.62 9.05c-3.12 0-5.65 2.22-5.65 4.96 0 2.74 2.53 4.96 5.65 4.96.66 0 1.3-.1 1.9-.28l1.86.94c.18.09.38-.08.32-.27l-.48-1.54c1.2-.98 1.97-2.4 1.97-4.01 0-2.74-2.53-4.76-5.57-4.76Zm-2 3.35a.68.68 0 1 1 0 1.36.68.68 0 0 1 0-1.36Zm4.05 0a.68.68 0 1 1 0 1.36.68.68 0 0 1 0-1.36Z"
     />
   </svg>
 
-  <!-- Gitee -->
   <svg
     v-else-if="source === 'gitee'"
-    class="login-social-icon"
+    class="social-provider-icon"
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
     <path
-      fill="#C71D23"
+      fill="currentColor"
       d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.576.576 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.592V10.183c0-2.19 1.782-3.97 3.97-3.97h8.772z"
     />
   </svg>
 
-  <!-- GitHub -->
   <svg
     v-else-if="source === 'github'"
-    class="login-social-icon"
+    class="social-provider-icon"
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
@@ -46,27 +44,26 @@ defineProps<{ source: string }>()
     />
   </svg>
 
-  <!-- Google -->
   <svg
     v-else
-    class="login-social-icon"
+    class="social-provider-icon"
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
     <path
-      fill="#4285F4"
+      fill="currentColor"
       d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.24c1.9-1.75 2.98-4.33 2.98-7.42Z"
     />
     <path
-      fill="#34A853"
+      fill="currentColor"
       d="M12 22c2.7 0 4.96-.9 6.61-2.42l-3.24-2.5c-.9.6-2.05.96-3.37.96-2.59 0-4.78-1.75-5.56-4.1H3.09v2.58A9.99 9.99 0 0 0 12 22Z"
     />
     <path
-      fill="#FBBC05"
+      fill="currentColor"
       d="M6.44 13.94A6 6 0 0 1 6.13 12c0-.67.12-1.33.31-1.94V7.48H3.09A9.99 9.99 0 0 0 2 12c0 1.61.39 3.14 1.09 4.52l3.35-2.58Z"
     />
     <path
-      fill="#EA4335"
+      fill="currentColor"
       d="M12 5.96c1.47 0 2.79.5 3.82 1.5l2.87-2.87C16.95 2.97 14.7 2 12 2A9.99 9.99 0 0 0 3.09 7.48l3.35 2.58C7.22 7.71 9.41 5.96 12 5.96Z"
     />
   </svg>

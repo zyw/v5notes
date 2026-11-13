@@ -69,7 +69,7 @@ export const zhTW: Messages = {
     connecting: '正在連接…',
     enter: '進入筆記',
     protocol: '請輸入 HTTP 或 HTTPS 伺服器位址',
-    socialOther: '其它登入方式',
+    socialOther: '或使用其他方式',
     socialWechat: '微信',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',
