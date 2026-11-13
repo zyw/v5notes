@@ -23,7 +23,10 @@ public class SocialLoginConfigProperties {
     private String clientSecret;
 
     /**
-     * 回调地址
+     * 回调地址兜底值。
+     * <p>优先使用 {@code justauth.address} / {@code justauth.client-address}
+     * 按请求 {@code app} 拼装；仅当两个基址都未配置时才使用本字段。
+     * 不要用本字段区分管理端与笔记客户端。
      */
     private String redirectUri;
 

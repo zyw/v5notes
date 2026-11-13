@@ -192,26 +192,35 @@ sms:
 
 --- # 三方授权
 justauth:
+  # 回调地址怎么配（请只改下面两个基址，不要靠 type.*.redirect-uri 区分端）：
+  #   1) 请求带 app=admin（默认）→ {address}/social-callback?source={平台}
+  #   2) 请求带 app=client       → {client-address}/social-callback?source={平台}
+  #   3) type.*.redirect-uri     → 仅当 address 与 client-address 都未配置时的兜底，可省略
+  # 向各 OAuth 应用登记回调时，按实际用到的端分别登记上述拼装结果。
   # 管理端前端地址
   address: http://localhost:80
-  # 笔记客户端回调基址（生产请改为公开 HTTPS 或 v5notes://app；各 OAuth 应用需登记对应 redirect）
+  # 笔记客户端回调基址（生产请改为公开 HTTPS 或 v5notes://app）
   client-address: http://localhost:1420
   type:
     wechat_open:
       client-id: ${V5NOTES_WECHAT_OPEN_CLIENT_ID:10**********6}
       client-secret: ${V5NOTES_WECHAT_OPEN_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=wechat_open
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98}
       client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac}
+      # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=gitee
     github:
       client-id: ${V5NOTES_GITHUB_CLIENT_ID:10**********6}
       client-secret: ${V5NOTES_GITHUB_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=github
       scopes: [ user, user:email ]
     google:
       client-id: ${V5NOTES_GOOGLE_CLIENT_ID:10**********6}
       client-secret: ${V5NOTES_GOOGLE_CLIENT_SECRET:1f7d08**********5b7**********29e}
+      # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=google
       scopes: [ openid, email, profile ]

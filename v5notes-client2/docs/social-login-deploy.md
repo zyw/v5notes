@@ -9,10 +9,13 @@
 
 ## 回调地址
 
-`application-*.yml`：
+**只改两个基址，不要靠 `type.*.redirect-uri` 区分端。**
 
-- `justauth.address`：管理端前端（admin 回调）
-- `justauth.client-address`：笔记客户端回调基址
+| 配置 | 用途 |
+|---|---|
+| `justauth.address` | 管理端：`app=admin`（默认） |
+| `justauth.client-address` | 笔记客户端：`app=client` |
+| `justauth.type.*.redirect-uri` | **兜底**：仅当上面两个基址都未配置时才用；已配基址时可省略或忽略 |
 
 拼装结果：`{base}/social-callback?source={provider}`。
 
@@ -23,7 +26,8 @@
 | 仅 API + 桌面端 | `https://oauth.example.com`（见仓库 `v5notes-oauth-landing/`） |
 | 打包 Tauri 且无微信等 https 限制 | `v5notes://app` |
 
-各 OAuth 应用需登记 **admin 与 client 两套** redirect（若两端都用该平台）。  
+向 OAuth 平台登记时，按实际用到的端分别登记拼装后的完整 URL（不是 YAML 里那条 `redirect-uri`）。  
+两端都用同一平台时，登记 **admin 与 client 两套** redirect。  
 微信开放平台网站应用通常只接受 http(s)，不能直接登记 `v5notes://`。
 
 ### 仅桌面端时的 HTTPS 中转
