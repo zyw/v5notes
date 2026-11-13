@@ -37,13 +37,13 @@ export default {
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     otherWays: 'Or continue with',
+    socialOff: 'Third-party sign-in is disabled on this server',
     langAria: 'Language',
     socialShort: {
-      wechat: 'WeChat',
-      maxkey: 'MaxKey',
-      topiam: 'TopIAM',
+      wechat_open: 'WeChat',
       gitee: 'Gitee',
-      github: 'GitHub'
+      github: 'GitHub',
+      google: 'Google'
     },
     scene: {
       line1: 'Scattered notes,',
@@ -70,11 +70,10 @@ export default {
       }
     },
     social: {
-      wechat: 'Wechat Login',
-      maxkey: 'MaxKey Login',
-      topiam: 'TopIam Login',
+      wechat_open: 'WeChat Login',
       gitee: 'Gitee Login',
-      github: 'Github Login'
+      github: 'GitHub Login',
+      google: 'Google Login'
     }
   },
   // 注册页面国际化

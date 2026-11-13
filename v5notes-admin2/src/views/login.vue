@@ -177,7 +177,7 @@
           {{ loading ? $t('login.submitLoading') : $t('login.submit') }}
         </el-button>
 
-        <div class="alt">
+        <div v-if="socialLoginEnabled" class="alt">
           <div class="alt-hint">{{ $t('login.otherWays') }}</div>
           <div class="prov">
             <template v-for="(key, index) in providerKeys" :key="key">
@@ -204,7 +204,7 @@ import LoginTechBackground from '@/components/LoginTechBackground/index.vue';
 import { useThemeMode } from '@/composables/useThemeMode';
 import { useI18n } from 'vue-i18n';
 import brandLogo from '@/assets/logo/logo.png';
-import { getCodeImg } from '@/api/login';
+import { getCodeImg, getThirdPartyLoginEnabled } from '@/api/login';
 import { authRouterUrl } from '@/api/system/social/auth';
 import { LoginData } from '@/api/types';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -218,7 +218,8 @@ const router = useRouter();
 const { mode, resolved, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const currentYear = new Date().getFullYear();
-const providerKeys = ['wechat', 'maxkey', 'topiam', 'gitee', 'github'];
+/** 与后端 justauth 配置及笔记客户端一致：微信开放平台、Gitee、GitHub、Google */
+const providerKeys = ['wechat_open', 'gitee', 'github', 'google'];
 
 const loginForm = ref<LoginData>({
   username: '',
@@ -238,6 +239,7 @@ const codeUrl = ref('');
 const loading = ref(false);
 const passwordVisible = ref(false);
 const captchaEnabled = ref(true);
+const socialLoginEnabled = ref(false);
 const redirect = ref('/');
 const loginRef = ref<ElFormInstance>();
 
@@ -311,6 +313,10 @@ const getLoginData = () => {
 };
 
 const doSocialLogin = (type: string) => {
+  if (!socialLoginEnabled.value) {
+    ElMessage.warning(t('login.socialOff'));
+    return;
+  }
   authRouterUrl(type).then((res: any) => {
     if (res.code === HttpStatus.SUCCESS) {
       window.location.href = res.data;
@@ -320,9 +326,19 @@ const doSocialLogin = (type: string) => {
   });
 };
 
+const loadSocialLoginEnabled = async () => {
+  try {
+    const res = await getThirdPartyLoginEnabled();
+    socialLoginEnabled.value = Boolean(res.data);
+  } catch {
+    socialLoginEnabled.value = false;
+  }
+};
+
 onMounted(() => {
   getCode();
   getLoginData();
+  loadSocialLoginEnabled();
 });
 </script>
 

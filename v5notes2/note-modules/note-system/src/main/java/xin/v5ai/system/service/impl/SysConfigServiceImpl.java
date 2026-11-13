@@ -94,6 +94,16 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
     }
 
     /**
+     * 获取管理端第三方登录开关。
+     *
+     * @return true开启，false关闭
+     */
+    @Override
+    public boolean selectThirdPartyLoginEnabled() {
+        return Convert.toBool(this.getConfigValue("sys.thirdPartyLogin.enable"));
+    }
+
+    /**
      * 获取客户端自助注册开关。
      *
      * @return true开启，false关闭

@@ -63,8 +63,12 @@ public class SocialAuthStrategy implements IAuthStrategy {
     public LoginVo login(String body, SysClientVo client) {
         SocialLoginBody loginBody = JsonUtils.parseObject(body, SocialLoginBody.class);
         ValidatorUtils.validate(loginBody);
-        if (isClientDevice(client) && !configService.selectClientThirdPartyLoginEnabled()) {
-            throw new ServiceException(MessageUtils.message("client.thirdPartyLogin.disabled"));
+        if (isClientDevice(client)) {
+            if (!configService.selectClientThirdPartyLoginEnabled()) {
+                throw new ServiceException(MessageUtils.message("client.thirdPartyLogin.disabled"));
+            }
+        } else if (!configService.selectThirdPartyLoginEnabled()) {
+            throw new ServiceException(MessageUtils.message("sys.thirdPartyLogin.disabled"));
         }
         String app = isClientDevice(client) ? "client" : "admin";
         AuthResponse<AuthUser> response = SocialUtils.loginAuth(

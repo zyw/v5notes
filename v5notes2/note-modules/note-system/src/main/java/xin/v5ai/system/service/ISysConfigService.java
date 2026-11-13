@@ -48,6 +48,13 @@ public interface ISysConfigService {
     boolean selectRegisterEnabled();
 
     /**
+     * 获取管理端第三方登录开关。
+     *
+     * @return true开启，false关闭
+     */
+    boolean selectThirdPartyLoginEnabled();
+
+    /**
      * 获取客户端自助注册开关。
      *
      * @return true开启，false关闭

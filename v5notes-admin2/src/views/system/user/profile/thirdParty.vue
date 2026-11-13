@@ -28,41 +28,24 @@
     </el-table>
     </div>
 
-    <div class="provider-section">
+    <div v-if="socialLoginEnabled" class="provider-section">
       <div class="provider-heading">
         <h4 class="provider-desc">{{ $t('system.profile.bindable') }}</h4>
         <p>{{ $t('system.profile.bindHint') }}</p>
       </div>
       <div class="user-bind">
-        <a class="third-app" href="#" :title="$t('system.profile.wechatAuth')" @click="authUrl('wechat')">
+        <a
+          v-for="item in providers"
+          :key="item.source"
+          class="third-app"
+          href="#"
+          :title="$t(item.authKey)"
+          @click.prevent="authUrl(item.source)"
+        >
           <div class="third-app__icon">
-            <svg-icon icon-class="wechat" />
+            <svg-icon :icon-class="item.icon" />
           </div>
-          <span class="app-name">{{ $t('system.profile.wechat') }}</span>
-        </a>
-        <a class="third-app" href="#" :title="$t('system.profile.maxkeyAuth')" @click="authUrl('maxkey')">
-          <div class="third-app__icon">
-            <svg-icon icon-class="maxkey" />
-          </div>
-          <span class="app-name">MaxKey</span>
-        </a>
-        <a class="third-app" href="#" :title="$t('system.profile.topiamAuth')" @click="authUrl('topiam')">
-          <div class="third-app__icon">
-            <svg-icon icon-class="topiam" />
-          </div>
-          <span class="app-name">TopIam</span>
-        </a>
-        <a class="third-app" href="#" :title="$t('system.profile.giteeAuth')" @click="authUrl('gitee')">
-          <div class="third-app__icon">
-            <svg-icon icon-class="gitee" />
-          </div>
-          <span class="app-name">Gitee</span>
-        </a>
-        <a class="third-app" href="#" :title="$t('system.profile.githubAuth')" @click="authUrl('github')">
-          <div class="third-app__icon">
-            <svg-icon icon-class="github" />
-          </div>
-          <span class="app-name">GitHub</span>
+          <span class="app-name">{{ $t(item.nameKey) }}</span>
         </a>
       </div>
     </div>
@@ -70,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { getThirdPartyLoginEnabled } from '@/api/login';
 import { authUnlock, authRouterUrl } from '@/api/system/social/auth';
 import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
@@ -82,6 +66,15 @@ const props = defineProps({
   auths: propTypes.any.isRequired
 });
 const auths = computed(() => props.auths);
+const socialLoginEnabled = ref(false);
+
+/** 与登录页、后端 justauth 配置一致 */
+const providers = [
+  { source: 'wechat_open', icon: 'wechat', nameKey: 'system.profile.wechat', authKey: 'system.profile.wechatAuth' },
+  { source: 'gitee', icon: 'gitee', nameKey: 'system.profile.gitee', authKey: 'system.profile.giteeAuth' },
+  { source: 'github', icon: 'github', nameKey: 'system.profile.github', authKey: 'system.profile.githubAuth' },
+  { source: 'google', icon: 'google', nameKey: 'system.profile.google', authKey: 'system.profile.googleAuth' }
+] as const;
 
 const unlockAuth = (row: any) => {
   ElMessageBox.confirm(t('system.profile.confirmUnbind', { name: row.source }))
@@ -100,6 +93,10 @@ const unlockAuth = (row: any) => {
 };
 
 const authUrl = (source: string) => {
+  if (!socialLoginEnabled.value) {
+    modal.msgWarning(t('login.socialOff'));
+    return;
+  }
   authRouterUrl(source).then((res: any) => {
     if (res.code === 200) {
       window.location.href = res.data;
@@ -108,6 +105,15 @@ const authUrl = (source: string) => {
     }
   });
 };
+
+onMounted(async () => {
+  try {
+    const res = await getThirdPartyLoginEnabled();
+    socialLoginEnabled.value = Boolean(res.data);
+  } catch {
+    socialLoginEnabled.value = false;
+  }
+});
 </script>
 
 <style lang="scss" scoped>

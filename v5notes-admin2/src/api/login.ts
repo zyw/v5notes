@@ -113,6 +113,19 @@ export function callback(data: LoginData): AxiosPromise<any> {
   });
 }
 
+/**
+ * 管理端第三方登录是否开启
+ */
+export function getThirdPartyLoginEnabled(): AxiosPromise<boolean> {
+  return request({
+    url: '/auth/third-party-login-enabled',
+    headers: {
+      isToken: false
+    },
+    method: 'get'
+  });
+}
+
 // 获取用户详细信息
 export function getInfo(): AxiosPromise<UserInfo> {
   return request({

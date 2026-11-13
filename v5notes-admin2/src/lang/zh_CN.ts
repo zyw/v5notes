@@ -35,13 +35,13 @@ export default {
     showPassword: '显示密码',
     hidePassword: '隐藏密码',
     otherWays: '或使用其他方式',
+    socialOff: '当前服务器未开启第三方登录',
     langAria: '语言切换',
     socialShort: {
-      wechat: '微信',
-      maxkey: 'MaxKey',
-      topiam: 'TopIAM',
+      wechat_open: '微信',
       gitee: 'Gitee',
-      github: 'GitHub'
+      github: 'GitHub',
+      google: 'Google'
     },
     scene: {
       line1: '把零散的笔记，',
@@ -68,11 +68,10 @@ export default {
       }
     },
     social: {
-      wechat: '微信登录',
-      maxkey: 'MaxKey登录',
-      topiam: 'TopIam登录',
+      wechat_open: '微信登录',
       gitee: 'Gitee登录',
-      github: 'Github登录'
+      github: 'GitHub登录',
+      google: 'Google登录'
     }
   },
   // 注册页面国际化

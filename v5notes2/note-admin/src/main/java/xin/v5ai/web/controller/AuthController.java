@@ -228,6 +228,16 @@ public class AuthController {
     }
 
     /**
+     * 管理端第三方登录是否开启。登录页据此决定是否展示第三方入口。
+     *
+     * @return true 开启
+     */
+    @GetMapping("/third-party-login-enabled")
+    public R<Boolean> thirdPartyLoginEnabled() {
+        return R.ok(configService.selectThirdPartyLoginEnabled());
+    }
+
+    /**
      * 客户端第三方登录是否开启。登录页据此决定是否展示第三方入口。
      *
      * @return true 开启
