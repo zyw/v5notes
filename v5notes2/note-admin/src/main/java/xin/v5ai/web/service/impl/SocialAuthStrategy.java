@@ -13,6 +13,7 @@ import xin.v5ai.common.core.constant.SystemConstants;
 import xin.v5ai.common.core.enums.DeviceType;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.exception.user.UserException;
+import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.core.utils.ValidatorUtils;
 import xin.v5ai.common.json.utils.JsonUtils;
 import xin.v5ai.common.satoken.utils.LoginHelper;
@@ -78,8 +79,11 @@ public class SocialAuthStrategy implements IAuthStrategy {
             throw new ServiceException(response.getMsg());
         }
         AuthUser authUserData = response.getData();
+        // JustAuth 写入的 source 多为枚举名（GITEE），统一小写便于 authId / 前端展示匹配
+        String source = StringUtils.blankToDefault(authUserData.getSource(), "").toLowerCase();
+        authUserData.setSource(source);
 
-        List<SysSocialVo> list = sysSocialService.selectByAuthId(authUserData.getSource() + authUserData.getUuid());
+        List<SysSocialVo> list = findSocialByAuthUser(source, authUserData.getUuid());
         SysUserVo user;
         if (CollUtil.isNotEmpty(list)) {
             user = loadUser(list.getFirst().getUserId());
@@ -109,6 +113,15 @@ public class SocialAuthStrategy implements IAuthStrategy {
     private static boolean isClientDevice(SysClientVo client) {
         String deviceType = client == null ? null : client.getDeviceType();
         return DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType);
+    }
+
+    /** 按小写 source 查 authId；兼容历史 JustAuth 枚举名大写（如 GITEE + uuid）。 */
+    private List<SysSocialVo> findSocialByAuthUser(String source, String uuid) {
+        List<SysSocialVo> list = sysSocialService.selectByAuthId(source + uuid);
+        if (CollUtil.isNotEmpty(list) || StringUtils.isBlank(source)) {
+            return list;
+        }
+        return sysSocialService.selectByAuthId(source.toUpperCase() + uuid);
     }
 
     /**

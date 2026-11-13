@@ -199,7 +199,7 @@ justauth:
   # 向各 OAuth 应用登记回调时，按实际用到的端分别登记上述拼装结果。
   # 管理端前端地址
   address: http://localhost:80
-  # 笔记客户端回调基址（生产请改为公开 HTTPS 或 v5notes://app）
+  # 笔记客户端回调基址：生产请改为 v5notes-oauth-landing 的 HTTPS 源，或平台允许时用 v5notes://app
   client-address: http://localhost:1420
   type:
     wechat_open:

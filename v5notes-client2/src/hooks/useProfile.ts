@@ -1,7 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { t } from '../i18n'
 import { formatBytes } from '../models/appUpdate'
-import { SOCIAL_PROVIDERS, setSocialOAuthIntent } from '../models/socialAuth'
+import { SOCIAL_PROVIDERS, normalizeSocialSource, setSocialOAuthIntent } from '../models/socialAuth'
 import type { ClientQuota, createApi, SocialBinding, UserProfile, UserProfileUpdate } from '../service/api'
 import { openExternalUrl } from '../utils/openExternal'
 
@@ -43,7 +43,9 @@ export function useProfile(api: NotesApi) {
     remark: '',
   })
 
-  const boundSources = computed(() => new Set(socialBindings.value.map((row) => row.source)))
+  const boundSources = computed(() => new Set(
+    socialBindings.value.map((row) => normalizeSocialSource(row.source)),
+  ))
 
   const bindableProviders = computed(() =>
     SOCIAL_PROVIDERS.filter((provider) => !boundSources.value.has(provider.source)),

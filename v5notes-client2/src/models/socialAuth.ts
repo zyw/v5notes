@@ -8,8 +8,13 @@ export const SOCIAL_PROVIDERS = [
 
 export type SocialSource = (typeof SOCIAL_PROVIDERS)[number]['source']
 
+/** JustAuth 可能返回 GITEE 等枚举名，统一小写再匹配配置。 */
+export function normalizeSocialSource(source: string): string {
+  return source.trim().toLowerCase()
+}
+
 export function providerTone(source: string): string {
-  const hit = SOCIAL_PROVIDERS.find((item) => item.source === source)
+  const hit = SOCIAL_PROVIDERS.find((item) => item.source === normalizeSocialSource(source))
   return hit?.tone || 'default'
 }
 
@@ -73,26 +78,8 @@ export function hasSocialOAuthPending(): boolean {
 }
 
 export function providerLabelKey(source: string): string {
-  const hit = SOCIAL_PROVIDERS.find((item) => item.source === source)
-  return hit?.labelKey || 'login.socialOther'
-}
-
-/**
- * 非 Tauri 浏览器若打开了回调页，尝试唤起桌面客户端（生产 HTTPS 中转用）。
- * 已在 Tauri 内则不做跳转。
- */
-export function maybeHandOffSocialCallbackToDesktop(): boolean {
-  if (typeof window === 'undefined') return false
-  if ('__TAURI_INTERNALS__' in window) return false
-  const params = readSocialCallbackParams()
-  if (!params) return false
-  const target = `v5notes://app/social-callback?${new URLSearchParams({
-    source: params.source,
-    code: params.code,
-    state: params.state,
-  })}`
-  window.location.replace(target)
-  return true
+  const hit = SOCIAL_PROVIDERS.find((item) => item.source === normalizeSocialSource(source))
+  return hit?.labelKey || 'login.socialUnknown'
 }
 
 /** 将后端社交登录错误映射为登录页文案 key；无法识别时返回 null。 */

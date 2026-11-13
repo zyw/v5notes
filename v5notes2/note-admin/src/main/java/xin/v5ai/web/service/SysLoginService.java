@@ -88,15 +88,26 @@ public class SysLoginService {
      */
     @Lock4j
     public void bindSocialUser(Long userId, AuthUser authUserData, boolean rejectIfBound) {
-        String authId = authUserData.getSource() + authUserData.getUuid();
+        // JustAuth AuthUser.source 为枚举名（如 GITEE），统一小写后与配置/前端一致
+        String source = StringUtils.blankToDefault(authUserData.getSource(), "").toLowerCase();
+        authUserData.setSource(source);
+        String authId = source + authUserData.getUuid();
         SysSocialBo bo = BeanUtil.toBean(authUserData, SysSocialBo.class);
         BeanUtil.copyProperties(authUserData.getToken(), bo);
         bo.setUserId(userId);
         bo.setAuthId(authId);
+        bo.setSource(source);
         bo.setOpenId(authUserData.getUuid());
-        bo.setUserName(authUserData.getUsername());
+        // user_name / access_token 库内非空；平台偶发缺省时用 uuid / token 兜底，避免静默插入失败
+        bo.setUserName(StringUtils.blankToDefault(authUserData.getUsername(), authUserData.getUuid()));
         bo.setNickName(authUserData.getNickname());
+        if (StringUtils.isBlank(bo.getAccessToken()) && authUserData.getToken() != null) {
+            bo.setAccessToken(authUserData.getToken().getAccessToken());
+        }
         List<SysSocialVo> checkList = sysSocialService.selectByAuthId(authId);
+        if (CollUtil.isEmpty(checkList) && StringUtils.isNotBlank(source)) {
+            checkList = sysSocialService.selectByAuthId(source.toUpperCase() + authUserData.getUuid());
+        }
         if (CollUtil.isNotEmpty(checkList)) {
             if (rejectIfBound || !userId.equals(checkList.getFirst().getUserId())) {
                 throw new ServiceException(MessageUtils.message("auth.social.bound"));
@@ -105,13 +116,21 @@ public class SysLoginService {
         }
         SysSocialBo params = new SysSocialBo();
         params.setUserId(userId);
-        params.setSource(bo.getSource());
+        params.setSource(source);
         List<SysSocialVo> list = sysSocialService.queryList(params);
+        if (CollUtil.isEmpty(list) && StringUtils.isNotBlank(source)) {
+            params.setSource(source.toUpperCase());
+            list = sysSocialService.queryList(params);
+        }
         if (CollUtil.isEmpty(list)) {
-            sysSocialService.insertByBo(bo);
+            if (!Boolean.TRUE.equals(sysSocialService.insertByBo(bo))) {
+                throw new ServiceException(MessageUtils.message("auth.social.bind.failed"));
+            }
         } else {
             bo.setId(list.getFirst().getId());
-            sysSocialService.updateByBo(bo);
+            if (!Boolean.TRUE.equals(sysSocialService.updateByBo(bo))) {
+                throw new ServiceException(MessageUtils.message("auth.social.bind.failed"));
+            }
         }
     }
 

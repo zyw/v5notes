@@ -21,10 +21,8 @@
 
 | 场景 | `client-address` 示例 |
 |---|---|
-| 本地 Web | `http://127.0.0.1:1420` |
-| 生产 Web（部署了 client2） | `https://notes.example.com` |
-| 仅 API + 桌面端 | `https://oauth.example.com`（见仓库 `v5notes-oauth-landing/`） |
-| 打包 Tauri 且无微信等 https 限制 | `v5notes://app` |
+| 仅 API + 桌面端（推荐） | `https://oauth.example.com`（仓库 `v5notes-oauth-landing/`） |
+| 打包 Tauri 且平台允许自定义 scheme | `v5notes://app` |
 
 向 OAuth 平台登记时，按实际用到的端分别登记拼装后的完整 URL（不是 YAML 里那条 `redirect-uri`）。  
 两端都用同一平台时，登记 **admin 与 client 两套** redirect。  
@@ -35,6 +33,8 @@
 仓库根目录 `v5notes-oauth-landing/` 是极简静态落地页：接收  
 `/social-callback?source&code&state`，再唤起 `v5notes://app/social-callback?...`。  
 把该目录挂到公网 HTTPS，并将 `justauth.client-address` 指到该源即可；详见目录内 README。
+
+笔记客户端（Tauri）**不**在浏览器 SPA 换票，也**不**写唤起 `v5notes://` 的代码；HTTP 回调页的唤起由 `v5notes-oauth-landing` 负责，客户端只处理 deep link 换票。
 
 ## 平台凭证
 

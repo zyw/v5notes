@@ -12,9 +12,7 @@ import { OFFICIAL_SERVER, normalizeServer, readServerSettings, writeServerSettin
 import {
   clearSocialCallbackUrl,
   clearSocialOAuthIntent,
-  hasSocialOAuthPending,
   mapSocialLoginErrorKey,
-  maybeHandOffSocialCallbackToDesktop,
   peekSocialOAuthIntent,
   readSocialCallbackParams,
   setSocialOAuthIntent,
@@ -1099,17 +1097,13 @@ onMounted(async () => {
       if (await mayLeave()) await invoke('exit_app')
     })
   }
-  const socialCallback = readSocialCallbackParams()
-  if (socialCallback) {
-    // 系统浏览器落地且无本页 pending → 视为桌面 OAuth 中转，唤起 App
-    if (!isTauri() && !hasSocialOAuthPending()) {
-      maybeHandOffSocialCallbackToDesktop()
-      error.value = t('login.socialCallback')
-    } else {
+  // OAuth HTTP 回调由 v5notes-oauth-landing 唤起 v5notes://；本客户端不在浏览器 SPA 换票、也不做 handoff。
+  // 仅桌面端通过 deep link（及 Tauri 内若落地到回调 URL）完成换票。
+  if (isTauri()) {
+    const socialCallback = readSocialCallbackParams()
+    if (socialCallback) {
       await handleSocialCallback(socialCallback.source, socialCallback.code, socialCallback.state)
     }
-  }
-  if (isTauri()) {
     try {
       const { getCurrent, onOpenUrl } = await import('@tauri-apps/plugin-deep-link')
       const applyDeepLink = async (urls: string[]) => {
@@ -1125,7 +1119,7 @@ onMounted(async () => {
       if (coldStart?.length) await applyDeepLink(coldStart)
       unlistenDeepLink = await onOpenUrl((urls) => { void applyDeepLink(urls) })
     } catch {
-      // 插件未安装或权限不足时忽略，仍可用 Web 回调
+      // 插件未安装或权限不足时忽略；HTTP 中转页负责唤起
     }
   }
   if (!token.value) await loadAuthOptions()

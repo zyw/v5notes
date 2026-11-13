@@ -70,6 +70,7 @@ export const en: Messages = {
     enter: 'Open notes',
     protocol: 'Enter an HTTP or HTTPS server address',
     socialOther: 'Or continue with',
+    socialUnknown: 'Unknown provider',
     socialWechat: 'WeChat',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',

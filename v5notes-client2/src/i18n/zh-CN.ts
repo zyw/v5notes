@@ -68,6 +68,7 @@ export const zhCN = {
     enter: '进入笔记',
     protocol: '请输入 HTTP 或 HTTPS 服务器地址',
     socialOther: '或使用其他方式',
+    socialUnknown: '未知平台',
     socialWechat: '微信',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',

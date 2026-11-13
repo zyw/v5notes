@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { mapSocialLoginErrorKey, readSocialCallbackParams } from './socialAuth'
+import {
+  mapSocialLoginErrorKey,
+  normalizeSocialSource,
+  providerLabelKey,
+  readSocialCallbackParams,
+} from './socialAuth'
 
 describe('socialAuth', () => {
   it('reads OAuth callback query from /social-callback', () => {
@@ -17,6 +22,12 @@ describe('socialAuth', () => {
 
   it('ignores non-callback URLs even with code', () => {
     expect(readSocialCallbackParams('http://127.0.0.1:1420/?code=abc&state=xyz&source=gitee')).toBeNull()
+  })
+
+  it('normalizes JustAuth enum-style sources for labels', () => {
+    expect(normalizeSocialSource('GITEE')).toBe('gitee')
+    expect(providerLabelKey('GITEE')).toBe('login.socialGitee')
+    expect(providerLabelKey('unknown_x')).toBe('login.socialUnknown')
   })
 
   it('maps known social login errors', () => {
