@@ -26,8 +26,10 @@ tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 
 # macOS: vector PDF via WKWebView.createPDF + Core Graphics repagination.
+# Also setApplicationIconImage so packaged Dock icons match `tauri_dev`.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage"] }
 objc2-core-foundation = "0.3"
 objc2-core-graphics = { version = "0.3", features = ["CGContext", "CGDataProvider", "CGPDFContext", "CGPDFDocument", "CGPDFPage"] }
 objc2-foundation = { version = "0.3", features = ["NSData", "NSDate", "NSGeometry", "NSObject", "NSRunLoop", "NSString", "NSURL"] }

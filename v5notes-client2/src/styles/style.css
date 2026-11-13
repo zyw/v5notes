@@ -473,6 +473,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .update-progress span { display: block; height: 100%; background: #4d8060; }
 .update-progress.is-indeterminate span { width: 35%; animation: update-slide 1.1s ease-in-out infinite; }
 .workspace .modal-backdrop { z-index: 130; }
+.workspace .confirm-backdrop { z-index: 140; }
 @keyframes update-slide { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
 .crud-modal { padding: 30px; border: 1px solid #e6e8e0; }
 /* 个人信息弹窗复用 settings-dialog / settings-panel 外壳，仅保留内容差异样式 */

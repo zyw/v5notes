@@ -47,6 +47,23 @@ fn tr_detail(zh_cn: &str, zh_tw: &str, en: &str, detail: impl std::fmt::Display)
     }
 }
 
+/// Packaged macOS builds read Dock icons through Icon Services (white plate /
+/// double-mask). `tauri_dev` instead calls `setApplicationIconImage`; mirror that
+/// in release so the Dock matches the rounded transparent asset.
+#[cfg(target_os = "macos")]
+fn apply_macos_dock_icon() {
+    use objc2::{AllocAnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::NSData;
+
+    let mtm = unsafe { MainThreadMarker::new_unchecked() };
+    let app = NSApplication::sharedApplication(mtm);
+    let data = NSData::with_bytes(include_bytes!("../icons/icon.icns"));
+    if let Some(icon) = NSImage::initWithData(NSImage::alloc(), &data) {
+        unsafe { app.setApplicationIconImage(Some(&icon)) };
+    }
+}
+
 fn app_display_name() -> String {
     tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes")
 }
@@ -893,6 +910,8 @@ pub fn run() {
             app.manage(tray);
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             app.manage(HeldUpdate::default());
+            #[cfg(target_os = "macos")]
+            apply_macos_dock_icon();
             // Linux / Windows 开发态注册 deep link；macOS 需安装后的 bundle 才生效
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
             {

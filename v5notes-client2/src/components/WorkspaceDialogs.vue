@@ -42,34 +42,6 @@ const cloudSectionClass = computed(() => (
 </script>
 
 <template>
-  <div v-if="dialog" class="modal-backdrop" role="presentation" @click.self="closeDialog">
-    <section class="modal crud-modal" role="dialog" aria-modal="true" :aria-label="dialog.title">
-      <form v-if="dialog.kind === 'name'" @submit.prevent="submitNameDialog">
-        <span class="eyebrow">{{ dialog.entity === 'note' ? 'NOTE' : 'FOLDER' }}</span>
-        <h2>{{ dialog.title }}</h2>
-        <label class="dialog-field">
-          <span>{{ dialog.entity === 'note' ? t('dialogs.noteName') : t('dialogs.directoryName') }}</span>
-          <input v-model="dialogValue" autofocus maxlength="100" :placeholder="dialog.entity === 'note' ? t('dialogs.notePlaceholder') : t('dialogs.directoryPlaceholder')" />
-        </label>
-        <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
-        <div class="modal-actions">
-          <button type="button" :disabled="dialogBusy" @click="closeDialog">{{ t('common.cancel') }}</button>
-          <button class="primary" type="submit" :disabled="dialogBusy">{{ dialogBusy ? t('common.saving') : t('common.save') }}</button>
-        </div>
-      </form>
-      <template v-else>
-        <span class="eyebrow danger-eyebrow">{{ t('common.confirmEyebrow') }}</span>
-        <h2>{{ dialog.title }}</h2>
-        <p>{{ dialog.message }}</p>
-        <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
-        <div class="modal-actions">
-          <button type="button" @click="closeDialog">{{ t('common.cancel') }}</button>
-          <button :class="dialog.danger ? 'danger-button' : 'primary'" type="button" @click="confirmDialog">{{ dialog.confirmLabel }}</button>
-        </div>
-      </template>
-    </section>
-  </div>
-
   <div v-if="profileDialogOpen" class="modal-backdrop settings-backdrop" role="presentation" @click.self="closeProfile">
     <section class="modal settings-dialog profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-title" aria-describedby="profile-subtitle" @keydown.esc.stop.prevent="closeProfile">
       <header class="settings-header">
@@ -231,6 +203,35 @@ const cloudSectionClass = computed(() => (
         <button type="button" :disabled="profileBusy || avatarBusy || socialBusy" @click="closeProfile">{{ t('common.cancel') }}</button>
         <button class="primary" type="button" :disabled="profileBusy || avatarBusy || socialBusy" @click="saveProfile">{{ profileBusy ? t('common.saving') : t('common.save') }}</button>
       </footer>
+    </section>
+  </div>
+
+  <!-- Render after profile so nested confirms (e.g. social unbind) stack above it. -->
+  <div v-if="dialog" class="modal-backdrop confirm-backdrop" role="presentation" @click.self="closeDialog">
+    <section class="modal crud-modal" role="dialog" aria-modal="true" :aria-label="dialog.title">
+      <form v-if="dialog.kind === 'name'" @submit.prevent="submitNameDialog">
+        <span class="eyebrow">{{ dialog.entity === 'note' ? 'NOTE' : 'FOLDER' }}</span>
+        <h2>{{ dialog.title }}</h2>
+        <label class="dialog-field">
+          <span>{{ dialog.entity === 'note' ? t('dialogs.noteName') : t('dialogs.directoryName') }}</span>
+          <input v-model="dialogValue" autofocus maxlength="100" :placeholder="dialog.entity === 'note' ? t('dialogs.notePlaceholder') : t('dialogs.directoryPlaceholder')" />
+        </label>
+        <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
+        <div class="modal-actions">
+          <button type="button" :disabled="dialogBusy" @click="closeDialog">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="dialogBusy">{{ dialogBusy ? t('common.saving') : t('common.save') }}</button>
+        </div>
+      </form>
+      <template v-else>
+        <span class="eyebrow danger-eyebrow">{{ t('common.confirmEyebrow') }}</span>
+        <h2>{{ dialog.title }}</h2>
+        <p>{{ dialog.message }}</p>
+        <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
+        <div class="modal-actions">
+          <button type="button" @click="closeDialog">{{ t('common.cancel') }}</button>
+          <button :class="dialog.danger ? 'danger-button' : 'primary'" type="button" @click="confirmDialog">{{ dialog.confirmLabel }}</button>
+        </div>
+      </template>
     </section>
   </div>
 

@@ -21,6 +21,7 @@ import xin.v5ai.common.social.config.properties.SocialProperties;
 import xin.v5ai.common.social.utils.SocialUtils;
 import xin.v5ai.system.api.model.LoginUser;
 import xin.v5ai.system.api.model.SocialLoginBody;
+import xin.v5ai.system.domain.SysUser;
 import xin.v5ai.system.domain.vo.SysClientVo;
 import xin.v5ai.system.domain.vo.SysSocialVo;
 import xin.v5ai.system.domain.vo.SysUserVo;
@@ -87,6 +88,8 @@ public class SocialAuthStrategy implements IAuthStrategy {
         SysUserVo user;
         if (CollUtil.isNotEmpty(list)) {
             user = loadUser(list.getFirst().getUserId());
+            // 历史社交开户可能未写入邮箱（Gitee /user.email 常空）；有邮箱且未占用则回填
+            backfillEmailIfAbsent(user, authUserData.getEmail());
         } else if (isClientDevice(client)) {
             // 笔记客户端：社交登录即开户
             SysUserVo created = registerService.registerClientBySocial(authUserData);
@@ -140,6 +143,31 @@ public class SocialAuthStrategy implements IAuthStrategy {
             throw new UserException("user.blocked", "");
         }
         return user;
+    }
+
+    /**
+     * 本地邮箱为空且第三方邮箱可用、未被占用时回填。
+     */
+    private void backfillEmailIfAbsent(SysUserVo user, String email) {
+        String trimmed = StringUtils.trim(email);
+        if (user == null || StringUtils.isNotBlank(user.getEmail()) || StringUtils.isBlank(trimmed)) {
+            return;
+        }
+        boolean occupied = userMapper.lambda()
+            .eq(SysUser::getEmail, trimmed)
+            .ne(SysUser::getUserId, user.getUserId())
+            .exists();
+        if (occupied) {
+            log.info("Skip Gitee email backfill for userId={}: email occupied", user.getUserId());
+            return;
+        }
+        int rows = userMapper.lambda()
+            .set(SysUser::getEmail, trimmed)
+            .eq(SysUser::getUserId, user.getUserId())
+            .updateCount();
+        if (rows > 0) {
+            user.setEmail(trimmed);
+        }
     }
 
 }

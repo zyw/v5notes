@@ -40,7 +40,11 @@ public class SocialUtils {
         AuthCallback callback = new AuthCallback();
         callback.setCode(code);
         callback.setState(state);
-        return authRequest.login(callback);
+        AuthResponse<AuthUser> response = authRequest.login(callback);
+        if (response != null && response.ok() && "gitee".equalsIgnoreCase(source) && response.getData() != null) {
+            GiteeEmailSupport.enrichEmail(response.getData());
+        }
+        return response;
     }
 
     /**

@@ -188,7 +188,7 @@ justauth:
   # 笔记客户端回调基址：指向 v5notes-oauth-landing（HTTPS 中转唤起桌面）；或平台允许时用 v5notes://app
   # 不要指向 Vite/SPA：客户端不做浏览器换票，也不在 SPA 里写 v5notes:// 唤起
   # 国内访问 Google/GitHub 换票时，可按 JustAuth 文档为对应平台配置 httpConfig 代理
-  client-address: http://127.0.0.1:1420
+  client-address: http://127.0.0.1:8088
   type:
     wechat_open:
       client-id: ${V5NOTES_WECHAT_OPEN_CLIENT_ID:10**********6}
@@ -196,10 +196,12 @@ justauth:
       # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=wechat_open
     gitee:
-      client-id: ${V5NOTES_GITEE_CLIENT_ID:7a845e3454abbca10ef23175fcd2a2139117486707e0b2404f693717e1620636}
-      client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:7018b2372c45b2bd619aa0087d288989dde8a3ee56d23bd02e6c1c1e36d4622c}
+      client-id: ${V5NOTES_GITEE_CLIENT_ID:a27e9fa3f58a199995b366abc2632e4448f8680c97b45bce86b5cf27590bcbe5}
+      client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:917ed393687424caa4884f0850557122c20b74f26a9638575a7b816bf55c4fa2}
       # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=gitee
+      # emails 非 JustAuth 默认 scope；/user.email 常为空，需另调 /emails
+      scopes: [user_info, emails]
     github:
       client-id: ${V5NOTES_GITHUB_CLIENT_ID:10**********6}
       client-secret: ${V5NOTES_GITHUB_CLIENT_SECRET:1f7d08**********5b7**********29e}
