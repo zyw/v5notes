@@ -6,7 +6,7 @@
 
 **请勿**把库放进网盘同步目录后再开官方 Sync（易产生双重冲突与幽灵改动）。
 
-## Phase 0 冻结（脚手架）
+## 配置冻结
 
 | 键 | 值 |
 |---|---|
@@ -26,22 +26,28 @@ npm install
 npm run tauri dev
 ```
 
-Vite 开发端口为 **1421**（Cloud client2 使用 1420）。
+Vite 开发端口为 **1421**（Cloud client2 使用 1420）。浏览器单独打开 Vite 只能看欢迎 UI；创建/打开库需 Tauri 壳。
+
+```bash
+npm test          # path identity 等单测
+npm run build     # 前端类型检查 + 打包
+```
 
 ## @v5md 编辑器 vendor
 
 依赖与 Cloud 相同，来自 `vendor/v5md/*.tgz`（`@v5md/core|view|vue`）。
-
-同步方式（Phase 0）：从 `v5notes-client2/vendor/v5md/` **复制**同版本 tgz。升级编辑器时两边同步复制，暂不建 npm workspace。
 
 ```bash
 cp ../v5notes-client2/vendor/v5md/*.tgz vendor/v5md/
 npm install
 ```
 
-## 本阶段范围
+## Phase 1（本阶段）
 
-- 欢迎占位页 + 空设置页
-- `vault.json` / `sync-state.json` 类型与 JSON Schema 草稿
-- 错误码枚举草稿（TS；Java 在 `note-vault-sync`）
-- **未实现** 本地建库 / CRUD / 同步（Phase 1+）
+- 路径身份键：`normalizeDisplayPath` / `toIdentityKey`（NFC + case-fold，§6.2）
+- `VaultFs` + `VaultWorkspace`：创建/打开/默认库，写入 `.v5notes` 骨架
+- 欢迎页三路径 + 最近库（localStorage 桩）
+- 侧栏树 + 打开 `.md` → `V5Editor`（预览/编辑同实例；回预览前保存）
+- **零网络、零账号、零同步**
+
+尚未包含（Phase 1b / Phase 2）：本地搜索、watcher、原子写 hardening、移盘书签持久化打磨、trash UX、脏导航守卫完善、设计 token。
