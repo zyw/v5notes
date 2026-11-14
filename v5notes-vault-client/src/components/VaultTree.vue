@@ -10,6 +10,10 @@ defineProps<{
 
 const emit = defineEmits<{
   open: [node: VaultTreeNode]
+  addNote: [parent: VaultTreeNode | null]
+  addDir: [parent: VaultTreeNode | null]
+  rename: [node: VaultTreeNode]
+  remove: [node: VaultTreeNode]
 }>()
 
 const expanded = ref<Record<string, boolean>>({})
@@ -78,6 +82,46 @@ function isExpanded(path: string): boolean {
           </svg>
           <span>{{ node.name.replace(/\.md$/i, '') }}</span>
         </button>
+        <div class="tree-actions" @click.stop>
+          <button
+            v-if="node.kind === 'dir'"
+            type="button"
+            class="tree-action"
+            title="新建笔记"
+            aria-label="新建笔记"
+            @click="emit('addNote', node)"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <button
+            v-if="node.kind === 'dir'"
+            type="button"
+            class="tree-action"
+            title="新建子目录"
+            aria-label="新建子目录"
+            @click="emit('addDir', node)"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5.5h4l1 1.2H14v6.3H2z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 8v4M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+          <button
+            type="button"
+            class="tree-action"
+            title="重命名"
+            aria-label="重命名"
+            @click="emit('rename', node)"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 12.5 4.2 8.8 11 2l2.5 2.5-6.8 6.8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          </button>
+          <button
+            type="button"
+            class="tree-action danger-text"
+            title="删除到回收站"
+            aria-label="删除到回收站"
+            @click="emit('remove', node)"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 5h8l-.7 8.2H4.7zM6 5V3.5h4V5M3 5h10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </div>
       <VaultTree
         v-if="node.kind === 'dir' && isExpanded(node.path) && node.children?.length"
@@ -85,6 +129,10 @@ function isExpanded(path: string): boolean {
         :selected-path="selectedPath"
         :depth="(depth ?? 0) + 1"
         @open="emit('open', $event)"
+        @add-note="emit('addNote', $event)"
+        @add-dir="emit('addDir', $event)"
+        @rename="emit('rename', $event)"
+        @remove="emit('remove', $event)"
       />
     </li>
   </ul>

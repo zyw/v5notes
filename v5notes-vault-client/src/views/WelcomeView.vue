@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import CreateVaultDialog from '../components/CreateVaultDialog.vue'
 import { VaultPathError } from '../path/identity'
 import type { OpenedVault, RecentVaultEntry } from '../vault/types'
+import { hydrateRecentVaults } from '../vault/recent'
 import { vaultWorkspace } from '../vault/workspace'
 
 const emit = defineEmits<{
@@ -22,6 +23,12 @@ const canUseFs = computed(() => inTauri)
 function refreshRecent() {
   recent.value = vaultWorkspace.listRecent()
 }
+
+onMounted(() => {
+  void hydrateRecentVaults().then(entries => {
+    recent.value = entries
+  })
+})
 
 function explain(errorValue: unknown): string {
   if (errorValue instanceof VaultPathError) return errorValue.message
@@ -86,7 +93,10 @@ function openRecent(entry: RecentVaultEntry) {
     } catch (err) {
       vaultWorkspace.forgetRecent(entry.rootPath)
       refreshRecent()
-      throw err
+      const base = explain(err)
+      throw new Error(
+        `${base}。库可能已移动或权限失效，已从最近列表移除；请用「打开已有库」重新授权。`,
+      )
     }
   })
 }
@@ -99,10 +109,10 @@ function forget(entry: RecentVaultEntry) {
 
 <template>
   <section class="panel welcome" aria-labelledby="welcome-title">
-    <p class="eyebrow">PHASE 1 · 本地 MVP</p>
+    <p class="eyebrow">PHASE 2 · 本地打磨</p>
     <h1 id="welcome-title">欢迎使用 V5Notes Vault</h1>
     <p class="lede">
-      本地文件夹是权威；笔记正文是库内的 <code>.md</code>。Cloud 笔记与 Vault 库默认不是同一份数据。本阶段零网络、免登录。
+      本地文件夹是权威；笔记正文是库内的 <code>.md</code>。Cloud 笔记与 Vault 库默认不是同一份数据。本阶段仍零网络、免登录。
     </p>
 
     <ul class="actions" aria-label="开库方式">
