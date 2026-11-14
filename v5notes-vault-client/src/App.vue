@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useAccount } from './account'
 import WelcomeView from './views/WelcomeView.vue'
 import SettingsView from './views/SettingsView.vue'
 import WorkspaceView from './views/WorkspaceView.vue'
@@ -16,6 +17,8 @@ const workspaceRef = ref<{
   save: () => Promise<boolean>
   requestClose: () => void
 } | null>(null)
+
+const account = useAccount()
 
 function onOpened(opened: OpenedVault) {
   vault.value = opened
@@ -50,6 +53,10 @@ function onBeforeUnload(event: BeforeUnloadEvent) {
   event.returnValue = ''
 }
 
+function dismissReauth() {
+  account.dismissSessionExpired()
+}
+
 onMounted(() => {
   applyAppearance(loadAppearancePrefs())
   window.addEventListener('beforeunload', onBeforeUnload)
@@ -72,9 +79,18 @@ onUnmounted(() => {
           {{ vault ? '工作区' : '欢迎' }}
         </button>
         <button type="button" :class="{ active: page === 'settings' }" @click="goSettings">设置</button>
+        <span v-if="account.loggedIn.value" class="account-chip" :title="account.username.value">
+          {{ account.profile.value?.nickName || account.username.value || '已登录' }}
+        </span>
       </nav>
     </header>
-    <p v-if="banner" class="app-banner" role="status">{{ banner }}</p>
+    <p v-if="account.sessionExpired.value" class="app-banner reauth-banner" role="status">
+      登录已过期，令牌已清除。本地未保存内容仍保留——可继续编辑，或
+      <button type="button" class="linkish" @click="goSettings">重新登录</button>
+      。
+      <button type="button" class="linkish" @click="dismissReauth">知道了</button>
+    </p>
+    <p v-else-if="banner" class="app-banner" role="status">{{ banner }}</p>
     <main class="main" :class="{ 'main-fill': page === 'workspace' }">
       <WelcomeView v-if="page === 'welcome'" @opened="onOpened" />
       <WorkspaceView
@@ -85,7 +101,7 @@ onUnmounted(() => {
         @error="banner = $event"
         @dirty-change="workspaceDirty = $event"
       />
-      <SettingsView v-else />
+      <SettingsView v-else :account="account" />
     </main>
   </div>
 </template>

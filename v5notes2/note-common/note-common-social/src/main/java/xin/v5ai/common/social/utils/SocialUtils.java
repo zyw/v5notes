@@ -32,7 +32,7 @@ public class SocialUtils {
     /**
      * 执行第三方登录授权回调。
      *
-     * @param app {@code client} 使用 clientAddress，其它使用 address
+     * @param app {@code client} / {@code vault} / {@code admin}（缺省）
      */
     public static AuthResponse<AuthUser> loginAuth(String source, String code, String state,
                                                    SocialProperties socialProperties, String app) throws AuthException {
@@ -57,7 +57,7 @@ public class SocialUtils {
     /**
      * 根据平台类型与应用端构建授权请求实例。
      *
-     * @param app {@code client} / {@code admin}
+     * @param app {@code client} / {@code vault} / {@code admin}
      */
     public static AuthRequest getAuthRequest(String source, SocialProperties socialProperties, String app) throws AuthException {
         SocialLoginConfigProperties obj = socialProperties.getType().get(source);
@@ -104,16 +104,31 @@ public class SocialUtils {
     }
 
     /**
-     * 优先用 address / clientAddress 拼装回调；未配置时回退 YAML redirect-uri。
+     * 优先用 address / clientAddress / vaultClientAddress 拼装回调；未配置时回退 YAML redirect-uri。
+     * <p>{@code app=vault} 使用 vaultClientAddress（缺省回退 clientAddress），并附加 {@code app=vault}
+     * 供 OAuth 落地页选择 {@code v5notes-vault://} scheme。</p>
      */
     public static String resolveRedirectUri(String source, SocialLoginConfigProperties obj,
                                             SocialProperties socialProperties, String app) {
-        String base = "client".equalsIgnoreCase(StringUtils.blankToDefault(app, "admin"))
-            ? socialProperties.getClientAddress()
-            : socialProperties.getAddress();
+        String appKey = StringUtils.blankToDefault(app, "admin");
+        String base;
+        boolean vault = "vault".equalsIgnoreCase(appKey);
+        if (vault) {
+            base = StringUtils.isNotBlank(socialProperties.getVaultClientAddress())
+                ? socialProperties.getVaultClientAddress()
+                : socialProperties.getClientAddress();
+        } else if ("client".equalsIgnoreCase(appKey)) {
+            base = socialProperties.getClientAddress();
+        } else {
+            base = socialProperties.getAddress();
+        }
         if (StringUtils.isNotBlank(base)) {
             String normalized = base.replaceAll("/+$", "");
-            return normalized + "/social-callback?source=" + source;
+            String uri = normalized + "/social-callback?source=" + source;
+            if (vault) {
+                uri = uri + "&app=vault";
+            }
+            return uri;
         }
         return obj.getRedirectUri();
     }

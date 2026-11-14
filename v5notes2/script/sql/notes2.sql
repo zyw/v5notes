@@ -341,9 +341,17 @@ WHERE dict_type = 'sys_device_type';
 -- -----------------------------------------------------------------------------
 -- 5、sys_client（显式列名，含 6.1.0 新增的 access_path / ip_whitelist）
 -- -----------------------------------------------------------------------------
--- 只保留两条：管理端登录客户端、客户端登录客户端
-DELETE FROM sys_client WHERE client_id NOT IN ('d9df3c0228c05e5c61db46348bcadf6e', 'e5cd7e4891bf95d1d19206ce24a7b32e');
-DELETE FROM sys_client WHERE client_id IN ('d9df3c0228c05e5c61db46348bcadf6e', 'e5cd7e4891bf95d1d19206ce24a7b32e');
+-- 管理端 / Cloud 客户端 / Vault 客户端
+DELETE FROM sys_client WHERE client_id NOT IN (
+    'd9df3c0228c05e5c61db46348bcadf6e',
+    'e5cd7e4891bf95d1d19206ce24a7b32e',
+    'b8e4f02a5c3d7916f2a0b1d9e7c5f3a1'
+);
+DELETE FROM sys_client WHERE client_id IN (
+    'd9df3c0228c05e5c61db46348bcadf6e',
+    'e5cd7e4891bf95d1d19206ce24a7b32e',
+    'b8e4f02a5c3d7916f2a0b1d9e7c5f3a1'
+);
 
 -- 5.1 客户端登录（clientPassword / client）：v5notes-client2 登录时携带该 client_id
 INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
@@ -356,6 +364,12 @@ INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, de
                         active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
 VALUES (1762000000000000001, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'admin',
         NULL, NULL, 1800, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
+
+-- 5.3 Vault 客户端登录（clientPassword / vault_client）：v5notes-vault-client
+INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
+                        active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
+VALUES (1851635079091687427, 'b8e4f02a5c3d7916f2a0b1d9e7c5f3a1', 'vault_client', 'vaultClient123', 'clientPassword,social', 'vault_client',
+        NULL, NULL, -1, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
 
 -- -----------------------------------------------------------------------------
 -- 6、文件存储主配置（本地磁盘，storage=100）

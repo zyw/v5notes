@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AccountPanel from '../components/AccountPanel.vue'
+import type { AccountState } from '../account'
 import {
   applyAppearance,
   BUILTIN_THEMES,
@@ -9,6 +11,10 @@ import {
   type BuiltinThemeId,
   type ColorMode,
 } from '../appearance/themes'
+
+defineProps<{
+  account: AccountState
+}>()
 
 const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
 
@@ -32,8 +38,10 @@ function setColorMode(colorMode: ColorMode) {
     <p class="eyebrow">SETTINGS</p>
     <h1 id="settings-title">设置</h1>
     <p class="lede">
-      Phase 2 提供内置外观入口与设计 token 地基。账号与同步属于后续阶段；未登录仍可纯本地使用。
+      本地 Vault 优先。账号登录可选，用于套餐与后续同步；未登录不影响建库与编辑。
     </p>
+
+    <AccountPanel :account="account" />
 
     <section class="settings-block" aria-labelledby="appearance-title">
       <h2 id="appearance-title">外观</h2>
@@ -85,8 +93,8 @@ function setColorMode(colorMode: ColorMode) {
         <dd><code>v5notes-vault://</code></dd>
       </div>
       <div>
-        <dt>账号 / 同步</dt>
-        <dd>Phase 3+（本阶段不做）</dd>
+        <dt>同步</dt>
+        <dd>Phase 4 SyncEngine（本阶段仅账号与引导）</dd>
       </div>
     </dl>
   </section>

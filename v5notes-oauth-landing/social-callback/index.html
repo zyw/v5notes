@@ -142,16 +142,26 @@
   <script>
 (function () {
   var DEEP_PATH = '/social-callback'
-  var SCHEME = 'v5notes://app' + DEEP_PATH
   var DOWNLOAD = 'https://github.com/zyw/v5notes/releases'
 
   var copy = {
     zh: {
-      titleOk: '正在打开桌面应用',
-      leadOk: '授权已完成。若未自动打开 V5Notes，请点击下方按钮。',
-      statusOk: '正在唤起 V5Notes…',
-      statusWait: '如果没有反应，请确认已安装桌面端，再点「打开 V5Notes」。',
-      open: '打开 V5Notes',
+      cloud: {
+        titleOk: '正在打开桌面应用',
+        leadOk: '授权已完成。若未自动打开 V5Notes，请点击下方按钮。',
+        statusOk: '正在唤起 V5Notes…',
+        statusWait: '如果没有反应，请确认已安装桌面端，再点「打开 V5Notes」。',
+        open: '打开 V5Notes',
+        brand: 'V5Notes'
+      },
+      vault: {
+        titleOk: '正在打开 Vault',
+        leadOk: '授权已完成。若未自动打开 V5Notes Vault，请点击下方按钮。',
+        statusOk: '正在唤起 V5Notes Vault…',
+        statusWait: '如果没有反应，请确认已安装 Vault 桌面端，再点「打开 Vault」。',
+        open: '打开 Vault',
+        brand: 'V5Notes Vault'
+      },
       download: '下载桌面端',
       hint: '请保持桌面端已安装。打开应用后即可完成登录或绑定，本页可关闭。',
       titleMissing: '缺少授权参数',
@@ -161,11 +171,22 @@
       leadDenied: '第三方平台返回了错误，未能继续登录。请回到桌面端重试。'
     },
     en: {
-      titleOk: 'Opening the desktop app',
-      leadOk: 'Authorization finished. If V5Notes did not open, use the button below.',
-      statusOk: 'Launching V5Notes…',
-      statusWait: 'No response yet. Make sure the desktop app is installed, then try Open again.',
-      open: 'Open V5Notes',
+      cloud: {
+        titleOk: 'Opening the desktop app',
+        leadOk: 'Authorization finished. If V5Notes did not open, use the button below.',
+        statusOk: 'Launching V5Notes…',
+        statusWait: 'No response yet. Make sure the desktop app is installed, then try Open again.',
+        open: 'Open V5Notes',
+        brand: 'V5Notes'
+      },
+      vault: {
+        titleOk: 'Opening Vault',
+        leadOk: 'Authorization finished. If V5Notes Vault did not open, use the button below.',
+        statusOk: 'Launching V5Notes Vault…',
+        statusWait: 'No response yet. Make sure Vault is installed, then try Open again.',
+        open: 'Open Vault',
+        brand: 'V5Notes Vault'
+      },
       download: 'Download desktop app',
       hint: 'Keep the desktop app installed. You can close this tab after the app opens.',
       titleMissing: 'Missing callback parameters',
@@ -177,7 +198,7 @@
   }
 
   var lang = ((navigator.language || 'zh').toLowerCase().indexOf('zh') === 0) ? 'zh' : 'en'
-  var t = copy[lang]
+  var bundle = copy[lang]
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
 
   var titleEl = document.getElementById('title')
@@ -187,11 +208,7 @@
   var downloadBtn = document.getElementById('downloadBtn')
   var hintEl = document.getElementById('hint')
   var metaEl = document.getElementById('meta')
-
-  downloadBtn.href = DOWNLOAD
-  downloadBtn.textContent = t.download
-  openBtn.textContent = t.open
-  hintEl.textContent = t.hint
+  var brandEl = document.querySelector('.brand span')
 
   function readParams() {
     var url = new URL(window.location.href)
@@ -199,14 +216,40 @@
     var source = (url.searchParams.get('source') || '').trim()
     var code = (url.searchParams.get('code') || '').trim()
     var state = (url.searchParams.get('state') || '').trim()
-    return { error: err, source: source, code: code, state: state }
+    var app = (url.searchParams.get('app') || '').trim().toLowerCase()
+    return { error: err, source: source, code: code, state: state, app: app }
   }
 
-  function buildDeepLink(params) {
+  var params = readParams()
+  var isVault = params.app === 'vault'
+  var product = isVault ? bundle.vault : bundle.cloud
+  var SCHEME = (isVault ? 'v5notes-vault://app' : 'v5notes://app') + DEEP_PATH
+  var t = {
+    titleOk: product.titleOk,
+    leadOk: product.leadOk,
+    statusOk: product.statusOk,
+    statusWait: product.statusWait,
+    open: product.open,
+    download: bundle.download,
+    hint: bundle.hint,
+    titleMissing: bundle.titleMissing,
+    leadMissing: bundle.leadMissing,
+    statusMissing: bundle.statusMissing,
+    titleDenied: bundle.titleDenied,
+    leadDenied: bundle.leadDenied
+  }
+
+  if (brandEl) brandEl.textContent = product.brand
+  downloadBtn.href = DOWNLOAD
+  downloadBtn.textContent = t.download
+  openBtn.textContent = t.open
+  hintEl.textContent = t.hint
+
+  function buildDeepLink(callbackParams) {
     var q = new URLSearchParams({
-      source: params.source,
-      code: params.code,
-      state: params.state
+      source: callbackParams.source,
+      code: callbackParams.code,
+      state: callbackParams.state
     })
     return SCHEME + '?' + q.toString()
   }
@@ -219,7 +262,6 @@
     openBtn.classList.add('hidden')
   }
 
-  var params = readParams()
   if (params.error) {
     setError(t.titleDenied, t.leadDenied, params.error)
     return
@@ -235,7 +277,7 @@
   leadEl.textContent = t.leadOk
   statusEl.textContent = t.statusOk
   statusEl.classList.add('is-visible')
-  metaEl.textContent = params.source
+  metaEl.textContent = params.source + (isVault ? ' · vault' : '')
   metaEl.classList.remove('hidden')
 
   function handoff() {

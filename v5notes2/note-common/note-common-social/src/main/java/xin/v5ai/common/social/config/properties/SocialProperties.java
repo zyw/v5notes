@@ -8,7 +8,8 @@ import java.util.Map;
 
 /**
  * Social 配置属性。
- * <p>{@code address} 供管理端回调；{@code clientAddress} 供笔记客户端（含 deep link）回调。</p>
+ * <p>{@code address} 供管理端回调；{@code clientAddress} 供 Cloud 客户端；
+ * {@code vaultClientAddress} 供 Vault 客户端（含 {@code v5notes-vault://} / 落地页 {@code app=vault}）。</p>
  *
  * @author thiszhc
  */
@@ -26,6 +27,12 @@ public class SocialProperties {
      * 笔记客户端回调基址（如 http://127.0.0.1:1420 或 v5notes://app）。
      */
     private String clientAddress;
+
+    /**
+     * Vault 客户端回调基址（如落地页 HTTPS 源或 {@code v5notes-vault://app}）。
+     * 请求 {@code app=vault} 时使用；未配置时回退 {@link #clientAddress} 并附加 {@code app=vault}。
+     */
+    private String vaultClientAddress;
 
     /**
      * 授权类型

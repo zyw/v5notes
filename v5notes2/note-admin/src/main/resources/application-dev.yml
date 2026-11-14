@@ -178,10 +178,11 @@ sms:
 
 --- # 三方授权
 justauth:
-  # 回调地址怎么配（请只改下面两个基址，不要靠 type.*.redirect-uri 区分端）：
+  # 回调地址怎么配（请只改下面基址，不要靠 type.*.redirect-uri 区分端）：
   #   1) 请求带 app=admin（默认）→ {address}/social-callback?source={平台}
   #   2) 请求带 app=client       → {client-address}/social-callback?source={平台}
-  #   3) type.*.redirect-uri     → 仅当 address 与 client-address 都未配置时的兜底，可省略
+  #   3) 请求带 app=vault        → {vault-client-address}/social-callback?source={平台}&app=vault
+  #   4) type.*.redirect-uri     → 仅当 address 与 client-address 都未配置时的兜底，可省略
   # 向 Gitee/GitHub 等登记回调时，按实际用到的端分别登记上述拼装结果。
   # 管理端前端地址
   address: http://localhost:80
@@ -189,6 +190,8 @@ justauth:
   # 不要指向 Vite/SPA：客户端不做浏览器换票，也不在 SPA 里写 v5notes:// 唤起
   # 国内访问 GitHub 换票时，可按 JustAuth 文档为对应平台配置 httpConfig 代理
   client-address: http://127.0.0.1:8088
+  # Vault 客户端：同一落地页 + app=vault → 唤起 v5notes-vault://；亦可直接 v5notes-vault://app
+  vault-client-address: http://127.0.0.1:8088
   type:
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:a27e9fa3f58a199995b366abc2632e4448f8680c97b45bce86b5cf27590bcbe5}
