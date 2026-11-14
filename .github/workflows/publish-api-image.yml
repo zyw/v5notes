@@ -1,10 +1,11 @@
 name: Publish v5notes2 API image
 
+# 创建并发布 GitHub Release 时打包推送 API 镜像；也可在 Actions 里手动跑。
+# 版本号从 Release tag 解析：v2.0.0 / 2.0.0 → 镜像标签 2.0.0。
+
 on:
-  push:
-    tags:
-      # Avoid the existing desktop update workflow's v* tag pattern.
-      - 'api-v5notes2-*'
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -12,9 +13,7 @@ permissions:
 
 jobs:
   publish:
-    if: >-
-      github.repository == 'zyw/v5notes' &&
-      (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    if: github.repository == 'zyw/v5notes'
     runs-on: ubuntu-latest
     env:
       IMAGE: onedev.v5ai.xin/docker-imgs/v5notes2-api
@@ -51,16 +50,27 @@ jobs:
 
       - name: Set image tags
         id: image
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: |
           tags="$IMAGE:sha-$GITHUB_SHA"
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            version="${GITHUB_REF_NAME#api-v5notes2-}"
+          raw_tag="${RELEASE_TAG:-}"
+          if [[ -z "$raw_tag" && "$GITHUB_REF_TYPE" == "tag" ]]; then
+            raw_tag="$GITHUB_REF_NAME"
+          fi
+          if [[ -n "$raw_tag" ]]; then
+            version="$raw_tag"
+            version="${version#api-v5notes2-}"
+            version="${version#v}"
             if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo 'Expected a tag such as api-v5notes2-2.0.0' >&2
+              echo "Release tag '$raw_tag' 无法解析为 x.y.z（支持 v2.0.0、2.0.0）。" >&2
               exit 1
             fi
             tags="$tags,$IMAGE:$version"
+            echo "将推送版本标签: $IMAGE:$version"
+          else
+            echo "手动运行且未选 tag，只推送: $IMAGE:sha-$GITHUB_SHA"
           fi
           printf 'tags=%s\n' "$tags" >> "$GITHUB_OUTPUT"
 
