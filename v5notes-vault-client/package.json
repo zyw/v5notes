@@ -17,10 +17,13 @@
     "@v5md/core": "file:vendor/v5md/v5md-core-0.0.4.tgz",
     "@v5md/view": "file:vendor/v5md/v5md-view-0.0.4.tgz",
     "@v5md/vue": "file:vendor/v5md/v5md-vue-0.0.4.tgz",
+    "crypto-js": "^4.2.0",
+    "jsencrypt": "^3.5.4",
     "vue": "^3.5.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^5.2.0",
     "typescript": "^5.9.0",

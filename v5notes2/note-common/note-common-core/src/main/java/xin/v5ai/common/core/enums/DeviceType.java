@@ -23,6 +23,11 @@ public enum DeviceType {
     CLIENT("client"),
 
     /**
+     * Vault 桌面客户端。只允许 {@code cli_user} 登录；与 {@link #CLIENT} 共用用户类型，独立 deviceType / deep link。
+     */
+    VAULT_CLIENT("vault_client"),
+
+    /**
      * pc端（历史设备类型，等同管理端）
      */
     PC("pc"),

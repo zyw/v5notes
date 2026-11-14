@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Phase 2 local vault: dialog + scoped fs + recursive watch",
+  "description": "Phase 3 vault: dialog + scoped fs + watch + deep link + external OAuth URL",
   "windows": ["main"],
   "permissions": [
     "core:default",

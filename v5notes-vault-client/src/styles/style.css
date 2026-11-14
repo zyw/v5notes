@@ -719,3 +719,148 @@ code {
 .compact-choice {
   padding: 10px 12px;
 }
+
+.account-chip {
+  margin-left: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reauth-banner .linkish {
+  display: inline;
+  padding: 0;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dual-product {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+}
+
+.settings-help.tight { margin-bottom: 10px; }
+
+.server-row {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.custom-server {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.custom-server input,
+.login-form input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-ui);
+}
+
+.login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+}
+
+.password-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.login-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.social-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inline-error {
+  margin: 0;
+  color: var(--danger);
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+}
+
+.account-card {
+  display: grid;
+  gap: 16px;
+}
+
+.account-identity {
+  display: grid;
+  gap: 4px;
+  font-family: var(--font-ui);
+}
+
+.account-identity strong { font-size: 1.05rem; }
+.account-identity span { color: var(--muted); font-size: 0.88rem; }
+
+.plan-stub h3,
+.sync-guide h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.plan-grid {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+}
+
+.plan-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.plan-grid dt { color: var(--muted); }
+.plan-grid dd { margin: 0; }
+.plan-grid .muted,
+.settings-help .muted { color: var(--muted); }
+.plan-grid .warn { color: var(--danger); margin-left: 6px; }
+
+.ghost.compact {
+  padding: 0 12px;
+  min-height: 40px;
+}
+
+@media (max-width: 560px) {
+  .custom-server,
+  .password-row { grid-template-columns: 1fr; }
+}

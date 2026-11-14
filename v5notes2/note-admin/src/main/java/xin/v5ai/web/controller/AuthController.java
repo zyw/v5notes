@@ -163,14 +163,21 @@ public class AuthController {
     }
 
     /**
-     * 按登录客户端判断社交回调端：笔记 client → client，其余 → admin。
+     * 按登录客户端判断社交回调端：Vault → vault，笔记 client → client，其余 → admin。
      */
     private String resolveSocialApp(String clientId) {
         if (StringUtils.isBlank(clientId)) {
             return "admin";
         }
         SysClientVo client = clientService.queryByClientId(clientId);
-        if (client != null && ("client".equals(client.getDeviceType()) || "pc_client".equals(client.getDeviceType()))) {
+        if (client == null) {
+            return "admin";
+        }
+        String deviceType = client.getDeviceType();
+        if ("vault_client".equals(deviceType)) {
+            return "vault";
+        }
+        if ("client".equals(deviceType) || "pc_client".equals(deviceType)) {
             return "client";
         }
         return "admin";

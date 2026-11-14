@@ -118,7 +118,9 @@ public class SocialAuthStrategy implements IAuthStrategy {
 
     private static boolean isClientDevice(SysClientVo client) {
         String deviceType = client == null ? null : client.getDeviceType();
-        return DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType);
+        return DeviceType.CLIENT.getDevice().equals(deviceType)
+            || DeviceType.VAULT_CLIENT.getDevice().equals(deviceType)
+            || "pc_client".equals(deviceType);
     }
 
     /** 按小写 source 查 authId；兼容历史 JustAuth 枚举名大写（如 GITEE + uuid）。 */
