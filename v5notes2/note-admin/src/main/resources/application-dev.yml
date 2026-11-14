@@ -187,15 +187,9 @@ justauth:
   address: http://localhost:80
   # 笔记客户端回调基址：指向 v5notes-oauth-landing（HTTPS 中转唤起桌面）；或平台允许时用 v5notes://app
   # 不要指向 Vite/SPA：客户端不做浏览器换票，也不在 SPA 里写 v5notes:// 唤起
-  # 国内访问 Google/GitHub 换票时，可按 JustAuth 文档为对应平台配置 httpConfig 代理
+  # 国内访问 GitHub 换票时，可按 JustAuth 文档为对应平台配置 httpConfig 代理
   client-address: http://127.0.0.1:8088
   type:
-    zhihu:
-      # 知乎开放平台 app_id / app_key（映射到 JustAuth client-id / client-secret）
-      client-id: ${V5NOTES_ZHIHU_CLIENT_ID:10**********6}
-      client-secret: ${V5NOTES_ZHIHU_CLIENT_SECRET:1f7d08**********5b7**********29e}
-      # 兜底；已配置 address/client-address 时运行时不会用到本字段
-      redirect-uri: ${justauth.address}/social-callback?source=zhihu
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:a27e9fa3f58a199995b366abc2632e4448f8680c97b45bce86b5cf27590bcbe5}
       client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:917ed393687424caa4884f0850557122c20b74f26a9638575a7b816bf55c4fa2}
@@ -209,9 +203,3 @@ justauth:
       # 兜底；已配置 address/client-address 时运行时不会用到本字段
       redirect-uri: ${justauth.address}/social-callback?source=github
       scopes: [user, user:email]
-    google:
-      client-id: ${V5NOTES_GOOGLE_CLIENT_ID:10**********6}
-      client-secret: ${V5NOTES_GOOGLE_CLIENT_SECRET:1f7d08**********5b7**********29e}
-      # 兜底；已配置 address/client-address 时运行时不会用到本字段
-      redirect-uri: ${justauth.address}/social-callback?source=google
-      scopes: [openid, email, profile]

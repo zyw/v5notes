@@ -213,9 +213,8 @@ public class SysRegisterService {
     static String socialUserName(String source, String uuid) {
         String prefix = switch (StringUtils.blankToDefault(source, "").toLowerCase()) {
             case "gitee" -> "gt_";
-            case "zhihu" -> "zh_";
-            case "wechat_open" -> "wx_";
             case "github" -> "gh_";
+            case "wechat_open" -> "wx_";
             case "google" -> "gg_";
             default -> {
                 String cleaned = StringUtils.blankToDefault(source, "s").replaceAll("[^a-zA-Z0-9]", "");

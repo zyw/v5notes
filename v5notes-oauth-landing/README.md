@@ -40,10 +40,8 @@ justauth:
 
 各 OAuth 应用登记客户端 redirect，例如：
 
-- `https://oauth.example.com/social-callback?source=zhihu`
 - `https://oauth.example.com/social-callback?source=gitee`
 - `https://oauth.example.com/social-callback?source=github`
-- `https://oauth.example.com/social-callback?source=google`
 
 ## 部署
 

@@ -424,8 +424,8 @@ Docker Compose 使用 `v5notes2/docker/.env`，变量名见 [env.example](v5note
 | `V5NOTES_MAIL_ENABLED` / `HOST` / `PORT` / `FROM` / `USER` / `PASSWORD` | SMTP |
 | `V5NOTES_SMS_ALIBABA_*` | 阿里云短信 |
 | `V5NOTES_SMS_TENCENT_*` | 腾讯云短信 |
-| `V5NOTES_ZHIHU_CLIENT_ID` / `CLIENT_SECRET` | 知乎登录（app_id / app_key） |
 | `V5NOTES_GITEE_CLIENT_ID` / `CLIENT_SECRET` | Gitee 登录 |
+| `V5NOTES_GITHUB_CLIENT_ID` / `CLIENT_SECRET` | GitHub 登录 |
 
 字段加密还可设置 `V5NOTES_MYBATIS_ENCRYPTOR_PASSWORD`、`PUBLIC_KEY`、`PRIVATE_KEY`。
 

@@ -485,77 +485,95 @@
   transition: color .16s ease, gap .16s ease;
 }
 .login-switch:hover { color: var(--accent); gap: 8px; }
+/* 第三方登录：与管理端 login.vue .alt / .prov 对齐 */
 .login-social {
-  display: grid;
-  gap: 10px;
-  margin-top: 2px;
+  margin-top: 12px;
 }
 .login-social-hint {
   display: flex;
   align-items: center;
   gap: 12px;
+  color: #8a9991;
   font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: .02em;
-  color: var(--muted);
+  font-weight: 400;
+  line-height: 1;
 }
 .login-social-hint::before,
 .login-social-hint::after {
   flex: 1;
   height: 1px;
-  background: color-mix(in srgb, var(--line) 88%, transparent);
+  background: #edf1ee;
   content: '';
 }
 .login-social-prov {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 4px;
   width: 100%;
+  margin-top: 12px;
 }
 .login-social-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  padding: 7px 2px;
+  padding: 6px 10px;
   border: 0;
   border-radius: 7px;
   background: none;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+  color: #5f7067;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
   line-height: 1;
   cursor: pointer;
   transition: color .16s ease, background .16s ease;
 }
 .login-social-btn span {
+  color: #5f7067;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .login-social-btn .social-provider-icon {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
   flex: none;
   color: inherit;
 }
 .login-social-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--accent);
+  background: #e8f2ec;
+  color: #17624a;
+}
+.login-social-btn:hover:not(:disabled) span {
+  color: #17624a;
 }
 .login-social-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-@media (max-width: 420px) {
-  .login-social-prov {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 6px;
-  }
-  .login-social-btn {
-    justify-content: flex-start;
-    padding: 7px 8px;
-  }
+.login-screen[data-theme='dark'] .login-social-hint {
+  color: #7f948a;
+}
+.login-screen[data-theme='dark'] .login-social-hint::before,
+.login-screen[data-theme='dark'] .login-social-hint::after {
+  background: #1e2d25;
+}
+.login-screen[data-theme='dark'] .login-social-btn,
+.login-screen[data-theme='dark'] .login-social-btn span {
+  color: #9fb3a8;
+}
+.login-screen[data-theme='dark'] .login-social-btn:hover:not(:disabled) {
+  background: #17271f;
+  color: #7fd6b0;
+}
+.login-screen[data-theme='dark'] .login-social-btn:hover:not(:disabled) span {
+  color: #7fd6b0;
 }
 .login-error { margin: 0; font-size: 12px; line-height: 1.6; color: var(--danger); }
 

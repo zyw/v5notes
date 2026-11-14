@@ -40,10 +40,8 @@ export default {
     socialOff: 'Third-party sign-in is disabled on this server',
     langAria: 'Language',
     socialShort: {
-      zhihu: 'Zhihu',
       gitee: 'Gitee',
-      github: 'GitHub',
-      google: 'Google'
+      github: 'GitHub'
     },
     scene: {
       line1: 'Scattered notes,',
@@ -70,10 +68,8 @@ export default {
       }
     },
     social: {
-      zhihu: 'Zhihu Login',
       gitee: 'Gitee Login',
-      github: 'GitHub Login',
-      google: 'Google Login'
+      github: 'GitHub Login'
     }
   },
   // 注册页面国际化

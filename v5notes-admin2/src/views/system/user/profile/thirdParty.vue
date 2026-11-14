@@ -70,10 +70,8 @@ const socialLoginEnabled = ref(false);
 
 /** 与登录页、后端 justauth 配置一致 */
 const providers = [
-  { source: 'zhihu', icon: 'zhihu', nameKey: 'system.profile.zhihu', authKey: 'system.profile.zhihuAuth' },
   { source: 'gitee', icon: 'gitee', nameKey: 'system.profile.gitee', authKey: 'system.profile.giteeAuth' },
-  { source: 'github', icon: 'github', nameKey: 'system.profile.github', authKey: 'system.profile.githubAuth' },
-  { source: 'google', icon: 'google', nameKey: 'system.profile.google', authKey: 'system.profile.googleAuth' }
+  { source: 'github', icon: 'github', nameKey: 'system.profile.github', authKey: 'system.profile.githubAuth' }
 ] as const;
 
 const unlockAuth = (row: any) => {

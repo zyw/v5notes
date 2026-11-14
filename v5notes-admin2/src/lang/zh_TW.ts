@@ -38,10 +38,8 @@ export default {
     socialOff: '目前伺服器未開啟第三方登入',
     langAria: '語言切換',
     socialShort: {
-      zhihu: '知乎',
       gitee: 'Gitee',
-      github: 'GitHub',
-      google: 'Google'
+      github: 'GitHub'
     },
     scene: {
       line1: '把零散的筆記，',
@@ -68,10 +66,8 @@ export default {
       }
     },
     social: {
-      zhihu: '知乎登入',
       gitee: 'Gitee登入',
-      github: 'GitHub登入',
-      google: 'Google登入'
+      github: 'GitHub登入'
     }
   },
   register: {

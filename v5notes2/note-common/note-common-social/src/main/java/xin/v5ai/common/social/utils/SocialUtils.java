@@ -12,7 +12,6 @@ import xin.v5ai.common.core.utils.SpringUtils;
 import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.social.config.properties.SocialLoginConfigProperties;
 import xin.v5ai.common.social.config.properties.SocialProperties;
-import xin.v5ai.common.social.request.AuthZhihuRequest;
 
 /**
  * 认证授权工具类
@@ -84,7 +83,6 @@ public class SocialUtils {
                 new AuthAlipayRequest(builder.build(), socialProperties.getType().get("alipay_wallet").getAlipayPublicKey(), STATE_CACHE);
             case "qq" -> new AuthQqRequest(builder.build(), STATE_CACHE);
             case "wechat_open" -> new AuthWeChatOpenRequest(builder.build(), STATE_CACHE);
-            case "zhihu" -> new AuthZhihuRequest(builder.build(), STATE_CACHE);
             case "taobao" -> new AuthTaobaoRequest(builder.build(), STATE_CACHE);
             case "douyin" -> new AuthDouyinRequest(builder.build(), STATE_CACHE);
             case "linkedin" -> new AuthLinkedinRequest(builder.build(), STATE_CACHE);

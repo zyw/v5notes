@@ -40,11 +40,9 @@
 
 环境变量（示例）：
 
-- `V5NOTES_ZHIHU_CLIENT_ID` / `V5NOTES_ZHIHU_CLIENT_SECRET`（知乎开放平台 app_id / app_key）
 - `V5NOTES_GITEE_CLIENT_ID` / `V5NOTES_GITEE_CLIENT_SECRET`
 - `V5NOTES_GITHUB_CLIENT_ID` / `V5NOTES_GITHUB_CLIENT_SECRET`
-- `V5NOTES_GOOGLE_CLIENT_ID` / `V5NOTES_GOOGLE_CLIENT_SECRET`
 
 ## 代理
 
-若 API 部署在国内、需访问 Google / GitHub 换票，按 JustAuth 文档为对应平台配置 `httpConfig` 代理（见 JustAuth Google 指南）。
+若 API 部署在国内、需访问 GitHub 换票，按 JustAuth 文档为对应平台配置 `httpConfig` 代理。

@@ -38,10 +38,8 @@ export default {
     socialOff: '当前服务器未开启第三方登录',
     langAria: '语言切换',
     socialShort: {
-      zhihu: '知乎',
       gitee: 'Gitee',
-      github: 'GitHub',
-      google: 'Google'
+      github: 'GitHub'
     },
     scene: {
       line1: '把零散的笔记，',
@@ -68,10 +66,8 @@ export default {
       }
     },
     social: {
-      zhihu: '知乎登录',
       gitee: 'Gitee登录',
-      github: 'GitHub登录',
-      google: 'Google登录'
+      github: 'GitHub登录'
     }
   },
   // 注册页面国际化
