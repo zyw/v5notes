@@ -30,6 +30,22 @@
             <groupId>xin.v5ai</groupId>
             <artifactId>note-common-security</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-common-mybatis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-common-satoken</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

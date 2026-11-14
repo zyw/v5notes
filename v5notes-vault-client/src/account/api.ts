@@ -2,7 +2,7 @@ import { DEFAULT_CLIENT_ID, DEFAULT_LOGIN_PUBLIC_KEY, DEVICE_TYPE } from './cons
 import { encryptLogin } from './loginCrypto'
 import { createRequest, type RequestConnection } from './request'
 import type { AccountPlan } from './quota'
-import { mapCloudQuotaToPlan } from './quota'
+import { mapCloudQuotaToPlan, mapVaultQuota } from './quota'
 
 export interface UserProfile {
   userId: string
@@ -128,25 +128,45 @@ export function createAccountApi(
     registerEnabled: async () => Boolean(await call<boolean>('/auth/client/register-enabled', {}, false)),
     /**
      * 套餐形态 B：一账号双配额字段。
-     * 现网仅有 Cloud 试用配额 API；Vault sync 桶先 stub，待 Phase 4/5 接 `/vault/v1/quota`。
+     * Cloud → `/client/account/quota`；Vault sync → `/vault/v1/quota`（超额仍允许 pull）。
      */
     plan: async (): Promise<AccountPlan> => {
+      let cloud: {
+        limited: boolean
+        expired: boolean
+        usedBytes: number
+        quotaBytes: number
+        expireAt?: string | null
+        planName?: string | null
+      } | null = null
       try {
-        const cloud = await call<{
+        cloud = await call<{
           limited: boolean
           expired: boolean
           usedBytes: number
-          noteBytes?: number
-          fileBytes?: number
           quotaBytes: number
           expireAt?: string | null
           planName?: string | null
-          planExpireAt?: string | null
         }>('/client/account/quota')
-        return mapCloudQuotaToPlan(cloud)
       } catch {
-        return mapCloudQuotaToPlan(null)
+        cloud = null
       }
+      let vaultSync = mapVaultQuota(null)
+      try {
+        vaultSync = mapVaultQuota(await call<{
+          available?: boolean
+          usedBytes?: number
+          quotaBytes?: number
+          deviceLimit?: number
+          deviceUsed?: number
+          planName?: string | null
+          overQuota?: boolean
+          maxFileBytes?: number
+        }>('/vault/v1/quota'))
+      } catch {
+        // Phase 4 后端未部署时保持 stub
+      }
+      return mapCloudQuotaToPlan(cloud, vaultSync)
     },
   }
 }

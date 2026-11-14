@@ -1,0 +1,75 @@
+package xin.v5ai.vault.controller;
+
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.common.core.constant.HttpStatus;
+import xin.v5ai.common.core.domain.R;
+import xin.v5ai.common.satoken.utils.LoginHelper;
+import xin.v5ai.common.web.core.BaseController;
+import xin.v5ai.vault.domain.bo.VaultFileDeleteBo;
+import xin.v5ai.vault.domain.bo.VaultFilePutBo;
+import xin.v5ai.vault.domain.bo.VaultRenameBo;
+import xin.v5ai.vault.domain.vo.VaultFileContentVo;
+import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
+import xin.v5ai.vault.domain.vo.VaultManifestVo;
+import xin.v5ai.vault.exception.VaultConflictException;
+import xin.v5ai.vault.service.IVaultSyncService;
+
+@SaCheckLogin
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/vault/v1/vaults/{vaultId}")
+public class VaultFileController extends BaseController {
+
+    private final IVaultSyncService vaultSyncService;
+
+    @GetMapping("/manifest")
+    public R<VaultManifestVo> manifest(@PathVariable String vaultId,
+                                       @RequestParam(value = "since", required = false) String since) {
+        return R.ok(vaultSyncService.manifest(LoginHelper.getUserId(), Long.parseLong(vaultId), since));
+    }
+
+    @PutMapping("/files")
+    public R<?> putFile(@PathVariable String vaultId, @Valid @RequestBody VaultFilePutBo bo) {
+        try {
+            return R.ok(vaultSyncService.putFile(LoginHelper.getUserId(), Long.parseLong(vaultId), bo));
+        } catch (VaultConflictException ex) {
+            return R.fail(HttpStatus.CONFLICT, ex.getMessage(), ex.getConflict());
+        }
+    }
+
+    @GetMapping("/files/content")
+    public R<VaultFileContentVo> content(@PathVariable String vaultId,
+                                         @RequestParam("path") String path,
+                                         @RequestParam(value = "rev", required = false) Long rev) {
+        return R.ok(vaultSyncService.getContent(LoginHelper.getUserId(), Long.parseLong(vaultId), path, rev));
+    }
+
+    @DeleteMapping("/files")
+    public R<?> deleteFile(@PathVariable String vaultId, @Valid @RequestBody VaultFileDeleteBo bo) {
+        try {
+            return R.ok(vaultSyncService.deleteFile(LoginHelper.getUserId(), Long.parseLong(vaultId), bo));
+        } catch (VaultConflictException ex) {
+            return R.fail(HttpStatus.CONFLICT, ex.getMessage(), ex.getConflict());
+        }
+    }
+
+    @PostMapping("/renames")
+    public R<?> rename(@PathVariable String vaultId, @Valid @RequestBody VaultRenameBo bo) {
+        try {
+            return R.ok(vaultSyncService.rename(LoginHelper.getUserId(), Long.parseLong(vaultId), bo));
+        } catch (VaultConflictException ex) {
+            return R.fail(HttpStatus.CONFLICT, ex.getMessage(), ex.getConflict());
+        }
+    }
+}

@@ -101,7 +101,7 @@ onUnmounted(() => {
         @error="banner = $event"
         @dirty-change="workspaceDirty = $event"
       />
-      <SettingsView v-else :account="account" />
+      <SettingsView v-else :account="account" :vault="vault" />
     </main>
   </div>
 </template>

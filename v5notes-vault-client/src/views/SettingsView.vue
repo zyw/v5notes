@@ -11,9 +11,11 @@ import {
   type BuiltinThemeId,
   type ColorMode,
 } from '../appearance/themes'
+import type { OpenedVault } from '../vault/types'
 
 defineProps<{
   account: AccountState
+  vault?: OpenedVault | null
 }>()
 
 const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
@@ -41,7 +43,7 @@ function setColorMode(colorMode: ColorMode) {
       本地 Vault 优先。账号登录可选，用于套餐与后续同步；未登录不影响建库与编辑。
     </p>
 
-    <AccountPanel :account="account" />
+    <AccountPanel :account="account" :vault="vault" />
 
     <section class="settings-block" aria-labelledby="appearance-title">
       <h2 id="appearance-title">外观</h2>
@@ -94,7 +96,7 @@ function setColorMode(colorMode: ColorMode) {
       </div>
       <div>
         <dt>同步</dt>
-        <dd>Phase 4 SyncEngine（本阶段仅账号与引导）</dd>
+        <dd>Phase 4 · <code>/vault/v1</code> 增量 + SyncEngine（冲突副本）</dd>
       </div>
     </dl>
   </section>
