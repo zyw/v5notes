@@ -150,8 +150,8 @@
 
 | 阶段 | 策略 |
 |---|---|
-| **MVP（可选）** | 「首次绑定：扫描上传」+ 之后仍走增量接口（避免养成整库替换习惯） |
-| **正式版** | **文件级增量同步**（path 为键，content hash + rev） |
+| **MVP（可选）** | 「首次绑定：扫描上传」= **仅 bootstrap**：客户端扫盘后**逐文件走增量 `PUT/batch`** 写入；**不是**整库替换 API，也不静默全量覆盖已有云端内容（权威规则见 §9.3） |
+| **正式版** | **文件级增量同步**（同步身份键见 §6.2；content hash + rev） |
 | **不做** | 每次同步 zip 整库覆盖（只可作「灾难恢复导出」，不作日常 Sync） |
 
 ---
@@ -179,13 +179,21 @@ MyVault/                          # 用户自选根
 
 **笔记真相：** 文件系统中的 `.md`（及附件）。  
 **索引/同步状态：** `.v5notes/` 可重建；丢了最多全量重扫，不应丢正文。  
-**插件：** 启用意图与 `data.json` 可随库同步；插件代码默认各端自装（详见插件设计 §3.3）。
+**插件：** 启用意图与 `data.json` 可随库同步；插件代码默认各端自装；**永不同步**项见 §6.4（详见插件设计 §3.3）。
 
-### 6.2 本地 ID
+### 6.2 本地 ID（跨平台同步身份 — Phase 0 冻结）
 
-- **稳定键：** Vault 相对路径，如 `工作/周报.md`（规范化：NFC、`/`、大小写策略按平台约定）。
-- **云端键：** `fileId`（雪花字符串）在首次上传后写入 `sync-state`，**不要**要求用户看见。
-- 重命名 = 本地 path 变更 + 同步层发 `rename` 或 `delete+create`（优先显式 rename，保历史）。
+同步层对每个库内文件使用**稳定身份键**；展示名与磁盘名可保留用户大小写，但身份比较必须跨平台一致。
+
+| 规则 | 冻结值 |
+|---|---|
+| 路径形态 | Vault 根下的相对路径；段分隔一律 `/`（入库前把 `\` 规范为 `/`） |
+| Unicode | 路径段与文件名一律 **NFC** 规范化后再比较 / 哈希 |
+| **大小写** | **同步身份键 = NFC + 按段 Unicode case-fold（locale-independent）后的相对 path**；磁盘与 UI 保留用户原始大小写作「展示 path」。云端 `path` 存展示 path；冲突检测与去重一律用身份键。同库内禁止两个仅大小写不同的展示 path 并存（Win/macOS 默认卷上本就会撞；Linux 上客户端在扫盘时拒绝第二者并提示） |
+| 禁止名 | 拒绝 Windows 保留基名（`CON`/`PRN`/`AUX`/`NUL`/`COM1`–`COM9`/`LPT1`–`LPT9`，大小写不敏感）及尾部空格/`.`；拒绝控制字符与 `<>:"\|?*` |
+| Symlink | **默认不跟随出库**（符号链接指向库外 → 跳过并记警告）；库内 symlink 不作为独立同步实体 |
+| 云端键 | `fileId`（雪花**字符串**）在首次成功上传后写入本地 `sync-state`；**用户不可见** |
+| 重命名 | 本地 path 变更 → 同步层发显式 `rename`（**保留同一 `fileId`**）；禁止默默拆成无关联的 delete+create（否则丢版本历史）。仅当对端无 rename 能力/迁移脚本时才允许 delete+create（新 `fileId`） |
 
 ### 6.3 客户端模块（深模块切分）
 
@@ -201,6 +209,26 @@ MyVault/                          # 用户自选根
 
 UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTTP；插件只经 `PluginHost` 注入的 `@v5notes/vault-plugin-api` 访问能力。
 
+### 6.4 Sync 路径分类（`.v5notes/` 包含 / 排除硬表）
+
+**适用范围：** Phase 4 起 SyncEngine 即按本表过滤；**与 PluginHost（Phase 6）是否已实现无关**——配置意图文件在 Phase 4 就可进 Sync。插件文档 §3.3 必须与本表一致，冲突以本表为准。
+
+| 路径 / 类别 | Sync | 说明 |
+|---|---|---|
+| 用户 `.md` / 附件（库根下非点目录） | **默认同步开** | 正文真相 |
+| `.v5notes/appearance.json` | **默认同步开** | 当前主题 / 色模式意图 |
+| `.v5notes/plugins/community-plugins.json` | **默认同步开** | 启用列表与版本钉扎意图 |
+| `.v5notes/themes/community-themes.json` | **默认同步开** | 已装主题意图 |
+| `.v5notes/plugins/*/data.json`、`.v5notes/themes/*/data.json` | **默认同步开** | 插件/主题设置意图 |
+| `.v5notes/plugins/*/main.js`、`styles.css`、主题 `theme.css` 等代码二进制 | **默认同步关** | 各端自装；仅同步启用/选中意图 |
+| `.v5notes/sync-state.json` | **永不同步** | 本机 cursor / baseRev / dirty / 设备视角 |
+| `.v5notes/index.sqlite`（及 FTS 旁路文件） | **永不同步** | 可重建索引 |
+| `.v5notes/vault.json` 中的本地设备字段（`deviceId`、本机路径书签、本地 salt 缓存等） | **永不同步** | 可同步的仅限显式列出的绑定元数据（如 `cloudVaultId`）；实现须字段级白名单，默认拒绝 |
+| `.v5notes/trash/**`（本地回收站） | **永不同步** | 与云端 tombstone / 云 trash 分开；他端以 tombstone 为准删文件 |
+| 其它未列名的 `.v5notes/**` | **默认永不同步** | 新增路径须先改本表再进 Sync |
+
+误同步 `sync-state` / 索引 / 设备字段会导致跨设备互相踩踏或「幽灵冲突」——视为协议级缺陷，禁止「先传着再说」。
+
 ---
 
 ## 7. Cloud Client：保持现架构
@@ -210,6 +238,8 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 - 套餐：限制笔记数、存储、协作等（现有或扩展 `client.account.*`）。
 
 与 Vault 的差异要写进产品文案，避免用户以为「两个 App 是同一份笔记」。
+
+**双产品边界（文案提前，不等 Phase 8）：** 自 Phase 3 起，登录相关 UI / 帮助中须有一句固定说明——同一账号可登录两个客户端，但 **Cloud 笔记与 Vault 同步库默认不是同一份数据**；「我的笔记在哪」指向当前产品（Cloud 在服务端目录树；Vault 在本机文件夹，可选同步）。完整帮助页可后置，**这一句不得缺席**。
 
 ---
 
@@ -228,8 +258,17 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 #### 核心资源
 
 - **Vault（云端库）：** 用户可有 1..N 个同步库（套餐限 N 与容量）。
-- **File：** 库内相对 path + 类型（note/asset/config）。
-- **Revision：** 单调 `rev`（或按文件 `version` + 全局 `syncToken`）。
+- **File：** 库内相对 **展示 path** + **身份键**（§6.2）+ 类型（note/asset/config）。
+- **Revision：** 每文件单调 `rev`；全局 **cursor 不透明、单调**（客户端只存字符串，禁止本地解析/回拨）。
+- **fileId / rename / tombstone（协议语义 — Phase 0 冻结）：**
+
+| 事件 | 语义 |
+|---|---|
+| 首次上传某身份键 | 分配新 `fileId`（雪花字符串）；写入本地 `sync-state` |
+| 显式 `rename` | **同一 `fileId`**；更新展示 path；历史版本跟 `fileId` |
+| tombstone（删除） | 保留 `fileId` + path 身份键一段时间供他端拉取；**tombstone 保留 ≥ 设备最长离线窗口（建议 ≥ 90 天，产品可调）**，过期后可 GC |
+| tombstone 后再创建**同身份键** path | **新 `fileId`**（视为新文件）；旧 tombstone 不再复活；版本历史不自动合并 |
+| 禁止 | 把「仅大小写不同」的 path 当成两个 `fileId`；把未声明的 delete+create 当成 rename |
 
 #### 推荐接口（增量）
 
@@ -239,15 +278,16 @@ GET    /vault/v1/vaults                 # 列表
 POST   /vault/v1/vaults/{id}/bind       # 设备绑定（deviceId, clientInfo）
 
 GET    /vault/v1/vaults/{id}/manifest?since=CURSOR
-       # 返回变更列表：upsert/delete/rename + remoteRev + contentHash + size
+       # 返回变更列表：upsert/delete/rename + fileId + remoteRev + contentHash + size
+       # CURSOR 不透明单调；空 cursor = 从初始快照起
 
-PUT    /vault/v1/vaults/{id}/files      # 上传/更新（path, baseRev, hash, body或blob）
+PUT    /vault/v1/vaults/{id}/files      # 上传/更新（path, fileId?, baseRev, hash, body或blob）
        # baseRev 冲突 → 409 + 服务端副本元数据
 
 POST   /vault/v1/vaults/{id}/files/batch
 DELETE /vault/v1/vaults/{id}/files      # path + baseRev（墓碑）
 
-POST   /vault/v1/vaults/{id}/renames    # from → to + baseRev
+POST   /vault/v1/vaults/{id}/renames    # from → to + baseRev（保留 fileId）
 
 GET    /vault/v1/vaults/{id}/files/content?path=&rev=
 
@@ -256,6 +296,8 @@ GET    /vault/v1/quota                  # 套餐剩余容量、设备数
 
 认证：与现网同一 OAuth2/Sa-Token；`deviceType` 可用 `vault_client`。  
 **不要**复用 `/client/notes` 的「建笔记就写 note 表当权威」语义给 Vault——否则路径模型与 ID 模型打架。
+
+**Catalog 与 sync 前缀解耦：** 插件/主题目录 API **版本与破坏性变更独立于** `note-vault-sync` 文件协议。Phase 0 二选一冻结：（A）独立前缀如 `/vault/v1/catalog/...` 且文档标明「非文件 sync 资源」；或（B）同进程旁路路由，但仍使用**独立版本协商头/字段**，sync 协议 bump 不得强制 catalog 客户端升级。禁止把 catalog 响应塞进文件 `manifest`。
 
 #### 存储
 
@@ -280,6 +322,15 @@ POST 购买套餐、Webhook
 | 版本历史保留天数 | 可选 | ✓ |
 | 第三方登录 | ✓ | ✓（仅账号） |
 
+**售卖形态与超额（Phase 0 必须勾选冻结，见 §13 Phase 0）：**
+
+| 开放题 | 可选方案（择一写入计费方案） |
+|---|---|
+| 套餐售卖 | **A)** 两个 SKU（Cloud 笔记套餐 / Vault 同步套餐）可独立购买；**B)** 一账号两配额字段，单一商品内含两桶额度 |
+| 同步超额 push | 一律拒绝 push（`402/403` + 可读错误码）；本地编辑不阻断 |
+| 同步超额 pull | **冻结建议：仍允许只读 pull**（已有云端变更可拉取；避免「超额后多设备永久分叉」）；产品若改「超额双禁」须显式改本文与 Phase 0 勾选 |
+| 设备数超限 | 拒绝新 `bind`；已绑定设备可继续 sync，直到用户踢设备或升级 |
+
 ---
 
 ## 9. SyncEngine 详细流程
@@ -301,14 +352,46 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 
 ### 9.3 冲突（建议默认，贴近 Obsidian 可理解性）
 
-- 自动生成：`周报.md` + `周报 (冲突 yyyy-mm-dd).md`（远端或本地副本之一改名保留）。
-- UI 提供对比；**禁止**默默选一边覆盖。
-- 可选高级：同一文件 3-way merge（后期）。
+**原则：** 冲突默认生成冲突副本；**禁止**静默选一边覆盖。UI 可提供对比；3-way merge 为后期可选项。
+
+#### 冲突矩阵（超出「双端改正文」）
+
+| 场景 | 默认处理 |
+|---|---|
+| 双端都改内容（local dirty ∧ remoteRev > baseRev） | 保留一方为原 path；另一方写成冲突副本；两边内容都不丢 |
+| 一端删、一端改 | **改胜于未同步的删意图**：保留有内容的一侧为原 path；删除侧若已推 tombstone 而另一端随后 push 内容 → 409/冲突流程，生成副本或按「复活为新 fileId」策略显式提示，**禁止静默丢掉有内容一侧** |
+| 一端 rename、一端改内容 | 应用 rename 到权威 path；内容以冲突副本规则合并（改后的正文落到新 path 或冲突副本，不丢） |
+| 双端不同 rename（同 fileId / 同身份键） | 一方赢得目标 path（见下「命名」）；另一方的目标写成冲突副本文件名；两端 rename 意图都可见 |
+| 一端 rename、一端 delete | 同「删+改」：有内容/有 rename 目标的一侧优先保留；tombstone 与 rename 冲突走显式冲突副本，禁止静默丢 |
+
+#### 冲突副本命名
+
+- 模板：`{stem} (冲突 {yyyy-mm-dd} {HHmm} {deviceShort}).{ext}`  
+  例：`周报 (冲突 2026-11-14 1642 mac).md`
+- `{deviceShort}` = 本地 deviceId 短码（或主机名截断），避免多设备同日撞名。
+- 若目标名已存在：追加 `-2`、`-3`… 直至身份键唯一。
+- 冲突副本本身是普通本地文件：标记 dirty，随后按增量上传（新 `fileId`）。
+
+#### 冲突后 cursor / baseRev / dirty
+
+1. 拉取并落地远端权威版本（或本地保留版）到原 path 后：该 path 的 `baseRev = remoteRev`，`dirty = false`（若本地无未合并编辑）。
+2. 冲突副本：`baseRev` 空（新文件），`dirty = true`，待 push。
+3. 推进全局 `cursor` 至本次 manifest 返回值，**避免**因未 ack 远端 rev 而反复 409。
+4. 用户删除冲突副本或手动合并后，按普通编辑/删除进入下一轮 sync。
+
+#### 首次绑定 bootstrap 权威（扫描上传 ≠ 静默整库覆盖）
+
+| 情况 | 规则 |
+|---|---|
+| 云端库为空，本机首次 bind | 本机扫盘 → **逐文件增量 PUT/batch** 上传；创建云端权威 |
+| 云端已有内容，本机空库/新开库后 bind | **云端为准**：pull 全量到本地；**禁止**空本地扫盘把云端抹成空 |
+| 云端已有内容，本机也有文件（二次绑定/换机拷贝） | **禁止静默双向覆盖**。默认：**云端为权威基线** pull；本地仅存在于本机、云端无对应身份键的文件再增量上传；两边同身份键且内容 hash 不同 → 走 §9.3 冲突副本（本机副本改名保留），不得 zip 整库替换 |
+| 「扫描上传」文案 | 仅指 bootstrap 阶段的增量写入；**不是**整库替换 API（见 §5.3） |
 
 ### 9.4 删除与回收
 
-- 本地删除 → tombstone 同步；他端拉到后删文件。
-- 可选：本地 `.v5notes/trash` 保留 30 天（与云端 trash 分开配置）。
+- 本地删除 → tombstone 同步；他端拉到后删文件（本地可进 `.v5notes/trash`，**该目录永不同步**，见 §6.4）。
+- 可选：本地 `.v5notes/trash` 保留 30 天（与云端 trash / tombstone GC 分开配置）。
 
 ### 9.5 加密（分期）
 
@@ -353,10 +436,10 @@ v5notes/
 
 ## 12. 安全与权限
 
-- Vault Client：目录 ACL、路径穿越禁止（`..`）、符号链接策略（默认不跟随出库）。
-- Sync：所有 path 规范化后校验；单文件大小上限；速率限制。
-- 套餐超额：push 返回 `402/403` + 可读错误码；客户端只读拉仍可允许（产品定）。
-- Secret：仅 Account/Sync token；Vault 本地无长期密码存储（与现网一致）。
+- Vault Client：目录 ACL、路径穿越禁止（`..`）、符号链接策略（默认不跟随出库，见 §6.2）。
+- Sync：所有 path 按 §6.2 规范化后校验；单文件大小上限；速率限制；路径过滤服从 §6.4。
+- 套餐超额：**push** 返回 `402/403` + 可读错误码；**pull 默认仍允许**（只读拉取，见 §8.3）；本地编辑不因超额阻断。
+- Secret：仅 Account/Sync token；Vault 本地无长期密码存储（与现网一致）。**插件 API / bridge 永不暴露这些 token**（见插件设计 §6）。
 
 ---
 
@@ -383,10 +466,18 @@ Phase 0 脚手架/冻结
 
 **交付：** 可编译的空壳 `v5notes-vault-client` + 文档决策闭合。
 
-- [ ] 命名与边界已冻结（本文「命名冻结」+ 插件/主题/发布政策）  
+- [ ] 命名与边界已冻结（本文「命名冻结」+ 插件/主题/发布政策；**保留**：双客户端/双 API、本地权威、冲突副本、主题一等、第三方无发布）  
 - [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分  
-- [ ] 可选 monorepo：`packages/editor`、`account-sdk`、`ui-tokens` 接线方式定稿  
-- [ ] 套餐字段方案：`cloud_*` / `vault_sync_*` 分列（实现可晚于 Phase 3，方案先定）  
+- [ ] 工程形态：monorepo **或** 独立仓 + editor / account-sdk 引用方式定稿（影响脚手架，不影响产品语义）  
+- [ ] **同步身份：** §6.2 冻结（相对 path + NFC + case-fold 身份键 + 展示 path + 保留名 + symlink 不跟随出库）  
+- [ ] **Sync 包含/排除总表：** §6.4 冻结（含 `sync-state` / `index.sqlite` / 设备字段 / 本地 trash **永不同步**）  
+- [ ] **fileId / rename / tombstone / 同 path 重建：** §8.2 冻结  
+- [ ] **冲突矩阵 + bootstrap 权威：** §9.3 冻结（删改/改名/双 rename；冲突副本命名；cursor/baseRev/dirty；云端已有内容时禁止静默整库覆盖）  
+- [ ] 套餐字段：`cloud_*` / `vault_sync_*` 分列；**售卖形态**勾选 §8.3 的 A（双 SKU）或 B（一账号双配额）  
+- [ ] **超额 pull 政策：** 勾选「仍允许只读 pull」（默认）或显式改为双禁；设备数超限 = 拒新 bind  
+- [ ] **Catalog 前缀：** 独立于文件 sync 协议版本（§8.2 选项 A 或 B）  
+- [ ] **双产品一句话：** 登录/帮助最小文案定稿（§7；Cloud 与 Vault 数据默认不通）  
+- [ ] 插件 P1 对外承诺级别：权限代理 + Safe Mode，**不**承诺进程级沙箱（见插件设计 §6.2）  
 - [ ] 明确：Cloud 与 Vault **数据默认不通**；迁移靠显式工具（后置）  
 
 ### Phase 1 — 本地 Vault MVP（免登录）
@@ -417,6 +508,7 @@ Phase 0 脚手架/冻结
 - [ ] 接入 Account SDK（登录/注册；社交登录策略与 cloud 客户端对齐或复用后端）  
 - [ ] 设置页：账号、套餐状态、退出；token 仅内存/安全存储，不存密码  
 - [ ] 同步入口：未登录/无额度 → 引导注册购买；**不阻断**本地编辑  
+- [ ] 登录/设置中展示双产品边界一句（§7「我的笔记在哪」）  
 - [ ] `deviceType` / clientId：`vault_client`（与 cloud client 区分）  
 
 ### Phase 4 — `note-vault-sync` + SyncEngine（首版同步）
@@ -426,15 +518,16 @@ Phase 0 脚手架/冻结
 **后端（模块 `note-vault-sync`，前缀 `/vault/v1`）：**
 
 - [ ] Vault 创建/列表、设备绑定  
-- [ ] `manifest?since=`、单文件 up/down、tombstone、rename  
-- [ ] `baseRev` 冲突 → 409；配额查询  
+- [ ] `manifest?since=`、单文件 up/down、tombstone、rename（保留 `fileId`）  
+- [ ] `baseRev` 冲突 → 409；配额查询；超额 pull 政策按 §8.3  
 
 **客户端：**
 
-- [ ] `SyncEngine`：dirty 扫描、push/pull、cursor  
-- [ ] 冲突默认生成冲突副本（禁止静默覆盖）  
+- [ ] `SyncEngine`：dirty 扫描、push/pull、cursor；路径身份与过滤服从 §6.2 / §6.4  
+- [ ] **首次绑定 bootstrap** 仅增量写入（§5.3 / §9.3）；禁止整库替换 API / 静默全量覆盖  
+- [ ] 冲突默认生成冲突副本（矩阵见 §9.3；禁止静默覆盖）  
 - [ ] 同步状态 UI（进行中/失败/配额不足）  
-- [ ] 启用列表等「意图文件」同步策略按插件文档：代码二进制默认同步关  
+- [ ] **`.v5notes` 配置/意图同步规则在本 Phase 即生效**（§6.4），**不依赖** Phase 6 `PluginHost`；代码二进制默认同步关 
 
 ### Phase 5 — 同步硬化与附件
 
@@ -465,9 +558,9 @@ Phase 0 脚手架/冻结
 - [ ] `registerEditorExtension`（V5Editor 扩展点）、`MetadataCache` 基础  
 - [ ] `network:safe` + `networkAllowlist`（禁止静默全库外传、禁止发布管线）  
 - [ ] 本地「从文件夹安装」插件/主题  
-- [ ] Catalog（`kind=plugin|theme`）；审核/标签拒绝 publishing；签名校验（官方源）  
+- [ ] Catalog（`kind=plugin|theme`；前缀/版本独立于文件 sync，见 §8.2）；审核/标签拒绝 publishing；签名校验（官方源）  
 - [ ] 更多核心插件：反向链接等  
-- [ ] 启用意图与外观意图随库同步（二进制仍各端自装）  
+- [ ] 启用意图与外观意图随库同步已在 Phase 4 按 §6.4 落地；本 Phase 仅补齐宿主加载与各端自装二进制体验  
 
 ### Phase 8 — 官方增值与产品收尾（可选）
 

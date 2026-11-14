@@ -400,6 +400,7 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .conn-input:focus { outline: none; }
 .conn-input:disabled { color: #9aa49c; }
 .conn-check { position: relative; display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; color: #52665a; font-size: 11.5px; white-space: nowrap; cursor: pointer; }
+.conn-check.is-disabled { opacity: 0.55; cursor: default; pointer-events: none; }
 .conn-check input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .conn-box { position: relative; width: 16px; height: 16px; flex: 0 0 16px; border: 1.5px solid #c6d2c3; border-radius: 5px; background: #fffefa; transition: border-color .14s ease, background .14s ease; }
 .conn-check:hover .conn-box { border-color: #a2b7a1; }

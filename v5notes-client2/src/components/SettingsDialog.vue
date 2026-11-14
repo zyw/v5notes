@@ -8,6 +8,7 @@ import { applyLocale, currentLocale, LOCALE_OPTIONS, type AppLocale } from '../i
 import { settingsActionLabel } from '../models/appUpdate'
 import { useAppTheme } from '../hooks/useAppTheme'
 import { OFFICIAL_SERVER, normalizeServer } from '../models/serverSettings'
+import { probeServer } from '../service/api'
 
 const { t } = useI18n()
 const locale = computed(() => currentLocale())
@@ -44,6 +45,7 @@ const serverDraft = ref(props.useOfficial ? '' : props.server)
 const officialDraft = ref(props.useOfficial)
 const serverSaved = ref(false)
 const serverError = ref('')
+const serverChecking = ref(false)
 const serverDirty = computed(() => {
   if (officialDraft.value !== props.useOfficial) return true
   if (officialDraft.value) return false
@@ -59,6 +61,7 @@ watch(() => props.server, () => { serverSaved.value = false })
 watch(() => props.useOfficial, value => { officialDraft.value = value })
 
 function toggleOfficial(event: Event): void {
+  if (serverChecking.value) return
   const checked = (event.target as HTMLInputElement).checked
   officialDraft.value = checked
   serverError.value = ''
@@ -72,16 +75,30 @@ function onServerInput(event: Event): void {
   serverSaved.value = false
 }
 
-function saveServer(): void {
+/** 先规范化地址，再 ping 目标服务器；不可达则留在对话框并展示错误，不写入设置。 */
+async function saveServer(): Promise<boolean> {
+  if (serverChecking.value) return false
   serverError.value = ''
   serverSaved.value = false
+  let address: string
   try {
-    const address = officialDraft.value ? OFFICIAL_SERVER : normalizeServer(serverDraft.value)
+    address = officialDraft.value ? OFFICIAL_SERVER : normalizeServer(serverDraft.value)
     if (!officialDraft.value) serverDraft.value = address
-    emit('save-server', address, officialDraft.value)
-    serverSaved.value = true
   } catch (cause) {
     serverError.value = cause instanceof Error ? cause.message : t('settings.invalidServer')
+    return false
+  }
+  serverChecking.value = true
+  try {
+    await probeServer(address)
+    emit('save-server', address, officialDraft.value)
+    serverSaved.value = true
+    return true
+  } catch (cause) {
+    serverError.value = cause instanceof Error ? cause.message : t('settings.serverUnreachable')
+    return false
+  } finally {
+    serverChecking.value = false
   }
 }
 /** 关闭后把焦点还回打开设置的那个按钮。 */
@@ -96,10 +113,10 @@ const autostartBusy = ref(false)
 const autostartError = ref('')
 
 /** 「完成」= 应用并关闭：有未保存的服务器地址时先保存，校验失败就停在弹窗里。 */
-function finish(): void {
+async function finish(): Promise<void> {
   if (serverDirty.value) {
-    saveServer()
-    if (serverError.value) return
+    const saved = await saveServer()
+    if (!saved) return
   }
   emit('close')
 }
@@ -190,29 +207,35 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
             </span>
           </div>
           <div class="settings-conn-body">
-            <label class="conn-field" :class="{ 'is-disabled': officialDraft }">
+            <label class="conn-field" :class="{ 'is-disabled': officialDraft || serverChecking }">
               <svg class="conn-field-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.6 9.4a2.7 2.7 0 0 0 3.8 0l1.9-1.9a2.7 2.7 0 0 0-3.8-3.8l-1 1" /><path d="M9.4 6.6a2.7 2.7 0 0 0-3.8 0L3.7 8.5a2.7 2.7 0 0 0 3.8 3.8l1-1" /></svg>
               <input
                 class="conn-input"
                 type="url"
                 :value="serverDraft"
-                :disabled="officialDraft"
+                :disabled="officialDraft || serverChecking"
                 :placeholder="officialDraft ? t('settings.officialPlaceholder') : 'https://notes.example.com'"
                 :aria-label="t('settings.serverAddress')"
                 autocomplete="url"
                 @input="onServerInput"
               >
             </label>
-            <label class="conn-check" :class="{ 'is-checked': officialDraft }">
-              <input type="checkbox" :checked="officialDraft" @change="toggleOfficial">
+            <label class="conn-check" :class="{ 'is-checked': officialDraft, 'is-disabled': serverChecking }">
+              <input type="checkbox" :checked="officialDraft" :disabled="serverChecking" @change="toggleOfficial">
               <span class="conn-box" aria-hidden="true" />
               {{ t('settings.useOfficial') }}
             </label>
-            <button class="conn-save" type="button" :disabled="!serverDirty" @click="saveServer">{{ t('settings.save') }}</button>
+            <button class="conn-save" type="button" :disabled="!serverDirty || serverChecking" @click="saveServer">
+              {{ serverChecking ? t('settings.checkingConnection') : t('settings.save') }}
+            </button>
           </div>
           <p v-if="serverError" class="conn-error" role="alert">
             <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6" /><path d="M8 5.4v3.4M8 11h.01" /></svg>
             {{ serverError }}
+          </p>
+          <p v-else-if="serverChecking" class="conn-hint" role="status">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6" /><path d="M8 7.3v3.3M8 5.2h.01" /></svg>
+            {{ t('settings.checkingConnection') }}
           </p>
           <p v-else-if="serverSaved && !serverDirty" class="conn-hint" role="status">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.4 6.4 11.4 12.6 5.2" /></svg>
