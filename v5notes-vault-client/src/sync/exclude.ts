@@ -21,6 +21,7 @@ const CODE_BINARY_RE =
 
 const NEVER_EXACT = new Set([
   '.v5notes/sync-state.json',
+  '.v5notes/retry-queue.json',
   '.v5notes/index.sqlite',
   '.v5notes/vault.json',
 ])

@@ -20,8 +20,10 @@ import xin.v5ai.vault.domain.bo.VaultRenameBo;
 import xin.v5ai.vault.domain.vo.VaultBindVo;
 import xin.v5ai.vault.domain.vo.VaultChangeVo;
 import xin.v5ai.vault.domain.vo.VaultConflictVo;
+import xin.v5ai.vault.domain.vo.VaultDeviceVo;
 import xin.v5ai.vault.domain.vo.VaultFileContentVo;
 import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
+import xin.v5ai.vault.domain.vo.VaultFileVersionVo;
 import xin.v5ai.vault.domain.vo.VaultManifestVo;
 import xin.v5ai.vault.domain.vo.VaultQuotaVo;
 import xin.v5ai.vault.domain.vo.VaultSpaceVo;
@@ -120,6 +122,35 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setCloudHasContent(hasLiveFiles(vaultId));
         vo.setQuota(buildQuota(userId));
         return vo;
+    }
+
+    @Override
+    public List<VaultDeviceVo> listDevices(Long userId, Long vaultId) {
+        requireOwnedVault(userId, vaultId);
+        List<VaultDevice> devices = deviceMapper.selectList(new LambdaQueryWrapper<VaultDevice>()
+            .eq(VaultDevice::getVaultId, vaultId)
+            .orderByDesc(VaultDevice::getLastSeenAt));
+        List<VaultDeviceVo> out = new ArrayList<>(devices.size());
+        for (VaultDevice device : devices) {
+            out.add(toDeviceVo(device));
+        }
+        return out;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void kickDevice(Long userId, Long vaultId, String deviceId) {
+        requireOwnedVault(userId, vaultId);
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "deviceId 无效");
+        }
+        VaultDevice existing = deviceMapper.selectOne(new LambdaQueryWrapper<VaultDevice>()
+            .eq(VaultDevice::getVaultId, vaultId)
+            .eq(VaultDevice::getDeviceId, deviceId.trim()));
+        if (existing == null) {
+            throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.NOT_FOUND, "设备未绑定");
+        }
+        deviceMapper.deleteById(existing.getId());
     }
 
     @Override
@@ -351,6 +382,18 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         return buildQuota(userId);
     }
 
+    @Override
+    public List<VaultFileVersionVo> listFileVersions(Long userId, Long vaultId, String path) {
+        requireOwnedVault(userId, vaultId);
+        // Validate path so clients get consistent errors; history storage is deferred.
+        try {
+            VaultPathRules.normalize(path);
+        } catch (IllegalArgumentException ex) {
+            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, ex.getMessage());
+        }
+        return List.of();
+    }
+
     private VaultQuotaVo buildQuota(Long userId) {
         List<VaultSpace> spaces = spaceMapper.selectList(new LambdaQueryWrapper<VaultSpace>()
             .eq(VaultSpace::getUserId, userId));
@@ -442,6 +485,17 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setUsedBytes(nullToZero(space.getUsedBytes()));
         vo.setEmpty(empty);
         vo.setCreatedAt(space.getCreateTime());
+        return vo;
+    }
+
+    private VaultDeviceVo toDeviceVo(VaultDevice device) {
+        VaultDeviceVo vo = new VaultDeviceVo();
+        vo.setId(String.valueOf(device.getId()));
+        vo.setVaultId(String.valueOf(device.getVaultId()));
+        vo.setDeviceId(device.getDeviceId());
+        vo.setClientInfo(device.getClientInfo());
+        vo.setLastSeenAt(device.getLastSeenAt());
+        vo.setBoundAt(device.getCreateTime());
         return vo;
     }
 

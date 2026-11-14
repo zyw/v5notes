@@ -1,8 +1,8 @@
 package xin.v5ai.vault.util;
 
 /**
- * Phase 4 default quota policy (design §8.3).
- * Full billing persistence is Phase 5; defaults keep sync usable for smoke.
+ * Vault sync quota policy (design §8.3).
+ * Defaults keep sync usable for smoke; full billing field persistence remains deferred.
  */
 public final class VaultQuotaRules {
 

@@ -1,8 +1,10 @@
 import { VaultErrorCode } from '../models/errors'
 import type {
   VaultBindResult,
+  VaultDeviceInfo,
   VaultFileContent,
   VaultFileMeta,
+  VaultFileVersion,
   VaultManifest,
   VaultQuota,
   VaultSpaceSummary,
@@ -28,6 +30,17 @@ export class VaultSyncApiError extends Error {
   get isQuota(): boolean {
     return this.httpStatus === 402 || this.httpStatus === 403
       || this.businessCode === VaultErrorCode.QUOTA_EXCEEDED
+  }
+
+  get isTooLarge(): boolean {
+    return this.httpStatus === 413 || this.businessCode === VaultErrorCode.FILE_TOO_LARGE
+  }
+
+  get isRetryable(): boolean {
+    if (this.isQuota || this.isTooLarge || this.isConflict) return false
+    if (this.businessCode === VaultErrorCode.PATH_INVALID) return false
+    if (this.httpStatus === 401) return false
+    return this.httpStatus === 0 || this.httpStatus === 429 || this.httpStatus >= 500
   }
 }
 
@@ -117,6 +130,13 @@ export function createVaultSyncApi(
         method: 'POST',
         body: JSON.stringify(body),
       }),
+    listDevices: (vaultId: string) =>
+      call<VaultDeviceInfo[]>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/devices`),
+    kickDevice: (vaultId: string, deviceId: string) =>
+      call<null>(
+        `/vault/v1/vaults/${encodeURIComponent(vaultId)}/devices/${encodeURIComponent(deviceId)}`,
+        { method: 'DELETE' },
+      ),
     manifest: (vaultId: string, since?: string | null) => {
       const q = since ? `?since=${encodeURIComponent(since)}` : ''
       return call<VaultManifest>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/manifest${q}`)
@@ -129,7 +149,8 @@ export function createVaultSyncApi(
         baseRev?: number | null
         hash: string
         type?: string
-        body: string
+        body?: string
+        base64Body?: string
       },
     ) =>
       call<VaultFileMeta>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/files`, {
@@ -141,6 +162,12 @@ export function createVaultSyncApi(
       if (rev != null) params.set('rev', String(rev))
       return call<VaultFileContent>(
         `/vault/v1/vaults/${encodeURIComponent(vaultId)}/files/content?${params}`,
+      )
+    },
+    listVersions: (vaultId: string, path: string) => {
+      const params = new URLSearchParams({ path })
+      return call<VaultFileVersion[]>(
+        `/vault/v1/vaults/${encodeURIComponent(vaultId)}/files/versions?${params}`,
       )
     },
     deleteFile: (vaultId: string, body: { path: string; baseRev: number }) =>

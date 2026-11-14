@@ -9,6 +9,7 @@ export type SyncStatus =
   | 'conflict'
   | 'error'
   | 'offline'
+  | 'retrying'
 
 export interface VaultChange {
   op: 'upsert' | 'delete' | 'rename' | string
@@ -19,6 +20,23 @@ export interface VaultChange {
   contentHash?: string
   size?: number
   type?: string
+}
+
+export interface VaultDeviceInfo {
+  id: string
+  vaultId: string
+  deviceId: string
+  clientInfo?: string | null
+  lastSeenAt?: string | null
+  boundAt?: string | null
+}
+
+export interface VaultFileVersion {
+  fileId: string
+  rev: number
+  contentHash: string
+  size: number
+  capturedAt?: string | null
 }
 
 export interface VaultManifest {
@@ -81,15 +99,23 @@ export interface SyncEngineStatus {
   overQuota: boolean
   lastErrorCode: string | null
   conflictPaths: string[]
+  skippedTooLarge: string[]
+  retryQueueSize: number
+  online: boolean
 }
 
 export interface LocalScanFile {
   displayPath: string
   identityKey: string
-  content: string
+  /** UTF-8 text body when prefersTextBody. */
+  content?: string
+  /** Binary payload for attachments. */
+  base64Body?: string
   hash: string
   size: number
   mtimeMs: number
+  kind: 'note' | 'asset' | 'config'
+  tooLarge?: boolean
 }
 
 export type { SyncFileEntry, SyncStateJson, VaultJson }

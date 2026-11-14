@@ -6,8 +6,10 @@ import xin.v5ai.vault.domain.bo.VaultFileDeleteBo;
 import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.domain.bo.VaultRenameBo;
 import xin.v5ai.vault.domain.vo.VaultBindVo;
+import xin.v5ai.vault.domain.vo.VaultDeviceVo;
 import xin.v5ai.vault.domain.vo.VaultFileContentVo;
 import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
+import xin.v5ai.vault.domain.vo.VaultFileVersionVo;
 import xin.v5ai.vault.domain.vo.VaultManifestVo;
 import xin.v5ai.vault.domain.vo.VaultQuotaVo;
 import xin.v5ai.vault.domain.vo.VaultSpaceVo;
@@ -22,6 +24,14 @@ public interface IVaultSyncService {
 
     VaultBindVo bind(Long userId, Long vaultId, VaultBindBo bo);
 
+    List<VaultDeviceVo> listDevices(Long userId, Long vaultId);
+
+    /**
+     * Remove a bound device so a new bind slot frees up (design §8.3).
+     * Does not wipe cloud file history; only the device binding row.
+     */
+    void kickDevice(Long userId, Long vaultId, String deviceId);
+
     VaultManifestVo manifest(Long userId, Long vaultId, String sinceCursor);
 
     VaultFileMetaVo putFile(Long userId, Long vaultId, VaultFilePutBo bo);
@@ -33,4 +43,9 @@ public interface IVaultSyncService {
     VaultFileMetaVo rename(Long userId, Long vaultId, VaultRenameBo bo);
 
     VaultQuotaVo quota(Long userId);
+
+    /**
+     * Phase 5 stub: version history not persisted yet; always empty.
+     */
+    List<VaultFileVersionVo> listFileVersions(Long userId, Long vaultId, String path);
 }
