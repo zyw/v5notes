@@ -1,0 +1,77 @@
+/**
+ * Design token contract (Phase 2).
+ * ThemeHost (Phase 6) may override these variables after validation.
+ *
+ * Required keys for community themes:
+ * --bg --panel --ink --muted --line --accent --accent-hover --surface --danger --danger-bg
+ */
+
+:root,
+:root[data-theme='default'][data-color-mode='light'],
+:root[data-theme='default']:not([data-color-mode]) {
+  --bg: #f3f6f2;
+  --panel: #fffefa;
+  --ink: #24352c;
+  --muted: #6d7f74;
+  --line: #d9e0d8;
+  --accent: #2f5b48;
+  --accent-hover: #244636;
+  --surface: #eef3ee;
+  --danger: #8a3b2e;
+  --danger-bg: #f7e8e4;
+  --bg-glow-a: #dfeadf;
+  --bg-glow-b: #e8efe4;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', serif;
+  --font-ui: 'DM Sans', 'PingFang SC', sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  --radius-sm: 8px;
+  --radius-md: 9px;
+  --radius-lg: 16px;
+  --sidebar-width: 280px;
+}
+
+:root[data-theme='default'][data-color-mode='dark'] {
+  --bg: #1a221c;
+  --panel: #222b24;
+  --ink: #e6eee8;
+  --muted: #9aab9f;
+  --line: #344038;
+  --accent: #7fb59a;
+  --accent-hover: #9dccb4;
+  --surface: #2a342e;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --bg-glow-a: #243028;
+  --bg-glow-b: #1e2822;
+}
+
+:root[data-theme='dusk'][data-color-mode='light'],
+:root[data-theme='dusk']:not([data-color-mode='dark']) {
+  --bg: #ece7df;
+  --panel: #f7f3ec;
+  --ink: #2c2924;
+  --muted: #7a7368;
+  --line: #d8d0c4;
+  --accent: #5c4a32;
+  --accent-hover: #473828;
+  --surface: #e5dfd4;
+  --danger: #8a3b2e;
+  --danger-bg: #f0e0da;
+  --bg-glow-a: #e0d8cc;
+  --bg-glow-b: #ebe4d8;
+}
+
+:root[data-theme='dusk'][data-color-mode='dark'] {
+  --bg: #17140f;
+  --panel: #211d17;
+  --ink: #f0e8dc;
+  --muted: #a89c8c;
+  --line: #3a342c;
+  --accent: #c4a882;
+  --accent-hover: #d8c09a;
+  --surface: #2a251e;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --bg-glow-a: #241f18;
+  --bg-glow-b: #1c1812;
+}

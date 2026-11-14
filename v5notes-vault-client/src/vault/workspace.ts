@@ -71,7 +71,17 @@ async function scopeVaultRoot(rootPath: string): Promise<void> {
 }
 
 async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
-  await scopeVaultRoot(rootPath)
+  try {
+    await scopeVaultRoot(rootPath)
+  } catch (error) {
+    throw new VaultPathError(
+      `无法授权访问该目录（可能已移盘或权限失效）: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  const rootOk = await vaultFs.exists(rootPath)
+  if (!rootOk) {
+    throw new VaultPathError('库路径不存在或不可访问（可能已移动）')
+  }
   const hasMeta = await vaultFs.exists(rootPath, VAULT_JSON_REL)
   if (!hasMeta) {
     throw new VaultPathError('所选文件夹不是 Vault（缺少 .v5notes/vault.json）')

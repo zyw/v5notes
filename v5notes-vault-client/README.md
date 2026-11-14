@@ -29,7 +29,7 @@ npm run tauri dev
 Vite 开发端口为 **1421**（Cloud client2 使用 1420）。浏览器单独打开 Vite 只能看欢迎 UI；创建/打开库需 Tauri 壳。
 
 ```bash
-npm test          # path identity 等单测
+npm test          # path identity / search / trash helpers
 npm run build     # 前端类型检查 + 打包
 ```
 
@@ -42,12 +42,19 @@ cp ../v5notes-client2/vendor/v5md/*.tgz vendor/v5md/
 npm install
 ```
 
-## Phase 1（本阶段）
+## Phase 2（本阶段 · 本地打磨）
+
+- 文件 watcher：外部改动能刷新树；脏文档冲突提示
+- 本地搜索 MVP（标题 + 正文扫描）
+- 最近库：`$APPCONFIG/recent-vaults.json` + localStorage 镜像；移盘/权限失败提示并移除
+- 本地回收站 `.v5notes/trash/`（§6.4 永不同步；可还原 / 清空）
+- 原子写 hardening、脏保存守卫、基础快捷键（⌘/Ctrl+S / N）
+- 设计 token（`styles/tokens.css`）+ 设置「外观」内置主题入口
+- 树 CRUD：新建目录/笔记、重命名、删除到回收站（应用内对话框）
+- **仍零网络、零账号、零同步、无插件宿主**
+
+## Phase 1（已落地）
 
 - 路径身份键：`normalizeDisplayPath` / `toIdentityKey`（NFC + case-fold，§6.2）
 - `VaultFs` + `VaultWorkspace`：创建/打开/默认库，写入 `.v5notes` 骨架
-- 欢迎页三路径 + 最近库（localStorage 桩）
-- 侧栏树 + 打开 `.md` → `V5Editor`（预览/编辑同实例；回预览前保存）
-- **零网络、零账号、零同步**
-
-尚未包含（Phase 1b / Phase 2）：本地搜索、watcher、原子写 hardening、移盘书签持久化打磨、trash UX、脏导航守卫完善、设计 token。
+- 欢迎页三路径 + 侧栏树 + `V5Editor` 预览/编辑同实例

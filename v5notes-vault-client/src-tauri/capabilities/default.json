@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Phase 1 local vault: dialog + scoped fs for user-selected and app-data vaults",
+  "description": "Phase 2 local vault: dialog + scoped fs + recursive watch",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -21,6 +21,8 @@
     "fs:allow-rename",
     "fs:allow-stat",
     "fs:allow-copy-file",
+    "fs:allow-watch",
+    "fs:allow-unwatch",
     {
       "identifier": "fs:scope",
       "allow": [
