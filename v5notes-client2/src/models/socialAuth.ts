@@ -1,6 +1,6 @@
 /** 笔记客户端启用的第三方登录（顺序：国内优先）。 */
 export const SOCIAL_PROVIDERS = [
-  { source: 'wechat_open', labelKey: 'login.socialWechat', tone: 'wechat' },
+  { source: 'zhihu', labelKey: 'login.socialZhihu', tone: 'zhihu' },
   { source: 'gitee', labelKey: 'login.socialGitee', tone: 'gitee' },
   { source: 'github', labelKey: 'login.socialGitHub', tone: 'github' },
   { source: 'google', labelKey: 'login.socialGoogle', tone: 'google' },

@@ -71,7 +71,7 @@ export const zhTW: Messages = {
     protocol: '請輸入 HTTP 或 HTTPS 伺服器位址',
     socialOther: '或使用其他方式',
     socialUnknown: '未知平台',
-    socialWechat: '微信',
+    socialZhihu: '知乎',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',
     socialGoogle: 'Google',

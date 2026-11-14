@@ -40,7 +40,7 @@ export default {
     socialOff: 'Third-party sign-in is disabled on this server',
     langAria: 'Language',
     socialShort: {
-      wechat_open: 'WeChat',
+      zhihu: 'Zhihu',
       gitee: 'Gitee',
       github: 'GitHub',
       google: 'Google'
@@ -70,7 +70,7 @@ export default {
       }
     },
     social: {
-      wechat_open: 'WeChat Login',
+      zhihu: 'Zhihu Login',
       gitee: 'Gitee Login',
       github: 'GitHub Login',
       google: 'Google Login'

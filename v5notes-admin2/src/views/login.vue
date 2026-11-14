@@ -222,9 +222,9 @@ const router = useRouter();
 const { mode, resolved, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const currentYear = new Date().getFullYear();
-/** 与后端 justauth、个人中心绑定列表一致：微信开放平台、Gitee、GitHub、Google */
+/** 与后端 justauth、个人中心绑定列表一致：知乎、Gitee、GitHub、Google */
 const providers = [
-  { source: 'wechat_open', icon: 'wechat' },
+  { source: 'zhihu', icon: 'zhihu' },
   { source: 'gitee', icon: 'gitee' },
   { source: 'github', icon: 'github' },
   { source: 'google', icon: 'google' }

@@ -71,7 +71,7 @@ export const en: Messages = {
     protocol: 'Enter an HTTP or HTTPS server address',
     socialOther: 'Or continue with',
     socialUnknown: 'Unknown provider',
-    socialWechat: 'WeChat',
+    socialZhihu: 'Zhihu',
     socialGitee: 'Gitee',
     socialGitHub: 'GitHub',
     socialGoogle: 'Google',

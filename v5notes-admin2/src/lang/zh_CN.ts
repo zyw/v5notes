@@ -38,7 +38,7 @@ export default {
     socialOff: '当前服务器未开启第三方登录',
     langAria: '语言切换',
     socialShort: {
-      wechat_open: '微信',
+      zhihu: '知乎',
       gitee: 'Gitee',
       github: 'GitHub',
       google: 'Google'
@@ -68,7 +68,7 @@ export default {
       }
     },
     social: {
-      wechat_open: '微信登录',
+      zhihu: '知乎登录',
       gitee: 'Gitee登录',
       github: 'GitHub登录',
       google: 'Google登录'

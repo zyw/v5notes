@@ -11,6 +11,7 @@ import me.zhyd.oauth.request.AuthStackOverflowRequest;
 import me.zhyd.oauth.request.AuthWeChatEnterpriseQrcodeV2Request;
 import xin.v5ai.common.social.config.properties.SocialLoginConfigProperties;
 import xin.v5ai.common.social.config.properties.SocialProperties;
+import xin.v5ai.common.social.request.AuthZhihuRequest;
 import xin.v5ai.common.social.utils.AuthRedisStateCache;
 import xin.v5ai.common.social.utils.SocialUtils;
 import org.junit.jupiter.api.BeforeAll;
@@ -94,6 +95,23 @@ class SocialUtilsTest {
         AuthConfig authConfig = requestConfig(request);
         assertEquals("client-id", authConfig.getClientId());
         assertEquals(List.of("openid", "email", "profile"), authConfig.getScopes());
+    }
+
+    /**
+     * 验证知乎自定义请求：授权 URL 使用 app_id，而非标准 client_id。
+     */
+    @Test
+    @DisplayName("构造知乎授权请求并校验 authorize 参数")
+    void shouldBuildZhihuAuthorizeUrlWithAppId() throws Exception {
+        SocialLoginConfigProperties config = config();
+        AuthRequest request = SocialUtils.getAuthRequest("zhihu", properties("zhihu", config));
+
+        assertInstanceOf(AuthZhihuRequest.class, request);
+        String authorizeUrl = request.authorize("state-demo");
+        assertTrue(authorizeUrl.startsWith("https://openapi.zhihu.com/authorize?"));
+        assertTrue(authorizeUrl.contains("app_id=client-id"));
+        assertTrue(authorizeUrl.contains("response_type=code"));
+        assertFalse(authorizeUrl.contains("client_id="));
     }
 
     /**

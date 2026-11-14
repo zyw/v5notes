@@ -202,11 +202,12 @@ justauth:
   # 笔记客户端回调基址：生产请改为 v5notes-oauth-landing 的 HTTPS 源，或平台允许时用 v5notes://app
   client-address: http://localhost:1420
   type:
-    wechat_open:
-      client-id: ${V5NOTES_WECHAT_OPEN_CLIENT_ID:10**********6}
-      client-secret: ${V5NOTES_WECHAT_OPEN_CLIENT_SECRET:1f7d08**********5b7**********29e}
+    zhihu:
+      # 知乎开放平台 app_id / app_key（映射到 JustAuth client-id / client-secret）
+      client-id: ${V5NOTES_ZHIHU_CLIENT_ID:10**********6}
+      client-secret: ${V5NOTES_ZHIHU_CLIENT_SECRET:1f7d08**********5b7**********29e}
       # 兜底；已配置 address/client-address 时运行时不会用到本字段
-      redirect-uri: ${justauth.address}/social-callback?source=wechat_open
+      redirect-uri: ${justauth.address}/social-callback?source=zhihu
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98}
       client-secret: ${V5NOTES_GITEE_CLIENT_SECRET:02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac}

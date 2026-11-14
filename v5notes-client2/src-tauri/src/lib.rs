@@ -47,9 +47,8 @@ fn tr_detail(zh_cn: &str, zh_tw: &str, en: &str, detail: impl std::fmt::Display)
     }
 }
 
-/// Packaged macOS builds read Dock icons through Icon Services (white plate /
-/// double-mask). `tauri_dev` instead calls `setApplicationIconImage`; mirror that
-/// in release so the Dock matches the rounded transparent asset.
+/// Packaged builds may still go through Icon Services; set the Dock image from
+/// the pre-masked icns so it matches the edge-filled rounded asset.
 #[cfg(target_os = "macos")]
 fn apply_macos_dock_icon() {
     use objc2::{AllocAnyThread, MainThreadMarker};
