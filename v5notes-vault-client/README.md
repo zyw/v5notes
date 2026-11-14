@@ -14,7 +14,8 @@
 | `identifier` | `xin.v5ai.v5notes.vault` |
 | deep link schemes | `["v5notes-vault"]` |
 | 窗口标题 | `V5Notes Vault` |
-| `deviceType`（后续账号） | `vault_client` |
+| `deviceType` | `vault_client` |
+| 默认 `client_id` | `b8e4f02a5c3d7916f2a0b1d9e7c5f3a1` |
 
 依据：`docs/vault-client-dev-plan.md`、`docs/vault-client-design.md`。
 
@@ -26,12 +27,25 @@ npm install
 npm run tauri dev
 ```
 
-Vite 开发端口为 **1421**（Cloud client2 使用 1420）。浏览器单独打开 Vite 只能看欢迎 UI；创建/打开库需 Tauri 壳。
+Vite 开发端口为 **1421**（Cloud client2 使用 1420）。浏览器单独打开 Vite 只能看欢迎/设置 UI；创建/打开库与社交登录唤起需 Tauri 壳。
 
 ```bash
-npm test          # path identity / search / trash helpers
+npm test          # path / account / search / trash
 npm run build     # 前端类型检查 + 打包
 ```
+
+## Phase 3（本阶段 · 可选账号）
+
+- 设置页账号区：密码登录 / 社交登录（`app=vault` → `v5notes-vault://`）
+- `deviceType=vault_client`；token 存 localStorage（vault 前缀），**从不存密码**；401/登出清 token
+- 未登录仍可纯本地编辑；会话过期横幅不丢未保存草稿
+- 双产品一句话 + 同步入口引导（SyncEngine 属 Phase 4，本阶段禁用）
+- 套餐形态 B stub：Cloud 桶可读现网 `/client/account/quota`；Vault sync 桶待 Phase 4
+- 后端：`justauth.vault-client-address`、sys_client 种子、OAuth 落地页 `app=vault`
+
+## Phase 2（已落地）
+
+- watcher / 本地搜索 / 最近库 / trash / 原子写 / 脏守卫 / 快捷键 / design tokens / 树 CRUD
 
 ## @v5md 编辑器 vendor
 
@@ -41,20 +55,3 @@ npm run build     # 前端类型检查 + 打包
 cp ../v5notes-client2/vendor/v5md/*.tgz vendor/v5md/
 npm install
 ```
-
-## Phase 2（本阶段 · 本地打磨）
-
-- 文件 watcher：外部改动能刷新树；脏文档冲突提示
-- 本地搜索 MVP（标题 + 正文扫描）
-- 最近库：`$APPCONFIG/recent-vaults.json` + localStorage 镜像；移盘/权限失败提示并移除
-- 本地回收站 `.v5notes/trash/`（§6.4 永不同步；可还原 / 清空）
-- 原子写 hardening、脏保存守卫、基础快捷键（⌘/Ctrl+S / N）
-- 设计 token（`styles/tokens.css`）+ 设置「外观」内置主题入口
-- 树 CRUD：新建目录/笔记、重命名、删除到回收站（应用内对话框）
-- **仍零网络、零账号、零同步、无插件宿主**
-
-## Phase 1（已落地）
-
-- 路径身份键：`normalizeDisplayPath` / `toIdentityKey`（NFC + case-fold，§6.2）
-- `VaultFs` + `VaultWorkspace`：创建/打开/默认库，写入 `.v5notes` 骨架
-- 欢迎页三路径 + 侧栏树 + `V5Editor` 预览/编辑同实例

@@ -230,7 +230,7 @@ public class SysLoginService {
 
     /**
      * 登录端由客户端设备类型决定，必须与用户类型一致。
-     * <p>{@code admin} 只允许 {@code sys_user}，{@code client} 只允许 {@code cli_user}。
+     * <p>{@code admin} 只允许 {@code sys_user}；{@code client} / {@code vault_client} 只允许 {@code cli_user}。
      * 尚未刷新缓存的历史值 {@code pc}、{@code pc_client} 按同样规则处理。</p>
      *
      * @param client   本次登录携带的客户端
@@ -257,7 +257,9 @@ public class SysLoginService {
         if (DeviceType.ADMIN.getDevice().equals(deviceType) || DeviceType.PC.getDevice().equals(deviceType)) {
             return UserType.SYS_USER.getUserType();
         }
-        if (DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType)) {
+        if (DeviceType.CLIENT.getDevice().equals(deviceType)
+            || DeviceType.VAULT_CLIENT.getDevice().equals(deviceType)
+            || "pc_client".equals(deviceType)) {
             return UserType.CLIENT_USER.getUserType();
         }
         return null;

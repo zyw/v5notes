@@ -64,12 +64,13 @@ class SocialUtilsTest {
     }
 
     @Test
-    @DisplayName("按 app 拼装 admin / client 回调地址")
+    @DisplayName("按 app 拼装 admin / client / vault 回调地址")
     void shouldResolveRedirectByApp() {
         SocialLoginConfigProperties config = config();
         SocialProperties properties = properties("gitee", config);
         properties.setAddress("http://admin.example");
         properties.setClientAddress("v5notes://app");
+        properties.setVaultClientAddress("v5notes-vault://app");
 
         assertEquals(
             "http://admin.example/social-callback?source=gitee",
@@ -77,6 +78,21 @@ class SocialUtilsTest {
         assertEquals(
             "v5notes://app/social-callback?source=gitee",
             SocialUtils.resolveRedirectUri("gitee", config, properties, "client"));
+        assertEquals(
+            "v5notes-vault://app/social-callback?source=gitee&app=vault",
+            SocialUtils.resolveRedirectUri("gitee", config, properties, "vault"));
+    }
+
+    @Test
+    @DisplayName("vault 未配置 vault-client-address 时回退 client-address 并附加 app=vault")
+    void shouldFallbackVaultRedirectToClientAddress() {
+        SocialLoginConfigProperties config = config();
+        SocialProperties properties = properties("gitee", config);
+        properties.setClientAddress("http://oauth.example");
+
+        assertEquals(
+            "http://oauth.example/social-callback?source=gitee&app=vault",
+            SocialUtils.resolveRedirectUri("gitee", config, properties, "vault"));
     }
 
     /**
