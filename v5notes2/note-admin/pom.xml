@@ -79,10 +79,17 @@
 <!-- AI业务模块 -->
 <!--  demo模块  -->
 <!--  工作流模块  -->
-<!-- 云笔记模块 -->
+        <!-- 云笔记模块 -->
         <dependency>
             <groupId>xin.v5ai</groupId>
             <artifactId>note-notes</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- Vault 文件同步模块（/vault/v1，与 Cloud notes 隔离） -->
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-vault-sync</artifactId>
             <version>${revision}</version>
         </dependency>
 

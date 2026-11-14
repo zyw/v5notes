@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v5ai.xin/schemas/v5notes/sync-state.schema.json",
+  "title": "V5Notes sync-state.json",
+  "description": "Draft schema for .v5notes/sync-state.json (design §6.5). Entire file never syncs (§6.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "files"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fileId", "identityKey", "localHash", "remoteRev", "status", "size", "mtimeMs"],
+        "properties": {
+          "fileId": { "type": ["string", "null"] },
+          "identityKey": { "type": "string", "minLength": 1 },
+          "localHash": { "type": ["string", "null"] },
+          "remoteRev": { "type": ["integer", "null"], "minimum": 0 },
+          "status": {
+            "type": "string",
+            "enum": ["clean", "dirty", "conflict", "error"]
+          },
+          "size": { "type": ["integer", "null"], "minimum": 0 },
+          "mtimeMs": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    }
+  }
+}

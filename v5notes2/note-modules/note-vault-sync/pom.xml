@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>xin.v5ai</groupId>
+        <artifactId>note-modules</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>note-vault-sync</artifactId>
+
+    <description>
+        Vault 文件级同步模块（API 前缀 /vault/v1）。与 note-notes 的 Cloud CRUD 语义隔离。
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-common-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-common-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-common-security</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
