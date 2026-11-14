@@ -12,6 +12,7 @@ import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
+import { modShortcut } from '../utils/platform'
 const { t, locale } = useI18n()
 const { sessionExpired, reauthenticate, error, notice, trialExpired, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
@@ -555,8 +556,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
             </div>
           </div>
           <div class="actions">
-            <button class="command-trigger" type="button" :aria-label="t('editor.openPalette')" :title="t('editor.paletteTitle')" @click="paletteOpen = true">
-              <span>{{ t('editor.commands') }}</span><kbd>⌘K</kbd>
+            <button class="command-trigger" type="button" :aria-label="t('editor.openPalette')" :title="t('editor.paletteTitle', { shortcut: modShortcut('K') })" @click="paletteOpen = true">
+              <span>{{ t('editor.commands') }}</span><kbd>{{ modShortcut('K') }}</kbd>
             </button>
             <template v-if="editorMode !== 'preview'">
               <details class="action-menu note-menu" data-action-menu="note" @toggle="syncActionMenu('note', $event)">
@@ -593,12 +594,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
               </div>
             </details>
             <span class="strip-divider" aria-hidden="true"></span>
-            <button class="strip-hide" type="button" :title="t('editor.hideToolbarTitle')" :aria-label="t('editor.hideToolbar')" @click="toggleToolbar">
+            <button class="strip-hide" type="button" :title="t('editor.hideToolbarTitle', { shortcut: modShortcut('/') })" :aria-label="t('editor.hideToolbar')" @click="toggleToolbar">
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg><span>{{ t('editor.hide') }}</span>
             </button>
           </div>
-          <button v-if="editorMode === 'edit' && !sourceMode && !toolbarVisible" class="toolbar-reveal" type="button" :title="t('editor.showToolbarTitle')" :aria-label="t('editor.showToolbar')" @click="toggleToolbar">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>{{ t('editor.format') }}<kbd>⌘/</kbd>
+          <button v-if="editorMode === 'edit' && !sourceMode && !toolbarVisible" class="toolbar-reveal" type="button" :title="t('editor.showToolbarTitle', { shortcut: modShortcut('/') })" :aria-label="t('editor.showToolbar')" @click="toggleToolbar">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>{{ t('editor.format') }}<kbd>{{ modShortcut('/') }}</kbd>
           </button>
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
