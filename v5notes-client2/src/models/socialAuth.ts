@@ -23,6 +23,54 @@ export type SocialOAuthIntent = 'login' | 'bind'
 const SOCIAL_CALLBACK_PATH = '/social-callback'
 const SOCIAL_INTENT_KEY = 'v5notes-social-intent'
 const SOCIAL_PENDING_KEY = 'v5notes-social-pending'
+/**
+ * 已换票的 OAuth code（localStorage，跨刷新保留）。
+ * Tauri getCurrent() 在退出后刷新仍会返回旧 deep link，必须能识别已消费的一次性 code/state。
+ */
+const SOCIAL_CONSUMED_CODES_KEY = 'v5notes-social-consumed-codes'
+const SOCIAL_CONSUMED_CODES_LIMIT = 30
+
+function oauthStorage(): Storage | null {
+  if (typeof localStorage === 'undefined') return null
+  return localStorage
+}
+
+function consumedKey(code: string, state = ''): string {
+  const c = code.trim()
+  const s = state.trim()
+  return s ? `${c}::${s}` : c
+}
+
+function readConsumedCodes(): string[] {
+  const storage = oauthStorage()
+  if (!storage) return []
+  try {
+    const raw = storage.getItem(SOCIAL_CONSUMED_CODES_KEY)
+    const parsed = raw ? JSON.parse(raw) as unknown : []
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function isSocialCodeConsumed(code: string, state = ''): boolean {
+  const key = consumedKey(code, state)
+  if (!key) return false
+  const list = readConsumedCodes()
+  // 兼容旧版只存 code 的记录
+  return list.includes(key) || list.includes(code.trim())
+}
+
+/** 标记 code/state 已使用；在发起换票前调用，防止并发/刷新重复请求。 */
+export function markSocialCodeConsumed(code: string, state = ''): void {
+  const storage = oauthStorage()
+  if (!storage) return
+  const key = consumedKey(code, state)
+  if (!key) return
+  const next = [key, ...readConsumedCodes().filter((item) => item !== key && item !== code.trim())]
+    .slice(0, SOCIAL_CONSUMED_CODES_LIMIT)
+  storage.setItem(SOCIAL_CONSUMED_CODES_KEY, JSON.stringify(next))
+}
 
 /** 从当前 URL 或 deep link 解析 OAuth 回调参数。 */
 export function readSocialCallbackParams(
@@ -106,6 +154,12 @@ export function mapSocialLoginErrorKey(message: string): string | null {
   }
   if (text.includes('auth.grant.type') || /认证权限类型|grant type/i.test(text)) {
     return 'login.socialUnsupported'
+  }
+  // JustAuth 换票失败：code/state 已用、过期，或刷新重放 deep link
+  if (
+    /Failed to login with oauth|AuthException|Illegal state|invalid_grant|code.*(expired|invalid|used)|授权码|authorization code|非法的state|state.*(invalid|expire)/i.test(text)
+  ) {
+    return 'login.socialCodeReuse'
   }
   return null
 }

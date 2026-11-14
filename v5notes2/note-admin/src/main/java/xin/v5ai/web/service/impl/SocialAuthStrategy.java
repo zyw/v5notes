@@ -90,8 +90,9 @@ public class SocialAuthStrategy implements IAuthStrategy {
             user = loadUser(list.getFirst().getUserId());
             // 历史社交开户可能未写入邮箱（Gitee /user.email 常空）；有邮箱且未占用则回填
             backfillEmailIfAbsent(user, authUserData.getEmail());
-            // 历史占位登录名 gt_xxx：有邮箱后改为邮箱（与新开户规则一致）
-            preferEmailUserName(user, authUserData.getEmail());
+            // 历史占位 / 平台 login：有邮箱后改为邮箱；仍无邮箱则尽量升为平台 login（与新开户一致）
+            preferEmailUserName(user, authUserData.getEmail(), authUserData.getUsername());
+            preferPlatformUserName(user, authUserData.getUsername());
         } else if (isClientDevice(client)) {
             // 笔记客户端：社交登录即开户
             SysUserVo created = registerService.registerClientBySocial(authUserData);
@@ -173,17 +174,20 @@ public class SocialAuthStrategy implements IAuthStrategy {
     }
 
     /**
-     * 占位登录名（gt_ 等）在拿到可用邮箱后升级为邮箱登录名。
+     * 社交开户登录名（gt_ 或平台 login）在拿到可用邮箱后升级为邮箱登录名。
      */
-    private void preferEmailUserName(SysUserVo user, String email) {
+    private void preferEmailUserName(SysUserVo user, String email, String platformUserName) {
         String trimmed = StringUtils.trim(email);
         if (user == null || StringUtils.isBlank(trimmed) || trimmed.length() > 50) {
             return;
         }
-        if (!SysRegisterService.isSocialGeneratedUserName(user.getUserName())) {
+        String current = user.getUserName();
+        boolean fromSocialFallback = SysRegisterService.isSocialGeneratedUserName(current)
+            || current != null && current.equalsIgnoreCase(StringUtils.trim(platformUserName));
+        if (!fromSocialFallback) {
             return;
         }
-        if (trimmed.equalsIgnoreCase(user.getUserName())) {
+        if (trimmed.equalsIgnoreCase(current)) {
             return;
         }
         boolean nameTaken = userMapper.lambda()
@@ -202,6 +206,34 @@ public class SocialAuthStrategy implements IAuthStrategy {
         if (rows > 0) {
             user.setUserName(trimmed);
             user.setEmail(trimmed);
+        }
+    }
+
+    /**
+     * 占位登录名（gt_ 等）在仍无邮箱时，升级为平台 login（如 Gitee lxm09）。
+     */
+    private void preferPlatformUserName(SysUserVo user, String platformUserName) {
+        if (user == null || !SysRegisterService.isSocialGeneratedUserName(user.getUserName())) {
+            return;
+        }
+        String platformName = SysRegisterService.usablePlatformUserName(platformUserName);
+        if (platformName == null || platformName.equalsIgnoreCase(user.getUserName())) {
+            return;
+        }
+        boolean nameTaken = userMapper.lambda()
+            .eq(SysUser::getUserName, platformName)
+            .ne(SysUser::getUserId, user.getUserId())
+            .exists();
+        if (nameTaken) {
+            log.info("Skip platform username upgrade for userId={}: username occupied", user.getUserId());
+            return;
+        }
+        int rows = userMapper.lambda()
+            .set(SysUser::getUserName, platformName)
+            .eq(SysUser::getUserId, user.getUserId())
+            .updateCount();
+        if (rows > 0) {
+            user.setUserName(platformName);
         }
     }
 

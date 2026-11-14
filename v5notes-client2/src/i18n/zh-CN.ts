@@ -76,6 +76,7 @@ export const zhCN = {
     socialConnecting: '正在跳转授权…',
     socialCallback: '正在完成登录…',
     socialFailed: '第三方登录失败，请重试',
+    socialCodeReuse: '授权已失效，请重新点击第三方登录',
     socialOff: '当前服务器未开启第三方登录',
     socialDisabled: '当前服务器未开放注册，无法用第三方创建账号',
     socialEmailOccupied: '该邮箱已有账号，请先密码登录，再在设置中绑定',

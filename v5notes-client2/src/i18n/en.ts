@@ -78,6 +78,7 @@ export const en: Messages = {
     socialConnecting: 'Opening authorization…',
     socialCallback: 'Finishing sign-in…',
     socialFailed: 'Social sign-in failed. Try again.',
+    socialCodeReuse: 'This sign-in link expired. Start social sign-in again.',
     socialOff: 'Third-party sign-in is disabled on this server',
     socialDisabled: 'Registration is disabled on this server, so social sign-up is unavailable',
     socialEmailOccupied: 'This email already has an account. Sign in with your password, then link the social account in settings',

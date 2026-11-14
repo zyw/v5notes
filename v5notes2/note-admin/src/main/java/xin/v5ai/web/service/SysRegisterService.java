@@ -131,7 +131,7 @@ public class SysRegisterService {
             throw new UserException("client.register.disabled");
         }
         String email = StringUtils.trim(authUser.getEmail());
-        // 有邮箱（≤50）：登录名用邮箱（与邮箱注册一致）；否则回退平台前缀 + uuid
+        // 登录名优先级：邮箱 → 平台 login（如 Gitee lxm09）→ 前缀 + uuid
         boolean useEmailAsName = StringUtils.isNotBlank(email) && email.length() <= 50;
         String userName;
         if (useEmailAsName) {
@@ -142,7 +142,7 @@ public class SysRegisterService {
             }
             userName = email;
         } else {
-            userName = socialUserName(authUser.getSource(), authUser.getUuid());
+            userName = resolveSocialFallbackUserName(authUser);
             if (userMapper.lambda().eq(SysUser::getUserName, userName).exists()) {
                 throw new UserException("user.register.save.error", userName);
             }
@@ -172,7 +172,7 @@ public class SysRegisterService {
     }
 
     /**
-     * 是否为无邮箱时生成的社交占位登录名（gt_/wx_/gh_/gg_ 等）。
+     * 是否为无邮箱且无平台 login 时生成的社交占位登录名（gt_/wx_/gh_/gg_ 等）。
      */
     public static boolean isSocialGeneratedUserName(String userName) {
         String name = StringUtils.blankToDefault(userName, "");
@@ -184,7 +184,31 @@ public class SysRegisterService {
     }
 
     /**
-     * 生成不超过 30 字符的社交登录名：短前缀 + 平台 uuid（仅无邮箱时使用）。
+     * 无邮箱时的登录名：优先平台 username（Gitee login 等），不可用或已占用则前缀 + uuid。
+     */
+    String resolveSocialFallbackUserName(AuthUser authUser) {
+        String platformName = usablePlatformUserName(authUser == null ? null : authUser.getUsername());
+        if (platformName != null && !userMapper.lambda().eq(SysUser::getUserName, platformName).exists()) {
+            return platformName;
+        }
+        String source = authUser == null ? null : authUser.getSource();
+        String uuid = authUser == null ? null : authUser.getUuid();
+        return socialUserName(source, uuid);
+    }
+
+    /**
+     * 第三方平台 login/username；长度须符合账号 2–50，否则视为不可用。
+     */
+    public static String usablePlatformUserName(String platformUserName) {
+        String name = StringUtils.trim(platformUserName);
+        if (StringUtils.isBlank(name) || name.length() < 2 || name.length() > 50) {
+            return null;
+        }
+        return name;
+    }
+
+    /**
+     * 生成不超过 30 字符的社交登录名：短前缀 + 平台 uuid（平台 login 不可用时的兜底）。
      */
     static String socialUserName(String source, String uuid) {
         String prefix = switch (StringUtils.blankToDefault(source, "").toLowerCase()) {

@@ -12,7 +12,9 @@ import { OFFICIAL_SERVER, normalizeServer, readServerSettings, writeServerSettin
 import {
   clearSocialCallbackUrl,
   clearSocialOAuthIntent,
+  isSocialCodeConsumed,
   mapSocialLoginErrorKey,
+  markSocialCodeConsumed,
   peekSocialOAuthIntent,
   readSocialCallbackParams,
   setSocialOAuthIntent,
@@ -22,6 +24,9 @@ import { openExternalUrl } from '../utils/openExternal'
 import { setDirtyCheck, watchClose } from '../utils/window'
 import { useProfile } from './useProfile'
 import { useAppUpdate } from './useAppUpdate'
+
+/** 同一 webview 生命周期内只消费一次 getCurrent()，避免 remount 重放旧 deep link。 */
+let deepLinkColdStartApplied = false
 
 export function useWorkspace() {
 type DialogState =
@@ -503,6 +508,12 @@ async function startSocialLogin(source: string): Promise<void> {
 
 /** OAuth 回调：已登录且 intent=bind 则加绑，否则换票登录。 */
 async function handleSocialCallback(source: string, socialCode: string, socialState: string): Promise<void> {
+  // getCurrent / 刷新会重放同一 deep link；code+state 一次性，已消费则静默跳过
+  if (isSocialCodeConsumed(socialCode, socialState)) {
+    clearSocialCallbackUrl()
+    return
+  }
+  markSocialCodeConsumed(socialCode, socialState)
   const intent = peekSocialOAuthIntent()
   if (token.value && intent === 'bind') {
     busy.value = true
@@ -1115,8 +1126,13 @@ onMounted(async () => {
           }
         }
       }
-      const coldStart = await getCurrent().catch(() => null)
-      if (coldStart?.length) await applyDeepLink(coldStart)
+      // getCurrent 在每次 webview 刷新仍可能返回旧 deep link；只处理一次 cold-start，
+      // 且 handleSocialCallback 内用 localStorage 去重，避免 Illegal state / 重复换票。
+      if (!deepLinkColdStartApplied) {
+        deepLinkColdStartApplied = true
+        const coldStart = await getCurrent().catch(() => null)
+        if (coldStart?.length) await applyDeepLink(coldStart)
+      }
       unlistenDeepLink = await onOpenUrl((urls) => { void applyDeepLink(urls) })
     } catch {
       // 插件未安装或权限不足时忽略；HTTP 中转页负责唤起

@@ -78,6 +78,7 @@ export const zhTW: Messages = {
     socialConnecting: '正在跳轉授權…',
     socialCallback: '正在完成登入…',
     socialFailed: '第三方登入失敗，請重試',
+    socialCodeReuse: '授權已失效，請重新點擊第三方登入',
     socialOff: '目前伺服器未開啟第三方登入',
     socialDisabled: '目前伺服器未開放註冊，無法用第三方建立帳號',
     socialEmailOccupied: '該電子郵件已有帳號，請先密碼登入，再於設定中綁定',
