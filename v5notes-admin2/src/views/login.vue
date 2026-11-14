@@ -177,15 +177,19 @@
           {{ loading ? $t('login.submitLoading') : $t('login.submit') }}
         </el-button>
 
-        <div class="alt">
+        <div v-if="socialLoginEnabled" class="alt">
           <div class="alt-hint">{{ $t('login.otherWays') }}</div>
-          <div class="prov">
-            <template v-for="(key, index) in providerKeys" :key="key">
-              <button type="button" :title="$t('login.social.' + key)" @click="doSocialLogin(key)">
-                {{ $t('login.socialShort.' + key) }}
-              </button>
-              <i v-if="index < providerKeys.length - 1" aria-hidden="true">·</i>
-            </template>
+          <div class="prov" role="group" :aria-label="$t('login.otherWays')">
+            <button
+              v-for="item in providers"
+              :key="item.source"
+              type="button"
+              :title="$t('login.social.' + item.source)"
+              @click="doSocialLogin(item.source)"
+            >
+              <svg-icon :icon-class="item.icon" class="prov-icon" />
+              <span>{{ $t('login.socialShort.' + item.source) }}</span>
+            </button>
           </div>
         </div>
       </el-form>
@@ -204,7 +208,7 @@ import LoginTechBackground from '@/components/LoginTechBackground/index.vue';
 import { useThemeMode } from '@/composables/useThemeMode';
 import { useI18n } from 'vue-i18n';
 import brandLogo from '@/assets/logo/logo.png';
-import { getCodeImg } from '@/api/login';
+import { getCodeImg, getThirdPartyLoginEnabled } from '@/api/login';
 import { authRouterUrl } from '@/api/system/social/auth';
 import { LoginData } from '@/api/types';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -218,7 +222,11 @@ const router = useRouter();
 const { mode, resolved, label: themeLabel, cycle: cycleTheme } = useThemeMode();
 
 const currentYear = new Date().getFullYear();
-const providerKeys = ['wechat', 'maxkey', 'topiam', 'gitee', 'github'];
+/** 与后端 justauth、个人中心绑定列表一致：Gitee、GitHub */
+const providers = [
+  { source: 'gitee', icon: 'gitee' },
+  { source: 'github', icon: 'github' }
+] as const;
 
 const loginForm = ref<LoginData>({
   username: '',
@@ -238,6 +246,7 @@ const codeUrl = ref('');
 const loading = ref(false);
 const passwordVisible = ref(false);
 const captchaEnabled = ref(true);
+const socialLoginEnabled = ref(false);
 const redirect = ref('/');
 const loginRef = ref<ElFormInstance>();
 
@@ -311,6 +320,10 @@ const getLoginData = () => {
 };
 
 const doSocialLogin = (type: string) => {
+  if (!socialLoginEnabled.value) {
+    ElMessage.warning(t('login.socialOff'));
+    return;
+  }
   authRouterUrl(type).then((res: any) => {
     if (res.code === HttpStatus.SUCCESS) {
       window.location.href = res.data;
@@ -320,9 +333,19 @@ const doSocialLogin = (type: string) => {
   });
 };
 
+const loadSocialLoginEnabled = async () => {
+  try {
+    const res = await getThirdPartyLoginEnabled();
+    socialLoginEnabled.value = Boolean(res.data);
+  } catch {
+    socialLoginEnabled.value = false;
+  }
+};
+
 onMounted(() => {
   getCode();
   getLoginData();
+  loadSocialLoginEnabled();
 });
 </script>
 
@@ -814,17 +837,21 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 2px;
+  gap: 6px 4px;
   margin-top: 12px;
 
   button {
-    padding: 6px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
     border: 0;
     border-radius: 7px;
     background: none;
     color: #5f7067;
     font-family: inherit;
     font-size: 12.5px;
+    line-height: 1;
     cursor: pointer;
 
     &:hover {
@@ -838,11 +865,10 @@ onMounted(() => {
     }
   }
 
-  i {
-    align-self: center;
-    color: #d5ddd8;
-    font-size: 11px;
-    font-style: normal;
+  :deep(.prov-icon) {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
   }
 }
 
@@ -1214,10 +1240,6 @@ onMounted(() => {
 .login-page[data-theme='dark'] .prov button:hover {
   background: #17271f;
   color: #7fd6b0;
-}
-
-.login-page[data-theme='dark'] .prov i {
-  color: #33463d;
 }
 
 .login-page[data-theme='dark'] .panel-foot {

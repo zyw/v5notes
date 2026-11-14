@@ -3,10 +3,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{
     image::Image,
-    menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
+#[cfg(target_os = "macos")]
+use tauri::menu::{AboutMetadata, PredefinedMenuItem, Submenu};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 
@@ -47,6 +49,34 @@ fn tr_detail(zh_cn: &str, zh_tw: &str, en: &str, detail: impl std::fmt::Display)
     }
 }
 
+/// Packaged builds may still go through Icon Services; set the Dock image from
+/// the pre-masked icns so it matches the edge-filled rounded asset.
+#[cfg(target_os = "macos")]
+fn apply_macos_dock_icon() {
+    use objc2::{AllocAnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::NSData;
+
+    let mtm = unsafe { MainThreadMarker::new_unchecked() };
+    let app = NSApplication::sharedApplication(mtm);
+    let data = NSData::with_bytes(include_bytes!("../icons/icon.icns"));
+    if let Some(icon) = NSImage::initWithData(NSImage::alloc(), &data) {
+        unsafe { app.setApplicationIconImage(Some(&icon)) };
+    }
+}
+
+/// Force the Windows window/taskbar icon to the full-bleed asset so shell
+/// cache cannot keep the padded macOS-style plate. Keeps original round corners.
+#[cfg(windows)]
+fn apply_windows_window_icon(app: &tauri::AppHandle) {
+    let Ok(icon) = Image::from_bytes(include_bytes!("../icons/icon-windows.png")) else {
+        return;
+    };
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_icon(icon);
+    }
+}
+
 fn app_display_name() -> String {
     tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes")
 }
@@ -60,6 +90,7 @@ fn quit_label() -> String {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn about_menu_label() -> String {
     let name = app_display_name();
     match locale_code().as_str() {
@@ -69,6 +100,7 @@ fn about_menu_label() -> String {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn hide_menu_label() -> String {
     let name = app_display_name();
     match locale_code().as_str() {
@@ -78,6 +110,7 @@ fn hide_menu_label() -> String {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn about_credits() -> String {
     format!(
         "{}\n\n{}",
@@ -90,7 +123,7 @@ fn about_credits() -> String {
     )
 }
 
-#[cfg(desktop)]
+#[cfg(target_os = "macos")]
 fn application_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let name = app_display_name();
     let metadata = AboutMetadata {
@@ -405,7 +438,8 @@ fn set_app_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_title(&app_display_name());
     }
-    #[cfg(desktop)]
+    // Windows/Linux keep no app menu bar; only macOS refreshes the native menu.
+    #[cfg(target_os = "macos")]
     app.set_menu(application_menu(&app).map_err(|error| error.to_string())?)
         .map_err(|error| error.to_string())?;
     if let Some(tray) = app.tray_by_id("main-tray") {
@@ -832,15 +866,21 @@ fn sniff_image_mime(bytes: &[u8]) -> &'static str {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    let builder = tauri::Builder::default()
-        .plugin(
-            tauri_plugin_autostart::Builder::new()
-                .app_name("v5notes")
-                .build(),
-        )
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
-        .menu(|app| application_menu(app));
+    let builder = {
+        let builder = tauri::Builder::default()
+            .plugin(
+                tauri_plugin_autostart::Builder::new()
+                    .app_name("v5notes")
+                    .build(),
+            )
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init())
+            .plugin(tauri_plugin_deep_link::init());
+        // Native File/Edit/Window menu belongs on macOS only; Windows shows it as an in-window bar.
+        #[cfg(target_os = "macos")]
+        let builder = builder.menu(|app| application_menu(app));
+        builder
+    };
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let builder = tauri::Builder::default();
@@ -868,10 +908,14 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", quit_label(), true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
+            // macOS menu bar uses a template mono glyph; Windows/Linux need a colored icon.
+            #[cfg(target_os = "macos")]
             let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-mono.png"))?;
+            #[cfg(not(target_os = "macos"))]
+            let tray_icon = Image::from_bytes(include_bytes!("../icons/tray.png"))?;
             let tray = TrayIconBuilder::with_id("main-tray")
                 .icon(tray_icon)
-                .icon_as_template(true)
+                .icon_as_template(cfg!(target_os = "macos"))
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id().as_ref() {
@@ -892,6 +936,16 @@ pub fn run() {
             app.manage(tray);
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             app.manage(HeldUpdate::default());
+            #[cfg(target_os = "macos")]
+            apply_macos_dock_icon();
+            #[cfg(windows)]
+            apply_windows_window_icon(app.handle());
+            // Linux / Windows 开发态注册 deep link；macOS 需安装后的 bundle 才生效
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let _ = app.deep_link().register_all();
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

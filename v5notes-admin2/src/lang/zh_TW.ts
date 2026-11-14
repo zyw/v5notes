@@ -35,11 +35,9 @@ export default {
     showPassword: '顯示密碼',
     hidePassword: '隱藏密碼',
     otherWays: '或使用其他方式',
+    socialOff: '目前伺服器未開啟第三方登入',
     langAria: '語言切換',
     socialShort: {
-      wechat: '微信',
-      maxkey: 'MaxKey',
-      topiam: 'TopIAM',
       gitee: 'Gitee',
       github: 'GitHub'
     },
@@ -68,11 +66,8 @@ export default {
       }
     },
     social: {
-      wechat: '微信登入',
-      maxkey: 'MaxKey登入',
-      topiam: 'TopIam登入',
       gitee: 'Gitee登入',
-      github: 'Github登入'
+      github: 'GitHub登入'
     }
   },
   register: {

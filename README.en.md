@@ -425,6 +425,7 @@ Docker Compose reads `v5notes2/docker/.env`. Names are listed in [env.example](v
 | `V5NOTES_SMS_ALIBABA_*` | Alibaba Cloud SMS |
 | `V5NOTES_SMS_TENCENT_*` | Tencent Cloud SMS |
 | `V5NOTES_GITEE_CLIENT_ID` / `CLIENT_SECRET` | Gitee sign-in |
+| `V5NOTES_GITHUB_CLIENT_ID` / `CLIENT_SECRET` | GitHub sign-in |
 
 Field encryption can also use `V5NOTES_MYBATIS_ENCRYPTOR_PASSWORD`, `PUBLIC_KEY`, and `PRIVATE_KEY`.
 

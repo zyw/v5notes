@@ -37,11 +37,9 @@ export default {
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     otherWays: 'Or continue with',
+    socialOff: 'Third-party sign-in is disabled on this server',
     langAria: 'Language',
     socialShort: {
-      wechat: 'WeChat',
-      maxkey: 'MaxKey',
-      topiam: 'TopIAM',
       gitee: 'Gitee',
       github: 'GitHub'
     },
@@ -70,11 +68,8 @@ export default {
       }
     },
     social: {
-      wechat: 'Wechat Login',
-      maxkey: 'MaxKey Login',
-      topiam: 'TopIam Login',
       gitee: 'Gitee Login',
-      github: 'Github Login'
+      github: 'GitHub Login'
     }
   },
   // 注册页面国际化

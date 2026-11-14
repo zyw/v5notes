@@ -20,6 +20,11 @@ public final class ClientAccountConstants {
      */
     public static final String TRIAL_STORAGE_MB = "client.account.trialStorageMb";
 
+    /**
+     * 是否开启客户端第三方登录，true 开启，false 关闭。
+     */
+    public static final String THIRD_PARTY_LOGIN = "client.thirdPartyLogin.enable";
+
     private ClientAccountConstants() {
     }
 }

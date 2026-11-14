@@ -37,6 +37,11 @@
     ]
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["v5notes"]
+      }
+    },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVCMzNFOTBGQTlGQUU0OEMKUldTTTVQcXBEK2t6Njgzc3d1MThLMUNNSVBxNmtCMTZ0UEtxeXZISmtFUHkzeCt0MTg0V1gycG0K",
       "endpoints": [

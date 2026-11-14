@@ -71,40 +71,66 @@ public class SysLoginService {
 
 
     /**
-     * 绑定第三方用户
+     * 将第三方账号绑定到当前登录用户。
      *
      * @param authUserData 授权响应实体
      */
-    @Lock4j
     public void socialRegister(AuthUser authUserData) {
-        String authId = authUserData.getSource() + authUserData.getUuid();
-        // 第三方用户信息
+        bindSocialUser(LoginHelper.getUserId(), authUserData, true);
+    }
+
+    /**
+     * 将第三方账号绑定到指定用户（已登录加绑，或客户端社交自动开户后落库）。
+     *
+     * @param userId         系统用户 ID
+     * @param authUserData   授权响应实体
+     * @param rejectIfBound 为 true 时，authId 已被他人占用则抛错（加绑场景）
+     */
+    @Lock4j
+    public void bindSocialUser(Long userId, AuthUser authUserData, boolean rejectIfBound) {
+        // JustAuth AuthUser.source 为枚举名（如 GITEE），统一小写后与配置/前端一致
+        String source = StringUtils.blankToDefault(authUserData.getSource(), "").toLowerCase();
+        authUserData.setSource(source);
+        String authId = source + authUserData.getUuid();
         SysSocialBo bo = BeanUtil.toBean(authUserData, SysSocialBo.class);
         BeanUtil.copyProperties(authUserData.getToken(), bo);
-        Long userId = LoginHelper.getUserId();
         bo.setUserId(userId);
         bo.setAuthId(authId);
+        bo.setSource(source);
         bo.setOpenId(authUserData.getUuid());
-        bo.setUserName(authUserData.getUsername());
+        // user_name / access_token 库内非空；平台偶发缺省时用 uuid / token 兜底，避免静默插入失败
+        bo.setUserName(StringUtils.blankToDefault(authUserData.getUsername(), authUserData.getUuid()));
         bo.setNickName(authUserData.getNickname());
-        List<SysSocialVo> checkList = sysSocialService.selectByAuthId(authId);
-        if (CollUtil.isNotEmpty(checkList)) {
-            throw new ServiceException(MessageUtils.message("auth.social.bound"));
+        if (StringUtils.isBlank(bo.getAccessToken()) && authUserData.getToken() != null) {
+            bo.setAccessToken(authUserData.getToken().getAccessToken());
         }
-        // 查询是否已经绑定用户
+        List<SysSocialVo> checkList = sysSocialService.selectByAuthId(authId);
+        if (CollUtil.isEmpty(checkList) && StringUtils.isNotBlank(source)) {
+            checkList = sysSocialService.selectByAuthId(source.toUpperCase() + authUserData.getUuid());
+        }
+        if (CollUtil.isNotEmpty(checkList)) {
+            if (rejectIfBound || !userId.equals(checkList.getFirst().getUserId())) {
+                throw new ServiceException(MessageUtils.message("auth.social.bound"));
+            }
+            return;
+        }
         SysSocialBo params = new SysSocialBo();
         params.setUserId(userId);
-        params.setSource(bo.getSource());
+        params.setSource(source);
         List<SysSocialVo> list = sysSocialService.queryList(params);
+        if (CollUtil.isEmpty(list) && StringUtils.isNotBlank(source)) {
+            params.setSource(source.toUpperCase());
+            list = sysSocialService.queryList(params);
+        }
         if (CollUtil.isEmpty(list)) {
-            // 没有绑定用户, 新增用户信息
-            sysSocialService.insertByBo(bo);
+            if (!Boolean.TRUE.equals(sysSocialService.insertByBo(bo))) {
+                throw new ServiceException(MessageUtils.message("auth.social.bind.failed"));
+            }
         } else {
-            // 更新用户信息
             bo.setId(list.getFirst().getId());
-            sysSocialService.updateByBo(bo);
-            // 如果要绑定的平台账号已经被绑定过了 是否抛异常自行决断
-            // throw new ServiceException("此平台账号已经被绑定!");
+            if (!Boolean.TRUE.equals(sysSocialService.updateByBo(bo))) {
+                throw new ServiceException(MessageUtils.message("auth.social.bind.failed"));
+            }
         }
     }
 

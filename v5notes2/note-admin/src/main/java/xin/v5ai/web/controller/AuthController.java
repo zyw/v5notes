@@ -128,12 +128,13 @@ public class AuthController {
      * @return 跳转地址
      */
     @GetMapping("/binding/{source}")
-    public R<String> authBinding(@PathVariable("source") String source) {
+    public R<String> authBinding(@PathVariable("source") String source,
+                                 @RequestParam(value = "app", required = false, defaultValue = "admin") String app) {
         SocialLoginConfigProperties obj = socialProperties.getType().get(source);
         if (ObjectUtil.isNull(obj)) {
             return R.fail(MessageUtils.message("auth.social.unsupported", source));
         }
-        AuthRequest authRequest = SocialUtils.getAuthRequest(source, socialProperties);
+        AuthRequest authRequest = SocialUtils.getAuthRequest(source, socialProperties, app);
         String authorizeUrl = authRequest.authorize(AuthStateUtils.createState());
         return R.data(authorizeUrl);
     }
@@ -148,17 +149,31 @@ public class AuthController {
     public R<Void> socialCallback(@RequestBody SocialLoginBody loginBody) {
         // 校验token
         StpUtil.checkLogin();
-        // 获取第三方登录信息
+        // 笔记客户端绑定须与 authorize 时同一套 client 回调地址
+        String app = resolveSocialApp(loginBody.getClientId());
         AuthResponse<AuthUser> response = SocialUtils.loginAuth(
             loginBody.getSource(), loginBody.getSocialCode(),
-            loginBody.getSocialState(), socialProperties);
+            loginBody.getSocialState(), socialProperties, app);
         AuthUser authUserData = response.getData();
-        // 判断授权响应是否成功
         if (!response.ok()) {
             return R.fail(response.getMsg());
         }
         loginService.socialRegister(authUserData);
         return R.ok();
+    }
+
+    /**
+     * 按登录客户端判断社交回调端：笔记 client → client，其余 → admin。
+     */
+    private String resolveSocialApp(String clientId) {
+        if (StringUtils.isBlank(clientId)) {
+            return "admin";
+        }
+        SysClientVo client = clientService.queryByClientId(clientId);
+        if (client != null && ("client".equals(client.getDeviceType()) || "pc_client".equals(client.getDeviceType()))) {
+            return "client";
+        }
+        return "admin";
     }
 
 
@@ -210,6 +225,26 @@ public class AuthController {
     @GetMapping("/client/register-enabled")
     public R<Boolean> clientRegisterEnabled() {
         return R.ok(configService.selectClientRegisterEnabled());
+    }
+
+    /**
+     * 管理端第三方登录是否开启。登录页据此决定是否展示第三方入口。
+     *
+     * @return true 开启
+     */
+    @GetMapping("/third-party-login-enabled")
+    public R<Boolean> thirdPartyLoginEnabled() {
+        return R.ok(configService.selectThirdPartyLoginEnabled());
+    }
+
+    /**
+     * 客户端第三方登录是否开启。登录页据此决定是否展示第三方入口。
+     *
+     * @return true 开启
+     */
+    @GetMapping("/client/third-party-login-enabled")
+    public R<Boolean> clientThirdPartyLoginEnabled() {
+        return R.ok(configService.selectClientThirdPartyLoginEnabled());
     }
 
     /**

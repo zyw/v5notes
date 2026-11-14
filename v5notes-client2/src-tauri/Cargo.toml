@@ -21,12 +21,15 @@ reqwest = { version = "0.13", default-features = false, features = ["default-tls
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2.7.0"
+tauri-plugin-deep-link = "2"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 
 # macOS: vector PDF via WKWebView.createPDF + Core Graphics repagination.
+# setApplicationIconImage keeps packaged Dock icons aligned with the pre-masked asset.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage"] }
 objc2-core-foundation = "0.3"
 objc2-core-graphics = { version = "0.3", features = ["CGContext", "CGDataProvider", "CGPDFContext", "CGPDFDocument", "CGPDFPage"] }
 objc2-foundation = { version = "0.3", features = ["NSData", "NSDate", "NSGeometry", "NSObject", "NSRunLoop", "NSString", "NSURL"] }

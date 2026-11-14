@@ -10,8 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import me.zhyd.oauth.model.AuthResponse;
 import me.zhyd.oauth.model.AuthUser;
 import xin.v5ai.common.core.constant.SystemConstants;
+import xin.v5ai.common.core.enums.DeviceType;
 import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.core.exception.user.UserException;
+import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.core.utils.ValidatorUtils;
 import xin.v5ai.common.json.utils.JsonUtils;
 import xin.v5ai.common.satoken.utils.LoginHelper;
@@ -19,20 +21,24 @@ import xin.v5ai.common.social.config.properties.SocialProperties;
 import xin.v5ai.common.social.utils.SocialUtils;
 import xin.v5ai.system.api.model.LoginUser;
 import xin.v5ai.system.api.model.SocialLoginBody;
+import xin.v5ai.system.domain.SysUser;
 import xin.v5ai.system.domain.vo.SysClientVo;
 import xin.v5ai.system.domain.vo.SysSocialVo;
 import xin.v5ai.system.domain.vo.SysUserVo;
 import xin.v5ai.system.mapper.SysUserMapper;
+import xin.v5ai.system.service.ISysConfigService;
 import xin.v5ai.system.service.ISysSocialService;
 import xin.v5ai.web.domain.vo.LoginVo;
 import xin.v5ai.web.service.IAuthStrategy;
 import xin.v5ai.web.service.SysLoginService;
+import xin.v5ai.web.service.SysRegisterService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * 第三方授权策略
+ * 第三方授权策略。
+ * <p>管理端：须先绑定再登录。笔记客户端：未绑定则自动创建 cli_user 并登录。</p>
  *
  * @author thiszhc is 三三
  */
@@ -45,6 +51,8 @@ public class SocialAuthStrategy implements IAuthStrategy {
     private final ISysSocialService sysSocialService;
     private final SysUserMapper userMapper;
     private final SysLoginService loginService;
+    private final SysRegisterService registerService;
+    private final ISysConfigService configService;
 
     /**
      * 执行第三方授权登录，并校验授权账号与系统账号的绑定关系。
@@ -57,26 +65,48 @@ public class SocialAuthStrategy implements IAuthStrategy {
     public LoginVo login(String body, SysClientVo client) {
         SocialLoginBody loginBody = JsonUtils.parseObject(body, SocialLoginBody.class);
         ValidatorUtils.validate(loginBody);
+        if (isClientDevice(client)) {
+            if (!configService.selectClientThirdPartyLoginEnabled()) {
+                throw new ServiceException(MessageUtils.message("client.thirdPartyLogin.disabled"));
+            }
+        } else if (!configService.selectThirdPartyLoginEnabled()) {
+            throw new ServiceException(MessageUtils.message("sys.thirdPartyLogin.disabled"));
+        }
+        String app = isClientDevice(client) ? "client" : "admin";
         AuthResponse<AuthUser> response = SocialUtils.loginAuth(
             loginBody.getSource(), loginBody.getSocialCode(),
-            loginBody.getSocialState(), socialProperties);
+            loginBody.getSocialState(), socialProperties, app);
         if (!response.ok()) {
             throw new ServiceException(response.getMsg());
         }
         AuthUser authUserData = response.getData();
+        // JustAuth 写入的 source 多为枚举名（GITEE），统一小写便于 authId / 前端展示匹配
+        String source = StringUtils.blankToDefault(authUserData.getSource(), "").toLowerCase();
+        authUserData.setSource(source);
 
-        List<SysSocialVo> list = sysSocialService.selectByAuthId(authUserData.getSource() + authUserData.getUuid());
-        if (CollUtil.isEmpty(list)) {
+        List<SysSocialVo> list = findSocialByAuthUser(source, authUserData.getUuid());
+        SysUserVo user;
+        if (CollUtil.isNotEmpty(list)) {
+            user = loadUser(list.getFirst().getUserId());
+            // 历史社交开户可能未写入邮箱（Gitee /user.email 常空）；有邮箱且未占用则回填
+            backfillEmailIfAbsent(user, authUserData.getEmail());
+            // 历史占位 / 平台 login：有邮箱后改为邮箱；仍无邮箱则尽量升为平台 login（与新开户一致）
+            preferEmailUserName(user, authUserData.getEmail(), authUserData.getUsername());
+            preferPlatformUserName(user, authUserData.getUsername());
+        } else if (isClientDevice(client)) {
+            // 笔记客户端：社交登录即开户
+            SysUserVo created = registerService.registerClientBySocial(authUserData);
+            loginService.bindSocialUser(created.getUserId(), authUserData, false);
+            user = created;
+        } else {
             throw new ServiceException(MessageUtils.message("auth.social.unbound"));
         }
-        SysUserVo user = loadUser(list.getFirst().getUserId());
-        // 此处可根据登录用户的数据不同 自行创建 loginUser 属性不够用继承扩展就行了
+
         LoginUser loginUser = loginService.buildLoginUser(user);
         loginService.checkClientUserType(client, user.getUserName(), loginUser.getUserType());
         loginUser.setClientKey(client.getClientKey());
         loginUser.setDeviceType(client.getDeviceType());
         SaLoginParameter model = IAuthStrategy.buildLoginParameter(client);
-        // 生成token
         LoginHelper.login(loginUser, model);
 
         LoginVo loginVo = new LoginVo();
@@ -84,6 +114,20 @@ public class SocialAuthStrategy implements IAuthStrategy {
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
         loginVo.setClientId(client.getClientId());
         return loginVo;
+    }
+
+    private static boolean isClientDevice(SysClientVo client) {
+        String deviceType = client == null ? null : client.getDeviceType();
+        return DeviceType.CLIENT.getDevice().equals(deviceType) || "pc_client".equals(deviceType);
+    }
+
+    /** 按小写 source 查 authId；兼容历史 JustAuth 枚举名大写（如 GITEE + uuid）。 */
+    private List<SysSocialVo> findSocialByAuthUser(String source, String uuid) {
+        List<SysSocialVo> list = sysSocialService.selectByAuthId(source + uuid);
+        if (CollUtil.isNotEmpty(list) || StringUtils.isBlank(source)) {
+            return list;
+        }
+        return sysSocialService.selectByAuthId(source.toUpperCase() + uuid);
     }
 
     /**
@@ -102,6 +146,95 @@ public class SocialAuthStrategy implements IAuthStrategy {
             throw new UserException("user.blocked", "");
         }
         return user;
+    }
+
+    /**
+     * 本地邮箱为空且第三方邮箱可用、未被占用时回填。
+     */
+    private void backfillEmailIfAbsent(SysUserVo user, String email) {
+        String trimmed = StringUtils.trim(email);
+        if (user == null || StringUtils.isNotBlank(user.getEmail()) || StringUtils.isBlank(trimmed)) {
+            return;
+        }
+        boolean occupied = userMapper.lambda()
+            .eq(SysUser::getEmail, trimmed)
+            .ne(SysUser::getUserId, user.getUserId())
+            .exists();
+        if (occupied) {
+            log.info("Skip social email backfill for userId={}: email occupied", user.getUserId());
+            return;
+        }
+        int rows = userMapper.lambda()
+            .set(SysUser::getEmail, trimmed)
+            .eq(SysUser::getUserId, user.getUserId())
+            .updateCount();
+        if (rows > 0) {
+            user.setEmail(trimmed);
+        }
+    }
+
+    /**
+     * 社交开户登录名（gt_ 或平台 login）在拿到可用邮箱后升级为邮箱登录名。
+     */
+    private void preferEmailUserName(SysUserVo user, String email, String platformUserName) {
+        String trimmed = StringUtils.trim(email);
+        if (user == null || StringUtils.isBlank(trimmed) || trimmed.length() > 50) {
+            return;
+        }
+        String current = user.getUserName();
+        boolean fromSocialFallback = SysRegisterService.isSocialGeneratedUserName(current)
+            || current != null && current.equalsIgnoreCase(StringUtils.trim(platformUserName));
+        if (!fromSocialFallback) {
+            return;
+        }
+        if (trimmed.equalsIgnoreCase(current)) {
+            return;
+        }
+        boolean nameTaken = userMapper.lambda()
+            .eq(SysUser::getUserName, trimmed)
+            .ne(SysUser::getUserId, user.getUserId())
+            .exists();
+        if (nameTaken) {
+            log.info("Skip email username upgrade for userId={}: username occupied", user.getUserId());
+            return;
+        }
+        int rows = userMapper.lambda()
+            .set(SysUser::getUserName, trimmed)
+            .set(SysUser::getEmail, trimmed)
+            .eq(SysUser::getUserId, user.getUserId())
+            .updateCount();
+        if (rows > 0) {
+            user.setUserName(trimmed);
+            user.setEmail(trimmed);
+        }
+    }
+
+    /**
+     * 占位登录名（gt_ 等）在仍无邮箱时，升级为平台 login（如 Gitee lxm09）。
+     */
+    private void preferPlatformUserName(SysUserVo user, String platformUserName) {
+        if (user == null || !SysRegisterService.isSocialGeneratedUserName(user.getUserName())) {
+            return;
+        }
+        String platformName = SysRegisterService.usablePlatformUserName(platformUserName);
+        if (platformName == null || platformName.equalsIgnoreCase(user.getUserName())) {
+            return;
+        }
+        boolean nameTaken = userMapper.lambda()
+            .eq(SysUser::getUserName, platformName)
+            .ne(SysUser::getUserId, user.getUserId())
+            .exists();
+        if (nameTaken) {
+            log.info("Skip platform username upgrade for userId={}: username occupied", user.getUserId());
+            return;
+        }
+        int rows = userMapper.lambda()
+            .set(SysUser::getUserName, platformName)
+            .eq(SysUser::getUserId, user.getUserId())
+            .updateCount();
+        if (rows > 0) {
+            user.setUserName(platformName);
+        }
     }
 
 }

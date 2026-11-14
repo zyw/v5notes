@@ -485,6 +485,96 @@
   transition: color .16s ease, gap .16s ease;
 }
 .login-switch:hover { color: var(--accent); gap: 8px; }
+/* 第三方登录：与管理端 login.vue .alt / .prov 对齐 */
+.login-social {
+  margin-top: 12px;
+}
+.login-social-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #8a9991;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1;
+}
+.login-social-hint::before,
+.login-social-hint::after {
+  flex: 1;
+  height: 1px;
+  background: #edf1ee;
+  content: '';
+}
+.login-social-prov {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 4px;
+  width: 100%;
+  margin-top: 12px;
+}
+.login-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: #5f7067;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .16s ease, background .16s ease;
+}
+.login-social-btn span {
+  color: #5f7067;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.login-social-btn .social-provider-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  flex: none;
+  color: inherit;
+}
+.login-social-btn:hover:not(:disabled) {
+  background: #e8f2ec;
+  color: #17624a;
+}
+.login-social-btn:hover:not(:disabled) span {
+  color: #17624a;
+}
+.login-social-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.login-screen[data-theme='dark'] .login-social-hint {
+  color: #7f948a;
+}
+.login-screen[data-theme='dark'] .login-social-hint::before,
+.login-screen[data-theme='dark'] .login-social-hint::after {
+  background: #1e2d25;
+}
+.login-screen[data-theme='dark'] .login-social-btn,
+.login-screen[data-theme='dark'] .login-social-btn span {
+  color: #9fb3a8;
+}
+.login-screen[data-theme='dark'] .login-social-btn:hover:not(:disabled) {
+  background: #17271f;
+  color: #7fd6b0;
+}
+.login-screen[data-theme='dark'] .login-social-btn:hover:not(:disabled) span {
+  color: #7fd6b0;
+}
 .login-error { margin: 0; font-size: 12px; line-height: 1.6; color: var(--danger); }
 
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -497,6 +587,7 @@
 .login-code-send:focus-visible,
 .login-password-toggle:focus-visible,
 .login-switch:focus-visible,
+.login-social-btn:focus-visible,
 .login-field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* ---------- 入场：一次编排 ---------- */

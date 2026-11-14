@@ -1,10 +1,8 @@
 package xin.v5ai.basics.file.domain.bo;
 
-import xin.v5ai.basics.file.domain.FileContent;
 import xin.v5ai.common.mybatis.core.domain.BaseEntity;
 import xin.v5ai.common.core.validate.AddGroup;
 import xin.v5ai.common.core.validate.EditGroup;
-import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import jakarta.validation.constraints.*;
@@ -17,7 +15,6 @@ import jakarta.validation.constraints.*;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = FileContent.class, reverseConvertGenerate = false)
 public class FileContentBo extends BaseEntity {
 
     /**

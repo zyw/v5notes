@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>V5Notes · OAuth 中转</title>
+  <link rel="icon" href="./assets/brand-icon.png">
+  <style>
+    :root {
+      --paper: #fbf9f3;
+      --ink: #27342d;
+      --muted: #6b7b70;
+      --accent: #315b4a;
+      --line: #e4e6df;
+      --font: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px 18px;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f7f5ef, var(--paper));
+      font: 16px/1.65 var(--font);
+    }
+    .card {
+      width: min(440px, 100%);
+      padding: 28px 26px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffefa;
+      text-align: center;
+      box-shadow: 0 10px 36px rgba(39, 52, 45, .08);
+    }
+    img { width: 40px; height: 40px; border-radius: 11px; }
+    h1 { margin: 14px 0 8px; font-size: 20px; }
+    p { margin: 0; color: var(--muted); font-size: 14px; }
+    a { color: var(--accent); font-weight: 650; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #e9eee8;
+      color: var(--ink);
+      font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="./assets/brand-icon.png" width="40" height="40" alt="">
+    <h1>V5Notes OAuth 中转</h1>
+    <p>此站点用于桌面端第三方登录回调。正常流程会落到 <code>/social-callback</code>。</p>
+    <p style="margin-top:14px"><a href="./social-callback/">打开回调页</a> · <a href="https://github.com/zyw/v5notes/releases">下载桌面端</a></p>
+  </main>
+</body>
+</html>

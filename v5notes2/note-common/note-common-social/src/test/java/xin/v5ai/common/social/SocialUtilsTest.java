@@ -4,6 +4,7 @@ import cn.hutool.extra.spring.SpringUtil;
 import me.zhyd.oauth.config.AuthConfig;
 import me.zhyd.oauth.exception.AuthException;
 import me.zhyd.oauth.request.AuthGithubRequest;
+import me.zhyd.oauth.request.AuthGoogleRequest;
 import me.zhyd.oauth.request.AuthMicrosoftRequest;
 import me.zhyd.oauth.request.AuthRequest;
 import me.zhyd.oauth.request.AuthStackOverflowRequest;
@@ -60,6 +61,39 @@ class SocialUtilsTest {
         assertEquals("client-secret", authConfig.getClientSecret());
         assertEquals("https://example.test/callback", authConfig.getRedirectUri());
         assertEquals(List.of("user", "email"), authConfig.getScopes());
+    }
+
+    @Test
+    @DisplayName("按 app 拼装 admin / client 回调地址")
+    void shouldResolveRedirectByApp() {
+        SocialLoginConfigProperties config = config();
+        SocialProperties properties = properties("gitee", config);
+        properties.setAddress("http://admin.example");
+        properties.setClientAddress("v5notes://app");
+
+        assertEquals(
+            "http://admin.example/social-callback?source=gitee",
+            SocialUtils.resolveRedirectUri("gitee", config, properties, "admin"));
+        assertEquals(
+            "v5notes://app/social-callback?source=gitee",
+            SocialUtils.resolveRedirectUri("gitee", config, properties, "client"));
+    }
+
+    /**
+     * 验证 Google 配置映射为对应请求类型。
+     */
+    @Test
+    @DisplayName("构造 Google 授权请求")
+    void shouldBuildGoogleRequestWithBaseConfig() throws Exception {
+        SocialLoginConfigProperties config = config();
+        config.setScopes(List.of("openid", "email", "profile"));
+
+        AuthRequest request = SocialUtils.getAuthRequest("google", properties("google", config));
+
+        assertInstanceOf(AuthGoogleRequest.class, request);
+        AuthConfig authConfig = requestConfig(request);
+        assertEquals("client-id", authConfig.getClientId());
+        assertEquals(List.of("openid", "email", "profile"), authConfig.getScopes());
     }
 
     /**

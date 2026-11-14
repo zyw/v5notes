@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 试用限制只作用于 user_source = client_register。占用排行包含全部 cli_user。
+ * 试用限制作用于客户端自助获客（{@code client_register} / {@code client_social}）。占用排行包含全部 cli_user。
  */
 @Service
 @RequiredArgsConstructor
@@ -46,7 +46,7 @@ public class ClientTrialServiceImpl implements IClientTrialService {
             return;
         }
         ClientAccountRow account = usageMapper.selectAccount(userId);
-        if (account == null || !UserSource.CLIENT_REGISTER.matches(account.getUserSource())) {
+        if (account == null || !UserSource.isClientSelfServe(account.getUserSource())) {
             return;
         }
         Usage usage = usageOf(userId);
@@ -70,7 +70,7 @@ public class ClientTrialServiceImpl implements IClientTrialService {
         vo.setUsedBytes(usage.used());
         int days = trialDays();
         vo.setQuotaBytes(trialQuotaBytes());
-        if (account == null || !UserSource.CLIENT_REGISTER.matches(account.getUserSource())) {
+        if (account == null || !UserSource.isClientSelfServe(account.getUserSource())) {
             return vo;
         }
         vo.setLimited(true);

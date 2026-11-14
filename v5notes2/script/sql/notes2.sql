@@ -348,7 +348,7 @@ DELETE FROM sys_client WHERE client_id IN ('d9df3c0228c05e5c61db46348bcadf6e', '
 -- 5.1 客户端登录（clientPassword / client）：v5notes-client2 登录时携带该 client_id
 INSERT INTO sys_client (id, client_id, client_key, client_secret, grant_type, device_type, access_path, ip_whitelist,
                         active_timeout, timeout, status, del_flag, create_dept, create_by, create_time, update_by, update_time)
-VALUES (1851635079091687426, 'd9df3c0228c05e5c61db46348bcadf6e', 'client', 'client123', 'clientPassword', 'client',
+VALUES (1851635079091687426, 'd9df3c0228c05e5c61db46348bcadf6e', 'client', 'client123', 'clientPassword,social', 'client',
         NULL, NULL, -1, 604800, '0', '0', 1761000000000000103, 1761100000000000001, sysdate(), NULL, NULL);
 
 -- 5.2 管理端登录（password / admin）：v5notes-admin2 登录时携带该 client_id

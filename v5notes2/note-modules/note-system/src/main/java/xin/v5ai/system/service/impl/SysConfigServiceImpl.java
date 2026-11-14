@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import xin.v5ai.common.core.constant.CacheNames;
+import xin.v5ai.common.core.constant.ClientAccountConstants;
 import xin.v5ai.common.core.constant.SystemConstants;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.core.exception.ServiceException;
@@ -93,13 +94,33 @@ public class SysConfigServiceImpl implements ISysConfigService, ConfigService {
     }
 
     /**
+     * 获取管理端第三方登录开关。
+     *
+     * @return true开启，false关闭
+     */
+    @Override
+    public boolean selectThirdPartyLoginEnabled() {
+        return Convert.toBool(this.getConfigValue("sys.thirdPartyLogin.enable"));
+    }
+
+    /**
      * 获取客户端自助注册开关。
      *
      * @return true开启，false关闭
      */
     @Override
     public boolean selectClientRegisterEnabled() {
-        return Convert.toBool(this.getConfigValue("client.account.registerUser"));
+        return Convert.toBool(this.getConfigValue(ClientAccountConstants.REGISTER_USER));
+    }
+
+    /**
+     * 获取客户端第三方登录开关。
+     *
+     * @return true开启，false关闭
+     */
+    @Override
+    public boolean selectClientThirdPartyLoginEnabled() {
+        return Convert.toBool(this.getConfigValue(ClientAccountConstants.THIRD_PARTY_LOGIN));
     }
 
     /**

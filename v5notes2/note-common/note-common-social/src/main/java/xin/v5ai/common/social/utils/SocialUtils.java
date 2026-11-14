@@ -9,6 +9,7 @@ import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.*;
 import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.core.utils.SpringUtils;
+import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.social.config.properties.SocialLoginConfigProperties;
 import xin.v5ai.common.social.config.properties.SocialProperties;
 
@@ -22,32 +23,43 @@ public class SocialUtils {
     private static final AuthRedisStateCache STATE_CACHE = SpringUtils.getBean(AuthRedisStateCache.class);
 
     /**
-     * 执行第三方登录授权回调。
-     *
-     * @param source           社交平台类型
-     * @param code             授权码
-     * @param state            状态值
-     * @param socialProperties 社交平台配置
-     * @return 授权响应
-     * @throws AuthException 授权异常
+     * 执行第三方登录授权回调（默认管理端回调地址）。
      */
     public static AuthResponse<AuthUser> loginAuth(String source, String code, String state, SocialProperties socialProperties) throws AuthException {
-        AuthRequest authRequest = getAuthRequest(source, socialProperties);
-        AuthCallback callback = new AuthCallback();
-        callback.setCode(code);
-        callback.setState(state);
-        return authRequest.login(callback);
+        return loginAuth(source, code, state, socialProperties, "admin");
     }
 
     /**
-     * 根据平台类型构建授权请求实例。
+     * 执行第三方登录授权回调。
      *
-     * @param source           社交平台类型
-     * @param socialProperties 社交平台配置
-     * @return 授权请求
-     * @throws AuthException 授权异常
+     * @param app {@code client} 使用 clientAddress，其它使用 address
+     */
+    public static AuthResponse<AuthUser> loginAuth(String source, String code, String state,
+                                                   SocialProperties socialProperties, String app) throws AuthException {
+        AuthRequest authRequest = getAuthRequest(source, socialProperties, app);
+        AuthCallback callback = new AuthCallback();
+        callback.setCode(code);
+        callback.setState(state);
+        AuthResponse<AuthUser> response = authRequest.login(callback);
+        if (response != null && response.ok() && "gitee".equalsIgnoreCase(source) && response.getData() != null) {
+            GiteeEmailSupport.enrichEmail(response.getData());
+        }
+        return response;
+    }
+
+    /**
+     * 根据平台类型构建授权请求实例（默认管理端回调）。
      */
     public static AuthRequest getAuthRequest(String source, SocialProperties socialProperties) throws AuthException {
+        return getAuthRequest(source, socialProperties, "admin");
+    }
+
+    /**
+     * 根据平台类型与应用端构建授权请求实例。
+     *
+     * @param app {@code client} / {@code admin}
+     */
+    public static AuthRequest getAuthRequest(String source, SocialProperties socialProperties, String app) throws AuthException {
         SocialLoginConfigProperties obj = socialProperties.getType().get(source);
         if (ObjectUtil.isNull(obj)) {
             throw new AuthException(MessageUtils.message("social.type.unsupported"));
@@ -55,18 +67,18 @@ public class SocialUtils {
         AuthConfig.AuthConfigBuilder builder = AuthConfig.builder()
             .clientId(obj.getClientId())
             .clientSecret(obj.getClientSecret())
-            .redirectUri(obj.getRedirectUri())
+            .redirectUri(resolveRedirectUri(source, obj, socialProperties, app))
             .serverUrl(obj.getServerUrl())
             .scopes(obj.getScopes());
         return switch (source.toLowerCase()) {
             case "dingtalk" -> new AuthDingTalkV2Request(builder.build(), STATE_CACHE);
             case "baidu" -> new AuthBaiduRequest(builder.build(), STATE_CACHE);
             case "github" -> new AuthGithubRequest(builder.build(), STATE_CACHE);
+            case "google" -> new AuthGoogleRequest(builder.build(), STATE_CACHE);
             case "gitee" -> new AuthGiteeRequest(builder.build(), STATE_CACHE);
             case "weibo" -> new AuthWeiboRequest(builder.build(), STATE_CACHE);
             case "coding" -> new AuthCodingRequest(builder.build(), STATE_CACHE);
             case "oschina" -> new AuthOschinaRequest(builder.build(), STATE_CACHE);
-            // 支付宝在创建回调地址时，不允许使用localhost或者127.0.0.1，所以这儿的回调地址使用的局域网内的ip
             case "alipay_wallet" ->
                 new AuthAlipayRequest(builder.build(), socialProperties.getType().get("alipay_wallet").getAlipayPublicKey(), STATE_CACHE);
             case "qq" -> new AuthQqRequest(builder.build(), STATE_CACHE);
@@ -89,5 +101,20 @@ public class SocialUtils {
             case "gitea" -> new AuthGiteaRequest(builder.build(), STATE_CACHE);
             default -> throw new AuthException(MessageUtils.message("social.config.missing"));
         };
+    }
+
+    /**
+     * 优先用 address / clientAddress 拼装回调；未配置时回退 YAML redirect-uri。
+     */
+    public static String resolveRedirectUri(String source, SocialLoginConfigProperties obj,
+                                            SocialProperties socialProperties, String app) {
+        String base = "client".equalsIgnoreCase(StringUtils.blankToDefault(app, "admin"))
+            ? socialProperties.getClientAddress()
+            : socialProperties.getAddress();
+        if (StringUtils.isNotBlank(base)) {
+            String normalized = base.replaceAll("/+$", "");
+            return normalized + "/social-callback?source=" + source;
+        }
+        return obj.getRedirectUri();
     }
 }
