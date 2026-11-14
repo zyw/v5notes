@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { AccountState } from '../account'
+import { DEFAULT_CLIENT_ID } from '../account/constants'
+import { bootstrapModeLabel, createSyncEngine, type SyncEngineStatus } from '../sync'
+import type { OpenedVault } from '../vault/types'
 
 const props = defineProps<{
   account: AccountState
+  vault?: OpenedVault | null
 }>()
 
 const serverBusy = ref(false)
 const serverError = ref('')
 const showPassword = ref(false)
+const syncBusy = ref(false)
+const syncMessage = ref('')
+const syncStatus = ref<SyncEngineStatus | null>(null)
+
+const canSync = computed(() => Boolean(props.account.loggedIn.value && props.vault?.rootPath))
+const vaultSync = computed(() => props.account.plan.value?.vaultSync)
 
 async function onLogin() {
   await props.account.login()
@@ -16,6 +26,8 @@ async function onLogin() {
 
 async function onLogout() {
   await props.account.logout()
+  syncStatus.value = null
+  syncMessage.value = ''
 }
 
 async function useOfficial() {
@@ -42,6 +54,57 @@ async function saveCustomServer() {
     serverError.value = cause instanceof Error ? cause.message : '无法保存服务器'
   } finally {
     serverBusy.value = false
+  }
+}
+
+function makeEngine() {
+  const rootPath = props.vault?.rootPath
+  if (!rootPath) throw new Error('请先打开本地库再同步')
+  return createSyncEngine({
+    rootPath,
+    getAuth: () => ({
+      server: props.account.server.value,
+      clientId: props.account.clientId || DEFAULT_CLIENT_ID,
+      token: props.account.token.value,
+    }),
+    onUnauthorized: () => {
+      void props.account.logout()
+    },
+  })
+}
+
+async function onBindAndSync() {
+  if (!canSync.value) return
+  syncBusy.value = true
+  syncMessage.value = ''
+  try {
+    const engine = makeEngine()
+    const plan = await engine.bind()
+    syncMessage.value = bootstrapModeLabel(plan.mode)
+    const status = await engine.pushPull()
+    syncStatus.value = status
+    syncMessage.value = `${bootstrapModeLabel(plan.mode)} · ${status.message}`
+    await props.account.refreshProfileAndPlan()
+  } catch (cause) {
+    syncMessage.value = cause instanceof Error ? cause.message : '同步失败'
+  } finally {
+    syncBusy.value = false
+  }
+}
+
+async function onSyncNow() {
+  if (!canSync.value) return
+  syncBusy.value = true
+  try {
+    const engine = makeEngine()
+    const status = await engine.pushPull()
+    syncStatus.value = status
+    syncMessage.value = status.message
+    await props.account.refreshProfileAndPlan()
+  } catch (cause) {
+    syncMessage.value = cause instanceof Error ? cause.message : '同步失败'
+  } finally {
+    syncBusy.value = false
   }
 }
 </script>
@@ -105,7 +168,14 @@ async function saveCustomServer() {
           </div>
           <div>
             <dt>Vault 同步额度</dt>
-            <dd class="muted">Phase 4 接入 <code>/vault/v1/quota</code>；本地编辑不受限</dd>
+            <dd v-if="vaultSync?.available">
+              {{ account.formatBytes(vaultSync.usedBytes) }}
+              /
+              {{ account.formatBytes(vaultSync.quotaBytes) }}
+              · 设备 {{ vaultSync.deviceUsed }}/{{ vaultSync.deviceLimit }}
+              <span v-if="vaultSync.overQuota" class="warn">已超额（push 拒 / pull 只读）</span>
+            </dd>
+            <dd v-else class="muted">尚未获取 <code>/vault/v1/quota</code>；本地编辑不受限</dd>
           </div>
         </dl>
       </div>
@@ -113,9 +183,32 @@ async function saveCustomServer() {
       <div class="sync-guide">
         <h3>同步</h3>
         <p class="settings-help tight">
-          已登录。文件同步引擎属于 Phase 4；此处仅引导，不阻断本地编辑。
+          仅登录后可绑定云端库。未打开本地库时无法同步；离线仍可本地编辑。
+          冲突会生成「冲突」副本，不会静默覆盖。
         </p>
-        <button type="button" class="ghost" disabled title="Phase 4 SyncEngine">开启同步（即将推出）</button>
+        <p v-if="!vault" class="settings-help tight muted">请先在欢迎页打开或创建本地库，再回来绑定同步。</p>
+        <div class="login-actions">
+          <button
+            type="button"
+            class="primary"
+            :disabled="!canSync || syncBusy"
+            @click="onBindAndSync"
+          >
+            {{ syncBusy ? '同步中…' : '绑定并同步' }}
+          </button>
+          <button
+            type="button"
+            class="ghost"
+            :disabled="!canSync || syncBusy"
+            @click="onSyncNow"
+          >
+            立即同步
+          </button>
+        </div>
+        <p v-if="syncMessage" class="settings-help tight" role="status">{{ syncMessage }}</p>
+        <p v-if="syncStatus?.conflictPaths?.length" class="inline-error" role="alert">
+          冲突副本：{{ syncStatus.conflictPaths.join('、') }}
+        </p>
       </div>
 
       <button type="button" class="danger" @click="onLogout">退出登录</button>
@@ -176,7 +269,7 @@ async function saveCustomServer() {
 
       <div class="sync-guide locked">
         <h3>同步</h3>
-        <p class="settings-help tight">登录后可启用多设备同步（Phase 4）。当前可继续本地编辑。</p>
+        <p class="settings-help tight">登录后可绑定当前本地库并增量同步。当前可继续本地编辑。</p>
         <button type="button" class="ghost" disabled>登录以启用同步</button>
       </div>
     </form>

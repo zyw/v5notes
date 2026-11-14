@@ -1,6 +1,5 @@
 /**
  * 套餐售卖形态 B：一账号、双配额字段（cloud_* / vault_sync_*）。
- * Phase 3 仅类型 + stub；完整计费 UI / `/vault/v1/quota` 在后续阶段。
  */
 
 export interface CloudQuotaBucket {
@@ -13,13 +12,15 @@ export interface CloudQuotaBucket {
 }
 
 export interface VaultSyncQuotaBucket {
-  /** false 表示后端尚未下发 Vault 同步额度（Phase 4 stub）。 */
+  /** false 表示后端尚未下发 Vault 同步额度。 */
   available: boolean
   usedBytes: number
   quotaBytes: number
   deviceLimit: number
   deviceUsed: number
   planName?: string | null
+  overQuota?: boolean
+  maxFileBytes?: number
 }
 
 export interface AccountPlan {
@@ -36,17 +37,44 @@ export function stubVaultSyncQuota(): VaultSyncQuotaBucket {
     deviceLimit: 0,
     deviceUsed: 0,
     planName: null,
+    overQuota: false,
   }
 }
 
-export function mapCloudQuotaToPlan(cloud: {
-  limited: boolean
-  expired: boolean
-  usedBytes: number
-  quotaBytes: number
-  expireAt?: string | null
+export function mapVaultQuota(raw: {
+  available?: boolean
+  usedBytes?: number
+  quotaBytes?: number
+  deviceLimit?: number
+  deviceUsed?: number
   planName?: string | null
-} | null): AccountPlan {
+  overQuota?: boolean
+  maxFileBytes?: number
+} | null | undefined): VaultSyncQuotaBucket {
+  if (!raw) return stubVaultSyncQuota()
+  return {
+    available: raw.available !== false,
+    usedBytes: raw.usedBytes ?? 0,
+    quotaBytes: raw.quotaBytes ?? 0,
+    deviceLimit: raw.deviceLimit ?? 0,
+    deviceUsed: raw.deviceUsed ?? 0,
+    planName: raw.planName ?? null,
+    overQuota: Boolean(raw.overQuota),
+    maxFileBytes: raw.maxFileBytes,
+  }
+}
+
+export function mapCloudQuotaToPlan(
+  cloud: {
+    limited: boolean
+    expired: boolean
+    usedBytes: number
+    quotaBytes: number
+    expireAt?: string | null
+    planName?: string | null
+  } | null,
+  vaultSync?: VaultSyncQuotaBucket | null,
+): AccountPlan {
   return {
     shape: 'B',
     cloud: cloud
@@ -59,7 +87,7 @@ export function mapCloudQuotaToPlan(cloud: {
           expireAt: cloud.expireAt ?? null,
         }
       : null,
-    vaultSync: stubVaultSyncQuota(),
+    vaultSync: vaultSync ?? stubVaultSyncQuota(),
   }
 }
 
