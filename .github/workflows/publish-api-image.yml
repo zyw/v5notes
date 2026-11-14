@@ -1,12 +1,18 @@
 name: Publish v5notes2 API image
 
 # 创建并发布 GitHub Release 时打包推送 API 镜像；也可在 Actions 里手动跑。
-# 版本号从 Release tag 解析：v2.0.0 / 2.0.0 → 镜像标签 2.0.0。
+# 镜像版本：手动输入优先；未输入则用当前 Release（发布事件）或最新正式 Release 的 tag。
+# tag 解析：v2.0.0 / 2.0.0 → 镜像标签 2.0.0。
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Docker 镜像版本（如 2.0.0）；留空则用最新正式 Release 的版本"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -51,27 +57,48 @@ jobs:
       - name: Set image tags
         id: image
         env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: |
-          tags="$IMAGE:sha-$GITHUB_SHA"
-          raw_tag="${RELEASE_TAG:-}"
-          if [[ -z "$raw_tag" && "$GITHUB_REF_TYPE" == "tag" ]]; then
-            raw_tag="$GITHUB_REF_NAME"
-          fi
-          if [[ -n "$raw_tag" ]]; then
-            version="$raw_tag"
+          set -euo pipefail
+
+          normalize_version() {
+            local raw="$1"
+            local version="$raw"
             version="${version#api-v5notes2-}"
             version="${version#v}"
             if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Release tag '$raw_tag' 无法解析为 x.y.z（支持 v2.0.0、2.0.0）。" >&2
-              exit 1
+              echo "版本 '$raw' 无法解析为 x.y.z（支持 2.0.0、v2.0.0）。" >&2
+              return 1
             fi
-            tags="$tags,$IMAGE:$version"
-            echo "将推送版本标签: $IMAGE:$version"
-          else
-            echo "手动运行且未选 tag，只推送: $IMAGE:sha-$GITHUB_SHA"
+            printf '%s\n' "$version"
+          }
+
+          raw_tag="${INPUT_VERSION:-}"
+          source="手动输入"
+          if [[ -z "$raw_tag" ]]; then
+            raw_tag="${RELEASE_TAG:-}"
+            source="当前 Release"
           fi
+          if [[ -z "$raw_tag" && "$GITHUB_REF_TYPE" == "tag" ]]; then
+            raw_tag="$GITHUB_REF_NAME"
+            source="当前 tag"
+          fi
+          if [[ -z "$raw_tag" ]]; then
+            raw_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName,isPrerelease,isDraft \
+              -q '[.[] | select(.isPrerelease == false and .isDraft == false)][0].tagName' || true)"
+            source="最新正式 Release"
+          fi
+          if [[ -z "$raw_tag" || "$raw_tag" == "null" ]]; then
+            echo "未输入版本，且仓库没有可用的正式 Release，无法确定镜像版本。" >&2
+            exit 1
+          fi
+
+          version="$(normalize_version "$raw_tag")"
+          tags="$IMAGE:sha-$GITHUB_SHA,$IMAGE:$version"
+          echo "版本来源: $source（$raw_tag）→ $IMAGE:$version"
           printf 'tags=%s\n' "$tags" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v4
