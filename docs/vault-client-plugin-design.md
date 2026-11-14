@@ -114,14 +114,16 @@ MyVault/
 
 ### 3.3 同步
 
+与主设计 [§6.5 syncignore](vault-client-design.md#65-同步范围与-v5notessyncignore) 一致：
+
 | 路径 | 是否进 Vault Sync |
 |---|---|
 | `plugins/*/data.json`、`community-plugins.json` | **建议默认同步**（设置跟库） |
 | `appearance.json`、`themes/community-themes.json` | **建议默认同步**（当前主题意图） |
-| `plugins/*/main.js`、`themes/*/theme.css` 等代码 | **默认同步关闭**（各端自装）；仅同步「启用/选中意图」 |
+| `plugins/*/main.js`、`themes/*/theme.css` 等代码 | **默认忽略**（写入默认 `syncignore`）；各端自装 |
 | 官方核心插件与内置主题 | 随 App 发版，不放库内 |
 
-文档需提示：多设备启用同一社区插件/主题时，各端需自行安装对应版本；仅同步「启用意图」。
+多设备仅同步「启用/选中意图」；缺包时设置页提示「未安装，请安装同版本」。
 
 ---
 

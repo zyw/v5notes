@@ -163,12 +163,14 @@
 ```
 MyVault/                          # 用户自选根
   .v5notes/
-    vault.json                    # vaultId(本地)、绑定 cloudVaultId、设备、加密盐
-    index.sqlite                  # 可选：搜索索引、同步状态（可重建）
-    sync-state.json               # 每文件 remoteRev / localHash / dirty
-    plugins/                      # 见插件设计：启用列表 + 各插件目录
-      community-plugins.json
-      <plugin-id>/manifest.json
+    vault.json                    # 见 §6.4
+    appearance.json               # 当前主题（见插件设计）
+    syncignore                    # 不同步路径规则（见 §6.5）
+    index.sqlite                  # 可选：搜索索引（可重建）
+    sync-state.json               # 见 §6.4；亦可并入 sqlite
+    trash/                        # 本地回收（可选，默认同步忽略）
+    plugins/                      # 见插件设计
+    themes/
   工作/
     周报.md
     项目A/
@@ -178,14 +180,18 @@ MyVault/                          # 用户自选根
 ```
 
 **笔记真相：** 文件系统中的 `.md`（及附件）。  
-**索引/同步状态：** `.v5notes/` 可重建；丢了最多全量重扫，不应丢正文。  
+**索引/同步状态：** `.v5notes/` 元数据可重建；丢了最多全量重扫，不应丢正文。  
 **插件：** 启用意图与 `data.json` 可随库同步；插件代码默认各端自装（详见插件设计 §3.3）。
 
-### 6.2 本地 ID
+### 6.2 本地 ID 与路径规范
 
-- **稳定键：** Vault 相对路径，如 `工作/周报.md`（规范化：NFC、`/`、大小写策略按平台约定）。
-- **云端键：** `fileId`（雪花字符串）在首次上传后写入 `sync-state`，**不要**要求用户看见。
-- 重命名 = 本地 path 变更 + 同步层发 `rename` 或 `delete+create`（优先显式 rename，保历史）。
+- **稳定键：** Vault 相对路径，如 `工作/周报.md`。
+- **规范化（全端必须一致，否则 Sync 会双份）：**
+  - Unicode：**NFC**；分隔符统一 `/`；去掉首尾 `/`；禁止 `..` 段。
+  - 空段、`.` 段拒绝；Windows 保留名（`CON` 等）创建时拦截。
+  - **大小写：** 云端 path 大小写敏感；本地若在大小写不敏感卷上，打开库时检测冲突 path 并提示用户改名，禁止静默合并。
+- **云端键：** `fileId`（雪花**字符串**）写入 `sync-state`，用户不可见。
+- 重命名 = 本地 path 变更 + 同步层显式 `rename`（优先于 delete+create，保历史）。
 
 ### 6.3 客户端模块（深模块切分）
 
@@ -195,11 +201,76 @@ MyVault/                          # 用户自选根
 | `VaultFs` | listTree / read / write / mkdir / rename / delete | 平台 fs、原子写、回收站 |
 | `VaultSearch` | search(query) → hits | sqlite FTS / 扫描缓存 |
 | `VaultEditorBridge` | openPath / save | 与 V5Editor 对接、脏检查 |
-| `PluginHost` | load/unload、权限代理、Safe Mode | 动态加载、API 裁剪；见[插件设计](vault-client-plugin-design.md) |
+| `PluginHost` / `ThemeHost` | load/unload、权限代理、Safe Mode、主题切换 | 见[插件设计](vault-client-plugin-design.md) |
 | `SyncEngine` | login / bind / pushPull / status | 队列、冲突、重试、配额错误 |
 | `AccountClient` | 登录、套餐、支付入口 | 可与 Cloud 共用 SDK |
 
 UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTTP；插件只经 `PluginHost` 注入的 `@v5notes/vault-plugin-api` 访问能力。
+
+### 6.4 关键配置 schema
+
+**`.v5notes/vault.json`（示意）：**
+
+```json
+{
+  "schemaVersion": 1,
+  "localVaultId": "ulid-or-uuid",
+  "name": "MyVault",
+  "createdAt": "2026-11-14T08:00:00.000Z",
+  "binding": {
+    "server": "https://api.example.com",
+    "cloudVaultId": null,
+    "deviceId": "ulid",
+    "lastCursor": null
+  }
+}
+```
+
+- `localVaultId`：本机生成，不随文件夹拷贝冲突时由「打开已有库」复用文件内值。
+- `binding`：未登录或未绑定时 `cloudVaultId` 为 `null`；绑定后写入，**一本地库 ↔ 一云端库**（首期不做一对多）。
+
+**`sync-state.json`（示意；大库可迁 sqlite）：**
+
+```json
+{
+  "schemaVersion": 1,
+  "files": {
+    "工作/周报.md": {
+      "fileId": "1938...",
+      "localHash": "sha256:...",
+      "remoteRev": 12,
+      "status": "clean",
+      "size": 1024,
+      "mtimeMs": 1731560000000
+    }
+  }
+}
+```
+
+`status`：`clean` | `dirty` | `conflict` | `error`。
+
+### 6.5 同步范围与 `.v5notes/syncignore`
+
+**默认同步：**
+
+- 用户可见的 `.md`、常见附件（图/音视频/PDF 等，受单文件大小上限约束）。
+- `.v5notes/appearance.json`、`plugins/community-plugins.json`、`plugins/*/data.json`、`themes/community-themes.json`（意图与设置）。
+
+**默认忽略：**
+
+- `.v5notes/index.sqlite`、`sync-state.json`、`trash/**`
+- `plugins/*/main.js`、`themes/*/theme.css` 等**代码/主题二进制**（各端自装）
+- `.git/**`、`.DS_Store`、`Thumbs.db`、编辑器临时文件 `*~`、`.*.swp`
+
+用户可在 `.v5notes/syncignore` 追加 gitignore 风格规则。SyncEngine 在扫盘与 push 前应用；忽略文件不进 manifest。
+
+### 6.6 首次启动与多库 UX
+
+1. **欢迎页三选一：** 创建新库（选父目录 + 库名）/ 打开已有库 / 使用应用内默认库。  
+2. 创建时写入 `.v5notes/` 骨架 + 可选「快速开始」示例笔记。  
+3. **最近库列表**存应用数据（非库内）；打开失败（权限/移盘）给出「重新授权 / 从列表移除」。  
+4. 切换库：先脏检查当前库 → 卸载 PluginHost → 切换根 → 再加载。  
+5. 文案警告：勿将库放在网盘同步目录后再开官方 Sync。
 
 ---
 
@@ -228,8 +299,21 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 #### 核心资源
 
 - **Vault（云端库）：** 用户可有 1..N 个同步库（套餐限 N 与容量）。
-- **File：** 库内相对 path + 类型（note/asset/config）。
-- **Revision：** 单调 `rev`（或按文件 `version` + 全局 `syncToken`）。
+- **File：** 库内相对 path + 类型（`note` / `asset` / `config`）。
+- **Revision：** 每文件单调 `rev`（int64）+ 库级 `cursor`（opaque 字符串，用于 manifest 增量）。
+
+#### 表结构草稿（元数据）
+
+| 表 | 要点 |
+|---|---|
+| `vault_space` | `id`（雪花字符串）、`user_id`、`name`、`created_at` |
+| `vault_device` | `id`、`vault_id`、`device_id`、`client_info`、`last_seen_at` |
+| `vault_file` | `id`、`vault_id`、`path`、`type`、`content_hash`、`size`、`rev`、`deleted`（墓碑）、`updated_at` |
+| `vault_file_blob` | `content_hash`、`storage_key`、`size`（内容寻址去重） |
+| `vault_change` | `vault_id`、`cursor`、`file_id`、`op`（upsert/delete/rename）、`path`、`from_path`、payload 摘要 |
+
+ID 一律 **字符串**传递（与 AGENTS 雪花 ID 约定一致）。  
+索引：`(vault_id, path)` 唯一（含墓碑策略：活跃 path 唯一）；`(vault_id, cursor)` 供 manifest。
 
 #### 推荐接口（增量）
 
@@ -237,31 +321,60 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 POST   /vault/v1/vaults                 # 创建云端库，返回 vaultId
 GET    /vault/v1/vaults                 # 列表
 POST   /vault/v1/vaults/{id}/bind       # 设备绑定（deviceId, clientInfo）
+DELETE /vault/v1/vaults/{id}/devices/{deviceId}
 
 GET    /vault/v1/vaults/{id}/manifest?since=CURSOR
-       # 返回变更列表：upsert/delete/rename + remoteRev + contentHash + size
-
-PUT    /vault/v1/vaults/{id}/files      # 上传/更新（path, baseRev, hash, body或blob）
-       # baseRev 冲突 → 409 + 服务端副本元数据
-
+PUT    /vault/v1/vaults/{id}/files      # path, baseRev, hash, body|uploadToken
 POST   /vault/v1/vaults/{id}/files/batch
-DELETE /vault/v1/vaults/{id}/files      # path + baseRev（墓碑）
-
-POST   /vault/v1/vaults/{id}/renames    # from → to + baseRev
-
+DELETE /vault/v1/vaults/{id}/files      # path + baseRev
+POST   /vault/v1/vaults/{id}/renames    # from, to, baseRev
 GET    /vault/v1/vaults/{id}/files/content?path=&rev=
-
-GET    /vault/v1/quota                  # 套餐剩余容量、设备数
+GET    /vault/v1/quota
 ```
 
-认证：与现网同一 OAuth2/Sa-Token；`deviceType` 可用 `vault_client`。  
-**不要**复用 `/client/notes` 的「建笔记就写 note 表当权威」语义给 Vault——否则路径模型与 ID 模型打架。
+**manifest 响应示意：**
+
+```json
+{
+  "cursor": "opaque-next",
+  "changes": [
+    {
+      "op": "upsert",
+      "path": "工作/周报.md",
+      "fileId": "1938...",
+      "remoteRev": 12,
+      "contentHash": "sha256:...",
+      "size": 1024,
+      "type": "note"
+    },
+    { "op": "delete", "path": "旧笔记.md", "remoteRev": 3 },
+    { "op": "rename", "from": "a.md", "to": "b.md", "remoteRev": 4 }
+  ]
+}
+```
+
+认证：与现网同一 Sa-Token；新建 `sys_client`：`deviceType=vault_client`，`grant_type` 含密码/社交（与笔记客户端策略对齐）。  
+**不要**复用 `/client/notes` 行模型当 Vault 权威。
+
+#### 错误码空间（HTTP + 业务码）
+
+| HTTP | 业务码（示意） | 含义 |
+|---|---|---|
+| 401 | `auth.unauthorized` | 未登录/过期 |
+| 402/403 | `vault.quota.exceeded` | 容量或设备数超额 |
+| 404 | `vault.not.found` / `vault.file.not.found` | |
+| 409 | `vault.conflict.rev` | `baseRev` 不匹配；body 带服务端 path/rev/hash |
+| 413 | `vault.file.too.large` | 超单文件上限 |
+| 429 | `vault.rate.limited` | |
+| 400 | `vault.path.invalid` | 路径规范化失败 |
+
+客户端须按码分支 UI（冲突副本 / 引导扩容 / 重新登录），勿只 toast 原始英文。
 
 #### 存储
 
-- 元数据：DB（vault、file、rev、tombstone、device）。
-- 正文/附件：对象存储（S3/OSS）；小 Markdown 也可先存 DB，但附件必须对象存储。
-- 内容寻址：`contentHash`（sha256）去重与完整性校验。
+- 元数据：DB（上表）。
+- 正文/附件：对象存储（S3/OSS）；小 Markdown 可先存 DB，附件必须对象存储。
+- `contentHash`（sha256）去重与完整性校验；上传可先申请 `uploadToken` 直传 OSS（Phase 5 优化）。
 
 ### 8.3 Account / Billing（可共用）
 
@@ -280,6 +393,18 @@ POST 购买套餐、Webhook
 | 版本历史保留天数 | 可选 | ✓ |
 | 第三方登录 | ✓ | ✓（仅账号） |
 
+### 8.4 Vault Client 社交登录回调
+
+与 Cloud Client **分应用标识**，避免 deep link 抢夺：
+
+| | Cloud（client2） | Vault Client |
+|---|---|---|
+| Deep link | `v5notes://app/social-callback` | `v5notes-vault://app/social-callback` |
+| `justauth` 基址 | `justauth.client-address` | 新增 `justauth.vault-client-address`（或同字段分环境） |
+| OAuth 应用回调 | 登记 Cloud 回调 | **另登记** Vault 回调（Gitee 等常限单回调 → 常需独立 OAuth 应用或中转页） |
+
+落地页可复用 `v5notes-oauth-landing/` 模式，按 `source`/`app=vault` 唤起对应 scheme。中转页与权限模型见现有社交登录部署说明；**发布类插件仍不开放**。
+
 ---
 
 ## 9. SyncEngine 详细流程
@@ -291,29 +416,39 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 
 ### 9.2 一次同步循环
 
-1. 读本地 `sync-state` + 扫盘（或依赖 watcher 队列）。
-2. `GET manifest?since=cursor`。
+1. 应用 `syncignore`；读本地 `sync-state` + 扫盘（或 watcher 队列）。
+2. `GET manifest?since=cursor`（首次 `since` 空 = 全量变更或分页拉齐）。
 3. **合并策略（默认）：**
-   - 仅远端变：下载覆盖本地（若 local clean）。
-   - 仅本地 dirty：upload（带 `baseRev`）。
+   - 仅远端变：下载覆盖本地（若 local `clean`）。
+   - 仅本地 `dirty`：upload（带 `baseRev` = 本地已知 `remoteRev`）。
    - 两边都变：冲突（见下）。
-4. 更新 cursor、记失败重试。
+4. 成功则更新 cursor 与 per-file 状态；失败入重试队列（指数退避，上限通知用户）。
+
+**绑定首次：** 创建/选择云端 `vaultId` → `bind` device → 扫描上传（仍走增量 PUT，不做 zip 整库替换）。
 
 ### 9.3 冲突（建议默认，贴近 Obsidian 可理解性）
 
-- 自动生成：`周报.md` + `周报 (冲突 yyyy-mm-dd).md`（远端或本地副本之一改名保留）。
-- UI 提供对比；**禁止**默默选一边覆盖。
-- 可选高级：同一文件 3-way merge（后期）。
+- 自动生成：保留本地继续编辑；远端内容写入  
+  `原名 (冲突 YYYY-MM-DD HH-mm).md`（本地化文件名由 i18n 模板生成）。
+- 状态标 `conflict`；UI 提供对比；**禁止**默默覆盖。
+- 用户选定后：胜出版本 push，冲突副本可删或留作笔记；清 `conflict`。
+- 可选高级：3-way merge（Phase 8+）。
 
 ### 9.4 删除与回收
 
-- 本地删除 → tombstone 同步；他端拉到后删文件。
-- 可选：本地 `.v5notes/trash` 保留 30 天（与云端 trash 分开配置）。
+- 本地删除 → 进 `.v5notes/trash`（可恢复）→ 同步 tombstone；他端拉到后删工作区文件（可按其本地 trash 策略）。
+- 本地 trash 默认 **不同步**（避免回收站风暴）；保留 30 天可配。
 
-### 9.5 加密（分期）
+### 9.5 附件
 
-- **一期：** HTTPS + 服务端可读（便于搜索、合规简单）。
-- **二期（对标 Obsidian E2E）：** 客户端加密 blob，服务器只存密文；云端全文搜索不可用或仅限本地。
+- Markdown 内相对链接优先：`附件/xxx.png`。
+- 单文件上限（示意 25–100MB，套餐可抬）；超限不同步并角标提示。
+- Phase 4 可先内联/小附件走同 PUT；Phase 5 改为直传 OSS。
+
+### 9.6 加密（分期）
+
+- **一期：** HTTPS + 服务端可读（便于运维与合规简单）。
+- **二期（对标 Obsidian E2E）：** 客户端加密 blob，服务器只存密文；云端无法代搜正文。
 
 ---
 
@@ -384,19 +519,21 @@ Phase 0 脚手架/冻结
 **交付：** 可编译的空壳 `v5notes-vault-client` + 文档决策闭合。
 
 - [ ] 命名与边界已冻结（本文「命名冻结」+ 插件/主题/发布政策）  
-- [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分  
+- [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分（§8.4）  
 - [ ] 可选 monorepo：`packages/editor`、`account-sdk`、`ui-tokens` 接线方式定稿  
 - [ ] 套餐字段方案：`cloud_*` / `vault_sync_*` 分列（实现可晚于 Phase 3，方案先定）  
+- [ ] `sys_client`：`vault_client` 占位与 grant_type 方案  
 - [ ] 明确：Cloud 与 Vault **数据默认不通**；迁移靠显式工具（后置）  
 
 ### Phase 1 — 本地 Vault MVP（免登录）
 
 **交付：** 打开 App 即可建库写笔记，零网络。
 
-- [ ] 创建新库 / 打开已有库（桌面：**用户自选文件夹**；可选应用内默认库）  
-- [ ] `.v5notes/vault.json`；笔记真相为库内 `.md`  
+- [ ] 欢迎页三选一（§6.6）：创建 / 打开 / 应用内默认库  
+- [ ] `.v5notes/vault.json`（§6.4）+ 默认 `syncignore`（§6.5）；笔记真相为库内 `.md`  
+- [ ] 路径规范化与非法名拦截（§6.2）  
 - [ ] 侧栏树：展开折叠、新建目录/笔记、重命名、删除（本地）  
-- [ ] `VaultFs` + `VaultEditorBridge` + V5Editor（预览/编辑切换保留实例策略对齐 AGENTS 精神）  
+- [ ] `VaultFs` + `VaultEditorBridge` + V5Editor（预览/编辑切换保留实例）  
 - [ ] 本地搜索 MVP（标题 + 正文；可先扫描，后换 FTS）  
 - [ ] 无账号、无 Sync、无插件市场  
 
@@ -425,16 +562,17 @@ Phase 0 脚手架/冻结
 
 **后端（模块 `note-vault-sync`，前缀 `/vault/v1`）：**
 
+- [ ] 表：`vault_space` / `vault_file` / `vault_change` / `vault_device`（§8.2）  
 - [ ] Vault 创建/列表、设备绑定  
 - [ ] `manifest?since=`、单文件 up/down、tombstone、rename  
-- [ ] `baseRev` 冲突 → 409；配额查询  
+- [ ] `baseRev` 冲突 → `409 vault.conflict.rev`；配额查询与错误码表  
 
 **客户端：**
 
-- [ ] `SyncEngine`：dirty 扫描、push/pull、cursor  
+- [ ] `SyncEngine`：`syncignore` + dirty 扫描、push/pull、cursor（§9）  
 - [ ] 冲突默认生成冲突副本（禁止静默覆盖）  
-- [ ] 同步状态 UI（进行中/失败/配额不足）  
-- [ ] 启用列表等「意图文件」同步策略按插件文档：代码二进制默认同步关  
+- [ ] 同步状态 UI（进行中/失败/配额不足，按业务码分支）  
+- [ ] 意图文件默认同步、代码/主题二进制默认忽略（§6.5 + 插件设计）  
 
 ### Phase 5 — 同步硬化与附件
 
@@ -499,10 +637,10 @@ Phase 0 脚手架/冻结
 
 ## 14. 测试要点
 
-- **本地：** 奇异文件名、移动库路径、权限撤销、崩溃原子写。  
-- **同步：** 断网队列、baseRev 冲突、双端同时改、重命名环、删除再创建同 path。  
-- **配额：** 超容量、超设备。  
-- **隔离：** Cloud API 与 Vault API 互不影响；错误码空间分开。  
+- **本地：** 奇异文件名、NFC/大小写冲突、移动库路径、权限撤销、崩溃原子写、欢迎页三路径。  
+- **同步：** `syncignore`、断网队列、baseRev 冲突副本、双端同时改、重命名环、删除再创建同 path、附件超限。  
+- **配额 / 错误码：** 超容量、超设备；401/409/413 分支正确。  
+- **隔离：** Cloud API 与 Vault API 互不影响；OAuth scheme 不串（§8.4）。  
 - **插件：** 见[插件设计 §13](vault-client-plugin-design.md#13-测试要点)。  
 
 ---
@@ -513,8 +651,9 @@ Phase 0 脚手架/冻结
 |---|---|
 | 双客户端 | **采用**：`v5notes-client2` 云权威；`v5notes-vault-client` 本地权威 |
 | 双 API | **采用**：`note-notes`（`/client/notes*`）vs `note-vault-sync`（`/vault/v1*`） |
-| Vault 位置 | **桌面用户自选文件夹**（Obsidian 同款）；沙箱仅作新手默认库 |
-| 同步 | **文件级增量**（对标 Obsidian Sync）；整库上传仅作备份/导入导出 |
-| 插件 | **仅 Vault Client**；主题一等（Theme API）；网络仅 `network:safe`；发布不对第三方开放；详见[插件设计](vault-client-plugin-design.md) |
+| Vault 位置 | **桌面用户自选文件夹**；沙箱仅作新手默认库；一本地库绑一云端库 |
+| 路径 | NFC + `/` 规范化；大小写冲突显式处理 |
+| 同步 | **文件级增量** + `syncignore`；冲突副本；整库 zip 仅备份 |
+| 插件 | **仅 Vault Client**；主题一等；`network:safe`；发布不对第三方开放 |
 | 共享 | 编辑器与账号 SDK；不共享工作区状态机 |
 | 数据 | 默认两空间不自动合并；迁移靠显式工具 |
