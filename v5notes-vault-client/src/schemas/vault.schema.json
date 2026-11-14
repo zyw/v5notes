@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v5ai.xin/schemas/v5notes/vault.schema.json",
+  "title": "V5Notes vault.json",
+  "description": "Draft schema for .v5notes/vault.json (design §6.5). Device fields never sync.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "localVaultId", "name", "createdAt", "binding"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "localVaultId": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server", "cloudVaultId", "deviceId", "lastCursor"],
+      "properties": {
+        "server": { "type": ["string", "null"] },
+        "cloudVaultId": { "type": ["string", "null"] },
+        "deviceId": {
+          "type": ["string", "null"],
+          "description": "Local-only; never sync (§6.4)."
+        },
+        "lastCursor": {
+          "type": ["string", "null"],
+          "description": "Local-only opaque cursor; never sync (§6.4)."
+        }
+      }
+    }
+  }
+}

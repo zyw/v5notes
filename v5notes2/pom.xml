@@ -430,6 +430,13 @@
                 <version>${revision}</version>
             </dependency>
 
+            <!-- Vault 文件同步模块（/vault/v1） -->
+            <dependency>
+                <groupId>xin.v5ai</groupId>
+                <artifactId>note-vault-sync</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
             <!-- 基础文件模块（basics，兼容旧 /basics/base/file） -->
             <dependency>
                 <groupId>xin.v5ai</groupId>

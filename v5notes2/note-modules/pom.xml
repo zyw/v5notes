@@ -19,6 +19,7 @@
         <module>note-system</module>
         <module>note-notes</module>
         <module>note-basics</module>
+        <module>note-vault-sync</module>
     </modules>
 
 </project>
