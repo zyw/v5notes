@@ -114,7 +114,7 @@ MyVault/
 
 ### 3.3 同步
 
-**权威总表：** 主设计 [§6.4 Sync 路径分类](vault-client-design.md)（含 `sync-state.json` / `index.sqlite` / 设备私有字段 / 本地 trash **永不同步**）。下表仅为插件相关切片；与主表冲突时以主设计为准。本规则在 **Phase 4 SyncEngine** 即生效，**不依赖** Phase 6 `PluginHost`。
+**权威总表：** 主设计 [§6.4 Sync 路径分类](vault-client-design.md)（含 `sync-state.json` / `index.sqlite` / 设备私有字段 / 本地 trash **永不同步**）。用户可追加 [§6.6 `syncignore`](vault-client-design.md) 忽略更多用户内容，但**不能**用它打开硬表中的「永不同步」项。下表仅为插件相关切片；与主表冲突时以主设计为准。本规则在 **Phase 4 SyncEngine** 即生效，**不依赖** Phase 6 `PluginHost`。
 
 | 路径 | 是否进 Vault Sync |
 |---|---|

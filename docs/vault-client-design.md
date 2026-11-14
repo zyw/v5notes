@@ -163,12 +163,16 @@
 ```
 MyVault/                          # 用户自选根
   .v5notes/
-    vault.json                    # vaultId(本地)、绑定 cloudVaultId、设备、加密盐
-    index.sqlite                  # 可选：搜索索引、同步状态（可重建）
-    sync-state.json               # 每文件 remoteRev / localHash / dirty
-    plugins/                      # 见插件设计：启用列表 + 各插件目录
+    vault.json                    # 见 §6.5；设备字段永不同步（§6.4）
+    appearance.json               # 当前主题意图（默认同步）
+    syncignore                    # 可选：用户追加忽略规则（§6.6）
+    index.sqlite                  # 可重建；永不同步
+    sync-state.json               # 见 §6.5；永不同步
+    trash/                        # 本地回收；永不同步
+    plugins/                      # 见插件设计
       community-plugins.json
-      <plugin-id>/manifest.json
+    themes/
+      community-themes.json
   工作/
     周报.md
     项目A/
@@ -203,7 +207,7 @@ MyVault/                          # 用户自选根
 | `VaultFs` | listTree / read / write / mkdir / rename / delete | 平台 fs、原子写、回收站 |
 | `VaultSearch` | search(query) → hits | sqlite FTS / 扫描缓存 |
 | `VaultEditorBridge` | openPath / save | 与 V5Editor 对接、脏检查 |
-| `PluginHost` | load/unload、权限代理、Safe Mode | 动态加载、API 裁剪；见[插件设计](vault-client-plugin-design.md) |
+| `PluginHost` / `ThemeHost` | load/unload、权限代理、Safe Mode、主题切换 | 见[插件设计](vault-client-plugin-design.md) |
 | `SyncEngine` | login / bind / pushPull / status | 队列、冲突、重试、配额错误 |
 | `AccountClient` | 登录、套餐、支付入口 | 可与 Cloud 共用 SDK |
 
@@ -228,6 +232,74 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 | 其它未列名的 `.v5notes/**` | **默认永不同步** | 新增路径须先改本表再进 Sync |
 
 误同步 `sync-state` / 索引 / 设备字段会导致跨设备互相踩踏或「幽灵冲突」——视为协议级缺陷，禁止「先传着再说」。
+
+### 6.5 关键配置 schema
+
+**`.v5notes/vault.json`（示意）：**
+
+```json
+{
+  "schemaVersion": 1,
+  "localVaultId": "ulid-or-uuid",
+  "name": "MyVault",
+  "createdAt": "2026-11-14T08:00:00.000Z",
+  "binding": {
+    "server": "https://api.example.com",
+    "cloudVaultId": null,
+    "deviceId": "ulid",
+    "lastCursor": null
+  }
+}
+```
+
+- `localVaultId`：本机生成；「打开已有库」复用文件内值。
+- `binding.cloudVaultId`：未绑定为 `null`；绑定后写入。**一本地库 ↔ 一云端库**（首期不做一对多）。
+- `deviceId` / `lastCursor` 等设备字段：**永不同步**（§6.4）；可同步的绑定元数据须字段级白名单。
+
+**`sync-state.json`（示意；大库可迁 sqlite）：**
+
+```json
+{
+  "schemaVersion": 1,
+  "files": {
+    "工作/周报.md": {
+      "fileId": "1938...",
+      "identityKey": "工作/周报.md",
+      "localHash": "sha256:...",
+      "remoteRev": 12,
+      "status": "clean",
+      "size": 1024,
+      "mtimeMs": 1731560000000
+    }
+  }
+}
+```
+
+`status`：`clean` | `dirty` | `conflict` | `error`。本文件整体 **永不同步**。
+
+### 6.6 用户 `syncignore`（硬表之上的追加忽略）
+
+§6.4 是协议硬表（不可被用户关掉「永不同步」项）。此外允许 `.v5notes/syncignore`（gitignore 风格）**追加**忽略用户内容路径，例如大目录、导出缓存。
+
+默认建议写入（可随脚手架生成，用户可改「用户内容」行，不可指望靠它同步 `sync-state`）：
+
+```
+.git/
+.DS_Store
+Thumbs.db
+*~
+.*.swp
+```
+
+SyncEngine：先应用 §6.4，再应用 `syncignore`；被忽略的用户文件不进 manifest。
+
+### 6.7 首次启动与多库 UX
+
+1. **欢迎页三选一：** 创建新库（选父目录 + 库名）/ 打开已有库 / 使用应用内默认库。
+2. 创建时写入 `.v5notes/` 骨架（含默认 `syncignore`）+ 可选「快速开始」示例笔记。
+3. **最近库列表**存应用数据（非库内）；打开失败（权限/移盘）→「重新授权 / 从列表移除」。
+4. 切换库：脏检查 → 卸载 PluginHost → 切换根 → 再加载。
+5. 文案警告：勿将库放在网盘同步目录后再开官方 Sync。
 
 ---
 
@@ -299,11 +371,58 @@ GET    /vault/v1/quota                  # 套餐剩余容量、设备数
 
 **Catalog 与 sync 前缀解耦：** 插件/主题目录 API **版本与破坏性变更独立于** `note-vault-sync` 文件协议。Phase 0 二选一冻结：（A）独立前缀如 `/vault/v1/catalog/...` 且文档标明「非文件 sync 资源」；或（B）同进程旁路路由，但仍使用**独立版本协商头/字段**，sync 协议 bump 不得强制 catalog 客户端升级。禁止把 catalog 响应塞进文件 `manifest`。
 
+#### 表结构草稿（元数据）
+
+| 表 | 要点 |
+|---|---|
+| `vault_space` | `id`（雪花字符串）、`user_id`、`name`、`created_at` |
+| `vault_device` | `id`、`vault_id`、`device_id`、`client_info`、`last_seen_at` |
+| `vault_file` | `id`（=fileId）、`vault_id`、展示 `path`、`identity_key`、`type`、`content_hash`、`size`、`rev`、`deleted`、`updated_at` |
+| `vault_file_blob` | `content_hash`、`storage_key`、`size`（内容寻址去重） |
+| `vault_change` | `vault_id`、`cursor`、`file_id`、`op`（upsert/delete/rename）、`path`、`from_path`、摘要 |
+
+ID 一律 **字符串**。索引：活跃 `(vault_id, identity_key)` 唯一；`(vault_id, cursor)` 供 manifest。
+
+#### manifest 响应示意
+
+```json
+{
+  "cursor": "opaque-next",
+  "changes": [
+    {
+      "op": "upsert",
+      "path": "工作/周报.md",
+      "fileId": "1938...",
+      "remoteRev": 12,
+      "contentHash": "sha256:...",
+      "size": 1024,
+      "type": "note"
+    },
+    { "op": "delete", "path": "旧笔记.md", "fileId": "1937...", "remoteRev": 3 },
+    { "op": "rename", "from": "a.md", "to": "b.md", "fileId": "1936...", "remoteRev": 4 }
+  ]
+}
+```
+
+#### 错误码空间（HTTP + 业务码）
+
+| HTTP | 业务码（示意） | 含义 |
+|---|---|---|
+| 401 | `auth.unauthorized` | 未登录/过期 |
+| 402/403 | `vault.quota.exceeded` | 容量或设备数超额 |
+| 404 | `vault.not.found` / `vault.file.not.found` | |
+| 409 | `vault.conflict.rev` | `baseRev` 不匹配；body 带服务端 path/rev/hash/fileId |
+| 413 | `vault.file.too.large` | 超单文件上限 |
+| 429 | `vault.rate.limited` | |
+| 400 | `vault.path.invalid` | 路径/身份键规范化失败 |
+
+客户端须按码分支 UI（冲突副本 / 引导扩容 / 重新登录），勿只 toast 原始报文。
+
 #### 存储
 
-- 元数据：DB（vault、file、rev、tombstone、device）。
+- 元数据：DB（上表）。
 - 正文/附件：对象存储（S3/OSS）；小 Markdown 也可先存 DB，但附件必须对象存储。
-- 内容寻址：`contentHash`（sha256）去重与完整性校验。
+- 内容寻址：`contentHash`（sha256）去重与完整性校验；Phase 5 可加 `uploadToken` 直传 OSS。
 
 ### 8.3 Account / Billing（可共用）
 
@@ -331,6 +450,19 @@ POST 购买套餐、Webhook
 | 同步超额 pull | **冻结建议：仍允许只读 pull**（已有云端变更可拉取；避免「超额后多设备永久分叉」）；产品若改「超额双禁」须显式改本文与 Phase 0 勾选 |
 | 设备数超限 | 拒绝新 `bind`；已绑定设备可继续 sync，直到用户踢设备或升级 |
 
+### 8.4 Vault Client 社交登录回调
+
+与 Cloud Client **分应用标识**，避免 deep link 抢夺：
+
+| | Cloud（client2） | Vault Client |
+|---|---|---|
+| Deep link | `v5notes://app/social-callback` | `v5notes-vault://app/social-callback` |
+| `justauth` 基址 | `justauth.client-address` | 新增 `justauth.vault-client-address`（或同字段分环境） |
+| OAuth 应用回调 | 登记 Cloud 回调 | **另登记** Vault 回调（Gitee 等常限单回调 → 常需独立 OAuth 应用或中转页） |
+| `sys_client` | 现有 client | `deviceType=vault_client`，grant 含密码/社交 |
+
+落地页可复用 `v5notes-oauth-landing/`，按 `app=vault` 唤起对应 scheme。
+
 ---
 
 ## 9. SyncEngine 详细流程
@@ -342,7 +474,7 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 
 ### 9.2 一次同步循环
 
-1. 读本地 `sync-state` + 扫盘（或依赖 watcher 队列）。
+1. 应用 §6.4 + `syncignore`；读本地 `sync-state` + 扫盘（或 watcher 队列）。
 2. `GET manifest?since=cursor`。
 3. **合并策略（默认）：**
    - 仅远端变：下载覆盖本地（若 local clean）。
@@ -393,7 +525,13 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 - 本地删除 → tombstone 同步；他端拉到后删文件（本地可进 `.v5notes/trash`，**该目录永不同步**，见 §6.4）。
 - 可选：本地 `.v5notes/trash` 保留 30 天（与云端 trash / tombstone GC 分开配置）。
 
-### 9.5 加密（分期）
+### 9.5 附件
+
+- Markdown 内相对链接优先：`附件/xxx.png`。
+- 单文件上限（示意 25–100MB，套餐可抬）；超限不同步并角标提示（`413 vault.file.too.large`）。
+- Phase 4 可先走同 PUT；Phase 5 改为 OSS 直传。
+
+### 9.6 加密（分期）
 
 - **一期：** HTTPS + 服务端可读（便于搜索、合规简单）。
 - **二期（对标 Obsidian E2E）：** 客户端加密 blob，服务器只存密文；云端全文搜索不可用或仅限本地。
@@ -467,7 +605,8 @@ Phase 0 脚手架/冻结
 **交付：** 可编译的空壳 `v5notes-vault-client` + 文档决策闭合。
 
 - [ ] 命名与边界已冻结（本文「命名冻结」+ 插件/主题/发布政策；**保留**：双客户端/双 API、本地权威、冲突副本、主题一等、第三方无发布）  
-- [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分  
+- [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分（§8.4）
+- [ ] `vault.json` / `sync-state` schema 与错误码表落地（§6.5 / §8.2）  
 - [ ] 工程形态：monorepo **或** 独立仓 + editor / account-sdk 引用方式定稿（影响脚手架，不影响产品语义）  
 - [ ] **同步身份：** §6.2 冻结（相对 path + NFC + case-fold 身份键 + 展示 path + 保留名 + symlink 不跟随出库）  
 - [ ] **Sync 包含/排除总表：** §6.4 冻结（含 `sync-state` / `index.sqlite` / 设备字段 / 本地 trash **永不同步**）  
@@ -484,8 +623,9 @@ Phase 0 脚手架/冻结
 
 **交付：** 打开 App 即可建库写笔记，零网络。
 
-- [ ] 创建新库 / 打开已有库（桌面：**用户自选文件夹**；可选应用内默认库）  
-- [ ] `.v5notes/vault.json`；笔记真相为库内 `.md`  
+- [ ] 欢迎页三选一（§6.7）：创建 / 打开 / 应用内默认库  
+- [ ] `.v5notes/vault.json`（§6.5）+ 默认 `syncignore`（§6.6）；笔记真相为库内 `.md`  
+- [ ] 路径身份键与非法名拦截（§6.2）  
 - [ ] 侧栏树：展开折叠、新建目录/笔记、重命名、删除（本地）  
 - [ ] `VaultFs` + `VaultEditorBridge` + V5Editor（预览/编辑切换保留实例策略对齐 AGENTS 精神）  
 - [ ] 本地搜索 MVP（标题 + 正文；可先扫描，后换 FTS）  
@@ -517,9 +657,10 @@ Phase 0 脚手架/冻结
 
 **后端（模块 `note-vault-sync`，前缀 `/vault/v1`）：**
 
+- [ ] 表：`vault_space` / `vault_file` / `vault_change` / `vault_device`（§8.2）  
 - [ ] Vault 创建/列表、设备绑定  
 - [ ] `manifest?since=`、单文件 up/down、tombstone、rename（保留 `fileId`）  
-- [ ] `baseRev` 冲突 → 409；配额查询；超额 pull 政策按 §8.3  
+- [ ] `baseRev` 冲突 → `409 vault.conflict.rev`；配额与错误码表；超额 pull 政策按 §8.3  
 
 **客户端：**
 
@@ -592,8 +733,8 @@ Phase 0 脚手架/冻结
 
 ## 14. 测试要点
 
-- **本地：** 奇异文件名、移动库路径、权限撤销、崩溃原子写。  
-- **同步：** 断网队列、baseRev 冲突、双端同时改、重命名环、删除再创建同 path。  
+- **本地：** 奇异文件名、大小写身份键冲突、移动库路径、权限撤销、崩溃原子写、欢迎页三路径。  
+- **同步：** §6.4/`syncignore`、断网队列、冲突矩阵（§9.3）、bootstrap 权威、附件超限、错误码分支。  
 - **配额：** 超容量、超设备。  
 - **隔离：** Cloud API 与 Vault API 互不影响；错误码空间分开。  
 - **插件：** 见[插件设计 §13](vault-client-plugin-design.md#13-测试要点)。  
