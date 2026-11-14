@@ -1,6 +1,47 @@
+import { contentLanguage, t } from '../../i18n'
 import { asId } from '../../utils/identity'
 import { encryptLogin } from '../../utils/loginCrypto'
 import { createRequest } from '../request'
+
+const defaultClientId = 'd9df3c0228c05e5c61db46348bcadf6e'
+
+/**
+ * 在写入连接设置前探测目标服务器是否可达（不改动当前会话）。
+ * 命中 `/client/ping` 且业务码 200 才算可用；超时或非笔记服务统一报不可用。
+ */
+export async function probeServer(
+  server: string,
+  options: { transport?: typeof fetch; timeoutMs?: number; clientId?: string } = {},
+): Promise<void> {
+  const transport = options.transport ?? fetch
+  const timeoutMs = options.timeoutMs ?? 8000
+  const clientId = options.clientId || import.meta.env.VITE_CLIENT_ID || defaultClientId
+  const base = server.replace(/\/+$/, '')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await transport(`${base}/client/ping`, {
+      method: 'GET',
+      headers: {
+        'Content-Language': contentLanguage(),
+        clientid: clientId,
+      },
+      signal: controller.signal,
+    })
+    let envelope: { code?: number }
+    try {
+      envelope = await response.json() as { code?: number }
+    } catch {
+      throw new Error(t('settings.serverUnreachable'))
+    }
+    if (!response.ok || envelope.code !== 200) throw new Error(t('settings.serverUnreachable'))
+  } catch (cause) {
+    if (cause instanceof Error && cause.message === t('settings.serverUnreachable')) throw cause
+    throw new Error(t('settings.serverUnreachable'))
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 const defaultLoginKey = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu0QumTTAkPSiGQ75RZqpCvpJDWDspRoacrIHdWUbj5SGRcPfHh3QcGh7cQ1nm40sWwfb3jdO1g7yP/smEx4vXn4mjqpztrt5RbYoZlZ2AAAxI6Uxj522NUEWYVBpWqzqxnGw/w2wtfKTd/HSyZi/zXeRONF4G4aH4zCLxsFYKjeemz1y0eLKg8Cfx2dqUffU3yxNf4N7tilthgxw6XSKABjB488CpJMYelDWrtw6W+5c6HaBAYMQfJM2PJqjTnndGokJDS3mGp33Laba+lZeZtf8vt0bYW6rKuLtoqY0pQ0yLvmgty7JvhacInYUQzI7RleMXSGXhVKmK/MFA2dpvwIDAQAB'
 

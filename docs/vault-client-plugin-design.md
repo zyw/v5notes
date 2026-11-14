@@ -45,7 +45,7 @@
 | 维度 | Obsidian | v5notes-vault-client（采用） |
 |---|---|---|
 | 包结构 | `manifest.json` + `main.js`；主题多为 CSS | 功能插件同左；**主题**另有一等包格式 + Theme API |
-| 生命周期 | `onload` / `onunload` | 同左；另加 `onUserEnable`（首次手动开启）；主题可无 JS 或仅设置控件 |
+| 生命周期 | `onload` / `onunload` | 同左；另加 `onUserEnable`（语义见 §4.2）；主题可无 JS 或仅设置控件 |
 | 全局入口 | `this.app` | `this.app`（类型来自 `@v5notes/vault-plugin-api`） |
 | 文件系统 | 近乎完整 Node `fs` | **禁止**默认暴露任意 `fs`；经 `app.vault` / 声明的 `permissions` |
 | 网络 / 发布 | 社区插件可较自由联网与自建发布流 | **安全网络白名单**；**发布不对第三方开放** |
@@ -114,16 +114,17 @@ MyVault/
 
 ### 3.3 同步
 
-与主设计 [§6.5 syncignore](vault-client-design.md#65-同步范围与-v5notessyncignore) 一致：
+**权威总表：** 主设计 [§6.4 Sync 路径分类](vault-client-design.md)（含 `sync-state.json` / `index.sqlite` / 设备私有字段 / 本地 trash **永不同步**）。用户可追加 [§6.6 `syncignore`](vault-client-design.md) 忽略更多用户内容，但**不能**用它打开硬表中的「永不同步」项。下表仅为插件相关切片；与主表冲突时以主设计为准。本规则在 **Phase 4 SyncEngine** 即生效，**不依赖** Phase 6 `PluginHost`。
 
 | 路径 | 是否进 Vault Sync |
 |---|---|
-| `plugins/*/data.json`、`community-plugins.json` | **建议默认同步**（设置跟库） |
-| `appearance.json`、`themes/community-themes.json` | **建议默认同步**（当前主题意图） |
-| `plugins/*/main.js`、`themes/*/theme.css` 等代码 | **默认忽略**（写入默认 `syncignore`）；各端自装 |
+| `plugins/*/data.json`、`community-plugins.json` | **默认同步开**（设置跟库） |
+| `appearance.json`、`themes/community-themes.json`、`themes/*/data.json` | **默认同步开**（当前主题意图） |
+| `plugins/*/main.js`、`themes/*/theme.css` 等代码 | **默认同步关闭**（各端自装）；仅同步「启用/选中意图」 |
+| `sync-state.json`、`index.sqlite`、`vault.json` 设备字段、`.v5notes/trash/**` | **永不同步**（见主设计 §6.4） |
 | 官方核心插件与内置主题 | 随 App 发版，不放库内 |
 
-多设备仅同步「启用/选中意图」；缺包时设置页提示「未安装，请安装同版本」。
+文档需提示：多设备启用同一社区插件/主题时，各端需自行安装对应版本；仅同步「启用意图」。
 
 ---
 
@@ -205,6 +206,7 @@ export default class HelloWorldPlugin extends Plugin {
 1. **必须** `export default` 继承 `Plugin` 的类（与 Obsidian 一致，降低心智切换）。
 2. 所有 `register*` / `add*` 在 `onunload` 时由宿主统一拆除；插件应调用 `this.register(disposer)` 挂自有清理。
 3. 禁止插件顶层副作用；逻辑放进 `onload`。
+4. **`onUserEnable`（可选）：** 用户在设置中**首次**将该插件从关闭打到开启时调用一次（每个库、每个 `plugin id` 至多一次，直到卸载/清除启用记录）。用于迁移旧 `data.json`、展示权限说明、一次性引导。**不是**每次开库的钩子——每次开库仍走 `onload`；关闭走 `onunload`。未实现该方法则跳过。主题包若带 `main.js`，对等可选用，语义相同。
 
 ### 4.3 构建
 
@@ -246,7 +248,7 @@ PluginHost
 | `adapter.rename(from, to)` | `vault:write` | |
 | `on('create'\|'modify'\|'delete'\|'rename')` | `vault:read` | 事件 |
 
-**不提供** 库根之外的绝对路径 API（除非 `permissions` 含 `fs:arbitrary` 且用户二次确认——默认关闭该权限发放）。
+**不提供** 库根之外的绝对路径 API。`fs:arbitrary` **第三方永不可申请、宿主永不发放**（与 §7.1 / 非目标一致）；官方核心模块若需库外路径，走产品通道而非插件权限。
 
 ### 5.2 `Workspace`
 
@@ -314,28 +316,30 @@ PluginHost
 3. 库内已启用社区/本地**功能插件**（按 `id` 字典序；显式 `dependencies` 字段后期再加）。
 4. 单个失败：捕获、标记 `failed`、其余继续；主题 CSS 校验失败则回退内置主题并提示。
 
-### 6.2 隔离策略（分期）
+### 6.2 隔离策略与威胁模型（诚实边界）
 
-| 阶段 | 策略 |
-|---|---|
-| **P1** | 同页 JS 模块加载 + API 代理校验权限；CSS 注入带插件前缀作用域尽量隔离 |
-| **P2** | iframe / Worker 跑无 UI 逻辑；UI 仍主文档（复杂度高，按需） |
-| **不做** | 任意 native `.node` / 未声明 Shell |
+| 阶段 | 策略 | 实际保证 |
+|---|---|---|
+| **P1** | 同页 JS 模块加载 + **API 代理**按 `permissions` 裁剪；CSS 尽量加前缀作用域 | **不是进程隔离**。恶意/被攻破插件与宿主同渲染页，技术上可尝试原型污染、读同页可达对象。硬门槛是：能力只经代理、最小权限、Safe Mode、审核；「禁止静默全库外传」在 P1 = **政策 + 权限最小化 +（Phase 7）`network:safe`**，**不是**可执行沙箱保证 |
+| **P2** | iframe / Worker 跑无 UI 逻辑；UI 仍主文档（复杂度高，按需） | 较强隔离边界另议；未落地前对外不得宣称 |
+| **不做** | 任意 native `.node` / 未声明 Shell / 无限制 `network` | — |
 
-P1 即对标「多数桌面笔记插件」可达性；权限代理是硬门槛。
+**对外/对内文案（Phase 0 冻结）：** 只承诺「权限代理 + Safe Mode + 审核」；**不**承诺进程级沙箱或「插件无法读到同页其它状态」。有 `vault:read` 的插件在获得网络能力后，仍可能分段读库外传——靠 allowlist、payload 策略与审核收敛，而非 P1 隔离神话。
+
+**Account / Sync token：** 插件 API、`createPluginApi` 返回对象、以及可被插件触及的全局/原型上，**不得**挂载或可枚举到 Account/Sync access token。Token 仅存宿主私有闭包 / 安全存储；bridge `invoke` 由宿主代持凭证，插件侧只见业务结果或权限错误。
 
 ### 6.3 API 注入
 
 ```ts
 // 伪代码
-const api = createPluginApi(app, manifest) // 按 permissions 裁剪方法
+const api = createPluginApi(app, manifest) // 按 permissions 裁剪方法；永不注入 token
 const mod = await import(pluginUrl)       // asset 或 blob URL
 const PluginClass = mod.default
 const instance = new PluginClass(api, manifest)
 await instance.onload()
 ```
 
-`createPluginApi`：未授予的方法直接 `throw` 或返回 `undefined` 并打日志，避免插件探测后提权。
+`createPluginApi`：未授予的方法直接 `throw` 或返回 `undefined` 并打日志，避免插件探测后提权。注入对象与 `Object.prototype` 污染面需审查：敏感字段不可枚举、不可写到插件可见全局。
 
 ---
 
@@ -410,11 +414,13 @@ await instance.onload()
 
 ## 9. 插件 / 主题市场（后期，可挂后端）
 
-不必与 `note-vault-sync` 笔记协议耦合；可同进程提供只读目录：
+**与文件 sync 协议解耦（Phase 0 与主设计 §8.2 对齐）：** Catalog **版本与破坏性变更独立于** `note-vault-sync` 的文件 manifest/rev 协议。可选：（A）独立路由前缀（推荐文档示例仍可用 `/vault/v1/catalog/...`，但标明非文件 sync 资源）；或（B）同进程旁路 + 独立版本协商。**禁止**把 catalog 条目塞进文件 `manifest`；sync 协议 bump 不得强制市场客户端升级。
+
+示例（路径可按 Phase 0 所选方案微调）：
 
 ```
-GET /vault/v1/plugin-catalog?kind=plugin|theme
-GET /vault/v1/plugin-catalog/{id}
+GET /vault/v1/catalog/plugins?kind=plugin|theme
+GET /vault/v1/catalog/plugins/{id}
 ```
 
 包分发：
@@ -454,10 +460,12 @@ packages/
 
 ## 11. 安全与滥用面
 
-- Path：一律相对库根规范化；拒绝 symlink 逃逸（与 Vault 主设计一致）。
+- Path：一律相对库根规范化；拒绝 symlink 逃逸（与 Vault 主设计 §6.2 一致）。
 - 资源：限制单插件 CSS/内存；命令注册名强制 `pluginId:` 前缀防撞。
 - 主题：CSS 变量契约 + 选择器白名单；校验失败回退内置主题。
-- 网络：仅 `network:safe` + allowlist；无发布 API；禁止静默全库外传。
+- 网络：仅 `network:safe` + allowlist；无发布 API；「禁止静默全库外传」= 政策 + 审核 + 网络策略（P1 非沙箱保证，见 §6.2）。
+- Token：Account/Sync 凭证对插件不可达（§6.2）。
+- 权限：`fs:arbitrary` / 无限制 `network` / `publish:*` / `sync:control` / `shell` 第三方永不发放。
 - 更新：不允许插件自改 `main.js` / `theme.css` 提权绕过（代码目录只读挂载）。
 - 审计：设置页一键「安全模式」：仅核心插件 + 内置主题（对标 Obsidian Safe Mode）。
 
@@ -480,6 +488,8 @@ packages/
 
 - 主题为一等品类，与功能插件同里程碑交付（Phase 6），不挪到「有空再做」。  
 - 第三方永不排期「发布类 API」；`network:safe` 不进 Phase 6，放在 Phase 7。  
+- **`.v5notes` 意图/配置同步（主设计 §6.4）在 Phase 4 生效**，不阻塞、也不等待 PluginHost。  
+- Catalog 与文件 sync 协议版本解耦（§9）。  
 - 插件平台不阻塞 Phase 1–2 本地 MVP；可与 Phase 5 同步硬化部分并行，但以主设计依赖图为准。  
 
 ---
@@ -505,7 +515,7 @@ packages/
 | 主题 | **一等品类** + **Theme API**（`kind: theme`，独立目录与市场分区） |
 | 网络 | 仅 **`network:safe`**（白名单）；禁止无限制联网与静默全库外传 |
 | 发布 | **不对第三方开放**；官方产品能力另做 |
-| 安全 | **权限声明 + 宿主代理**；默认无任意 fs/shell/publish |
-| 代码同步 | 默认同步启用意图、`data.json`、`appearance.json`；不同步二进制 |
-| 市场 | catalog 分插件/主题；可旁路 `note-vault-sync` 或 CDN |
+| 安全 | **权限声明 + 宿主代理**（P1 非进程隔离）；无任意 fs/shell/publish；token 不对插件暴露 |
+| 代码同步 | 默认同步启用意图、`data.json`、`appearance.json`；不同步二进制；永不同步项见主设计 §6.4 |
+| 市场 | catalog 分插件/主题；**协议版本独立于**文件 sync；可同进程旁路或 CDN |
 | 与云端客户端 | `v5notes-client2` 首期不引入同一套第三方插件 |

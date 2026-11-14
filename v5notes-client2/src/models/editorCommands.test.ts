@@ -10,6 +10,7 @@ import {
   type CommandActions,
   type CommandContext,
 } from './editorCommands'
+import { isAppleHost, modShortcut } from '../utils/platform'
 
 function actions(): CommandActions {
   return {
@@ -128,5 +129,12 @@ describe('editor commands', () => {
     expect(modeSwitchLabel('preview')).toBe('预览模式')
     expect(modeSwitchLabel('source')).toBe('源码模式')
     expect(modeSwitchLabel('edit')).toBe('所见即所得')
+  })
+
+  it('shows host-native modifier shortcuts', () => {
+    const commands = buildEditorCommands(actions())
+    const source = commands.find(command => command.id === 'mode.source')
+    expect(source?.shortcut).toBe(modShortcut('2'))
+    expect(source?.shortcut?.startsWith(isAppleHost() ? '⌘' : 'Ctrl+')).toBe(true)
   })
 })

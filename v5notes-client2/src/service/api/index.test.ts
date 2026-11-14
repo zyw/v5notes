@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createApi } from '.'
+import { createApi, probeServer } from '.'
 import { ConflictError } from '../request'
 
 describe('client API', () => {
@@ -128,5 +128,24 @@ describe('client API', () => {
     const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
       vi.fn(async () => new Response(JSON.stringify({ code: 200, data: 0 }))) as typeof fetch)
     expect(await api.create({ name: 'Test', dirId: '0', content: '' })).toBe('0')
+  })
+
+  it('probes a draft server without requiring an active session', async () => {
+    const transport = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe('https://notes.example/client/ping')
+      expect((init?.headers as Record<string, string>).clientid).toBe('client')
+      return new Response(JSON.stringify({ code: 200 }), { status: 200 })
+    })
+    await expect(probeServer('https://notes.example/', {
+      transport: transport as typeof fetch,
+      clientId: 'client',
+    })).resolves.toBeUndefined()
+  })
+
+  it('rejects unreachable draft servers before settings are saved', async () => {
+    await expect(probeServer('https://down.example', {
+      transport: vi.fn(async () => { throw new TypeError('Failed to fetch') }) as typeof fetch,
+      clientId: 'client',
+    })).rejects.toThrow(/无法连接|Could not reach|無法連接/)
   })
 })
