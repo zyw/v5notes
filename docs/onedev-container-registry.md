@@ -6,12 +6,12 @@
 
 ## 推送已有的本地镜像
 
-用 OneDev 登录名登录，在密码提示处粘贴上面的 Access Token。示例以本地已有的 `v5notes2-api:2.0.0` 为源。按实际镜像名和版本调整 `docker tag` 和 `docker push` 命令。[OneDev Registry 认证说明](https://code.onedev.io/onedev/server/~issues/2575) · [Docker 登录文档](https://docs.docker.com/reference/cli/docker/login/)
+用 OneDev 登录名登录，在密码提示处粘贴上面的 Access Token。示例以本地已有的 `v5notes2-api:2.0.1` 为源。按实际镜像名和版本调整 `docker tag` 和 `docker push` 命令。[OneDev Registry 认证说明](https://code.onedev.io/onedev/server/~issues/2575) · [Docker 登录文档](https://docs.docker.com/reference/cli/docker/login/)
 
 ```bash
 docker login onedev.v5ai.xin -u YOUR_ONEDEV_LOGIN
-docker tag v5notes2-api:2.0.0 onedev.v5ai.xin/docker-imgs/v5notes2-api:2.0.0
-docker push onedev.v5ai.xin/docker-imgs/v5notes2-api:2.0.0
+docker tag v5notes2-api:2.0.1 onedev.v5ai.xin/docker-imgs/v5notes2-api:2.0.1
+docker push onedev.v5ai.xin/docker-imgs/v5notes2-api:2.0.1
 ```
 
 推送后，在 **Packages** 页面打开对应版本，可以查看镜像摘要、平台和拉取命令。[OneDev 拉取说明](https://docs.onedev.io/tutorials/package/working-with-container-image#consume-published-image)
@@ -30,7 +30,7 @@ docker push onedev.v5ai.xin/docker-imgs/v5notes2-api:2.0.0
 
 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 下，把 OneDev 登录名存为变量 `ONEDEV_USERNAME`，把 Access Token 存为密钥 `ONEDEV_TOKEN`。创建令牌时关闭 **Has Owner Permissions**，仅对 `docker-imgs` 授予 **Package Writer**。工作流以该令牌登录 OneDev，GitHub 自带的 `GITHUB_TOKEN` 仅需 `contents: read`，用于检出源码。[GitHub Actions 密钥](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) · [OneDev 令牌管理](https://docs.onedev.io/tutorials/security/manage-access-tokens) · [Docker 登录 Action](https://github.com/docker/login-action#inputs)
 
-将下面的示例保存为 `.github/workflows/publish-api-image.yml`。为已合并的提交推送普通 Git tag `api-v5notes2-2.0.0`，会发布镜像标签 `2.0.0` 和 `sha-<完整提交 SHA>`。这个前缀不匹配现有桌面更新工作流的 `v*` 标签规则。桌面工作流还会响应任何 GitHub Release 的 `published` 事件，因此发布 API 镜像时只推送 Git tag，不要为它创建 GitHub Release；若以后需要 Release 事件，再单独给桌面工作流加过滤。也可以从默认分支手动运行，生成提交标签用于验证。发布任务限定在 `zyw/v5notes` 仓库。PR 构建可以独立使用 `pull_request` 事件，在不注入发布密钥的任务中编译或测试。[GitHub 触发条件](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushbranchestagsbranches-ignoretags-ignore) · [GitHub PR 安全指引](https://docs.github.com/en/actions/reference/security/secure-use) · [现有桌面工作流](../.github/workflows/publish-update-feed.yml)
+将下面的示例保存为 `.github/workflows/publish-api-image.yml`。为已合并的提交推送普通 Git tag `api-v5notes2-2.0.1`，会发布镜像标签 `2.0.1` 和 `sha-<完整提交 SHA>`。这个前缀不匹配现有桌面更新工作流的 `v*` 标签规则。桌面工作流还会响应任何 GitHub Release 的 `published` 事件，因此发布 API 镜像时只推送 Git tag，不要为它创建 GitHub Release；若以后需要 Release 事件，再单独给桌面工作流加过滤。也可以从默认分支手动运行，生成提交标签用于验证。发布任务限定在 `zyw/v5notes` 仓库。PR 构建可以独立使用 `pull_request` 事件，在不注入发布密钥的任务中编译或测试。[GitHub 触发条件](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushbranchestagsbranches-ignoretags-ignore) · [GitHub PR 安全指引](https://docs.github.com/en/actions/reference/security/secure-use) · [现有桌面工作流](../.github/workflows/publish-update-feed.yml)
 
 ```yaml
 name: Publish v5notes2 API image
@@ -71,7 +71,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             version="${GITHUB_REF_NAME#api-v5notes2-}"
             if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo 'Expected a tag such as api-v5notes2-2.0.0' >&2
+              echo 'Expected a tag such as api-v5notes2-2.0.1' >&2
               exit 1
             fi
             tags="$tags,$IMAGE:$version"
