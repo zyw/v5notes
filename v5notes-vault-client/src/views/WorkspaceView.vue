@@ -16,11 +16,13 @@ import {
   type AppearancePrefs,
 } from '../appearance/themes'
 import {
+  listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
   startExtensionRuntime,
   stopExtensionRuntime,
 } from '../extension/runtime'
+import type { HostRibbon } from '../plugin-host'
 import { join } from '@tauri-apps/api/path'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 
@@ -49,6 +51,19 @@ const searchHits = ref<SearchHit[]>([])
 const searchBusy = ref(false)
 const showTrash = ref(false)
 const trashEntries = ref<TrashEntry[]>([])
+const pluginRibbons = ref<HostRibbon[]>([])
+
+function refreshRibbons() {
+  pluginRibbons.value = listHostRibbons()
+}
+
+async function runRibbon(r: HostRibbon) {
+  try {
+    await r.run()
+  } catch (error) {
+    status.value = error instanceof Error ? error.message : String(error)
+  }
+}
 
 const nameDialog = ref<{
   mode: 'note' | 'dir' | 'rename'
@@ -447,6 +462,7 @@ onMounted(async () => {
       },
     })
     await startExtensionRuntime(props.vault.rootPath)
+    refreshRibbons()
     const prefs = loadAppearancePrefs()
     applyAppearance(prefs)
     void persistAppearanceIntent(prefs)
@@ -601,12 +617,26 @@ defineExpose({
           <em v-if="dirty">未保存</em>
           <em v-else-if="status">{{ status }}</em>
         </div>
-        <div class="toolbar-actions" v-if="selectedPath">
-          <span class="mode-pill">{{ editorMode === 'preview' ? '预览' : '编辑' }}</span>
-          <button v-if="editorMode === 'preview'" type="button" class="primary compact" @click="enterEdit">编辑</button>
-          <template v-else>
-            <button type="button" class="ghost compact" :disabled="busy || !dirty" @click="saveCurrent">保存</button>
-            <button type="button" class="primary compact" :disabled="busy" @click="leaveEdit">完成</button>
+        <div class="toolbar-actions">
+          <div v-if="pluginRibbons.length" class="plugin-ribbon" role="toolbar" aria-label="插件 Ribbon">
+            <button
+              v-for="r in pluginRibbons"
+              :key="`${r.pluginId}:${r.id}`"
+              type="button"
+              class="ghost compact ribbon-btn"
+              :title="r.title"
+              @click="runRibbon(r)"
+            >
+              {{ r.icon || r.title }}
+            </button>
+          </div>
+          <template v-if="selectedPath">
+            <span class="mode-pill">{{ editorMode === 'preview' ? '预览' : '编辑' }}</span>
+            <button v-if="editorMode === 'preview'" type="button" class="primary compact" @click="enterEdit">编辑</button>
+            <template v-else>
+              <button type="button" class="ghost compact" :disabled="busy || !dirty" @click="saveCurrent">保存</button>
+              <button type="button" class="primary compact" :disabled="busy" @click="leaveEdit">完成</button>
+            </template>
           </template>
         </div>
       </header>

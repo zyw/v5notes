@@ -3,7 +3,14 @@
  * Tokens stay in account/session modules — never passed into hosts.
  */
 
-import type { PluginHost, PluginRuntimeInfo, HostCommand } from '../plugin-host'
+import type {
+  PluginHost,
+  PluginRuntimeInfo,
+  HostCommand,
+  HostRibbon,
+  HostSettingTab,
+  HostView,
+} from '../plugin-host'
 import {
   createPluginHost,
   createVaultAdapter,
@@ -25,6 +32,8 @@ import {
   writeAppearanceFile,
 } from '../theme-host'
 import { HELLO_WORLD_MAIN_JS, HELLO_WORLD_MANIFEST } from '../plugin-host/samples/helloWorld'
+import { SAFE_FETCH_MAIN_JS, SAFE_FETCH_MANIFEST } from '../plugin-host/samples/safeFetch'
+import { installCatalogItem, type CatalogItem } from '../catalog'
 
 let pluginHost: PluginHost | null = null
 let themeHost: ThemeHost | null = null
@@ -119,6 +128,18 @@ export function listHostCommands(): HostCommand[] {
   return pluginHost?.listCommands() ?? []
 }
 
+export function listHostRibbons(): HostRibbon[] {
+  return pluginHost?.listRibbons() ?? []
+}
+
+export function listHostSettingTabs(): HostSettingTab[] {
+  return pluginHost?.listSettingTabs() ?? []
+}
+
+export function listHostViews(): HostView[] {
+  return pluginHost?.listViews() ?? []
+}
+
 export async function ensureSampleExtensions(): Promise<void> {
   if (!activeRoot || !pluginHost || !themeHost) {
     throw new Error('请先打开 Vault')
@@ -128,10 +149,29 @@ export async function ensureSampleExtensions(): Promise<void> {
     manifestJson: JSON.stringify(HELLO_WORLD_MANIFEST, null, 2),
     mainJs: HELLO_WORLD_MAIN_JS,
   })
+  await writeSamplePlugin(activeRoot, {
+    id: SAFE_FETCH_MANIFEST.id,
+    manifestJson: JSON.stringify(SAFE_FETCH_MANIFEST, null, 2),
+    mainJs: SAFE_FETCH_MAIN_JS,
+  })
   await installForestInkSample(activeRoot)
   await pluginHost.setEnabled('hello-world', true)
+  await pluginHost.setEnabled(SAFE_FETCH_MANIFEST.id, true)
   // Refresh theme discovery
   await themeHost.start()
+}
+
+/** Install from catalog into the open vault, then enable plugins / refresh themes. */
+export async function installFromCatalog(item: CatalogItem): Promise<void> {
+  if (!activeRoot || !pluginHost || !themeHost) {
+    throw new Error('请先打开 Vault')
+  }
+  const result = await installCatalogItem(activeRoot, item)
+  if (result.kind === 'plugin') {
+    await pluginHost.setEnabled(result.id, true)
+  } else {
+    await themeHost.start()
+  }
 }
 
 export async function setSafeModeAndReload(enabled: boolean): Promise<void> {

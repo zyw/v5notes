@@ -7,16 +7,21 @@ export {
   type PluginHostDeps,
   type PluginRuntimeInfo,
   type HostCommand,
+  type HostRibbon,
+  type HostSettingTab,
+  type HostView,
   type VaultPluginPackage,
 } from './PluginHost'
 export { createPluginApi, assertNoTokenLeak } from './createPluginApi'
-export { parseManifestJson, assertThemePermissions } from './manifest'
+export { parseManifestJson, assertThemePermissions, assertNoPublishingTags } from './manifest'
 export {
   FORBIDDEN_PERMISSIONS,
   PHASE6_GRANTABLE,
+  PHASE7_GRANTABLE,
   validateRequestedPermissions,
   assertPermission,
 } from './permissions'
+export { safeNetworkRequest, hostMatchesAllowlist, validateAllowlist } from './networkSafe'
 export { loadSafeMode, saveSafeMode, SAFE_MODE_STORAGE_KEY } from './safeMode'
 export {
   createVaultAdapter,

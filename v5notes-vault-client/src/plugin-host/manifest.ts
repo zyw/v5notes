@@ -1,12 +1,30 @@
 import type { PluginKind, PluginManifest, PluginPermission } from '@v5notes/vault-plugin-api'
 import { normalizePermissionList, validateRequestedPermissions } from './permissions'
+import { validateAllowlist } from './networkSafe'
 
 const ID_RE = /^[a-z0-9-]+$/
+
+/** Catalog / manifest tags that mean third-party publish — always reject. */
+export const FORBIDDEN_TAGS = new Set(['publishing', 'publish', 'publisher'])
 
 export interface ParsedManifest extends PluginManifest {
   kind: PluginKind
   permissions: PluginPermission[]
   main: string
+  tags?: string[]
+}
+
+export function normalizeTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+}
+
+export function assertNoPublishingTags(tags: string[] | undefined): void {
+  if (!tags?.length) return
+  const hit = tags.find((t) => FORBIDDEN_TAGS.has(t.toLowerCase()))
+  if (hit) {
+    throw new Error(`拒绝 publishing 类标签「${hit}」（第三方无发布；发布仅为官方功能）`)
+  }
 }
 
 export function parseManifestJson(raw: string | unknown): ParsedManifest {
@@ -22,12 +40,21 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
   const version = String(data.version || '0.0.0').trim()
   const kind: PluginKind = data.kind === 'theme' ? 'theme' : 'plugin'
   const permissions = normalizePermissionList(data.permissions) as PluginPermission[]
+  const tags = normalizeTags(data.tags)
+  assertNoPublishingTags(tags)
+
+  const networkAllowlist = Array.isArray(data.networkAllowlist)
+    ? data.networkAllowlist.map(String)
+    : undefined
 
   if (kind === 'theme') {
     const themeCheck = validateRequestedPermissions(permissions.length ? permissions : ['ui:theme'], {
       allowNetworkSafe: false,
     })
     if (!themeCheck.ok) throw new Error(themeCheck.reason)
+    if (permissions.includes('network:safe')) {
+      throw new Error('主题不得申请 network:safe')
+    }
     const themeFile = String(data.theme || 'theme.css')
     return {
       id,
@@ -43,16 +70,18 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
       main: data.main ? String(data.main) : '',
       theme: themeFile,
       themeMeta: data.themeMeta ? String(data.themeMeta) : undefined,
-      networkAllowlist: Array.isArray(data.networkAllowlist)
-        ? data.networkAllowlist.map(String)
-        : undefined,
+      networkAllowlist,
+      tags: tags.length ? tags : undefined,
     }
   }
 
-  const check = validateRequestedPermissions(permissions, { allowNetworkSafe: false })
+  const check = validateRequestedPermissions(permissions, { allowNetworkSafe: true })
   if (!check.ok) throw new Error(check.reason)
 
-  // Theme packages must not sneak vault write / network via kind=plugin mistype — already checked.
+  if (permissions.includes('network:safe')) {
+    validateAllowlist(networkAllowlist)
+  }
+
   return {
     id,
     name,
@@ -67,9 +96,8 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
     main: String(data.main || 'main.js'),
     theme: data.theme ? String(data.theme) : undefined,
     themeMeta: data.themeMeta ? String(data.themeMeta) : undefined,
-    networkAllowlist: Array.isArray(data.networkAllowlist)
-      ? data.networkAllowlist.map(String)
-      : undefined,
+    networkAllowlist,
+    tags: tags.length ? tags : undefined,
   }
 }
 

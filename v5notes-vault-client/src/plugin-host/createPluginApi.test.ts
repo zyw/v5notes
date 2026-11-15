@@ -53,4 +53,23 @@ describe('createPluginApi', () => {
     expect(() => assertNoTokenLeak(app)).not.toThrow()
     expect(JSON.stringify(app)).not.toMatch(/token/i)
   })
+
+  it('exposes network only with network:safe', () => {
+    const without = createPluginApi(hooks(), {
+      id: 'a',
+      name: 'A',
+      version: '1.0.0',
+      permissions: ['ui:commands'],
+    })
+    expect(without.network).toBeUndefined()
+
+    const withNet = createPluginApi(hooks(), {
+      id: 'b',
+      name: 'B',
+      version: '1.0.0',
+      permissions: ['network:safe'],
+      networkAllowlist: ['api.example.com'],
+    })
+    expect(withNet.network).toBeDefined()
+  })
 })

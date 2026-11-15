@@ -2,8 +2,11 @@ import {
   Plugin,
   type PluginCommand,
   type PluginManifest,
+  type RibbonIconSpec,
+  type SettingTabSpec,
   type ThemeApi,
   type VaultAdapter,
+  type ViewSpec,
   type WorkspaceApi,
 } from '@v5notes/vault-plugin-api'
 import { attachDataMethods, createPluginApi } from './createPluginApi'
@@ -32,6 +35,29 @@ export interface HostCommand {
   id: string
   name: string
   run: () => void | Promise<void>
+}
+
+export interface HostRibbon {
+  pluginId: string
+  id: string
+  title: string
+  icon: string
+  run: () => void | Promise<void>
+}
+
+export interface HostSettingTab {
+  pluginId: string
+  id: string
+  name: string
+  display: (containerEl: HTMLElement) => void | Promise<void>
+}
+
+export interface HostView {
+  pluginId: string
+  type: string
+  name: string
+  mount: (containerEl: HTMLElement) => void | Promise<void>
+  unmount?: () => void
 }
 
 export interface VaultPluginPackage {
@@ -82,6 +108,9 @@ export interface PluginHost {
   stop(): Promise<void>
   list(): PluginRuntimeInfo[]
   listCommands(): HostCommand[]
+  listRibbons(): HostRibbon[]
+  listSettingTabs(): HostSettingTab[]
+  listViews(): HostView[]
   setSafeMode(enabled: boolean): Promise<void>
   isSafeMode(): boolean
   getEnabledIds(): string[]
@@ -96,10 +125,22 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
   const instances = new Map<string, Plugin>()
   const infos = new Map<string, PluginRuntimeInfo>()
   const commands = new Map<string, HostCommand>()
+  const ribbons = new Map<string, HostRibbon>()
+  const settingTabs = new Map<string, HostSettingTab>()
+  const views = new Map<string, HostView>()
 
-  function clearCommandsFor(pluginId: string) {
+  function clearSurfaceFor(pluginId: string) {
     for (const key of [...commands.keys()]) {
       if (key.startsWith(`${pluginId}:`)) commands.delete(key)
+    }
+    for (const key of [...ribbons.keys()]) {
+      if (key.startsWith(`${pluginId}:`)) ribbons.delete(key)
+    }
+    for (const key of [...settingTabs.keys()]) {
+      if (key.startsWith(`${pluginId}:`)) settingTabs.delete(key)
+    }
+    for (const key of [...views.keys()]) {
+      if (key.startsWith(`${pluginId}:`)) views.delete(key)
     }
   }
 
@@ -111,9 +152,16 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     } catch {
       /* ignore */
     }
+    for (const view of inst.getRegisteredViews()) {
+      try {
+        view.unmount?.()
+      } catch {
+        /* ignore */
+      }
+    }
     inst.__disposeAll()
     instances.delete(id)
-    clearCommandsFor(id)
+    clearSurfaceFor(id)
   }
 
   async function unloadAll() {
@@ -138,6 +186,32 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
           id: command.id,
           name: command.name,
           run: command.callback,
+        })
+      },
+      registerRibbon: (pluginId: string, spec: RibbonIconSpec) => {
+        ribbons.set(`${pluginId}:${spec.id}`, {
+          pluginId,
+          id: spec.id,
+          title: spec.title,
+          icon: spec.icon,
+          run: spec.callback,
+        })
+      },
+      registerSettingTab: (pluginId: string, spec: SettingTabSpec) => {
+        settingTabs.set(`${pluginId}:${spec.id}`, {
+          pluginId,
+          id: spec.id,
+          name: spec.name,
+          display: spec.display,
+        })
+      },
+      registerView: (pluginId: string, spec: ViewSpec) => {
+        views.set(`${pluginId}:${spec.type}`, {
+          pluginId,
+          type: spec.type,
+          name: spec.name,
+          mount: spec.mount,
+          unmount: spec.unmount,
         })
       },
     }
@@ -245,7 +319,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
         if (!satisfiesMinAppVersion(manifest.minAppVersion, APP_VERSION)) {
           throw new Error(`需要应用版本 >= ${manifest.minAppVersion}`)
         }
-        // Re-validate permissions (forbids network:safe / publish / fs:arbitrary in Phase 6).
+        // Re-validate permissions (Phase 7 allows network:safe with allowlist; still forbids publish/fs:arbitrary).
         parseManifestJson(manifest)
         if (!pkg.mainSource) throw new Error('缺少 main.js')
         const Factory = loadCjsPluginClass(pkg.mainSource)
@@ -269,6 +343,9 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     await unloadAll()
     infos.clear()
     commands.clear()
+    ribbons.clear()
+    settingTabs.clear()
+    views.clear()
     community = await deps.readCommunityPlugins()
     await loadCore()
     await loadVaultPlugins()
@@ -283,12 +360,24 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
       await unloadAll()
       infos.clear()
       commands.clear()
+      ribbons.clear()
+      settingTabs.clear()
+      views.clear()
     },
     list() {
       return [...infos.values()].sort((a, b) => Number(b.core) - Number(a.core) || a.id.localeCompare(b.id))
     },
     listCommands() {
       return [...commands.values()]
+    },
+    listRibbons() {
+      return [...ribbons.values()]
+    },
+    listSettingTabs() {
+      return [...settingTabs.values()]
+    },
+    listViews() {
+      return [...views.values()]
     },
     isSafeMode() {
       return safeMode

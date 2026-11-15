@@ -3,11 +3,15 @@ import {
   type App,
   type PluginCommand,
   type PluginManifest,
+  type RibbonIconSpec,
+  type SettingTabSpec,
   type ThemeApi,
   type VaultAdapter,
+  type ViewSpec,
   type WorkspaceApi,
 } from '@v5notes/vault-plugin-api'
 import { assertPermission } from './permissions'
+import { safeNetworkRequest } from './networkSafe'
 
 export interface PluginHostHooks {
   vault: VaultAdapter
@@ -20,6 +24,9 @@ export interface PluginHostHooks {
   saveData: (pluginId: string, data: unknown) => Promise<void>
   /** Register command with host (namespaced). */
   registerCommand: (pluginId: string, command: PluginCommand) => void
+  registerRibbon?: (pluginId: string, spec: RibbonIconSpec) => void
+  registerSettingTab?: (pluginId: string, spec: SettingTabSpec) => void
+  registerView?: (pluginId: string, spec: ViewSpec) => void
 }
 
 /**
@@ -86,6 +93,20 @@ export function createPluginApi(hooks: PluginHostHooks, manifest: PluginManifest
     },
   }
 
+  if (granted.includes('network:safe')) {
+    const allowlist = manifest.networkAllowlist || []
+    app.network = {
+      async request(url, options) {
+        assertPermission(granted, 'network:safe', '发起网络请求')
+        return safeNetworkRequest(url, allowlist, {
+          method: options?.method,
+          headers: options?.headers,
+          body: options?.body,
+        })
+      },
+    }
+  }
+
   // Hardening: strip accidental token-like keys if a future caller mutates the object.
   for (const key of Object.keys(app) as (keyof App)[]) {
     Object.defineProperty(app, key, { enumerable: true, configurable: false, writable: false })
@@ -112,6 +133,27 @@ export function attachDataMethods(
     assertPermission(instance.manifest.permissions || [], 'ui:commands', '注册命令')
     originalAdd(command)
     hooks.registerCommand(pluginId, command)
+  }
+
+  const originalRibbon = instance.addRibbonIcon.bind(instance)
+  instance.addRibbonIcon = (spec: RibbonIconSpec) => {
+    assertPermission(instance.manifest.permissions || [], 'ui:ribbon', '注册 Ribbon')
+    originalRibbon(spec)
+    hooks.registerRibbon?.(pluginId, spec)
+  }
+
+  const originalTab = instance.addSettingTab.bind(instance)
+  instance.addSettingTab = (spec: SettingTabSpec) => {
+    assertPermission(instance.manifest.permissions || [], 'ui:settings', '注册设置页')
+    originalTab(spec)
+    hooks.registerSettingTab?.(pluginId, spec)
+  }
+
+  const originalView = instance.registerView.bind(instance)
+  instance.registerView = (spec: ViewSpec) => {
+    assertPermission(instance.manifest.permissions || [], 'ui:views', '注册视图')
+    originalView(spec)
+    hooks.registerView?.(pluginId, spec)
   }
 }
 
