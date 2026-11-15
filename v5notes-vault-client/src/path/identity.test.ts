@@ -4,6 +4,7 @@ import {
   normalizeDisplayPath,
   normalizeVaultName,
   normalizeVaultPath,
+  resolveCreateVaultRoot,
   toIdentityKey,
   VaultPathError,
 } from './identity'
@@ -47,5 +48,31 @@ describe('normalizeVaultPath / identity (§6.2)', () => {
     expect(normalizeVaultName('  MyVault  ')).toBe('MyVault')
     expect(() => normalizeVaultName('')).toThrow(VaultPathError)
     expect(() => normalizeVaultName('x'.repeat(101))).toThrow(VaultPathError)
+  })
+})
+
+describe('resolveCreateVaultRoot', () => {
+  it('appends vault name under a distinct parent', () => {
+    expect(resolveCreateVaultRoot('/Users/me/Desktop/baize-logo', 'MyVault')).toBe(
+      '/Users/me/Desktop/baize-logo/MyVault',
+    )
+  })
+
+  it('does not double-append when parent basename already matches', () => {
+    expect(resolveCreateVaultRoot('/Users/me/Desktop/baize-logo/MyVault', 'MyVault')).toBe(
+      '/Users/me/Desktop/baize-logo/MyVault',
+    )
+    expect(resolveCreateVaultRoot('/Users/me/Desktop/baize-logo/MyVault/MyVault', 'myvault')).toBe(
+      '/Users/me/Desktop/baize-logo/MyVault/MyVault',
+    )
+  })
+
+  it('normalizes separators and trailing slashes', () => {
+    expect(resolveCreateVaultRoot('/tmp/parent/', 'Notes')).toBe('/tmp/parent/Notes')
+    expect(resolveCreateVaultRoot('C:\\Users\\me\\Docs', 'Vault')).toBe('C:/Users/me/Docs/Vault')
+  })
+
+  it('rejects empty parent', () => {
+    expect(() => resolveCreateVaultRoot('  ', 'MyVault')).toThrow(VaultPathError)
   })
 })
