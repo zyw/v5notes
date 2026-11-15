@@ -11,6 +11,13 @@ export const DEFAULT_CLIENT_ID = 'b8e4f02a5c3d7916f2a0b1d9e7c5f3a1'
 export const DUAL_PRODUCT_LINE =
   '同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Cloud 在服务端目录树；Vault 在本机文件夹，可选同步。'
 
+/** 设置 / 帮助页加长说明（Phase 8）。 */
+export const DUAL_PRODUCT_HELP =
+  'V5Notes 云笔记（Cloud）与 V5Notes Vault 共用账号体系，但笔记空间分开：Cloud 用 /client/notes*；Vault 用本机文件夹 + 可选 /vault/v1 同步。登录同一账号不会把两边笔记自动合并。'
+
+export const PRODUCT_DISPLAY_NAME = 'V5Notes Vault'
+export const CLOUD_PRODUCT_DISPLAY_NAME = 'V5Notes云笔记'
+
 export const STORAGE_KEYS = {
   token: 'v5notes-vault-token',
   refreshToken: 'v5notes-vault-refresh-token',

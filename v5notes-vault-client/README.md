@@ -30,18 +30,30 @@ npm run tauri dev
 Vite 开发端口为 **1421**（Cloud client2 使用 1420）。浏览器单独打开 Vite 只能看欢迎/设置 UI；创建/打开库与社交登录唤起需 Tauri 壳。
 
 ```bash
-npm test          # path / account / search / trash
+npm test          # path / account / search / trash / backup / publish …
 npm run build     # 前端类型检查 + 打包
 ```
 
-## Phase 3（本阶段 · 可选账号）
+## Phase 8（本阶段 · 官方增值与双产品收尾）
 
-- 设置页账号区：密码登录 / 社交登录（`app=vault` → `v5notes-vault://`）
-- `deviceType=vault_client`；token 存 localStorage（vault 前缀），**从不存密码**；401/登出清 token
-- 未登录仍可纯本地编辑；会话过期横幅不丢未保存草稿
-- 双产品一句话 + 同步入口引导（SyncEngine 属 Phase 4，本阶段禁用）
-- 套餐形态 B stub：Cloud 桶可读现网 `/client/account/quota`；Vault sync 桶待 Phase 4
-- 后端：`justauth.vault-client-address`、sys_client 种子、OAuth 落地页 `app=vault`
+- 设置页：**官方发布 / 分享** stub（`channel=product`，永不向第三方暴露 `publish:*`）
+- **整库 zip 备份**（排除 trash / sync-state / index；文案强调备份 ≠ Sync）
+- Cloud ↔ Vault **显式迁移说明**（确认后展示步骤，不自动合并）
+- 帮助区双产品全文案；Cloud 并行轨登录/设置/资料页同步一句边界说明
+- **不做**完整站点托管后端；**不**把 Vault 插件宿主引入 Cloud
+
+## Phase 7（已落地）
+
+- `network:safe` + allowlist；Catalog `/vault/v1/catalog/...`（非 file-sync）
+- Ribbon / SettingTab / View 轻量表面；拒 publishing 标签
+
+## Phase 6（已落地）
+
+- PluginHost P1 + Theme API；核心日记/模板；Safe Mode
+
+## Phase 3–5（已落地）
+
+- 可选账号 / SyncEngine / 冲突副本 / 设备管理 / 附件与配额文案
 
 ## Phase 2（已落地）
 

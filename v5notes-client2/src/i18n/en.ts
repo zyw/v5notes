@@ -5,6 +5,8 @@ export const en: Messages = {
     title: 'V5Notes',
     tagline: 'Keep your ideas here.',
     summary: 'Connect to your notes and keep writing.',
+    dualProduct:
+      'One account can sign in to both clients; Cloud notes and Vault libraries are not the same data by default. Cloud lives in a server directory tree; Vault lives in a local folder with optional sync.',
   },
   common: {
     cancel: 'Cancel',
@@ -30,6 +32,8 @@ export const en: Messages = {
     headlineLead: 'Leave your thoughts',
     headlineRest: 'right here.',
     subtitle: 'Connect to your notes and keep writing.',
+    dualProduct:
+      'This app is V5Notes Cloud. The same account can also sign in to V5Notes Vault, but the two note spaces are separate by default.',
     registerHeadlineLead: 'Start from',
     registerHeadlineRest: 'a blank page.',
     registerSubtitle: 'Create an account, verify your email, and open your notes.',
@@ -108,6 +112,8 @@ export const en: Messages = {
   settings: {
     title: 'Settings',
     subtitle: 'Connection, language, and startup preferences.',
+    dualProduct:
+      'One account works in Cloud and Vault; quotas here cover cloud directory-tree notes only, not Vault local/sync allowance. This client does not host Vault plugins.',
     close: 'Close settings',
     connection: 'Connection',
     official: 'Official server',
@@ -392,6 +398,8 @@ export const en: Messages = {
     cloudStorage: 'Storage used',
     cloudStorageUnlimited: 'Space used',
     cloudLoading: 'Loading allowance…',
+    dualProductHint:
+      'This is Cloud note allowance. Vault sync quotas appear in the V5Notes Vault client; the two spaces are never auto-merged.',
     basicTitle: 'Basics',
     username: 'Username',
     nickname: 'Nickname',

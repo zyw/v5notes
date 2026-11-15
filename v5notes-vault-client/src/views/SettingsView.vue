@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import type { AccountState } from '../account'
+import {
+  CLOUD_PRODUCT_DISPLAY_NAME,
+  DUAL_PRODUCT_HELP,
+  DUAL_PRODUCT_LINE,
+  PRODUCT_DISPLAY_NAME,
+} from '../account/constants'
 import {
   applyAppearance,
   BUILTIN_THEMES,
@@ -25,6 +32,23 @@ import {
   setSafeModeAndReload,
 } from '../extension/runtime'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
+import {
+  BACKUP_NOT_SYNC_LINE,
+  BACKUP_SCOPE_HELP,
+  MIGRATION_EXPLICIT_LINE,
+  MIGRATION_STEPS_HELP,
+  backupVaultToZip,
+} from '../backup'
+import {
+  OFFICIAL_PUBLISH_LEAD,
+  OFFICIAL_PUBLISH_STUB_HELP,
+  OFFICIAL_PUBLISH_TITLE,
+  assertOfficialPublishChannel,
+  loadOfficialPublishDraft,
+  saveOfficialPublishDraft,
+  type OfficialPublishDraft,
+  type OfficialPublishVisibility,
+} from '../publish'
 
 const props = defineProps<{
   account: AccountState
@@ -44,6 +68,13 @@ const extensionBusy = ref(false)
 const extensionMessage = ref('')
 const themeError = ref<string | null>(null)
 const pluginTabHosts: Ref<Record<string, HTMLElement | null>> = ref({})
+const backupBusy = ref(false)
+const backupMessage = ref('')
+const migrationAck = ref(false)
+const migrationMessage = ref('')
+const publishDraft = ref<OfficialPublishDraft>(loadOfficialPublishDraft())
+const publishMessage = ref('')
+const showMigrationConfirm = ref(false)
 
 const hasVault = computed(() => Boolean(props.vault?.rootPath))
 
@@ -194,9 +225,64 @@ async function runCommand(cmd: HostCommand) {
   }
 }
 
+async function runBackup() {
+  if (!props.vault?.rootPath) {
+    backupMessage.value = '请先打开 Vault'
+    return
+  }
+  backupBusy.value = true
+  backupMessage.value = ''
+  try {
+    const result = await backupVaultToZip(props.vault.rootPath, {
+      vaultName: props.vault.name,
+    })
+    if (!result) {
+      backupMessage.value = '已取消保存'
+      return
+    }
+    backupMessage.value = `已备份 ${result.fileCount} 个文件（${Math.round(result.bytes / 1024)} KiB）→ ${result.savedPath}。${BACKUP_NOT_SYNC_LINE}`
+  } catch (error) {
+    backupMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    backupBusy.value = false
+  }
+}
+
+function requestMigrationGuide() {
+  migrationMessage.value = ''
+  showMigrationConfirm.value = true
+}
+
+function confirmMigrationGuide() {
+  showMigrationConfirm.value = false
+  migrationAck.value = true
+  migrationMessage.value = `${MIGRATION_EXPLICIT_LINE} ${MIGRATION_STEPS_HELP}`
+}
+
+function cancelMigrationGuide() {
+  showMigrationConfirm.value = false
+}
+
+function setPublishVisibility(visibility: OfficialPublishVisibility) {
+  publishDraft.value = { ...publishDraft.value, visibility }
+}
+
+function savePublishDraft() {
+  publishMessage.value = ''
+  try {
+    assertOfficialPublishChannel(publishDraft.value.channel)
+    publishDraft.value = saveOfficialPublishDraft(publishDraft.value)
+    publishMessage.value =
+      '已保存本机预览偏好（官方通道）。尚未创建公开站点；完整托管后仍不会对第三方插件开放 publish。'
+  } catch (error) {
+    publishMessage.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
 onMounted(() => {
   refreshExtensionState()
   void loadCatalog()
+  publishDraft.value = loadOfficialPublishDraft()
 })
 watch(
   () => props.vault?.rootPath,
@@ -213,6 +299,89 @@ watch(
     </p>
 
     <AccountPanel :account="account" :vault="vault" />
+
+    <section class="settings-block" aria-labelledby="help-dual-title">
+      <h2 id="help-dual-title">帮助 · 双产品</h2>
+      <p class="settings-help dual-product">{{ DUAL_PRODUCT_LINE }}</p>
+      <p class="settings-help">{{ DUAL_PRODUCT_HELP }}</p>
+      <dl class="meta tight-meta">
+        <div>
+          <dt>本客户端</dt>
+          <dd>{{ PRODUCT_DISPLAY_NAME }}</dd>
+        </div>
+        <div>
+          <dt>并列产品</dt>
+          <dd>{{ CLOUD_PRODUCT_DISPLAY_NAME }}（不做 Vault 插件宿主）</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="settings-block" aria-labelledby="backup-title">
+      <h2 id="backup-title">备份与迁移</h2>
+      <p class="settings-help">{{ BACKUP_NOT_SYNC_LINE }}</p>
+      <p class="settings-help tight">{{ BACKUP_SCOPE_HELP }}</p>
+      <div class="choice-row">
+        <button
+          type="button"
+          class="choice compact-choice"
+          :disabled="backupBusy || !hasVault"
+          @click="runBackup"
+        >
+          <strong>{{ backupBusy ? '正在打包…' : '导出整库 zip' }}</strong>
+          <span>仅备份 · 非 Sync</span>
+        </button>
+        <button
+          type="button"
+          class="choice compact-choice"
+          @click="requestMigrationGuide"
+        >
+          <strong>Cloud ↔ Vault 迁移说明</strong>
+          <span>显式确认 · 不自动合并</span>
+        </button>
+      </div>
+      <p v-if="!hasVault" class="settings-help tight">打开 Vault 后可导出备份。</p>
+      <p v-if="backupMessage" class="settings-help tight" role="status">{{ backupMessage }}</p>
+      <p v-if="migrationAck" class="settings-help tight" role="status">{{ migrationMessage }}</p>
+    </section>
+
+    <section class="settings-block" aria-labelledby="publish-title">
+      <h2 id="publish-title">{{ OFFICIAL_PUBLISH_TITLE }}</h2>
+      <p class="settings-help">{{ OFFICIAL_PUBLISH_LEAD }}</p>
+      <p class="settings-help tight">{{ OFFICIAL_PUBLISH_STUB_HELP }}</p>
+      <label class="publish-field">
+        <span>站点标题（本机预览）</span>
+        <input
+          v-model="publishDraft.siteTitle"
+          type="text"
+          maxlength="100"
+          placeholder="例如：公开读书笔记"
+          autocomplete="off"
+        >
+      </label>
+      <div class="choice-row" role="group" aria-label="可见性预览">
+        <button
+          v-for="opt in [
+            { id: 'private' as const, label: '私有' },
+            { id: 'unlisted' as const, label: '不公开链接' },
+            { id: 'public' as const, label: '公开' },
+          ]"
+          :key="opt.id"
+          type="button"
+          class="choice compact-choice"
+          :class="{ active: publishDraft.visibility === opt.id }"
+          @click="setPublishVisibility(opt.id)"
+        >
+          <strong>{{ opt.label }}</strong>
+        </button>
+      </div>
+      <div class="choice-row">
+        <button type="button" class="choice compact-choice" @click="savePublishDraft">
+          <strong>保存官方通道预览</strong>
+          <span>channel=product · status=preview</span>
+        </button>
+      </div>
+      <p v-if="publishMessage" class="settings-help tight" role="status">{{ publishMessage }}</p>
+    </section>
 
     <section class="settings-block" aria-labelledby="appearance-title">
       <h2 id="appearance-title">外观</h2>
@@ -400,9 +569,18 @@ watch(
       </div>
       <div>
         <dt>扩展</dt>
-        <dd>Phase 7 · network:safe + catalog（非 file-sync）</dd>
+        <dd>Phase 8 · 官方发布 stub · 备份 zip · 双产品收尾</dd>
       </div>
     </dl>
+
+    <ConfirmDialog
+      :open="showMigrationConfirm"
+      title="Cloud ↔ Vault 迁移"
+      :message="`${MIGRATION_EXPLICIT_LINE} 继续仅展示迁移步骤，不会改动任何笔记。`"
+      confirm-label="我明白，显示步骤"
+      @cancel="cancelMigrationGuide"
+      @confirm="confirmMigrationGuide"
+    />
   </section>
 </template>
 
@@ -468,5 +646,23 @@ watch(
   font: inherit;
   text-decoration: underline;
   white-space: nowrap;
+}
+.publish-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  font-size: 0.9rem;
+}
+.publish-field input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.tight-meta {
+  margin-top: 10px;
 }
 </style>

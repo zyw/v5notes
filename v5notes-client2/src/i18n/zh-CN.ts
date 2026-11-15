@@ -3,6 +3,8 @@ export const zhCN = {
     title: 'V5Notes云笔记',
     tagline: '把想法留在这里。',
     summary: '连接你的笔记空间，继续写作。',
+    dualProduct:
+      '同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Cloud 在服务端目录树；Vault 在本机文件夹，可选同步。',
   },
   common: {
     cancel: '取消',
@@ -28,6 +30,8 @@ export const zhCN = {
     headlineLead: '把想法，',
     headlineRest: '留在这里。',
     subtitle: '连接你的笔记空间，继续写作。',
+    dualProduct:
+      '本客户端是 V5Notes云笔记（Cloud）。同一账号也可登录 V5Notes Vault，但两边默认不是同一份数据。',
     registerHeadlineLead: '从一张白纸，',
     registerHeadlineRest: '开始。',
     registerSubtitle: '创建账号并验证邮箱后，即可进入你的笔记空间。',
@@ -106,6 +110,8 @@ export const zhCN = {
   settings: {
     title: '设置',
     subtitle: '调整连接、语言与启动偏好。',
+    dualProduct:
+      '同一账号可登录 Cloud 与 Vault；此处额度仅计云端目录树笔记，与 Vault 本机库 / 同步额度无关。本客户端不引入 Vault 插件宿主。',
     close: '关闭设置',
     connection: '连接',
     official: '官方服务器',
@@ -390,6 +396,8 @@ export const zhCN = {
     cloudStorage: '存储占用',
     cloudStorageUnlimited: '已使用空间',
     cloudLoading: '正在加载额度…',
+    dualProductHint:
+      '此处为 Cloud 笔记额度。Vault 同步额度在 V5Notes Vault 客户端查看；两边不会自动合并。',
     basicTitle: '基本资料',
     username: '用户名',
     nickname: '昵称',

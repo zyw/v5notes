@@ -112,7 +112,7 @@ function forget(entry: RecentVaultEntry) {
     <p class="eyebrow">PHASE 3 · 可选账号</p>
     <h1 id="welcome-title">欢迎使用 V5Notes Vault</h1>
     <p class="lede">
-      本地文件夹是权威；笔记正文是库内的 <code>.md</code>。Cloud 笔记与 Vault 库默认不是同一份数据。登录可选——未登录仍可纯本地使用。
+      本地文件夹是权威；笔记正文是库内的 <code>.md</code>。同一账号可登录 Cloud 与 Vault，但默认不是同一份数据。登录可选——未登录仍可纯本地使用。备份 zip ≠ Sync；官方发布仅为产品通道。
     </p>
 
     <ul class="actions" aria-label="开库方式">
