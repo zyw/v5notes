@@ -4,30 +4,36 @@
  *
  * Required keys for community themes:
  * --bg --panel --ink --muted --line --accent --accent-hover --surface --danger --danger-bg
+ *
+ * Direction A+B (2026-11-15): warm paper / solar-term identity (--vault) + family muted green accent.
  */
 
 :root,
 :root[data-theme='default'][data-color-mode='light'],
 :root[data-theme='default']:not([data-color-mode]) {
-  --bg: #f3f6f2;
-  --panel: #fffefa;
-  --ink: #24352c;
-  --muted: #6d7f74;
-  --line: #d9e0d8;
+  --bg: #f3efe4;
+  --panel: #fbf7ee;
+  --ink: #2a2924;
+  --muted: #7a7368;
+  --line: #d8d0c4;
   --accent: #2f5b48;
   --accent-hover: #244636;
-  --surface: #eef3ee;
+  --surface: #ebe4d4;
   --danger: #8a3b2e;
-  --danger-bg: #f7e8e4;
-  --bg-glow-a: #dfeadf;
-  --bg-glow-b: #e8efe4;
-  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', serif;
+  --danger-bg: #f0e0da;
+  --vault: #8a3b2e;
+  --bg-glow-a: #e8e2d4;
+  --bg-glow-b: #efe9db;
+  --rail: #efe9db;
+  --sidebar-bg: #efe9db;
+  --font-display: 'Noto Serif SC', 'Songti SC', 'Iowan Old Style', 'Palatino Linotype', serif;
   --font-ui: 'DM Sans', 'PingFang SC', sans-serif;
   --font-mono: 'SF Mono', ui-monospace, Menlo, monospace;
-  --radius-sm: 8px;
-  --radius-md: 9px;
-  --radius-lg: 16px;
-  --sidebar-width: 280px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --sidebar-width: 272px;
+  --ribbon-width: 44px;
 }
 
 :root[data-theme='default'][data-color-mode='dark'] {
@@ -41,8 +47,11 @@
   --surface: #2a342e;
   --danger: #e0a090;
   --danger-bg: #3a2a26;
+  --vault: #c4a882;
   --bg-glow-a: #243028;
   --bg-glow-b: #1e2822;
+  --rail: #1e2822;
+  --sidebar-bg: #1e2822;
 }
 
 :root[data-theme='dusk'][data-color-mode='light'],
@@ -57,8 +66,11 @@
   --surface: #e5dfd4;
   --danger: #8a3b2e;
   --danger-bg: #f0e0da;
+  --vault: #8a3b2e;
   --bg-glow-a: #e0d8cc;
   --bg-glow-b: #ebe4d8;
+  --rail: #e5dfd4;
+  --sidebar-bg: #e5dfd4;
 }
 
 :root[data-theme='dusk'][data-color-mode='dark'] {
@@ -72,6 +84,9 @@
   --surface: #2a251e;
   --danger: #e0a090;
   --danger-bg: #3a2a26;
+  --vault: #c4a882;
   --bg-glow-a: #241f18;
   --bg-glow-b: #1c1812;
+  --rail: #1c1812;
+  --sidebar-bg: #1c1812;
 }

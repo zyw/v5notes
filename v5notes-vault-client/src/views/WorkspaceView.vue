@@ -15,6 +15,7 @@ import {
   loadAppearancePrefs,
   type AppearancePrefs,
 } from '../appearance/themes'
+import { applyVaultColorForPath, resolveVaultColor, type VaultColorSwatch } from '../appearance/vaultColors'
 import {
   listHostRibbons,
   setExtensionNoticeHandler,
@@ -84,6 +85,15 @@ const noteTitle = computed(() => {
   const name = selectedPath.value.split('/').pop() ?? selectedPath.value
   return name.replace(/\.md$/i, '')
 })
+const vaultColor = computed<VaultColorSwatch>(() => resolveVaultColor(props.vault.rootPath))
+
+watch(
+  () => props.vault.rootPath,
+  path => {
+    applyVaultColorForPath(path)
+  },
+  { immediate: true },
+)
 
 let unwatch: (() => void) | null = null
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -524,28 +534,24 @@ defineExpose({
 <template>
   <div class="workspace" :class="{ 'sidebar-collapsed': !sidebarOpen }">
     <aside v-show="sidebarOpen" class="sidebar" aria-label="库目录">
+      <div class="vault-bar" :style="{ background: vaultColor.color }" :title="`${vaultColor.term} · ${vaultColor.name}`" />
       <div class="sidebar-head">
-        <div class="vault-title" :title="vault.rootPath">
-          <strong>{{ vault.name }}</strong>
-          <span>{{ vault.rootPath }}</span>
-        </div>
-        <div class="sidebar-actions">
-          <button type="button" class="ghost compact" @click="createNoteRoot">新建笔记</button>
-          <button type="button" class="ghost compact" @click="openCreateDir(null)">新建目录</button>
-          <button type="button" class="ghost compact" @click="toggleTrashPanel">
-            {{ showTrash ? '隐藏回收站' : '回收站' }}
-          </button>
-          <button type="button" class="ghost compact" @click="requestClose">切换库</button>
-        </div>
         <label class="search-field">
           <span class="sr-only">搜索</span>
           <input
             v-model="searchQuery"
             type="search"
-            placeholder="搜索标题与正文…"
+            placeholder="搜索…"
             autocomplete="off"
           />
         </label>
+        <div class="sidebar-actions">
+          <button type="button" class="ghost compact" @click="createNoteRoot">新建</button>
+          <button type="button" class="ghost compact" @click="openCreateDir(null)">目录</button>
+          <button type="button" class="ghost compact" @click="toggleTrashPanel">
+            {{ showTrash ? '文件树' : '回收站' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="searchQuery.trim()" class="search-results">
@@ -597,7 +603,14 @@ defineExpose({
           @rename="openRename"
           @remove="openDelete"
         />
-        <p v-if="!tree.length" class="empty-tree">库内暂无笔记。可点「新建笔记」，或在文件夹中放入 <code>.md</code>。</p>
+        <p v-if="!tree.length" class="empty-tree">库内暂无笔记。可点「新建」，或在文件夹中放入 <code>.md</code>。</p>
+      </div>
+
+      <div class="sidebar-foot">
+        <button type="button" class="vault-switch" :title="vault.rootPath" @click="requestClose">
+          <strong>{{ vault.name }}</strong>
+          <span>切换库 · {{ vaultColor.term }} · {{ vaultColor.name }}</span>
+        </button>
       </div>
     </aside>
 
@@ -609,7 +622,7 @@ defineExpose({
           :aria-label="sidebarOpen ? '隐藏侧栏' : '显示侧栏'"
           @click="sidebarOpen = !sidebarOpen"
         >
-          {{ sidebarOpen ? '隐藏侧栏' : '显示侧栏' }}
+          {{ sidebarOpen ? '收起' : '侧栏' }}
         </button>
         <div class="note-meta">
           <strong v-if="selectedPath">{{ noteTitle }}</strong>

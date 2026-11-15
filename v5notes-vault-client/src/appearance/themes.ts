@@ -16,7 +16,7 @@ export interface AppearancePrefs {
 export const APPEARANCE_STORAGE_KEY = 'v5notes.vault.appearance.v1'
 
 export const BUILTIN_THEMES: { id: BuiltinThemeId; label: string; description: string }[] = [
-  { id: 'default', label: '默认', description: '暖白底 + 墨绿强调' },
+  { id: 'default', label: '默认', description: '节气暖纸底 + 墨绿强调 + 库色条' },
   { id: 'dusk', label: '暮色', description: '深橄榄底，仍属内置 fallback' },
 ]
 
