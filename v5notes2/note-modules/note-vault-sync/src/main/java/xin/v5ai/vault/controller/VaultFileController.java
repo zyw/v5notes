@@ -21,9 +21,12 @@ import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.domain.bo.VaultRenameBo;
 import xin.v5ai.vault.domain.vo.VaultFileContentVo;
 import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
+import xin.v5ai.vault.domain.vo.VaultFileVersionVo;
 import xin.v5ai.vault.domain.vo.VaultManifestVo;
 import xin.v5ai.vault.exception.VaultConflictException;
 import xin.v5ai.vault.service.IVaultSyncService;
+
+import java.util.List;
 
 @SaCheckLogin
 @RequiredArgsConstructor
@@ -53,6 +56,13 @@ public class VaultFileController extends BaseController {
                                          @RequestParam("path") String path,
                                          @RequestParam(value = "rev", required = false) Long rev) {
         return R.ok(vaultSyncService.getContent(LoginHelper.getUserId(), Long.parseLong(vaultId), path, rev));
+    }
+
+    /** Phase 5 stub — returns empty until version retention is persisted. */
+    @GetMapping("/files/versions")
+    public R<List<VaultFileVersionVo>> versions(@PathVariable String vaultId,
+                                                @RequestParam("path") String path) {
+        return R.ok(vaultSyncService.listFileVersions(LoginHelper.getUserId(), Long.parseLong(vaultId), path));
     }
 
     @DeleteMapping("/files")

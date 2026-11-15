@@ -828,9 +828,67 @@ code {
 .account-identity span { color: var(--muted); font-size: 0.88rem; }
 
 .plan-stub h3,
-.sync-guide h3 {
+.sync-guide h3,
+.device-panel h3,
+.version-stub h3 {
   margin: 0 0 8px;
   font-size: 0.95rem;
+}
+
+.device-panel,
+.version-stub {
+  display: grid;
+  gap: 8px;
+}
+
+.device-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-family: var(--font-ui);
+}
+
+.device-tag {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--accent, #3d6b4f);
+  font-weight: 600;
+}
+
+.attachment-badges {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attachment-badge {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.danger.compact {
+  padding: 0 12px;
+  min-height: 36px;
 }
 
 .plan-grid {

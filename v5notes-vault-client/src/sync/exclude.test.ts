@@ -8,8 +8,9 @@ import {
 } from './exclude'
 
 describe('§6.4 hard exclude table', () => {
-  it('never syncs sync-state / trash / index / vault.json', () => {
+  it('never syncs sync-state / retry-queue / trash / index / vault.json', () => {
     expect(classifySyncPath('.v5notes/sync-state.json')).toEqual({ sync: false, reason: 'never' })
+    expect(classifySyncPath('.v5notes/retry-queue.json')).toEqual({ sync: false, reason: 'never' })
     expect(classifySyncPath('.v5notes/trash/a.md')).toEqual({ sync: false, reason: 'never' })
     expect(classifySyncPath('.v5notes/index.sqlite')).toEqual({ sync: false, reason: 'never' })
     expect(classifySyncPath('.v5notes/vault.json')).toEqual({ sync: false, reason: 'never' })

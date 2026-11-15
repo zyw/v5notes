@@ -3,9 +3,11 @@ import {
   exists,
   mkdir,
   readDir,
+  readFile,
   readTextFile,
   remove,
   rename,
+  writeFile,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { normalizeVaultPath, toIdentityKey, VaultPathError } from '../path/identity'
@@ -44,6 +46,9 @@ export interface VaultFs {
   listTree(rootPath: string): Promise<VaultTreeNode[]>
   readText(rootPath: string, relativePath: string): Promise<string>
   writeText(rootPath: string, relativePath: string, content: string): Promise<void>
+  /** Binary read for attachment sync (Phase 5). */
+  readBytes(rootPath: string, relativePath: string): Promise<Uint8Array>
+  writeBytes(rootPath: string, relativePath: string, content: Uint8Array): Promise<void>
   mkdir(rootPath: string, relativePath: string): Promise<void>
   rename(rootPath: string, fromRel: string, toRel: string): Promise<void>
   /** Permanent delete (prefer moveToTrash from trash.ts for user deletes). */
@@ -174,6 +179,38 @@ export const vaultFs: VaultFs = {
     } catch {
       // Cross-volume or permission fallback: direct write, then drop temp.
       await writeTextFile(absPath, content)
+      try {
+        await remove(tmpAbs)
+      } catch {
+        /* ignore */
+      }
+    }
+  },
+
+  async readBytes(rootPath, relativePath) {
+    const { absPath } = await abs(rootPath, relativePath)
+    return readFile(absPath)
+  },
+
+  async writeBytes(rootPath, relativePath, content) {
+    const { absPath, displayPath } = await abs(rootPath, relativePath)
+    const parentRel = displayPath.includes('/')
+      ? displayPath.slice(0, displayPath.lastIndexOf('/'))
+      : null
+    if (parentRel) {
+      await vaultFs.mkdir(rootPath, parentRel)
+    }
+    markLocalWrite(rootPath, displayPath)
+    const parentAbs = parentRel ? (await abs(rootPath, parentRel)).absPath : rootPath
+    const tmpAbs = await join(parentAbs, tmpNameFor(displayPath))
+    await writeFile(tmpAbs, content)
+    try {
+      if (await exists(absPath)) {
+        await remove(absPath)
+      }
+      await rename(tmpAbs, absPath)
+    } catch {
+      await writeFile(absPath, content)
       try {
         await remove(tmpAbs)
       } catch {
