@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
 import type { AccountState } from '../account'
 import {
@@ -12,16 +12,19 @@ import {
 } from '../appearance/themes'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
-import type { HostCommand, PluginRuntimeInfo } from '../plugin-host'
+import type { HostCommand, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
 import { loadSafeMode } from '../plugin-host/safeMode'
 import {
   ensureSampleExtensions,
   getPluginHost,
   getThemeHost,
+  installFromCatalog,
   listHostCommands,
+  listHostSettingTabs,
   listPluginInfos,
   setSafeModeAndReload,
 } from '../extension/runtime'
+import { fetchCatalogList, type CatalogItem } from '../catalog'
 
 const props = defineProps<{
   account: AccountState
@@ -33,9 +36,14 @@ const safeMode = ref(loadSafeMode())
 const themes = ref<ThemeInfo[]>([])
 const plugins = ref<PluginRuntimeInfo[]>([])
 const commands = ref<HostCommand[]>([])
+const settingTabs = ref<HostSettingTab[]>([])
+const catalogItems = ref<CatalogItem[]>([])
+const catalogSource = ref<'server' | 'bundled' | ''>('')
+const catalogBusy = ref(false)
 const extensionBusy = ref(false)
 const extensionMessage = ref('')
 const themeError = ref<string | null>(null)
+const pluginTabHosts: Ref<Record<string, HTMLElement | null>> = ref({})
 
 const hasVault = computed(() => Boolean(props.vault?.rootPath))
 
@@ -58,7 +66,49 @@ function refreshExtensionState() {
   }
   plugins.value = listPluginInfos()
   commands.value = listHostCommands()
+  settingTabs.value = listHostSettingTabs()
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
+  void nextTick(() => {
+    for (const tab of settingTabs.value) {
+      const key = `${tab.pluginId}:${tab.id}`
+      const el = pluginTabHosts.value[key]
+      if (el) {
+        el.innerHTML = ''
+        void tab.display(el)
+      }
+    }
+  })
+}
+
+async function loadCatalog() {
+  catalogBusy.value = true
+  try {
+    const { list, source } = await fetchCatalogList()
+    catalogItems.value = list.items
+    catalogSource.value = source
+  } catch (error) {
+    extensionMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    catalogBusy.value = false
+  }
+}
+
+async function installCatalog(item: CatalogItem) {
+  if (!hasVault.value) {
+    extensionMessage.value = '请先打开 Vault'
+    return
+  }
+  extensionBusy.value = true
+  extensionMessage.value = ''
+  try {
+    await installFromCatalog(item)
+    refreshExtensionState()
+    extensionMessage.value = `已从 catalog 安装 ${item.name}（${item.kind}）`
+  } catch (error) {
+    extensionMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    extensionBusy.value = false
+  }
 }
 
 async function commitLocal(next: AppearancePrefs) {
@@ -128,7 +178,7 @@ async function installSamples() {
   try {
     await ensureSampleExtensions()
     refreshExtensionState()
-    extensionMessage.value = '已安装示例：hello-world 插件 + Forest Ink 主题'
+    extensionMessage.value = '已安装示例：hello-world、safe-fetch-demo + Forest Ink 主题'
   } catch (error) {
     extensionMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -144,7 +194,10 @@ async function runCommand(cmd: HostCommand) {
   }
 }
 
-onMounted(() => refreshExtensionState())
+onMounted(() => {
+  refreshExtensionState()
+  void loadCatalog()
+})
 watch(
   () => props.vault?.rootPath,
   () => refreshExtensionState(),
@@ -204,8 +257,9 @@ watch(
     <section class="settings-block" aria-labelledby="plugins-title">
       <h2 id="plugins-title">插件与安全</h2>
       <p class="settings-help">
-        P1 威胁模型：同页 JS + 权限代理 + Safe Mode。Token 不对插件暴露；无
-        <code>network:safe</code>（Phase 7）；无第三方发布 / <code>fs:arbitrary</code>。
+        P1 威胁模型：同页 JS + 权限代理 + Safe Mode。Token 不对插件暴露。网络仅
+        <code>network:safe</code>（白名单）；无第三方发布 / 无限制 <code>network</code> /
+        <code>fs:arbitrary</code>。
       </p>
 
       <div class="choice-row">
@@ -227,7 +281,7 @@ watch(
           @click="installSamples"
         >
           <strong>安装示例扩展</strong>
-          <span>hello-world + Forest Ink</span>
+          <span>hello-world · safe-fetch · Forest Ink</span>
         </button>
       </div>
 
@@ -266,7 +320,69 @@ watch(
         </button>
       </div>
 
+      <div v-if="settingTabs.length" class="plugin-tabs">
+        <p class="settings-help tight">插件设置页（SettingTab）</p>
+        <div
+          v-for="tab in settingTabs"
+          :key="`${tab.pluginId}:${tab.id}`"
+          class="plugin-tab"
+        >
+          <strong>{{ tab.name }}</strong>
+          <div
+            class="plugin-tab-host"
+            :ref="
+              (el) => {
+                pluginTabHosts[`${tab.pluginId}:${tab.id}`] = el as HTMLElement | null
+              }
+            "
+          />
+        </div>
+      </div>
+
       <p v-if="extensionMessage" class="settings-help tight" role="status">{{ extensionMessage }}</p>
+    </section>
+
+    <section class="settings-block" aria-labelledby="catalog-title">
+      <h2 id="catalog-title">插件目录</h2>
+      <p class="settings-help">
+        <code>/vault/v1/catalog/...</code> 与文件 sync 协议解耦（catalogProtocolVersion 独立）。拒绝
+        <code>publishing</code> 标签；无第三方发布。
+        <span v-if="catalogSource">来源：{{ catalogSource === 'server' ? '服务器' : '本地种子' }}</span>
+      </p>
+      <div class="choice-row">
+        <button
+          type="button"
+          class="choice compact-choice"
+          :disabled="catalogBusy"
+          @click="loadCatalog"
+        >
+          <strong>{{ catalogBusy ? '刷新中…' : '刷新目录' }}</strong>
+          <span>list · install</span>
+        </button>
+      </div>
+      <ul v-if="catalogItems.length" class="ext-list">
+        <li v-for="item in catalogItems" :key="item.id" class="ext-item">
+          <div>
+            <strong>{{ item.name }}</strong>
+            <span class="muted"> · {{ item.kind }} · {{ item.version }}</span>
+            <div class="muted tight">{{ item.description }}</div>
+            <div class="muted tight">
+              标签: {{ (item.tags || []).join(', ') || '（无）' }}
+              <template v-if="item.networkAllowlist?.length">
+                · allowlist: {{ item.networkAllowlist.join(', ') }}
+              </template>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="linkish"
+            :disabled="extensionBusy || !hasVault || safeMode"
+            @click="installCatalog(item)"
+          >
+            安装
+          </button>
+        </li>
+      </ul>
     </section>
 
     <dl class="meta">
@@ -284,7 +400,7 @@ watch(
       </div>
       <div>
         <dt>扩展</dt>
-        <dd>Phase 6 · PluginHost + Theme API（无 catalog）</dd>
+        <dd>Phase 7 · network:safe + catalog（非 file-sync）</dd>
       </div>
     </dl>
   </section>
@@ -316,6 +432,23 @@ watch(
 .muted.tight,
 .danger-text {
   margin-top: 4px;
+}
+.plugin-tabs {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plugin-tab {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.plugin-tab-host {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 .danger-text {
   color: var(--danger);

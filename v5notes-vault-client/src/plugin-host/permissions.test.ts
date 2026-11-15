@@ -15,14 +15,27 @@ describe('permissions', () => {
     }
   })
 
-  it('rejects network:safe in Phase 6 by default', () => {
+  it('allows network:safe in Phase 7 by default', () => {
     const r = validateRequestedPermissions(['network:safe'])
+    expect(r.ok).toBe(true)
+  })
+
+  it('can still refuse network:safe when explicitly disabled', () => {
+    const r = validateRequestedPermissions(['network:safe'], { allowNetworkSafe: false })
     expect(r.ok).toBe(false)
     expect(r.denied).toContain('network:safe')
   })
 
-  it('allows Phase 6 grantable set', () => {
-    const r = validateRequestedPermissions(['vault:read', 'vault:write', 'ui:commands'])
+  it('allows Phase 7 grantable set', () => {
+    const r = validateRequestedPermissions([
+      'vault:read',
+      'vault:write',
+      'ui:commands',
+      'ui:ribbon',
+      'ui:settings',
+      'ui:views',
+      'network:safe',
+    ])
     expect(r.ok).toBe(true)
   })
 

@@ -11,9 +11,10 @@ export const FORBIDDEN_PERMISSIONS = new Set([
 ])
 
 /**
- * Phase 6 grantable permissions. `network:safe` is Phase 7 — refuse until then.
+ * Phase 7 grantable permissions (includes `network:safe`).
+ * Unrestricted `network` and `publish:*` remain forever forbidden.
  */
-export const PHASE6_GRANTABLE = new Set<PluginPermission>([
+export const PHASE7_GRANTABLE = new Set<PluginPermission>([
   'vault:read',
   'vault:write',
   'ui:commands',
@@ -24,7 +25,11 @@ export const PHASE6_GRANTABLE = new Set<PluginPermission>([
   'ui:theme',
   'editor:extend',
   'clipboard',
+  'network:safe',
 ])
+
+/** @deprecated Use PHASE7_GRANTABLE — kept as alias for older imports. */
+export const PHASE6_GRANTABLE = PHASE7_GRANTABLE
 
 export interface PermissionCheckResult {
   ok: boolean
@@ -42,6 +47,7 @@ export function validateRequestedPermissions(
   requested: string[],
   options?: { allowNetworkSafe?: boolean; isCore?: boolean },
 ): PermissionCheckResult {
+  const allowNetworkSafe = options?.allowNetworkSafe !== false
   const denied: string[] = []
   for (const perm of requested) {
     if (FORBIDDEN_PERMISSIONS.has(perm) || perm.startsWith('publish:')) {
@@ -49,10 +55,10 @@ export function validateRequestedPermissions(
       continue
     }
     if (perm === 'network:safe') {
-      if (!options?.allowNetworkSafe) denied.push(perm)
+      if (!allowNetworkSafe) denied.push(perm)
       continue
     }
-    if (!PHASE6_GRANTABLE.has(perm as PluginPermission) && !options?.isCore) {
+    if (!PHASE7_GRANTABLE.has(perm as PluginPermission) && !options?.isCore) {
       denied.push(perm)
     }
   }

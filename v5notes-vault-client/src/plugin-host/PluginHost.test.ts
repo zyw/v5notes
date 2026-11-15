@@ -101,6 +101,52 @@ describe('PluginHost', () => {
     await host.stop()
   })
 
+  it('loads network:safe plugin with allowlist and registers ribbon', async () => {
+    saveSafeMode(false)
+    let community: CommunityPluginsFile = {
+      schemaVersion: 1,
+      enabled: ['safe-fetch-demo'],
+      versions: {},
+      userEnableSeen: {},
+    }
+    const host = createPluginHost({
+      vault: vault(),
+      workspace: workspace(),
+      theme: theme(),
+      readCommunityPlugins: async () => community,
+      writeCommunityPlugins: async (file) => {
+        community = file
+      },
+      loadPluginData: async () => null,
+      savePluginData: async () => undefined,
+      listVaultPlugins: async () => [
+        {
+          id: 'safe-fetch-demo',
+          manifest: {
+            id: 'safe-fetch-demo',
+            name: 'Safe Fetch',
+            version: '1.0.0',
+            permissions: ['ui:commands', 'ui:ribbon', 'network:safe'],
+            networkAllowlist: ['httpbin.org'],
+            main: 'main.js',
+          },
+          mainSource: `
+            module.exports = class extends Plugin {
+              async onload() {
+                this.addCommand({ id: 'ping', name: 'Ping', callback: () => {} })
+                this.addRibbonIcon({ id: 'r', title: 'R', icon: 'SF', callback: () => {} })
+              }
+            }
+          `,
+        },
+      ],
+    })
+    await host.start()
+    expect(host.list().find((p) => p.id === 'safe-fetch-demo')?.status).toBe('loaded')
+    expect(host.listRibbons().some((r) => r.pluginId === 'safe-fetch-demo')).toBe(true)
+    await host.stop()
+  })
+
   it('refuses plugin that requests fs:arbitrary', async () => {
     saveSafeMode(false)
     const host = createPluginHost({
