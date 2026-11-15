@@ -1,0 +1,11 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "kind": "plugin",
+  "version": "1.0.0",
+  "minAppVersion": "0.1.0",
+  "description": "示例本地插件（Phase 6）",
+  "author": "v5notes",
+  "permissions": ["ui:commands"],
+  "main": "main.js"
+}

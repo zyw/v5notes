@@ -15,6 +15,12 @@ import {
   loadAppearancePrefs,
   type AppearancePrefs,
 } from '../appearance/themes'
+import {
+  setExtensionNoticeHandler,
+  setExtensionWorkspaceHandlers,
+  startExtensionRuntime,
+  stopExtensionRuntime,
+} from '../extension/runtime'
 import { join } from '@tauri-apps/api/path'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 
@@ -424,6 +430,23 @@ onMounted(async () => {
   try {
     await refreshTree()
     await setupWatcher()
+    setExtensionNoticeHandler((message) => {
+      status.value = message
+    })
+    setExtensionWorkspaceHandlers({
+      getActivePath: () => selectedPath.value,
+      openFile: async (path) => {
+        const node: VaultTreeNode = {
+          path,
+          identityKey: path.toLowerCase(),
+          name: path.split('/').pop() || path,
+          kind: 'note',
+        }
+        await openNote(node)
+        await refreshTree()
+      },
+    })
+    await startExtensionRuntime(props.vault.rootPath)
     const prefs = loadAppearancePrefs()
     applyAppearance(prefs)
     void persistAppearanceIntent(prefs)
@@ -436,6 +459,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
   if (unwatch) unwatch()
   if (searchTimer) clearTimeout(searchTimer)
+  void stopExtensionRuntime()
   emit('dirtyChange', false)
 })
 

@@ -55,12 +55,18 @@ export function buildEmptySyncState(): { schemaVersion: 1; files: Record<string,
   return { schemaVersion: 1, files: {} }
 }
 
-export function buildCommunityPluginsJson(): { schemaVersion: 1; plugins: unknown[] } {
-  return { schemaVersion: 1, plugins: [] }
+/** Design §3.2 — enable list + optional version pins (sync intent). */
+export function buildCommunityPluginsJson(): {
+  schemaVersion: 1
+  enabled: string[]
+  versions: Record<string, string>
+  userEnableSeen: Record<string, boolean>
+} {
+  return { schemaVersion: 1, enabled: [], versions: {}, userEnableSeen: {} }
 }
 
-export function buildCommunityThemesJson(): { schemaVersion: 1; themes: unknown[] } {
-  return { schemaVersion: 1, themes: [] }
+export function buildCommunityThemesJson(): { schemaVersion: 1; installed: string[] } {
+  return { schemaVersion: 1, installed: [] }
 }
 
 export function buildWelcomeNoteMarkdown(vaultName: string): string {

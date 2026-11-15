@@ -1,5 +1,6 @@
 /**
  * Built-in appearance themes + CSS variable contract (Phase 2 foundation for Phase 6 Theme API).
+ * `theme` may be a builtin id or a community/vault theme id.
  */
 
 export type BuiltinThemeId = 'default' | 'dusk'
@@ -7,7 +8,8 @@ export type ColorMode = 'system' | 'light' | 'dark'
 
 export interface AppearancePrefs {
   schemaVersion: 1
-  theme: BuiltinThemeId
+  /** Builtin id or community theme id (e.g. forest-ink). */
+  theme: string
   colorMode: ColorMode
 }
 
@@ -18,6 +20,10 @@ export const BUILTIN_THEMES: { id: BuiltinThemeId; label: string; description: s
   { id: 'dusk', label: '暮色', description: '深橄榄底，仍属内置 fallback' },
 ]
 
+export function isBuiltinThemeId(id: string): id is BuiltinThemeId {
+  return id === 'default' || id === 'dusk'
+}
+
 export function defaultAppearance(): AppearancePrefs {
   return { schemaVersion: 1, theme: 'default', colorMode: 'system' }
 }
@@ -27,7 +33,8 @@ export function loadAppearancePrefs(): AppearancePrefs {
     const raw = localStorage.getItem(APPEARANCE_STORAGE_KEY)
     if (!raw) return defaultAppearance()
     const parsed = JSON.parse(raw) as Partial<AppearancePrefs>
-    const theme = parsed.theme === 'dusk' ? 'dusk' : 'default'
+    const theme =
+      typeof parsed.theme === 'string' && parsed.theme.trim() ? parsed.theme.trim() : 'default'
     const colorMode =
       parsed.colorMode === 'light' || parsed.colorMode === 'dark' || parsed.colorMode === 'system'
         ? parsed.colorMode
@@ -54,10 +61,18 @@ function resolveColorMode(mode: ColorMode): 'light' | 'dark' {
   return 'light'
 }
 
-/** Apply data attributes consumed by `styles/tokens.css`. */
+/**
+ * Apply data attributes consumed by `styles/tokens.css`.
+ * Community themes set `data-community-theme` via ThemeHost and keep shell on default tokens.
+ */
 export function applyAppearance(prefs: AppearancePrefs): void {
   const root = document.documentElement
-  root.dataset.theme = prefs.theme
+  if (isBuiltinThemeId(prefs.theme)) {
+    root.dataset.theme = prefs.theme
+  } else {
+    // Community overlay sits on default shell variables.
+    root.dataset.theme = 'default'
+  }
   root.dataset.colorMode = resolveColorMode(prefs.colorMode)
   root.dataset.colorPreference = prefs.colorMode
 }

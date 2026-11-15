@@ -9,7 +9,10 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client", "vitest/globals", "node"],
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "paths": {
+      "@v5notes/vault-plugin-api": ["../packages/vault-plugin-api/src/index.ts"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "../packages/vault-plugin-api/src/**/*.ts"]
 }
