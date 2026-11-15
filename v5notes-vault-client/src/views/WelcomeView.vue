@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import CreateVaultDialog from '../components/CreateVaultDialog.vue'
+import { resolveVaultColor } from '../appearance/vaultColors'
 import { VaultPathError } from '../path/identity'
 import type { OpenedVault, RecentVaultEntry } from '../vault/types'
 import { hydrateRecentVaults } from '../vault/recent'
@@ -22,6 +23,10 @@ const canUseFs = computed(() => inTauri)
 
 function refreshRecent() {
   recent.value = vaultWorkspace.listRecent()
+}
+
+function colorFor(entry: RecentVaultEntry) {
+  return resolveVaultColor(entry.rootPath)
 }
 
 onMounted(() => {
@@ -108,43 +113,65 @@ function forget(entry: RecentVaultEntry) {
 </script>
 
 <template>
-  <section class="panel welcome" aria-labelledby="welcome-title">
-    <p class="eyebrow">PHASE 3 · 可选账号</p>
-    <h1 id="welcome-title">欢迎使用 V5Notes Vault</h1>
-    <p class="lede">
-      本地文件夹是权威；笔记正文是库内的 <code>.md</code>。同一账号可登录 Cloud 与 Vault，但默认不是同一份数据。登录可选——未登录仍可纯本地使用。备份 zip ≠ Sync；官方发布仅为产品通道。
-    </p>
+  <section class="welcome-split" aria-labelledby="welcome-title">
+    <aside class="welcome-list" aria-label="最近打开的库">
+      <h1 id="welcome-title">打开库</h1>
+      <p class="welcome-lede">
+        本地文件夹是权威。最近的库列在左侧；创建与打开在右侧。Cloud 与 Vault 默认不是同一份数据。
+      </p>
 
-    <ul class="actions" aria-label="开库方式">
-      <li>
-        <button type="button" class="primary" :disabled="busy" @click="openCreate">创建新库</button>
-        <span>选择父目录并命名，写入 <code>.v5notes</code> 骨架</span>
-      </li>
-      <li>
-        <button type="button" class="ghost" :disabled="busy" @click="openExisting">打开已有库</button>
-        <span>选择已有 Vault 根目录（需含 <code>.v5notes/vault.json</code>）</span>
-      </li>
-      <li>
-        <button type="button" class="ghost" :disabled="busy" @click="openDefault">使用默认库</button>
-        <span>应用数据目录内的默认库（不存在则自动创建）</span>
-      </li>
-    </ul>
-
-    <div v-if="recent.length" class="recent">
-      <h2>最近打开</h2>
-      <ul>
-        <li v-for="entry in recent" :key="entry.rootPath">
-          <button type="button" class="recent-open" :disabled="busy" @click="openRecent(entry)">
+      <div v-if="recent.length" class="recent-stack">
+        <button
+          v-for="entry in recent"
+          :key="entry.rootPath"
+          type="button"
+          class="vault-item"
+          :disabled="busy"
+          @click="openRecent(entry)"
+        >
+          <i class="vault-swatch" :style="{ background: colorFor(entry).color }" aria-hidden="true" />
+          <span class="vault-item-copy">
             <strong>{{ entry.name }}</strong>
             <span>{{ entry.rootPath }}</span>
+            <em>{{ colorFor(entry).term }} · {{ colorFor(entry).name }}</em>
+          </span>
+          <button
+            type="button"
+            class="ghost compact vault-forget"
+            :disabled="busy"
+            @click.stop="forget(entry)"
+          >
+            移除
           </button>
-          <button type="button" class="ghost compact" :disabled="busy" @click="forget(entry)">移除</button>
+        </button>
+      </div>
+      <p v-else class="empty-recent">还没有最近打开的库。</p>
+    </aside>
+
+    <div class="welcome-actions">
+      <p class="eyebrow">LOCAL FIRST</p>
+      <p class="lede tight">
+        登录可选——未登录仍可纯本地使用。备份 zip ≠ Sync；官方发布仅为产品通道。
+      </p>
+
+      <ul class="actions stacked" aria-label="开库方式">
+        <li>
+          <button type="button" class="primary" :disabled="busy" @click="openCreate">创建新库</button>
+          <span>选择父目录并命名，写入 <code>.v5notes</code> 骨架</span>
+        </li>
+        <li>
+          <button type="button" class="ghost" :disabled="busy" @click="openExisting">打开已有库</button>
+          <span>选择已有 Vault 根目录（需含 <code>.v5notes/vault.json</code>）</span>
+        </li>
+        <li>
+          <button type="button" class="ghost" :disabled="busy" @click="openDefault">使用默认库</button>
+          <span>应用数据目录内的默认库（不存在则自动创建）</span>
         </li>
       </ul>
-    </div>
 
-    <p v-if="error" class="banner-error" role="alert">{{ error }}</p>
-    <p class="hint">请勿把库放进网盘同步目录后再开官方 Sync。</p>
+      <p v-if="error" class="banner-error" role="alert">{{ error }}</p>
+      <p class="hint">请勿把库放进网盘同步目录后再开官方 Sync。</p>
+    </div>
 
     <CreateVaultDialog
       :open="createOpen"

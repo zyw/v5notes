@@ -17,6 +17,13 @@ import {
   type AppearancePrefs,
   type ColorMode,
 } from '../appearance/themes'
+import {
+  VAULT_COLOR_PALETTE,
+  applyVaultColorForPath,
+  resolveVaultColor,
+  setVaultColor,
+  type VaultColorSwatch,
+} from '../appearance/vaultColors'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
 import type { HostCommand, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
@@ -77,6 +84,21 @@ const publishMessage = ref('')
 const showMigrationConfirm = ref(false)
 
 const hasVault = computed(() => Boolean(props.vault?.rootPath))
+const vaultSwatch = ref<VaultColorSwatch | null>(
+  props.vault?.rootPath ? resolveVaultColor(props.vault.rootPath) : null,
+)
+
+watch(
+  () => props.vault?.rootPath,
+  path => {
+    vaultSwatch.value = path ? applyVaultColorForPath(path) : null
+  },
+)
+
+function pickVaultColor(id: string) {
+  if (!props.vault?.rootPath) return
+  vaultSwatch.value = setVaultColor(props.vault.rootPath, id)
+}
 
 function refreshExtensionState() {
   const th = getThemeHost()
@@ -421,6 +443,28 @@ watch(
         </button>
       </div>
       <p v-if="themeError" class="settings-help tight" role="status">{{ themeError }}</p>
+
+      <template v-if="hasVault && vaultSwatch">
+        <h3 class="settings-subhead">当前库色</h3>
+        <p class="settings-help tight">
+          {{ vaultSwatch.term }} · {{ vaultSwatch.name }}（节气色近似，写入本机偏好；侧栏顶条用它辨认多库）
+        </p>
+        <div class="vault-swatch-row" role="group" aria-label="库色">
+          <button
+            v-for="swatch in VAULT_COLOR_PALETTE"
+            :key="swatch.id"
+            type="button"
+            class="vault-swatch-pick"
+            :class="{ active: vaultSwatch.id === swatch.id }"
+            :style="{ background: swatch.color }"
+            :title="`${swatch.term} · ${swatch.name}`"
+            :aria-pressed="vaultSwatch.id === swatch.id"
+            @click="pickVaultColor(swatch.id)"
+          >
+            <span class="sr-only">{{ swatch.term }} {{ swatch.name }}</span>
+          </button>
+        </div>
+      </template>
     </section>
 
     <section class="settings-block" aria-labelledby="plugins-title">
