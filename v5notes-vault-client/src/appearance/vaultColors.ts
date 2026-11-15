@@ -20,6 +20,7 @@ export const VAULT_COLOR_PALETTE: VaultColorSwatch[] = [
 ]
 
 const STORAGE_KEY = 'v5notes.vault.vault-color.v1'
+const PENDING_KEY = 'v5notes.vault.welcome-color.v1'
 
 function hashPath(path: string): number {
   let h = 0
@@ -81,10 +82,43 @@ export function applyVaultColor(color: string | null): void {
 
 export function applyVaultColorForPath(rootPath: string | null | undefined): VaultColorSwatch | null {
   if (!rootPath) {
-    applyVaultColor(null)
-    return null
+    return applyPendingWelcomeColor()
   }
   const swatch = resolveVaultColor(rootPath)
   applyVaultColor(swatch.color)
   return swatch
+}
+
+/** Preferred 节气库色 on the welcome picker (before a vault path exists). */
+export function getPendingWelcomeColor(): VaultColorSwatch {
+  try {
+    const id = localStorage.getItem(PENDING_KEY)
+    const found = id ? VAULT_COLOR_PALETTE.find(s => s.id === id) : null
+    if (found) return found
+  } catch {
+    /* ignore */
+  }
+  return VAULT_COLOR_PALETTE.find(s => s.id === 'hanlu') ?? VAULT_COLOR_PALETTE[0]!
+}
+
+export function setPendingWelcomeColor(swatchId: string): VaultColorSwatch {
+  const swatch = VAULT_COLOR_PALETTE.find(s => s.id === swatchId) ?? getPendingWelcomeColor()
+  try {
+    localStorage.setItem(PENDING_KEY, swatch.id)
+  } catch {
+    /* ignore */
+  }
+  applyVaultColor(swatch.color)
+  return swatch
+}
+
+export function applyPendingWelcomeColor(): VaultColorSwatch {
+  const swatch = getPendingWelcomeColor()
+  applyVaultColor(swatch.color)
+  return swatch
+}
+
+/** Bind the welcome-picked color to a newly opened / created vault path. */
+export function commitPendingWelcomeColor(rootPath: string): VaultColorSwatch {
+  return setVaultColor(rootPath, getPendingWelcomeColor().id)
 }
