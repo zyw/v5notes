@@ -1,10 +1,10 @@
 import { t } from '../i18n'
 
 /**
- * 服务器连接的配置。官方地址只以代码常量的形式存在，
+ * 服务器连接的配置。官方地址来自环境变量（见 `.env.*`），
  * 页面上只显示「官方服务器」，不渲染 URL 明文。
  */
-export const OFFICIAL_SERVER = 'https://v5notes2.v5ai.xin'
+export const OFFICIAL_SERVER = (import.meta.env.VITE_OFFICIAL_SERVER || 'https://v5notes2.v5ai.xin').replace(/\/+$/, '')
 
 export const SERVER_STORAGE_KEY = 'v5notes-server'
 export const OFFICIAL_STORAGE_KEY = 'v5notes-server-official'

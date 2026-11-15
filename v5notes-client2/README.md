@@ -1,6 +1,6 @@
 # v5notes-client2
 
-新桌面客户端，在线读写现有后端 Markdown 笔记。首次运行输入服务器地址、用户名和密码；需要服务端配置与现有客户端一致的 `clientid`，如不同请设置 `VITE_CLIENT_ID`。若服务器更换了登录 RSA 公钥，请设置 `VITE_API_PUBLIC_KEY`。登录 token 仅保存在当前窗口内存，服务器地址保存在本机浏览器存储中。
+新桌面客户端，在线读写现有后端 Markdown 笔记。首次运行输入服务器地址、用户名和密码。环境变量见 `.env.development` / `.env.production`：`VITE_CLIENT_ID`（oauth 客户端）、`VITE_API_PUBLIC_KEY`（登录 RSA 公钥）、`VITE_OFFICIAL_SERVER`（官方服务器）。登录 token 仅保存在当前窗口内存，服务器地址保存在本机浏览器存储中。
 
 ```sh
 npm install
