@@ -28,6 +28,7 @@ import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.common.core.domain.PageResult;
 import xin.v5ai.common.oss.enums.AccessPolicy;
+import xin.v5ai.common.satoken.utils.LoginHelper;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -129,6 +130,9 @@ public class FileInfoServiceImpl implements IFileInfoService {
         String type = FileTypeUtils.getMineType(content, name);
         if (StrUtil.isEmpty(path)) {
             path = generatePath(name);
+        } else {
+            // 自定义路径也强制落到当前用户目录下，避免串目录
+            path = prefixUserDir(path);
         }
         // 如果 name 为空，则使用 path 填充
         if (StrUtil.isEmpty(name)) {
@@ -137,7 +141,7 @@ public class FileInfoServiceImpl implements IFileInfoService {
 
         // 上传到文件存储器
         FileClient client = fileConfigService.getMasterFileClient();
-        log.info("上传文件到文件存储器，FileClient id:{}, ", client.getId());
+        log.info("上传文件到文件存储器，FileClient id:{}, path:{}", client.getId(), path);
         Assert.notNull(client, "客户端(master) 不能为空");
         FileUploadResult uploadResult = client.upload(content, path, type);
 
@@ -154,13 +158,29 @@ public class FileInfoServiceImpl implements IFileInfoService {
     }
 
     /**
-     * 生成默认的文件相对路径（移植自旧 common-core 的 FileUtils.generatePath）。
+     * 生成默认的文件相对路径：{userId}/yyyy/MM/dd/{uuid}.ext
      */
     private String generatePath(String name) {
         String ext = FileNameUtil.extName(name);
         String datePath = DateUtil.format(new Date(), "yyyy/MM/dd");
         String fileName = IdUtil.fastSimpleUUID() + (StrUtil.isBlank(ext) ? "" : "." + ext);
-        return datePath + "/" + fileName;
+        return prefixUserDir(datePath + "/" + fileName);
+    }
+
+    /**
+     * 在相对路径最前面加上当前用户目录，实现按用户隔离存储。
+     */
+    private String prefixUserDir(String relativePath) {
+        String userDir = resolveUserDir();
+        String normalized = StrUtil.removePrefix(StrUtil.blankToDefault(relativePath, ""), "/");
+        if (StrUtil.startWith(normalized, userDir + "/") || StrUtil.equals(normalized, userDir)) {
+            return normalized;
+        }
+        return userDir + "/" + normalized;
+    }
+
+    private String resolveUserDir() {
+        return StrUtil.blankToDefault(LoginHelper.getUserIdStr(), "anonymous");
     }
 
     /**

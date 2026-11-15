@@ -7,7 +7,7 @@ import xin.v5ai.basics.file.core.client.FileClientConfig;
 import org.hibernate.validator.constraints.URL;
 
 /**
- * FTP 文件客户端的配置类
+ * FTP / FTPS 文件客户端的配置类
  *
  * @author 芋道源码
  */
@@ -58,5 +58,17 @@ public class FTPFileClientConfig implements FileClientConfig {
      */
     @NotEmpty(message = "{file.mode.not.blank}")
     private String mode;
+
+    /**
+     * 是否启用 FTPS（FTP over TLS，显式模式 AUTH TLS）。
+     * <p>飞牛 NAS 的 ftps://host:21 属于此类，与 SFTP（SSH/22）不是同一协议。</p>
+     */
+    private Boolean sslEnable = Boolean.FALSE;
+
+    /**
+     * 控制连接字符集。路径含中文时必须与 NAS 一致，常见 UTF-8 / GBK。
+     * <p>注意：必须在连接前生效，错误编码会出现 550 且路径变成 ????</p>
+     */
+    private String charset = "UTF-8";
 
 }

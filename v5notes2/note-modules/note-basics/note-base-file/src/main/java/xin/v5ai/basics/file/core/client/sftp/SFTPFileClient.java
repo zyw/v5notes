@@ -27,11 +27,13 @@ public class SFTPFileClient extends AbstractFileClient<SFTPFileClientConfig> {
 
     @Override
     protected void doInit() {
-        // 补全风格。例如说 Linux 是 /，Windows 是 \
-        if (!config.getBasePath().endsWith(File.separator)) {
-            config.setBasePath(config.getBasePath() + File.separator);
+        // 远端路径统一用 /，避免 Windows 分隔符污染 SFTP 路径
+        String basePath = config.getBasePath().replace('\\', '/');
+        if (!basePath.endsWith("/")) {
+            basePath = basePath + "/";
         }
-        // 初始化 Ftp 对象
+        config.setBasePath(basePath);
+        // 初始化 SFTP 对象（SSH 协议，通常端口 22，与 FTPS/21 不同）
         this.sftp = new Sftp(config.getHost(), config.getPort(), config.getUsername(), config.getPassword());
     }
 

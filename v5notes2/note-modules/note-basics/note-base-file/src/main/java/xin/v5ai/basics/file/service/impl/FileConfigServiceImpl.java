@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +118,9 @@ public class FileConfigServiceImpl implements IFileConfigService {
         FileConfig config = validateFileConfigExists(bo.getId());
         // 更新
         FileConfig update = BeanUtil.copyProperties(bo, FileConfig.class, "config");
-        update.setConfig(parseClientConfig(config.getStorage(),bo.getConfig()));
+        // 必须用 bo.storage，否则改存储器类型后仍按旧类型解析，会出现 SFTP+21 端口等错配
+        Integer storage = bo.getStorage() != null ? bo.getStorage() : config.getStorage();
+        update.setConfig(parseClientConfig(storage, bo.getConfig()));
         validEntityBeforeSave(update);
         boolean result = baseMapper.updateById(update) > 0;
         log.info("update file config, id:{}, config:{}, id2:{}", bo.getId(), update, config.getId());
@@ -199,6 +202,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
      */
     private void clearCache(Long id) {
         clientCache.remove(id);
+        clientFactory.removeFileClient(id);
     }
 
     private FileConfig validateFileConfigExists(Long id) {
@@ -212,7 +216,10 @@ public class FileConfigServiceImpl implements IFileConfigService {
     private FileClientConfig parseClientConfig(Integer storage, Map<String, Object> config) {
         // 获得配置类
         Class<? extends FileClientConfig> configClass = FileStorageEnum.getByStorage(storage).getConfigClass();
-        FileClientConfig clientConfig = JsonUtils.parseObject(JsonUtils.toJsonString(config), configClass);
+        // FileClientConfig 使用 @JsonTypeInfo(Id.CLASS)，反序列化需要 @class；前端不会传该字段，这里按 storage 补上
+        Map<String, Object> configMap = new HashMap<>(config);
+        configMap.put("@class", configClass.getName());
+        FileClientConfig clientConfig = JsonUtils.parseObject(JsonUtils.toJsonString(configMap), configClass);
         // 校验配置
         ValidatorUtils.validate(clientConfig);
         // 返回配置
