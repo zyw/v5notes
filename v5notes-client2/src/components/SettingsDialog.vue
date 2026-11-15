@@ -188,6 +188,7 @@ async function openProjectLink(event: MouseEvent): Promise<void> {
           <span class="eyebrow">PREFERENCES</span>
           <h2 id="settings-title">{{ t('settings.title') }}</h2>
           <p id="settings-subtitle" class="settings-subtitle">{{ t('settings.subtitle') }}</p>
+          <p class="settings-dual-product">{{ t('settings.dualProduct') }}</p>
         </div>
         <button ref="closeButton" class="settings-close" type="button" :aria-label="t('settings.close')" @click="emit('close')">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" /></svg>

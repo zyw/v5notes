@@ -89,6 +89,7 @@ const cloudSectionClass = computed(() => (
             </span>
           </div>
 
+          <p class="conn-hint profile-dual-hint">{{ t('profile.dualProductHint') }}</p>
           <p v-if="!accountQuota && profileBusy" class="conn-hint">{{ t('profile.cloudLoading') }}</p>
           <div v-else-if="accountQuota" class="profile-cloud-grid">
             <div class="profile-cloud-metric profile-cloud-storage">

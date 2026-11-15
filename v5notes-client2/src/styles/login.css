@@ -236,6 +236,15 @@
 }
 .login-headline-rest { color: var(--headline-rest); transition: color .45s ease; }
 .login-sub { margin: 16px 0 0; font-size: 15px; line-height: 1.7; letter-spacing: .01em; color: var(--muted); }
+.login-dual-product {
+  margin: 10px 0 0;
+  max-width: 36em;
+  font-size: 12.5px;
+  line-height: 1.65;
+  letter-spacing: .01em;
+  color: var(--muted);
+  opacity: .92;
+}
 
 /* 展示区占满标题和登录卡之间的空档：浅色是三张错位印版，深色同样叠着玻璃稿，波形穿过下层 */
 .login-stage { position: relative; width: 100%; height: 400px; margin-top: 0; }

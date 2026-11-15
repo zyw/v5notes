@@ -5,6 +5,8 @@ export const zhTW: Messages = {
     title: 'V5Notes雲筆記',
     tagline: '把想法留在這裡。',
     summary: '連接你的筆記空間，繼續寫作。',
+    dualProduct:
+      '同一帳號可登入兩個用戶端；Cloud 筆記與 Vault 庫預設不是同一份資料。Cloud 在伺服器目錄樹；Vault 在本機資料夾，可選同步。',
   },
   common: {
     cancel: '取消',
@@ -30,6 +32,8 @@ export const zhTW: Messages = {
     headlineLead: '把想法，',
     headlineRest: '留在這裡。',
     subtitle: '連接你的筆記空間，繼續寫作。',
+    dualProduct:
+      '本用戶端是 V5Notes雲筆記（Cloud）。同一帳號也可登入 V5Notes Vault，但兩邊預設不是同一份資料。',
     registerHeadlineLead: '從一張白紙，',
     registerHeadlineRest: '開始。',
     registerSubtitle: '建立帳號並驗證電子郵件後，即可進入你的筆記空間。',
@@ -108,6 +112,8 @@ export const zhTW: Messages = {
   settings: {
     title: '設定',
     subtitle: '調整連接、語言與啟動偏好。',
+    dualProduct:
+      '同一帳號可登入 Cloud 與 Vault；此處額度僅計雲端目錄樹筆記，與 Vault 本機庫／同步額度無關。本用戶端不引入 Vault 外掛宿主。',
     close: '關閉設定',
     connection: '連接',
     official: '官方伺服器',
@@ -392,6 +398,8 @@ export const zhTW: Messages = {
     cloudStorage: '儲存占用',
     cloudStorageUnlimited: '已使用空間',
     cloudLoading: '正在載入額度…',
+    dualProductHint:
+      '此處為 Cloud 筆記額度。Vault 同步額度在 V5Notes Vault 用戶端查看；兩邊不會自動合併。',
     basicTitle: '基本資料',
     username: '使用者名稱',
     nickname: '暱稱',

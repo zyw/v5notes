@@ -201,6 +201,7 @@ watch(() => props.error, (value) => {
             <span class="login-headline-rest">{{ t(isRegister ? 'login.registerHeadlineRest' : 'login.headlineRest') }}</span>
           </h1>
           <p class="login-sub">{{ t(isRegister ? 'login.registerSubtitle' : 'login.subtitle') }}</p>
+          <p class="login-dual-product">{{ t('login.dualProduct') }}</p>
         </div>
 
         <div class="login-stage" aria-hidden="true">

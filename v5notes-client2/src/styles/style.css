@@ -370,6 +370,14 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .settings-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px 18px 16px 30px; }
 .settings-header h2 { margin: 6px 0 0; color: #22382b; font-size: 26px; letter-spacing: -.01em; }
 .settings-header .settings-subtitle { margin: 6px 0 0; color: #66756b; font-size: 12px; line-height: 1.6; }
+.settings-header .settings-dual-product {
+  margin: 8px 0 0;
+  max-width: 42em;
+  color: #66756b;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.profile-dual-hint { margin-top: 8px; }
 .settings-close { width: 32px; height: 32px; display: grid; place-items: center; flex: none; border-radius: 10px; color: #6f7c72; font-size: 20px; line-height: 1; }
 .settings-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
 .settings-close:hover { background: #eef2ea; color: #315b4a; }
