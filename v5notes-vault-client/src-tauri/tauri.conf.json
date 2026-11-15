@@ -40,6 +40,9 @@
       "desktop": {
         "schemes": ["v5notes-vault"]
       }
+    },
+    "fs": {
+      "requireLiteralLeadingDot": false
     }
   }
 }

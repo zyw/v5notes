@@ -4,6 +4,7 @@ export {
   normalizeDisplaySegment,
   normalizeVaultName,
   normalizeVaultPath,
+  resolveCreateVaultRoot,
   toIdentityKey,
   toIdentitySegment,
   VaultPathError,

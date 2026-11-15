@@ -149,3 +149,25 @@ export function normalizeVaultName(raw: string): string {
   }
   return normalizeDisplaySegment(name)
 }
+
+/**
+ * Resolve the absolute vault root under a dialog-picked parent.
+ * If the parent folder's basename already equals the vault name (common after a
+ * failed create left an empty `MyVault/` and the user re-picked it), reuse the
+ * parent as the root instead of appending again (`MyVault/MyVault/...`).
+ */
+export function resolveCreateVaultRoot(parentPath: string, vaultName: string): string {
+  if (parentPath == null || typeof parentPath !== 'string' || !parentPath.trim()) {
+    throw new VaultPathError('父目录无效')
+  }
+  const name = normalizeVaultName(vaultName)
+  const parent = parentPath.replace(/\\/g, '/').replace(/\/+$/g, '')
+  if (!parent) {
+    throw new VaultPathError('父目录无效')
+  }
+  const base = parent.slice(parent.lastIndexOf('/') + 1)
+  if (base && toIdentitySegment(base) === toIdentitySegment(name)) {
+    return parent
+  }
+  return `${parent}/${name}`
+}

@@ -9,8 +9,15 @@ fn allow_vault_directory(app: tauri::AppHandle, path: String) -> Result<(), Stri
     if !root.is_absolute() {
         return Err("vault root must be an absolute path".into());
     }
+    // Recursive so vault notes + `.v5notes/**` are writable after dialog/reopen.
+    // Explicit `.v5notes` allow keeps meta dirs reachable even if a host still
+    // requires a literal leading dot in glob patterns.
     app.fs_scope()
         .allow_directory(&root, true)
+        .map_err(|e| e.to_string())?;
+    let meta = root.join(".v5notes");
+    app.fs_scope()
+        .allow_directory(&meta, true)
         .map_err(|e| e.to_string())?;
     Ok(())
 }

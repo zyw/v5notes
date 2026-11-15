@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 import { appDataDir, join } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
-import { mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { mkdir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { VaultJson } from '../models/vault'
-import { normalizeVaultName, VaultPathError } from '../path/identity'
+import { normalizeVaultName, resolveCreateVaultRoot, VaultPathError } from '../path/identity'
 import { listRecentVaults, rememberRecentVault, removeRecentVault } from './recent'
 import {
   APPEARANCE_REL,
@@ -62,17 +62,22 @@ async function readVaultConfig(rootPath: string): Promise<VaultJson> {
   return parsed
 }
 
-async function scopeVaultRoot(rootPath: string): Promise<void> {
+async function scopeVaultRoot(rootPath: string, options?: { required?: boolean }): Promise<void> {
   try {
     await invoke('allow_vault_directory', { path: rootPath })
-  } catch {
-    // Dialog-picked folders are already scoped; invoke is for recent/default reopen.
+  } catch (error) {
+    if (options?.required) {
+      throw new VaultPathError(
+        `无法授权访问该目录: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+    // Dialog-picked folders are already scoped; soft invoke is for recent/default reopen.
   }
 }
 
 async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
   try {
-    await scopeVaultRoot(rootPath)
+    await scopeVaultRoot(rootPath, { required: true })
   } catch (error) {
     throw new VaultPathError(
       `无法授权访问该目录（可能已移盘或权限失效）: ${error instanceof Error ? error.message : String(error)}`,
@@ -116,16 +121,38 @@ export const vaultWorkspace: VaultWorkspace = {
     })
     if (!parent || Array.isArray(parent)) return null
 
-    const rootPath = await join(parent, name)
-    if (await vaultFs.exists(rootPath)) {
-      throw new VaultPathError(`目标已存在: ${rootPath}`)
+    // Dialog already granted recursive scope on `parent`; reinforce before mkdir so
+    // vault folder + `.v5notes` are covered even when glob skips leading-dot names.
+    await scopeVaultRoot(parent, { required: true })
+
+    const rootPath = resolveCreateVaultRoot(parent, name)
+    if (await vaultFs.exists(rootPath, VAULT_JSON_REL)) {
+      throw new VaultPathError(`目标已存在 Vault: ${rootPath}`)
     }
-    await mkdir(rootPath, { recursive: true })
-    await scopeVaultRoot(rootPath)
-    const config = await ensureSkeleton(rootPath, name)
-    const opened: OpenedVault = { rootPath, name: config.name, config }
-    rememberRecentVault({ rootPath, name: opened.name })
-    return opened
+
+    // Reuse an empty/partial folder left by a previous failed create (no vault.json yet).
+    const rootExisted = await vaultFs.exists(rootPath)
+    let createdRoot = false
+    try {
+      if (!rootExisted) {
+        await mkdir(rootPath, { recursive: true })
+        createdRoot = true
+      }
+      await scopeVaultRoot(rootPath, { required: true })
+      const config = await ensureSkeleton(rootPath, name)
+      const opened: OpenedVault = { rootPath, name: config.name, config }
+      rememberRecentVault({ rootPath, name: opened.name })
+      return opened
+    } catch (error) {
+      if (createdRoot) {
+        try {
+          await remove(rootPath, { recursive: true })
+        } catch {
+          // Best-effort cleanup of the empty partial vault folder.
+        }
+      }
+      throw error
+    }
   },
 
   async pickAndOpenVault() {
@@ -143,7 +170,7 @@ export const vaultWorkspace: VaultWorkspace = {
     const base = await appDataDir()
     const rootPath = await join(base, 'default-vault')
     await mkdir(rootPath, { recursive: true })
-    await scopeVaultRoot(rootPath)
+    await scopeVaultRoot(rootPath, { required: true })
     const hasMeta = await vaultFs.exists(rootPath, VAULT_JSON_REL)
     const config = hasMeta
       ? await readVaultConfig(rootPath)
