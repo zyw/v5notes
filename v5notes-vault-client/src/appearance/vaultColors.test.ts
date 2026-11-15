@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   VAULT_COLOR_PALETTE,
+  applyPendingWelcomeColor,
   applyVaultColor,
   applyVaultColorForPath,
+  commitPendingWelcomeColor,
+  getPendingWelcomeColor,
   resolveVaultColor,
+  setPendingWelcomeColor,
   setVaultColor,
 } from './vaultColors'
 
@@ -58,9 +62,20 @@ describe('vaultColors', () => {
     expect(styleMap.get('--vault')).toBe(picked.color)
   })
 
-  it('clears CSS variable when path is null', () => {
+  it('applies pending welcome color when path is null', () => {
+    setPendingWelcomeColor('yushui')
     applyVaultColor('#7d8f6e')
-    applyVaultColorForPath(null)
-    expect(styleMap.has('--vault')).toBe(false)
+    const pending = applyVaultColorForPath(null)
+    expect(pending?.id).toBe('yushui')
+    expect(styleMap.get('--vault')).toBe(pending?.color)
+  })
+
+  it('persists welcome pending color and commits it to a path', () => {
+    const picked = setPendingWelcomeColor('dongzhi')
+    expect(getPendingWelcomeColor().id).toBe('dongzhi')
+    expect(applyPendingWelcomeColor().color).toBe(picked.color)
+    const bound = commitPendingWelcomeColor('/tmp/new-vault')
+    expect(bound.id).toBe('dongzhi')
+    expect(resolveVaultColor('/tmp/new-vault').id).toBe('dongzhi')
   })
 })
