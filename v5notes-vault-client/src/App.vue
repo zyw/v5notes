@@ -6,6 +6,7 @@ import SettingsView from './views/SettingsView.vue'
 import WorkspaceView from './views/WorkspaceView.vue'
 import type { OpenedVault } from './vault/types'
 import { applyAppearance, loadAppearancePrefs } from './appearance/themes'
+import { stopExtensionRuntime } from './extension/runtime'
 
 type Page = 'welcome' | 'workspace' | 'settings'
 const page = ref<Page>('welcome')
@@ -27,6 +28,7 @@ function onOpened(opened: OpenedVault) {
 }
 
 function closeVault() {
+  void stopExtensionRuntime()
   vault.value = null
   workspaceDirty.value = false
   page.value = 'welcome'
