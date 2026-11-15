@@ -12,20 +12,14 @@ import me.zhyd.oauth.utils.AuthStateUtils;
 import xin.v5ai.common.core.constant.SystemConstants;
 import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.core.domain.model.LoginBody;
-import xin.v5ai.common.core.enums.PushSourceEnum;
-import xin.v5ai.common.core.enums.PushTypeEnum;
-import xin.v5ai.common.core.utils.DateUtils;
 import xin.v5ai.common.core.utils.MessageUtils;
 import xin.v5ai.common.core.utils.StringUtils;
 import xin.v5ai.common.core.utils.ValidatorUtils;
 import xin.v5ai.common.encrypt.annotation.ApiEncrypt;
 import xin.v5ai.common.json.utils.JsonUtils;
-import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.common.social.config.properties.SocialLoginConfigProperties;
 import xin.v5ai.common.social.config.properties.SocialProperties;
 import xin.v5ai.common.social.utils.SocialUtils;
-import xin.v5ai.system.api.MessageService;
-import xin.v5ai.system.api.domain.PushPayloadDTO;
 import xin.v5ai.system.api.model.RegisterBody;
 import xin.v5ai.system.api.model.SocialLoginBody;
 import xin.v5ai.system.domain.vo.SysClientVo;
@@ -41,11 +35,6 @@ import xin.v5ai.web.service.SysLoginService;
 import xin.v5ai.web.service.SysRegisterService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 认证控制器，提供登录、注册、社交绑定和退出能力。
@@ -65,8 +54,6 @@ public class AuthController {
     private final ISysConfigService configService;
     private final ISysSocialService socialUserService;
     private final ISysClientService clientService;
-    private final ScheduledExecutorService scheduledExecutorService;
-    private final MessageService messageService;
     private final AuthTokenService authTokenService;
 
 
@@ -96,19 +83,6 @@ public class AuthController {
         LoginVo loginVo = IAuthStrategy.login(body, client, grantType);
         // 补充刷新令牌（对 password / clientPassword 等所有授权类型生效）
         authTokenService.attachRefreshToken(loginVo, client);
-
-        Long userId = LoginHelper.getUserId();
-        scheduledExecutorService.schedule(() -> {
-            messageService.publishMessage(
-                List.of(userId),
-                PushPayloadDTO.of(
-                    PushTypeEnum.MESSAGE,
-                    PushSourceEnum.BACKEND,
-                    DateUtils.getTodayHour(new Date()) + "好，欢迎登录 V5Notes",
-                    null
-                )
-            );
-        }, 5, TimeUnit.SECONDS);
         return R.ok(loginVo);
     }
 

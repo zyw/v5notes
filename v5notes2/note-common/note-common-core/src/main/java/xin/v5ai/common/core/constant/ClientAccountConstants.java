@@ -25,6 +25,16 @@ public final class ClientAccountConstants {
      */
     public static final String THIRD_PARTY_LOGIN = "client.thirdPartyLogin.enable";
 
+    /**
+     * 客户端自助注册成功后是否邮件通知管理员，true 开启，false 关闭。
+     */
+    public static final String REGISTER_NOTIFY_ADMIN = "client.account.registerNotifyAdmin";
+
+    /**
+     * 客户端注册成功后的管理员通知邮箱，多个用逗号或分号分隔；为空则回退超级管理员用户邮箱。
+     */
+    public static final String REGISTER_NOTIFY_ADMIN_EMAIL = "client.account.registerNotifyAdminEmail";
+
     private ClientAccountConstants() {
     }
 }

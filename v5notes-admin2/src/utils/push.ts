@@ -1,15 +1,15 @@
 import { useIntervalFn } from '@vueuse/core';
 import { ElNotification } from 'element-plus';
 import type { MessageVO } from '@/api/system/message/types';
-import { getMessageBox } from '@/api/system/message';
+import { createMessageTicket, getMessageBox } from '@/api/system/message';
 import { useNoticeStore } from '@/store/modules/notice';
 import { useUserStore } from '@/store/modules/user';
 import { getToken } from '@/utils/auth';
 import { isMessageRead } from '@/utils/message-read';
 import { parsePushMessage, resolveNoticeGroup, resolveNoticeTitle, shouldAppendNotice } from '@/utils/push-message';
+import { openFetchSse } from '@/utils/sse';
 
 let closePushConnection: (() => void) | undefined;
-let stopPushWatchers: Array<() => void> = [];
 const KICKED_MESSAGE = 'kicked';
 let pushKicked = false;
 let resumePushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -76,41 +76,40 @@ const toNoticeItem = (item: MessageVO) => {
   };
 };
 
-const buildSseUrl = (path: string) => {
-  return `${import.meta.env.VITE_APP_BASE_API}${path}?Authorization=Bearer ${getToken()}&clientid=${import.meta.env.VITE_APP_CLIENT_ID}`;
-};
+const authHeaders = () => ({
+  Authorization: `Bearer ${getToken()}`,
+  clientid: import.meta.env.VITE_APP_CLIENT_ID
+});
 
-const buildWsUrl = (path: string) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-  return `${protocol}${window.location.host}${buildSseUrl(path)}`;
-};
+const buildSseUrl = (path: string) => `${import.meta.env.VITE_APP_BASE_API}${path}`;
 
-const initSsePush = (url: string) => {
-  const { data, error, close } = useEventSource(url, [], {
-    autoReconnect: {
-      retries: 5,
-      delay: 5000,
-      onFailed() {
-        console.warn('SSE connection failed after 5 retries');
-      }
+const initSsePush = (path: string) => {
+  const { close } = openFetchSse({
+    url: buildSseUrl(path),
+    headers: authHeaders(),
+    onMessage: handlePushMessage,
+    onError: error => {
+      console.warn('SSE connection error:', error);
+    },
+    retries: 5,
+    retryDelayMs: 5000,
+    onFailed() {
+      console.warn('SSE connection failed after 5 retries');
     }
   });
   closePushConnection = close;
-
-  const stopErrorWatch = watch(error, () => {
-    console.warn('SSE connection error:', error.value);
-    error.value = null;
-  });
-
-  const stopDataWatch = watch(data, () => {
-    if (!data.value) return;
-    handlePushMessage(data.value);
-    data.value = null;
-  });
-  stopPushWatchers.push(stopErrorWatch, stopDataWatch);
 };
 
-const initWsPush = (url: string) => {
+const initWsPush = async (path: string) => {
+  const { data } = await createMessageTicket();
+  const ticket = data?.ticket;
+  if (!ticket) {
+    console.warn('websocket ticket missing');
+    return;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const clientId = import.meta.env.VITE_APP_CLIENT_ID;
+  const url = `${protocol}${window.location.host}${import.meta.env.VITE_APP_BASE_API}${path}?ticket=${encodeURIComponent(ticket)}&clientid=${encodeURIComponent(clientId)}`;
   const { close } = useWebSocket(url, {
     autoReconnect: {
       retries: 3,
@@ -144,10 +143,10 @@ export const initPush = () => {
   const path = import.meta.env.VITE_APP_MESSAGE_PATH || '/resource/message';
   const transport = import.meta.env.VITE_APP_MESSAGE_TRANSPORT || 'sse';
   if (transport.toLowerCase() === 'websocket') {
-    initWsPush(buildWsUrl(path));
+    void initWsPush(path);
     return;
   }
-  initSsePush(buildSseUrl(path));
+  initSsePush(path);
 };
 
 export const initMessageBox = async () => {
@@ -165,8 +164,6 @@ export const initMessageBox = async () => {
 export const closePush = () => {
   closePushConnection?.();
   closePushConnection = undefined;
-  stopPushWatchers.forEach(stop => stop());
-  stopPushWatchers = [];
 };
 
 const resumePushIfNeeded = () => {

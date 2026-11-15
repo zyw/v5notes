@@ -181,6 +181,15 @@ export const zhTW: Messages = {
     resize: '調整側邊欄寬度',
     expandNotes: '展開筆記欄',
   },
+  messages: {
+    title: '訊息通知',
+    readAll: '全部已讀',
+    empty: '暫無通知或公告',
+    system: '系統通知',
+    notice: '通知公告',
+    read: '已讀',
+    unread: '未讀',
+  },
   tree: {
     collapse: '收合',
     expand: '展開',
