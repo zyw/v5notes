@@ -173,6 +173,12 @@ export interface LibraryImage {
   createTime?: string
 }
 
+export interface MessageBox {
+  systemList?: Array<Record<string, unknown>>
+  noticeList?: Array<Record<string, unknown>>
+  workflowList?: Array<Record<string, unknown>>
+}
+
 export function createApi(
   config: () => Connection,
   onUnauthorized: () => void,
@@ -265,6 +271,8 @@ export function createApi(
       }, false)
     },
     quota: () => call<ClientQuota>('/client/account/quota'),
+    messageBox: () => call<MessageBox>('/resource/message/box'),
+    closeMessage: () => call<void>('/resource/message/close'),
     tree: () => call<TreeNode[]>('/client/notes/dir/tree'),
     list: (dirId: string, pageNum = 1) =>
       call<Page<Note>>(`/client/notes/list?${new URLSearchParams({ dirId, pageNum: String(pageNum), pageSize: '30' })}`),

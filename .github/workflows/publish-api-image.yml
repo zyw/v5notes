@@ -2,7 +2,7 @@ name: Publish v5notes2 API image
 
 # 创建并发布 GitHub Release 时打包推送 API 镜像；也可在 Actions 里手动跑。
 # 镜像版本：手动输入优先；未输入则用当前 Release（发布事件）或最新正式 Release 的 tag。
-# tag 解析：v2.0.0 / 2.0.0 → 镜像标签 2.0.0。
+# tag 解析：v2.0.1 / 2.0.1 → 镜像标签 2.0.1。
 
 on:
   release:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Docker 镜像版本（如 2.0.0）；留空则用最新正式 Release 的版本"
+        description: "Docker 镜像版本（如 2.0.1）；留空则用最新正式 Release 的版本"
         required: false
         type: string
 
@@ -70,7 +70,7 @@ jobs:
             version="${version#api-v5notes2-}"
             version="${version#v}"
             if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "版本 '$raw' 无法解析为 x.y.z（支持 2.0.0、v2.0.0）。" >&2
+              echo "版本 '$raw' 无法解析为 x.y.z（支持 2.0.1、v2.0.1）。" >&2
               return 1
             fi
             printf '%s\n' "$version"

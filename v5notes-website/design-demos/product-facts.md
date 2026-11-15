@@ -37,7 +37,7 @@ V5Notes 是一套可以私有部署的 Markdown 云笔记：桌面客户端写�
 | 三端界面支持简体中文 / 繁體中文 / English | README |
 | 桌面端应用内更新读取 GitHub Releases 的 latest.json | README、.github workflow |
 | 许可证 Apache License 2.0 | LICENSE |
-| 版本 v2.0.0 | client2/admin2 package.json、admin 登录页 |
+| 版本 v2.0.1 | client2/admin2 package.json、admin 登录页 |
 | 仓库 github.com/zyw/v5notes | .github/workflows/publish-update-feed.yml |
 
 ## 不能写的东西

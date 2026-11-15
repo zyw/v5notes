@@ -1,8 +1,10 @@
 package xin.v5ai.basics.file.domain.vo;
 
+import io.github.linpeilie.annotations.AutoMapper;
 import org.apache.fesod.sheet.annotation.ExcelIgnoreUnannotated;
 import org.apache.fesod.sheet.annotation.ExcelProperty;
 import lombok.Data;
+import xin.v5ai.basics.file.domain.FileInfo;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @ExcelIgnoreUnannotated
+@AutoMapper(target = FileInfo.class)
 public class FileInfoVo implements Serializable {
 
     @Serial

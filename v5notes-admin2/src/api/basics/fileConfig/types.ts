@@ -28,6 +28,14 @@ export interface FileClientConfig {
    */
   mode?: string;
   /**
+   * 是否启用 FTPS（FTP over TLS，显式 AUTH TLS；与 SFTP 不同）
+   */
+  sslEnable?: boolean;
+  /**
+   * FTP 控制连接字符集（路径含中文时需与 NAS 一致，常见 UTF-8 / GBK）
+   */
+  charset?: string;
+  /**
    * 存储路径
    */
   endpoint?: string;

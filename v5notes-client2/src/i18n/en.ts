@@ -187,6 +187,15 @@ export const en: Messages = {
     resize: 'Resize sidebar',
     expandNotes: 'Show notes',
   },
+  messages: {
+    title: 'Notifications',
+    readAll: 'Mark all read',
+    empty: 'No notifications yet',
+    system: 'System',
+    notice: 'Announcement',
+    read: 'Read',
+    unread: 'Unread',
+  },
   tree: {
     collapse: 'Collapse',
     expand: 'Expand',

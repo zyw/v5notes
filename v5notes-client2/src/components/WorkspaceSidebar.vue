@@ -5,6 +5,7 @@ import { useWorkspaceContext } from '../hooks/workspaceContext'
 import { flattenNotes, sortTree } from '../models/sidebarBrowse'
 import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
+import MessageBell from './MessageBell.vue'
 import brandIcon from '../assets/brand-icon.png'
 const { t } = useI18n()
 const { directoryVisible, focusMode, sidebarSearchVisible, scheduleSearch, runSearch, exitSearch, query, searching, notes, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
@@ -103,7 +104,10 @@ function closeProfileMenu(event: Event): void {
             <button class="danger-menu-item" type="button" @click="closeProfileMenu($event); logout()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3H4.5A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17H8"/><path d="M11 14.5 15.5 10 11 5.5M15 10H7"/></svg>{{ t('sidebar.logout') }}</button>
           </div>
         </details>
-        <button class="settings-trigger" type="button" :aria-label="t('sidebar.settings')" :title="t('sidebar.settings')" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <div class="footer-actions">
+          <MessageBell />
+          <button class="settings-trigger" type="button" :aria-label="t('sidebar.settings')" :title="t('sidebar.settings')" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
       </footer>
       <div class="sidebar-resize" role="separator" :aria-label="t('sidebar.resize')" aria-orientation="vertical" @pointerdown="resizeSidebarStart" />
       </div>
@@ -112,6 +116,7 @@ function closeProfileMenu(event: Event): void {
         <button class="rail-notes" type="button" :aria-label="t('sidebar.expandNotes')" @click="directoryVisible = true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="5" cy="5" r=".7"/><circle cx="5" cy="10" r=".7"/><circle cx="5" cy="15" r=".7"/></svg><span>{{ t('sidebar.notes') }}</span></button>
         <div class="rail-spacer" />
         <button class="rail-trash" type="button" :aria-label="t('sidebar.trash')" :title="t('sidebar.trash')" :aria-pressed="trashOpen" @click="openTrash"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11"/></svg></button>
+        <MessageBell />
         <button class="rail-settings" type="button" :aria-label="t('sidebar.settings')" :title="t('sidebar.settings')" @click="openSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <details class="profile-menu rail-profile-menu" @keydown.esc.prevent="closeProfileMenu">
           <summary class="rail-profile" :aria-label="t('sidebar.userMenu')" :title="t('sidebar.userMenu')"><span class="profile-avatar"><img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" /><span v-else>{{ currentUser?.nickName?.slice(0, 1) || username.slice(0, 1) || 'U' }}</span></span></summary>

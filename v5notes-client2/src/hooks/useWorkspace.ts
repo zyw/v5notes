@@ -24,6 +24,7 @@ import { openExternalUrl } from '../utils/openExternal'
 import { setDirtyCheck, watchClose } from '../utils/window'
 import { useProfile } from './useProfile'
 import { useAppUpdate } from './useAppUpdate'
+import { usePushMessages } from './usePushMessages'
 
 /** 同一 webview 生命周期内只消费一次 getCurrent()，避免 remount 重放旧 deep link。 */
 let deepLinkColdStartApplied = false
@@ -103,6 +104,8 @@ let loadSequence = 0
 let unwatchClose: (() => void) | undefined
 let unlistenTrayExit: (() => void) | undefined
 
+let stopPushMessages = async (): Promise<void> => {}
+
 const api = createApi(
   () => ({ server: server.value, clientId, token: token.value, refreshToken: refreshToken.value }),
   () => {
@@ -110,6 +113,7 @@ const api = createApi(
     refreshToken.value = ''
     localStorage.removeItem('v5notes-token')
     localStorage.removeItem('v5notes-refresh-token')
+    void stopPushMessages()
   },
   fetch,
   (accessToken: string, newRefreshToken: string) => {
@@ -119,6 +123,7 @@ const api = createApi(
     localStorage.setItem('v5notes-refresh-token', newRefreshToken)
   },
 )
+
 const {
   currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError,
   profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel,
@@ -127,6 +132,22 @@ const {
   uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, unbindSocial,
   completeBindSocial,
 } = useProfile(api)
+
+const {
+  messages,
+  panelOpen: messagePanelOpen,
+  unreadCount: messageUnreadCount,
+  start: startPushMessages,
+  stop: stopPushMessagesImpl,
+  markRead: markMessageRead,
+  markAllRead: markAllMessagesRead,
+} = usePushMessages({
+  getConnection: () => ({ server: server.value, clientId, token: token.value }),
+  getUserId: () => currentUser.value?.userId || '',
+  loadBox: () => api.messageBox(),
+  closeRemote: () => api.closeMessage(),
+})
+stopPushMessages = stopPushMessagesImpl
 const content = computed({
   get: () => draft.note?.content ?? '',
   set: (value: string) => {
@@ -218,6 +239,7 @@ function saveServerSettings(address: string, official: boolean): void {
     t('dialogs.changeServerConfirm'),
     async () => {
       apply()
+      await stopPushMessages()
       token.value = ''
       refreshToken.value = ''
       password.value = ''
@@ -265,8 +287,8 @@ function syncActionMenu(name: 'note' | 'view', event: Event): void {
 function closePopovers(event: PointerEvent | KeyboardEvent | FocusEvent): void {
   if (event instanceof KeyboardEvent && event.key !== 'Escape') return
   const target = event.target as Element | null
-  const all = Array.from(document.querySelectorAll<HTMLDetailsElement>('.workspace-menu, .action-menu, .tree-menu, .profile-menu'))
-  const focusedPopover = event instanceof KeyboardEvent ? null : target?.closest('details.workspace-menu, details.action-menu, details.tree-menu, details.profile-menu')
+  const all = Array.from(document.querySelectorAll<HTMLDetailsElement>('.workspace-menu, .action-menu, .tree-menu, .profile-menu, .message-menu'))
+  const focusedPopover = event instanceof KeyboardEvent ? null : target?.closest('details.workspace-menu, details.action-menu, details.tree-menu, details.profile-menu, details.message-menu')
   for (const menu of all) {
     if (menu !== focusedPopover) menu.open = false
   }
@@ -448,6 +470,7 @@ async function applyAuthSuccess(
     username.value = profileName
     localStorage.setItem('v5notes-username', profileName)
   }
+  await startPushMessages()
   const lastNoteId = localStorage.getItem('v5notes-last-note')
   if (lastNoteId) await openNote(lastNoteId, true)
 }
@@ -674,6 +697,7 @@ async function restoreSession(): Promise<void> {
   if (!token.value) return
   try {
     await Promise.all([refreshDirectories(), refreshNotes(), refreshProfile(), refreshQuota()])
+    await startPushMessages()
     const lastNoteId = localStorage.getItem('v5notes-last-note')
     if (lastNoteId) await openNote(lastNoteId, true)
   } catch (cause) { report(cause) }
@@ -1046,6 +1070,7 @@ function emptyTrash(): void {
 async function logout(): Promise<void> {
   if (!(await mayLeave())) return
   requestDelete(t('dialogs.logout'), t('dialogs.logoutMessage'), t('dialogs.logout'), async () => {
+  await stopPushMessages()
   token.value = ''
   refreshToken.value = ''
   currentUser.value = null
@@ -1070,6 +1095,7 @@ async function logout(): Promise<void> {
 }
 
 function reauthenticate(): void {
+  void stopPushMessages()
   localStorage.removeItem('v5notes-token')
   localStorage.removeItem('v5notes-refresh-token')
   token.value = ''
@@ -1164,5 +1190,5 @@ const {
   prepareToInstall: () => mayLeave(),
 })
 
-return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, socialLoginEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, startSocialLogin, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled, bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, requestUnbindSocial }
+return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, socialLoginEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, startSocialLogin, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled, bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, requestUnbindSocial, messages, messagePanelOpen, messageUnreadCount, markMessageRead, markAllMessagesRead }
 }

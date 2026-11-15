@@ -3,9 +3,9 @@
 sa-token:
   # 允许动态设置 token 有效期
   dynamic-active-timeout: true
-  # 允许从 请求参数 读取 token
-  is-read-body: true
-  # 允许从 header 读取 token
+  # 禁止从 query/form 读取 token，避免 JWT 出现在 URL（日志、Referer、历史记录会泄露）
+  is-read-body: false
+  # 仅允许从 header 读取 token
   is-read-header: true
   # 关闭 cookie 鉴权 从根源杜绝 csrf 漏洞风险
   is-read-cookie: false

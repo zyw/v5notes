@@ -185,6 +185,15 @@ export const zhCN = {
     resize: '调整侧栏宽度',
     expandNotes: '展开笔记栏',
   },
+  messages: {
+    title: '消息通知',
+    readAll: '全部已读',
+    empty: '暂无通知或公告',
+    system: '系统通知',
+    notice: '通知公告',
+    read: '已读',
+    unread: '未读',
+  },
   tree: {
     collapse: '收起',
     expand: '展开',

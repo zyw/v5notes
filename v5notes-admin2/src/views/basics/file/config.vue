@@ -75,10 +75,15 @@
         <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="160" />
         <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip :content="$t('file.config.setMaster')" placement="top">
-              <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" @click="handleMaster(scope.row as FileConfigVO)">
-                <svg-icon icon-class="master" />
-              </el-button>
+            <el-tooltip :content="scope.row.master ? $t('file.config.currentMaster') : $t('file.config.setMaster')" placement="top">
+              <el-button
+                v-hasPermi="['basics:fileConfig:edit']"
+                link
+                :type="scope.row.master ? 'warning' : 'info'"
+                :icon="scope.row.master ? 'StarFilled' : 'Star'"
+                :disabled="!!scope.row.master"
+                @click="handleMaster(scope.row as FileConfigVO)"
+              />
             </el-tooltip>
             <el-tooltip :content="$t('common.edit')" placement="top">
               <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row as FileConfigVO)"></el-button>
@@ -137,7 +142,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item :label="$t('file.config.storage')" prop="storage">
-                <el-select v-model="form.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 100%">
+                <el-select v-model="form.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 100%" @change="handleStorageChange">
                   <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="Number(item.dictValue)" />
                 </el-select>
               </el-form-item>
@@ -175,7 +180,11 @@
             <template v-if="form.storage == 102 || form.storage == 103">
               <el-col :span="12">
                 <el-form-item :label="$t('file.config.basePath')" prop="config.basePath">
-                  <el-input v-model="form.config.basePath" :placeholder="$t('common.pleaseInput', { label: $t('file.config.basePath') })" />
+                  <el-input
+                    v-model="form.config.basePath"
+                    :placeholder="form.storage == 102 ? $t('file.config.basePathFtpExample') : $t('common.pleaseInput', { label: $t('file.config.basePath') })"
+                  />
+                  <div v-if="form.storage == 102" class="form-tip">{{ $t('file.config.basePathFtpTip') }}</div>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -204,6 +213,22 @@
                     <el-radio value="Active">{{ $t('file.config.active') }}</el-radio>
                     <el-radio value="Passive">{{ $t('file.config.passive') }}</el-radio>
                   </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col v-if="form.storage == 102" :span="12">
+                <el-form-item :label="$t('file.config.sslEnable')" prop="config.sslEnable">
+                  <el-switch v-model="form.config.sslEnable" />
+                  <div class="form-tip">{{ $t('file.config.sslEnableTip') }}</div>
+                </el-form-item>
+              </el-col>
+              <el-col v-if="form.storage == 102" :span="12">
+                <el-form-item :label="$t('file.config.charset')" prop="config.charset">
+                  <el-select v-model="form.config.charset" style="width: 100%">
+                    <el-option label="UTF-8" value="UTF-8" />
+                    <el-option label="GBK" value="GBK" />
+                    <el-option label="GB2312" value="GB2312" />
+                  </el-select>
+                  <div class="form-tip">{{ $t('file.config.charsetTip') }}</div>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -379,6 +404,26 @@ const handleSelectionChange = (selection: FileConfigVO[]) => {
   ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
+};
+
+/** 切换存储器时填充常见默认值，避免 FTP/SFTP 端口混用 */
+const handleStorageChange = (storage: number) => {
+  if (!form.value.config) {
+    form.value.config = {} as FileClientConfig;
+  }
+  if (storage === 102) {
+    form.value.config.port = form.value.config.port || 21;
+    form.value.config.mode = form.value.config.mode || 'Passive';
+    form.value.config.charset = form.value.config.charset || 'UTF-8';
+    if (form.value.config.sslEnable === undefined) {
+      form.value.config.sslEnable = true;
+    }
+  } else if (storage === 103) {
+    form.value.config.port = form.value.config.port || 22;
+    form.value.config.sslEnable = undefined;
+    form.value.config.mode = undefined;
+    form.value.config.charset = undefined;
+  }
 };
 
 /** 新增按钮操作 */
@@ -574,6 +619,12 @@ onMounted(() => {
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #6b7d74;
+}
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #7a8b83;
 }
 </style>
 

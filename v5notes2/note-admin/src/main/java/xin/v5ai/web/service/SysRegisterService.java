@@ -29,6 +29,7 @@ import xin.v5ai.system.mapper.SysUserMapper;
 import xin.v5ai.system.service.ISysConfigService;
 import xin.v5ai.system.service.ISysUserService;
 import xin.v5ai.web.domain.bo.ClientRegisterBody;
+import xin.v5ai.web.event.ClientRegisterNotifyEvent;
 import org.springframework.stereotype.Service;
 
 /**
@@ -118,6 +119,8 @@ public class SysRegisterService {
         }
         RedisUtils.deleteObject(key);
         recordLoginInfo(email, Constants.REGISTER, MessageUtils.message("user.register.success"));
+        SpringUtils.context().publishEvent(
+            new ClientRegisterNotifyEvent(email, nickName, UserSource.CLIENT_REGISTER.getCode()));
     }
 
     /**
@@ -168,6 +171,10 @@ public class SysRegisterService {
             throw new UserException("user.register.error");
         }
         recordLoginInfo(userName, Constants.REGISTER, MessageUtils.message("user.register.success"));
+        SpringUtils.context().publishEvent(new ClientRegisterNotifyEvent(
+            StringUtils.blankToDefault(created.getEmail(), userName),
+            created.getNickName(),
+            UserSource.CLIENT_SOCIAL.getCode()));
         return created;
     }
 

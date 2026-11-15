@@ -8,3 +8,11 @@ export function getMessageBox(): AxiosPromise<MessageBoxVO> {
     method: 'get'
   });
 }
+
+/** 签发 WebSocket 一次性连接票据（短时、单次），避免 JWT 出现在 URL。 */
+export function createMessageTicket(): AxiosPromise<{ ticket: string }> {
+  return request({
+    url: '/resource/message/ticket',
+    method: 'post'
+  });
+}

@@ -15,7 +15,7 @@
           <div class="item-conten">
             <div class="content-box-title">{{ v.title || $t('notice.message') }}</div>
             <div>{{ v.message }}</div>
-            <div v-if="v.content" class="content-box-msg">{{ v.content }}</div>
+            <div v-if="v.content" class="content-box-msg" v-html="sanitizeHtml(v.content)"></div>
             <div class="content-box-time">{{ v.time }}</div>
           </div>
           <!-- 已读/未读 -->
@@ -35,6 +35,7 @@ import { useNoticeStore } from '@/store/modules/notice';
 import { useUserStore } from '@/store/modules/user';
 import { markMessageRead, markMessageReadBatch } from '@/utils/message-read';
 import { NOTICE_GROUP } from '@/utils/push-message';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const { t } = useI18n();
 const noticeStore = useNoticeStore();
@@ -178,6 +179,10 @@ const readAll = () => {
         text-overflow: ellipsis;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+
+        :deep(p) {
+          margin: 0;
+        }
       }
 
       .content-box-time {

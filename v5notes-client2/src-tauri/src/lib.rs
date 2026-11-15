@@ -863,11 +863,23 @@ fn sniff_image_mime(bytes: &[u8]) -> &'static str {
     }
 }
 
+fn focus_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let builder = {
+        // single-instance must be registered first so a second launch exits before other plugins run.
         let builder = tauri::Builder::default()
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                focus_main_window(app);
+            }))
             .plugin(
                 tauri_plugin_autostart::Builder::new()
                     .app_name("v5notes")
@@ -919,13 +931,7 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    "show" => focus_main_window(app),
                     "quit" => {
                         let _ = app.emit_to("main", "app-exit-requested", ());
                     }
