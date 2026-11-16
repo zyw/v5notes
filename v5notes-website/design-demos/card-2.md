@@ -16,7 +16,7 @@
 ## 版式
 1. **导航**：固定顶栏 64px，毛玻璃（backdrop-filter blur 16px，底 rgba(11,20,17,.72)），底部 1px 线；左图标＋V5Notes；中 5 个锚点 14px；右 GitHub 文字链＋「下载桌面端」实心青瓷绿胶囊（深色字）。
 2. **首屏**（min-height 780px）：左上 H1 两行；右侧同一水平线放一段 20px 灰副标（宽 380px），形成左右对位；下方 40px 两个按钮（实心青瓷＋描边）。再下 64px 是整幅产品窗口 client-home-dark.jpg（宽 1160px，1px 线、radius 14px、外层柔和青瓷辉光 box-shadow 0 40px 120px rgba(79,191,148,.10)）。
-3. **首屏下的元数据条**：一条 1px 线，线上 4 个等宽小项：v2.0.1 · Apache 2.0 · MySQL / PostgreSQL · Windows / macOS / Linux。
+3. **首屏下的元数据条**：一条 1px 线，线上 4 个等宽小项：v2.0.2 · Apache 2.0 · MySQL / PostgreSQL · Windows / macOS / Linux。
 4. **第 1 段起进入「左索引 + 右内容」**：左 200px sticky 索引（写作 / 回退 / 管理 / 部署 / 技术栈），未激活 #6f8177、激活 #eef2ec 且左侧 2px 青瓷线；右内容 960px。
 5. **第 1 段（为什么）**：标题左；4 组对照做成「行」：每行 grid 240px / 1fr，左侧旧情况用 #6f8177、右侧 V5Notes 用正文白；行间 1px 线；行高 96px。
 6. **第 2 段（写作）**：标题 + 导语；6 条特性用 2 列 × 3 行，每条：小图标（内联 SVG 1.5 描边，颜色 #4fbf94）＋标题 18px＋说明 15px #9fb0a6；不要卡片背景，靠 1px 线分格。右侧/下方放 client-source.jpg（宽 760px）与 client-palette.jpg（竖图，宽 280px）并排，图注用等宽小字。

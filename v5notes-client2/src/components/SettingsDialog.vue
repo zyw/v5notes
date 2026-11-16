@@ -128,7 +128,7 @@ onMounted(async () => {
   try {
     version.value = await getVersion()
   } catch {
-    version.value = '2.0.1'
+    version.value = '2.0.2'
   }
   if (!isTauri()) return
   try {
