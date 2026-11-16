@@ -6,6 +6,7 @@ import {
   clearNoteDrag,
   dragDistance,
   markNoteDragActive,
+  markNoteDragReady,
   noteDragSession,
   readDropDirFromPoint,
   shouldStartNoteDrag,
@@ -57,6 +58,7 @@ let pointerTracking: {
   startY: number
   noteId: string
   fromDirId: string
+  row: HTMLElement | null
 } | null = null
 const onMenuViewportChange = (): void => { placeMenu() }
 
@@ -67,6 +69,11 @@ const dropActive = computed(() => (
   && noteDragSession.value.targetDirId === props.node.id
   && noteDragSession.value.noteId !== props.node.id
 ))
+const noteTitle = computed(() => {
+  if (isDirectory.value) return props.hint ? `${props.node.label} · ${props.hint}` : props.node.label
+  const base = props.hint ? `${props.node.label} · ${props.hint}` : props.node.label
+  return `${base} · ${t('tree.notePointerHint')}`
+})
 
 function menuPopover(): HTMLElement | null {
   const popover = menuRoot.value?.querySelector('.popover-menu')
@@ -222,22 +229,23 @@ function onPointerDown(event: PointerEvent): void {
   if (isDirectory.value || event.button !== 0 || event.pointerType === 'touch' && event.isPrimary === false) return
   if (event.target instanceof Element && event.target.closest('.tree-menu, .tree-actions')) return
   menuOpen.value = false
+  suppressClick = false
   pointerTracking = {
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
     noteId: props.node.id,
     fromDirId: props.node.pid || '0',
+    row: event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
   }
-  noteDragSession.value = {
+  // 按下即显示可拖光标；未拖出前仍可单击打开。阈值前不 capture，避免 click 被重定向。
+  markNoteDragReady({
     noteId: props.node.id,
     fromDirId: props.node.pid || '0',
+    ready: true,
     active: false,
     targetDirId: null,
-  }
-  if (event.currentTarget instanceof HTMLElement) {
-    try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* 部分环境不支持 capture */ }
-  }
+  })
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)
   window.addEventListener('pointercancel', onPointerUp)
@@ -248,10 +256,12 @@ function onPointerMove(event: PointerEvent): void {
   if (!tracking || event.pointerId !== tracking.pointerId) return
   const session = noteDragSession.value
   if (!session || session.noteId !== tracking.noteId) return
+  const distance = dragDistance(tracking.startX, tracking.startY, event.clientX, event.clientY)
   if (!session.active) {
-    if (!shouldStartNoteDrag(dragDistance(tracking.startX, tracking.startY, event.clientX, event.clientY))) return
+    if (!shouldStartNoteDrag(distance)) return
     markNoteDragActive(session)
     suppressClick = true
+    try { tracking.row?.setPointerCapture(event.pointerId) } catch { /* 部分环境不支持 capture */ }
   }
   event.preventDefault()
   const targetDirId = readDropDirFromPoint(event.clientX, event.clientY)
@@ -267,10 +277,14 @@ function onPointerUp(event: PointerEvent): void {
   const targetDirId = didDrag
     ? (readDropDirFromPoint(event.clientX, event.clientY) ?? session.targetDirId)
     : null
+  try {
+    if (tracking.row?.hasPointerCapture(event.pointerId)) tracking.row.releasePointerCapture(event.pointerId)
+  } catch { /* ignore */ }
   stopPointerTracking()
   clearNoteDrag()
   clearExpandTimer()
   if (didDrag) {
+    // 拖动结束后吞掉紧随其后的 click，避免误打开
     suppressClick = true
     window.setTimeout(() => { suppressClick = false }, 0)
     if (targetDirId && targetDirId !== tracking.fromDirId) {
@@ -278,6 +292,7 @@ function onPointerUp(event: PointerEvent): void {
     }
     return
   }
+  // 按下后未拖出：视为单击，交给后续 click 打开笔记
   suppressClick = false
 }
 </script>
@@ -296,6 +311,7 @@ function onPointerUp(event: PointerEvent): void {
       :style="{ '--tree-depth': depth || 0 }"
       @contextmenu.prevent="menuOpen = true"
       @pointerdown="onPointerDown"
+      @click="activate"
     >
       <div
         class="tree-disclosure"
@@ -303,7 +319,6 @@ function onPointerUp(event: PointerEvent): void {
         tabindex="0"
         :aria-label="isDirectory ? t('tree.toggle', { action: expanded ? t('tree.collapse') : t('tree.expand'), name: node.label }) : undefined"
         :aria-expanded="isDirectory ? expanded : undefined"
-        @click="activate"
         @keydown="onRowKeydown"
       >
         <svg v-if="isDirectory" viewBox="0 0 16 16" aria-hidden="true">
@@ -314,9 +329,8 @@ function onPointerUp(event: PointerEvent): void {
         class="tree-label"
         role="button"
         tabindex="0"
-        :title="hint ? `${node.label} · ${hint}` : node.label"
+        :title="noteTitle"
         :aria-label="hint ? `${node.label}，${hint}` : node.label"
-        @click="activate"
         @keydown="onRowKeydown"
       >
         <TreeIcon :kind="isDirectory ? 'folder' : 'note'" :open="isDirectory && expanded" />

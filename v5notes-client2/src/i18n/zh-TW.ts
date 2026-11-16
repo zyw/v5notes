@@ -203,6 +203,7 @@ export const zhTW: Messages = {
     open: '開啟',
     move: '移動',
     moveToRoot: '移到目錄外',
+    notePointerHint: '單擊開啟，按住拖曳',
     deleteNote: '刪除筆記',
   },
   editor: {

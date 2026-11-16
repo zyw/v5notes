@@ -201,6 +201,7 @@ export const zhCN = {
     open: '打开',
     move: '移动',
     moveToRoot: '移到目录外',
+    notePointerHint: '单击打开，按住拖动',
     deleteNote: '删除笔记',
   },
   editor: {
