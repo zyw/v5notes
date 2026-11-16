@@ -64,7 +64,10 @@ justauth:
 
 把本目录静态文件挂到 `client-address` / `vault-client-address` 对应域名即可（Nginx / CDN / 对象存储静态站均可）。
 
-注意：`/social-callback`（无尾斜杠）必须能落到 `social-callback/index.html`，见 `nginx.conf.example`。
+注意：
+
+- `/social-callback`（无尾斜杠）必须能落到 `social-callback/index.html`
+- 与管理端同端口反代时，还需放出 `/assets/brand-icon.png`（回调页相对路径会解析到这里），见 `nginx.conf.example` 示例 B
 
 本地预览：
 
