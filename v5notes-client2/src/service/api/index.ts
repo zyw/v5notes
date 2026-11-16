@@ -131,6 +131,8 @@ export interface UserProfileUpdate {
   email?: string
   gender?: string
   avatar: string
+  /** 个人签名，对应后端 remark */
+  remark?: string
 }
 
 /** 与后端 ClientQuotaVo 对齐；plan* 预留给后续付费套餐 */

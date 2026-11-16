@@ -97,6 +97,25 @@
         <appender-ref ref="file_error"/>
     </appender>
 
+    <!-- SQL 完整日志：单独文件，不进控制台 -->
+    <appender name="file_sql" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/sys-sql.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${log.path}/sys-sql.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="async_sql" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <appender-ref ref="file_sql"/>
+    </appender>
+
     <!-- 整合 skywalking 控制台输出 tid -->
 <!--    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">-->
 <!--        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">-->
@@ -118,6 +137,11 @@
 <!--    </appender>-->
 
     <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker" level="ERROR"/>
+
+    <!-- SqlLogInterceptor(@Slf4j topic=SQL_FULL)：仅写入 sys-sql.log -->
+    <logger name="SQL_FULL" level="INFO" additivity="false">
+        <appender-ref ref="async_sql"/>
+    </logger>
 
     <!--系统操作日志-->
     <root level="info">

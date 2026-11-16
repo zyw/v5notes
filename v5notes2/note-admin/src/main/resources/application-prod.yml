@@ -35,9 +35,9 @@ snail-job:
 mybatis-plus:
   sql-log:
     # 完整 SQL 输出开关
-    enabled: false
-    # 输出方式，可选 console、log
-    output: console
+    enabled: true
+    # 输出方式，可选 console、log；log 写入 logs/sys-sql.log，不进控制台
+    output: log
     # 忽略高频轮询表的成功 SQL 日志；执行异常仍会输出
     ignore-tables: [ flow_event_wait ]
 
