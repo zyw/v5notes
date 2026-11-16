@@ -406,6 +406,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
             .setIfPresent(SysUser::getPhoneNumber, user.getPhoneNumber())
             .setIfPresent(SysUser::getEmail, user.getEmail())
             .setIfPresent(SysUser::getGender, user.getGender())
+            .setIfPresent(SysUser::getRemark, user.getRemark())
             .eq(SysUser::getUserId, user.getUserId())
             .updateCount();
     }

@@ -65,6 +65,7 @@ services:
       - "${API_PORT:-8080}:8080"
     volumes:
       - ./uploadfile:/root/v5notes/upload
+      - ./logs:/app/logs
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod

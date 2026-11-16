@@ -54,4 +54,9 @@ public class SysUserProfileBo implements Serializable {
      */
     private String avatar;
 
+    /**
+     * 个人签名（复用用户备注字段）
+     */
+    private String remark;
+
 }

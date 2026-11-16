@@ -256,6 +256,7 @@ export function useProfile(api: NotesApi) {
         nickName: profileForm.nickName,
         gender: profileForm.gender || '0',
         avatar: profileForm.avatar || '',
+        remark: profileForm.remark?.trim() || '',
       }
       // 空串会触发后端 @Pattern，未填写时省略字段
       if (profileForm.phoneNumber) payload.phoneNumber = profileForm.phoneNumber
