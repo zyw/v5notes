@@ -118,6 +118,8 @@ cd ../v5notes2/docker && docker compose up -d --build
 | `V5NOTES_SMS_TENCENT_SIGNATURE` | `sms.blends.config2.signature` | 腾讯云短信签名 |
 | `V5NOTES_SMS_TENCENT_SDK_APP_ID` | `sms.blends.config2.sdk-app-id` | 腾讯云短信应用编号 |
 | `V5NOTES_SNAIL_JOB_TOKEN` | `snail-job.token` | SnailJob 客户端接入令牌 |
+| `V5NOTES_JUSTAUTH_ADDRESS` | `justauth.address` | 管理端 OAuth 回调基址 |
+| `V5NOTES_JUSTAUTH_CLIENT_ADDRESS` | `justauth.client-address` | 笔记客户端 OAuth 回调基址 |
 | `V5NOTES_GITEE_CLIENT_ID` | `justauth.type.gitee.client-id` | Gitee 第三方登录客户端编号 |
 | `V5NOTES_GITEE_CLIENT_SECRET` | `justauth.type.gitee.client-secret` | Gitee 第三方登录客户端密钥 |
 

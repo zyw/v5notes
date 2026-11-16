@@ -184,11 +184,11 @@ justauth:
   #   3) type.*.redirect-uri     → 仅当 address 与 client-address 都未配置时的兜底，可省略
   # 向 Gitee/GitHub 等登记回调时，按实际用到的端分别登记上述拼装结果。
   # 管理端前端地址
-  address: http://localhost:80
+  address: ${V5NOTES_JUSTAUTH_ADDRESS:http://localhost:80}
   # 笔记客户端回调基址：指向 v5notes-oauth-landing（HTTPS 中转唤起桌面）；或平台允许时用 v5notes://app
   # 不要指向 Vite/SPA：客户端不做浏览器换票，也不在 SPA 里写 v5notes:// 唤起
   # 国内访问 GitHub 换票时，可按 JustAuth 文档为对应平台配置 httpConfig 代理
-  client-address: http://127.0.0.1:8088
+  client-address: ${V5NOTES_JUSTAUTH_CLIENT_ADDRESS:http://127.0.0.1:8088}
   type:
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:a27e9fa3f58a199995b366abc2632e4448f8680c97b45bce86b5cf27590bcbe5}

@@ -198,9 +198,9 @@ justauth:
   #   3) type.*.redirect-uri     → 仅当 address 与 client-address 都未配置时的兜底，可省略
   # 向各 OAuth 应用登记回调时，按实际用到的端分别登记上述拼装结果。
   # 管理端前端地址
-  address: http://localhost:80
+  address: ${V5NOTES_JUSTAUTH_ADDRESS:http://localhost:80}
   # 笔记客户端回调基址：生产请改为 v5notes-oauth-landing 的 HTTPS 源，或平台允许时用 v5notes://app
-  client-address: http://localhost:1420
+  client-address: ${V5NOTES_JUSTAUTH_CLIENT_ADDRESS:http://localhost:1420}
   type:
     gitee:
       client-id: ${V5NOTES_GITEE_CLIENT_ID:91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98}

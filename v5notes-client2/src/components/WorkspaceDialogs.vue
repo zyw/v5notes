@@ -6,7 +6,7 @@ import { providerLabelKey, providerTone } from '../models/socialAuth'
 import SocialProviderIcon from './SocialProviderIcon.vue'
 const { t } = useI18n()
 const {
-  dialog, dialogValue, dialogError, dialogBusy, submitNameDialog, closeDialog, confirmDialog,
+  dialog, dialogValue, dialogError, dialogBusy, submitNameDialog, submitMoveDialog, moveDirectoryOptions, closeDialog, confirmDialog,
   profileDialogOpen, profileAvatarUrl, profileForm, avatarBusy, uploadProfileAvatar, removeProfileAvatar,
   profileError, profileBusy, saveProfile, closeProfile, accountQuota, cloudPlanKind, cloudStorageLabel,
   socialBindings, socialBusy, bindableProviders, profileThirdPartyEnabled, startBindSocial, requestUnbindSocial,
@@ -220,6 +220,35 @@ const cloudSectionClass = computed(() => (
         <div class="modal-actions">
           <button type="button" :disabled="dialogBusy" @click="closeDialog">{{ t('common.cancel') }}</button>
           <button class="primary" type="submit" :disabled="dialogBusy">{{ dialogBusy ? t('common.saving') : t('common.save') }}</button>
+        </div>
+      </form>
+      <form v-else-if="dialog.kind === 'move'" @submit.prevent="submitMoveDialog">
+        <span class="eyebrow">NOTE</span>
+        <h2>{{ dialog.title }}</h2>
+        <p class="dialog-lead">{{ t('dialogs.moveNoteMessage', { name: dialog.noteName }) }}</p>
+        <fieldset class="dialog-field move-target-field">
+          <legend>{{ t('dialogs.moveTarget') }}</legend>
+          <div class="move-target-list" role="radiogroup" :aria-label="t('dialogs.moveTarget')">
+            <label class="move-target-option" :class="{ active: dialogValue === '0' }">
+              <input v-model="dialogValue" type="radio" value="0" />
+              <span>{{ t('dialogs.moveToRoot') }}</span>
+            </label>
+            <label
+              v-for="option in moveDirectoryOptions"
+              :key="option.id"
+              class="move-target-option"
+              :class="{ active: dialogValue === option.id }"
+              :style="{ '--move-depth': option.depth }"
+            >
+              <input v-model="dialogValue" type="radio" :value="option.id" />
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+        </fieldset>
+        <p v-if="dialogError" class="dialog-error" role="alert">{{ dialogError }}</p>
+        <div class="modal-actions">
+          <button type="button" :disabled="dialogBusy" @click="closeDialog">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="dialogBusy || dialogValue === dialog.currentDirId">{{ dialogBusy ? t('dialogs.moving') : t('dialogs.moveConfirm') }}</button>
         </div>
       </form>
       <template v-else>

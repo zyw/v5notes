@@ -7,7 +7,7 @@ import { t } from '../i18n'
 import { createApi, type Note, type NoteRevision, type NoteTrashItem, type TreeNode } from '../service/api'
 import { ConflictError } from '../service/request'
 import { Draft } from '../models/draft'
-import { readNoteGroup, readNoteSort, type NoteGroupMode, type NoteSortMode } from '../models/sidebarBrowse'
+import { findTreeNode, listDirectories, readNoteGroup, readNoteSort, type NoteGroupMode, type NoteSortMode } from '../models/sidebarBrowse'
 import { OFFICIAL_SERVER, normalizeServer, readServerSettings, writeServerSettings } from '../models/serverSettings'
 import {
   clearSocialCallbackUrl,
@@ -32,6 +32,7 @@ let deepLinkColdStartApplied = false
 export function useWorkspace() {
 type DialogState =
   | { kind: 'name'; entity: 'note' | 'directory'; action: 'create' | 'rename'; title: string; parentId?: string; directory?: TreeNode }
+  | { kind: 'move'; title: string; noteId: string; noteName: string; currentDirId: string }
   | { kind: 'confirm'; title: string; message: string; confirmLabel: string; danger: boolean; action: () => Promise<void> }
 
 const clientId = import.meta.env.VITE_CLIENT_ID || 'd9df3c0228c05e5c61db46348bcadf6e'
@@ -380,6 +381,86 @@ async function submitNameDialog(): Promise<void> {
     else report(cause)
   } finally {
     dialogBusy.value = false
+  }
+}
+
+const moveDirectoryOptions = computed(() => listDirectories(directories.value))
+
+function openMoveNote(id: string): void {
+  const node = findTreeNode(directories.value, id)
+  if (!node || node.type !== 2) return
+  dialogError.value = ''
+  dialogValue.value = node.pid || '0'
+  dialog.value = {
+    kind: 'move',
+    title: t('dialogs.moveNote'),
+    noteId: node.id,
+    noteName: node.label,
+    currentDirId: node.pid || '0',
+  }
+}
+
+/** 将笔记移到目标目录；`0` 表示根目录（目录外）。 */
+async function moveNoteTo(noteId: string, targetDirId: string): Promise<void> {
+  const normalizedTarget = targetDirId || '0'
+  let note: Note
+  if (draft.note?.id === noteId) {
+    if (draft.dirty) {
+      const saved = await persistDraft()
+      if (!saved) {
+        if (conflict.value) return
+        throw new Error(t('dialogs.saveBeforeMove'))
+      }
+    }
+    if (!draft.note) return
+    if ((draft.note.dirId || '0') === normalizedTarget) return
+    note = { ...draft.note, dirId: normalizedTarget }
+  } else {
+    note = await api.read(noteId)
+    if ((note.dirId || '0') === normalizedTarget) return
+    note = { ...note, dirId: normalizedTarget }
+  }
+  // 仅改目录，正文未变；skipHistory 避免无谓占历史配额
+  const saved = await api.update(note, false, true)
+  if (draft.note?.id === noteId) {
+    draft.note = {
+      ...draft.note,
+      dirId: normalizedTarget,
+      contentHash: saved.contentHash || draft.note.contentHash,
+    }
+    selectedDir.value = normalizedTarget
+    localStorage.setItem('v5notes-last-dir', normalizedTarget)
+  }
+  try { await refreshDirectories() } catch (cause) { report(cause) }
+}
+
+async function submitMoveDialog(): Promise<void> {
+  const current = dialog.value
+  if (!current || current.kind !== 'move' || dialogBusy.value) return
+  const targetDirId = dialogValue.value || '0'
+  if (targetDirId === (current.currentDirId || '0')) {
+    dialog.value = null
+    return
+  }
+  dialogBusy.value = true
+  dialogError.value = ''
+  try {
+    await moveNoteTo(current.noteId, targetDirId)
+    dialog.value = null
+  } catch (cause) {
+    if (showConflict(cause, 'save')) dialog.value = null
+    else if (dialog.value?.kind === 'move') dialogError.value = cause instanceof Error ? cause.message : t('common.operationFailed')
+    else report(cause)
+  } finally {
+    dialogBusy.value = false
+  }
+}
+
+async function dropNoteOnDirectory(noteId: string, targetDirId: string): Promise<void> {
+  try {
+    await moveNoteTo(noteId, targetDirId)
+  } catch (cause) {
+    if (!showConflict(cause, 'save')) report(cause)
   }
 }
 
@@ -922,7 +1003,11 @@ async function copyNoteContent(): Promise<void> {
   }
 }
 
-async function openTreeNoteActions(id: string, action: 'rename' | 'delete' = 'rename'): Promise<void> {
+async function openTreeNoteActions(id: string, action: 'rename' | 'delete' | 'move' = 'rename'): Promise<void> {
+  if (action === 'move') {
+    openMoveNote(id)
+    return
+  }
   await openNote(id)
   if (selectedId.value !== id) return
   if (action === 'rename') renameNote()
@@ -1190,5 +1275,5 @@ const {
   prepareToInstall: () => mayLeave(),
 })
 
-return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, socialLoginEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, startSocialLogin, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled, bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, requestUnbindSocial, messages, messagePanelOpen, messageUnreadCount, markMessageRead, markAllMessagesRead }
+return { updateState, currentVersion, updateChecking, offeredVersion, releaseNotesAvailable, requestUpdateCheck, showInstalledNotes, downloadUpdate, installReadyUpdate, retryUpdate, dismissUpdateLater, closeUpdate, cancelUpdateDownload, clientId, server, useOfficialServer, saveServerSettings, username, password, email, emailCode, authMode, registerEnabled, socialLoginEnabled, enteringAfterRegister, codeBusy, codeWait, trialExpired, showRegister, showLogin, sendRegisterCode, registerAccount, startSocialLogin, token, refreshToken, sessionExpired, busy, error, query, searching, directoryVisible, defaultDirectoryVisible, defaultTreeExpanded, focusMode, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, defaultOutlineVisible, sidebarSearchVisible, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, settingsDialogOpen, activeActionMenu, sidebarWidth, resizingSidebar, selectedDir, selectedId, total, directories, notes, draft, editorInstance, promptVisible, dialog, dialogValue, dialogError, dialogBusy, answer, loadSequence, unwatchClose, unlistenTrayExit, api, content, report, resizeSidebarStart, toggleSidebar, openSettings, setDefaultDirectoryVisible, setDefaultTreeExpanded, setDefaultOutlineVisible, syncActionMenu, closePopovers, openNameDialog, closeDialog, requestDelete, submitNameDialog, submitMoveDialog, moveDirectoryOptions, openMoveNote, moveNoteTo, dropNoteOnDirectory, confirmDialog, collectDirectoryIds, applyEditorMode, editorReady, chooseDirectory, login, restoreSession, refreshDirectories, refreshNotes, choose, respond, mayLeave, openNote, save, finishEditing, openHistory, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict, scheduleSearch, runSearch, exitSearch, newNote, addNoteInDirectory, copyNoteContent, openTreeNoteActions, deleteNote, renameNote, addDirectory, editDirectory, deleteDirectory, logout, reauthenticate, keydown, trashOpen, trashRows, trashTotal, trashPage, notice, openTrash, changeTrashPage, restoreTrashItem, purgeTrashItem, emptyTrash, currentUser, profileDialogOpen, profileBusy, avatarBusy, profileError, profileAvatarUrl, profileForm, accountQuota, cloudPlanKind, cloudStorageLabel, cloudStoragePercent, cloudExpireLabel, socialBindings, socialBusy, profileThirdPartyEnabled, bindableProviders, refreshProfile, refreshSocialBindings, openProfile, closeProfile, uploadProfileAvatar, removeProfileAvatar, saveProfile, startBindSocial, requestUnbindSocial, messages, messagePanelOpen, messageUnreadCount, markMessageRead, markAllMessagesRead }
 }
