@@ -1,0 +1,415 @@
+{
+  "slug": "v1-dark",
+  "name": "V5Notes · 深色科技版",
+  "theme": "dark",
+  "accentName": "墨绿 / 薄荷绿",
+  "brand": {
+    "name": "V5Notes",
+    "logo": "V",
+    "column": "自托管笔记",
+    "site": "官网 v5notes-website.v5ai.xin · GitHub github.com/zyw/v5notes"
+  },
+  "titles": {
+    "article": [
+      "把笔记数据拿回来之后，我又给它加上了实时消息",
+      "自托管 Markdown 笔记：V5Notes 2.0.1 都更新了什么",
+      "一套能自己部署的笔记系统，长什么样",
+      "数据自主 + 实时通知：V5Notes 上手记"
+    ],
+    "image": [
+      "把笔记搬回自己家的服务器",
+      "能私有部署的云笔记",
+      "2.0.1：实时消息来了"
+    ],
+    "recommend": 0
+  },
+  "summary": "可私有部署的 Markdown 云笔记：桌面写作、后台管人，数据在自己库里；2.0.1 起支持实时消息。",
+  "imageCaption": "云笔记好用，但数据得是自己的。V5Notes 可私有部署：桌面写作、后台管人、数据落在自己的库里；2.0.1 新增实时消息与更安全的令牌。官网 v5notes-website.v5ai.xin →",
+  "cards": [
+    {
+      "variant": "cover",
+      "kicker": "V5NOTES 2.0.1 · SELF-HOSTED",
+      "title": [
+        "数据，拿回来",
+        "消息，不断线"
+      ],
+      "accent": "消息，不断线",
+      "sub": "自托管的 Markdown 云笔记，2.0.1 来了",
+      "hero": {
+        "type": "image",
+        "img": "editor-dark.png"
+      },
+      "tags": [
+        "★ Apache 2.0 / MIT",
+        "私有一份数据",
+        "三端 · 三语",
+        "实时消息"
+      ],
+      "badge": "2.0.1"
+    },
+    {
+      "variant": "point",
+      "num": "01",
+      "label": "痛点",
+      "title": "云笔记好用，数据不是你的",
+      "accent": "数据不是你的",
+      "body": "笔记散在网盘、聊天记录和本地文件夹，想迁走才发现导不全。",
+      "hero": {
+        "type": "tiles",
+        "items": [
+          {
+            "icon": "database",
+            "t": "网盘"
+          },
+          {
+            "icon": "share",
+            "t": "聊天记录"
+          },
+          {
+            "icon": "grid",
+            "t": "本地文件夹"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "diagram",
+      "kicker": "闭环",
+      "title": "一篇笔记的完整一生",
+      "accent": "",
+      "hero": {
+        "type": "flow",
+        "vertical": true,
+        "nodes": [
+          {
+            "num": "1",
+            "t": "新建 · 编辑",
+            "d": "Markdown 原文件"
+          },
+          {
+            "num": "2",
+            "t": "自动保存",
+            "d": "Ctrl / Cmd + S"
+          },
+          {
+            "num": "3",
+            "t": "历史版本",
+            "d": "随时回滚"
+          },
+          {
+            "num": "4",
+            "t": "进回收站",
+            "d": "保留 30 天"
+          }
+        ]
+      },
+      "caption": "写、存、改、删，每一步都有退路"
+    },
+    {
+      "variant": "point",
+      "num": "02",
+      "label": "写作",
+      "title": "写作该有的，它都有",
+      "accent": "",
+      "body": "目录树、编辑预览源码三态、大纲查找、168 语言代码高亮。",
+      "hero": {
+        "type": "tiles",
+        "items": [
+          {
+            "icon": "layers",
+            "t": "目录树"
+          },
+          {
+            "icon": "code",
+            "t": "三态编辑"
+          },
+          {
+            "icon": "search",
+            "t": "大纲查找"
+          },
+          {
+            "icon": "terminal",
+            "t": "代码与公式"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "diagram",
+      "kicker": "数据归属",
+      "title": "数据全在你自己的机器上",
+      "accent": "",
+      "hero": {
+        "type": "stack",
+        "layers": [
+          {
+            "name": "应用层",
+            "items": [
+              "API",
+              "管理后台",
+              "桌面客户端"
+            ]
+          },
+          {
+            "name": "数据层",
+            "items": [
+              "MySQL 8",
+              "PostgreSQL"
+            ]
+          },
+          {
+            "name": "存储层",
+            "items": [
+              "Redis",
+              "本地文件"
+            ]
+          }
+        ]
+      },
+      "caption": "除了一台服务器，别处没有你的笔记"
+    },
+    {
+      "variant": "point",
+      "num": "03",
+      "label": "新版本",
+      "title": "2.0.1：消息不再断线",
+      "accent": "消息不再断线",
+      "body": "实时通知、侧栏铃铛；WebSocket 一次性票据，JWT 不进 URL。",
+      "hero": {
+        "type": "tiles",
+        "items": [
+          {
+            "icon": "bolt",
+            "t": "实时推送"
+          },
+          {
+            "icon": "spark",
+            "t": "消息盒子"
+          },
+          {
+            "icon": "shield",
+            "t": "一次性票据"
+          },
+          {
+            "icon": "users",
+            "t": "注册提醒"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "compare",
+      "title": "别人的云笔记 vs V5Notes",
+      "accent": "",
+      "left": {
+        "title": "别人的云笔记",
+        "items": [
+          "数据在别人机房",
+          "迁移导出看心情",
+          "停服就找不回"
+        ]
+      },
+      "right": {
+        "title": "V5Notes",
+        "items": [
+          "数据在自己磁盘",
+          "Markdown 原文件",
+          "随时整包迁走"
+        ]
+      },
+      "caption": "同样的便利，这次数据归你"
+    },
+    {
+      "variant": "ending",
+      "title": "现在就把数据拿回来",
+      "accent": "",
+      "points": [
+        "私有部署，数据在你手里",
+        "写作与权限管理都齐",
+        "2.0.1 实时消息",
+        "Apache 2.0 / MIT 开源"
+      ],
+      "ctaKicker": "官网 · 开源 · APACHE 2.0",
+      "cta": "v5notes-website.v5ai.xin",
+      "cta2": "github.com/zyw/v5notes",
+      "qr": true
+    }
+  ],
+  "article": {
+    "title": "把笔记数据拿回来之后，我又给它加上了实时消息",
+    "summary": "可私有部署的 Markdown 云笔记：桌面写作、后台管人，数据在自己库里；2.0.1 起支持实时消息。",
+    "topbar": "一个安静的开源自托管笔记 · 栏目「自托管笔记」",
+    "lead": [
+      "云笔记确实好用，直到某天你想把写了三五年的内容整包搬走。",
+      "导出缺斤少两、附件散落、想自建又得从零写一套用户和权限——很多人卡在这个念头，最后继续将就。",
+      "V5Notes 想接住的正是这件事：一套你能自己装、自己备份、自己改的 Markdown 云笔记。",
+      "2.0.1 刚发布，还补上了实时消息——自托管，也能收到提醒。"
+    ],
+    "cover": {
+      "kicker": "V5NOTES 2.0.1 · SELF-HOSTED",
+      "title": [
+        "数据，拿回来",
+        "消息，不断线"
+      ],
+      "accent": "消息，不断线",
+      "sub": "自托管的 Markdown 云笔记，2.0.1 来了",
+      "hero": {
+        "type": "image",
+        "img": "editor-dark.png"
+      }
+    },
+    "sections": [
+      {
+        "h": "一、先说结论：一套能自己装、自己备份的 Markdown 云笔记",
+        "paras": [
+          "V5Notes 是 Apache 2.0 / MIT 双协议的开源项目，三端分离：桌面客户端负责写作，管理后台负责人和权限，后端把目录、正文、历史版本和文件收在你自己的数据库里。",
+          "数据落在你自己的 MySQL 8 或 PostgreSQL，缓存走你的 Redis，附件存在本地文件目录；没有租约、没有按座席计费，也没有「数据概不迁出」的小字。服务器在哪、备份给谁，你说了算。"
+        ]
+      },
+      {
+        "h": "二、三端怎么配合",
+        "paras": [
+          "客户端走 /client/notes，管理端走 /notes、/system、/basics，两边复用同一套笔记服务；雪花 ID 从接口到页面全程按字符串处理，不会在 JS 里被精度截断。",
+          "部署也简单：一个 docker compose up，把 API、管理后台、MySQL、Redis 一起拉起来；也可以打成 Jar 配 Nginx，数据库换成 PostgreSQL。方言由 V5NOTES_DB_DIALECT 一个开关切换，建表交给 Flyway。"
+        ],
+        "figure": {
+          "kicker": "三端分工",
+          "title": "写作 · 管理 · 数据",
+          "accent": "",
+          "cap": "图1：三端各司其职——写作用客户端，管人用后台，数据在服务端",
+          "height": 720,
+          "hero": {
+            "type": "stack",
+            "layers": [
+              {
+                "name": "展示端",
+                "items": [
+                  "桌面客户端",
+                  "管理后台"
+                ]
+              },
+              {
+                "name": "服务端",
+                "items": [
+                  "note-notes",
+                  "note-system",
+                  "note-basics"
+                ]
+              },
+              {
+                "name": "数据端",
+                "items": [
+                  "MySQL / PostgreSQL",
+                  "Redis",
+                  "本地文件"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "h": "三、写作体验：从目录到三态编辑",
+        "paras": [
+          "编辑器基于自家的 @v5md：目录和笔记混在一棵树里，搜索、新建、重命名、删除都在一处；编辑、预览、源码三态随时切换，撤销记录留在同一次会话里。",
+          "正文支持表格、任务列表、KaTeX 公式和 168 种语言的代码高亮；右侧能拉出大纲、做全文查找，命令面板把常用操作收进一个入口，专注模式收起侧栏只剩正文。Ctrl/Cmd+S 保存，切走前会先问你要保存、放弃还是取消。"
+        ],
+        "figure": {
+          "image": "editor-light.png",
+          "cap": "图2：桌面客户端，编辑 / 预览 / 源码三态随时切换"
+        }
+      },
+      {
+        "h": "四、2.0.1 更新了什么：实时消息与更安全的令牌",
+        "paras": [
+          "2.0.1 把「自托管」和「及时」这两件事接上了：管理端和桌面客户端都支持实时消息与通知，侧栏多了消息铃铛。WebSocket 连接用一次性票据换取，不把 JWT 塞进 URL；消息盒子的富文本按白名单消毒后再渲染，公告不会再显示成一堆裸标签。",
+          "安全上延续一套克制的做法：登录用 RSA 加密，访问令牌只放在内存，刷新令牌默认 30 天、一次性轮换，过期自动续期、失败才让你重新登录；客户端从不保存你的密码。它还补了桌面单实例——重复启动会把 Deep Link 交给已运行的窗口，不再打断社交登录的回调。"
+        ],
+        "quote": "自托管不是把门焊死，而是把钥匙握在自己手里。",
+        "figure": {
+          "kicker": "2.0.1 新能力",
+          "title": "实时消息 · 更安全的令牌",
+          "accent": "",
+          "cap": "图3：2.0.1 的关键升级",
+          "height": 640,
+          "hero": {
+            "type": "tiles",
+            "items": [
+              {
+                "icon": "bolt",
+                "t": "实时推送"
+              },
+              {
+                "icon": "spark",
+                "t": "消息盒子"
+              },
+              {
+                "icon": "shield",
+                "t": "一次性票据"
+              },
+              {
+                "icon": "play",
+                "t": "单实例"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "h": "五、边界与适用性",
+        "paras": [
+          "需要说清楚边界：V5Notes 单机优先，不做多人实时协同；同一篇笔记两人同时改，后保存的会覆盖先保存的，要靠历史版本找回。",
+          "它也不提供 SaaS 级的运维兜底，备份、证书、升级都得自己来。反过来，你换来的是一套干净、可改、可迁移的代码：Java 21 + Spring Boot 4.1 的后端，Vue 3.5 + Tauri 2 的客户端，Vue 3.5 + Element Plus 的管理后台。"
+        ],
+        "table": {
+          "head": [
+            "能力",
+            "说明"
+          ],
+          "rows": [
+            [
+              "数据自主",
+              "MySQL/PG、Redis、本地文件都在你手里"
+            ],
+            [
+              "写作体验",
+              "三态编辑、大纲查找、168 语言高亮、KaTeX"
+            ],
+            [
+              "删改可逆",
+              "30 天回收站 + 历史版本"
+            ],
+            [
+              "实时消息",
+              "2.0.1 起支持，一次性票据更安全"
+            ],
+            [
+              "多语言",
+              "简体 / 繁体 / 英文"
+            ]
+          ]
+        }
+      }
+    ],
+    "closing": "一句话：如果你在意「笔记到底存在谁家」，又想写作和消息都不掉线，V5Notes 值得放进你的服务器。",
+    "links": [
+      {
+        "label": "官网",
+        "url": "https://v5notes-website.v5ai.xin/"
+      },
+      {
+        "label": "项目地址",
+        "url": "https://github.com/zyw/v5notes"
+      },
+      {
+        "label": "Gitee",
+        "url": "https://gitee.com/zyw/v5notes"
+      },
+      {
+        "label": "开源协议",
+        "url": "Apache 2.0 / MIT"
+      }
+    ],
+    "cta": "官网：v5notes-website.v5ai.xin ｜ 源码：github.com/zyw/v5notes ｜ 关注「自托管笔记」回复「部署」领取部署清单"
+  }
+}

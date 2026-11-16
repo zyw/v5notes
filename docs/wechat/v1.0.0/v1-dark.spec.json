@@ -1,0 +1,361 @@
+{
+  "slug": "v1-dark",
+  "name": "V5Notes · 深色科技版",
+  "theme": "dark",
+  "accentName": "墨绿 / 薄荷绿",
+  "brand": {
+    "name": "V5Notes",
+    "logo": "V",
+    "column": "自托管笔记",
+    "site": "官网 v5notes-website.v5ai.xin · GitHub github.com/zyw/v5notes"
+  },
+  "titles": {
+    "article": [
+      "云笔记很好用，直到你想把数据拿回来",
+      "一套能自己部署的 Markdown 云笔记：V5Notes 上手记",
+      "放弃了网盘笔记，我把笔记搬回了自己的服务器",
+      "三端、三语、可私有部署：V5Notes 开源了"
+    ],
+    "image": [
+      "把想法留在自己的服务器上",
+      "能私有部署的云笔记",
+      "数据，留在自己手里"
+    ],
+    "recommend": 0
+  },
+  "summary": "可私有部署的 Markdown 云笔记：桌面写作、后台管人，数据存在自己的数据库里，开源免费。",
+  "imageCaption": "云笔记好用，但数据得是自己的。V5Notes：可私有部署的 Markdown 云笔记，桌面写作、后台管人、数据落在自己的库里。Apache 2.0 开源 →",
+  "cards": [
+    {
+      "variant": "cover",
+      "kicker": "SELF-HOSTED · MARKDOWN",
+      "title": [
+        "把想法，留在",
+        "自己的服务器上"
+      ],
+      "accent": "自己的服务器上",
+      "sub": "可私有部署的 Markdown 云笔记",
+      "hero": {
+        "type": "image",
+        "img": "editor-dark.png"
+      },
+      "tags": [
+        "★ Apache 2.0 开源",
+        "三端 · 三语",
+        "数据私有",
+        "Markdown 原文件"
+      ],
+      "badge": "开源"
+    },
+    {
+      "variant": "point",
+      "num": "01",
+      "label": "痛点",
+      "title": "云笔记好用，数据不是你的",
+      "accent": "数据不是你的",
+      "body": "笔记散在网盘、聊天记录和本地文件夹，想迁走才发现导不全。",
+      "hero": {
+        "type": "tiles",
+        "items": [
+          {
+            "icon": "database",
+            "t": "网盘"
+          },
+          {
+            "icon": "share",
+            "t": "聊天记录"
+          },
+          {
+            "icon": "grid",
+            "t": "本地文件夹"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "diagram",
+      "kicker": "闭环",
+      "title": "一篇笔记的完整一生",
+      "accent": "",
+      "hero": {
+        "type": "flow",
+        "vertical": true,
+        "nodes": [
+          {
+            "num": "1",
+            "t": "新建 · 编辑",
+            "d": "Markdown 原文件"
+          },
+          {
+            "num": "2",
+            "t": "自动保存",
+            "d": "Ctrl / Cmd + S"
+          },
+          {
+            "num": "3",
+            "t": "历史版本",
+            "d": "随时回滚"
+          },
+          {
+            "num": "4",
+            "t": "进回收站",
+            "d": "保留 30 天"
+          }
+        ]
+      },
+      "caption": "写、存、改、删，每一步都有退路"
+    },
+    {
+      "variant": "point",
+      "num": "02",
+      "label": "写作",
+      "title": "写作该有的，它都有",
+      "accent": "",
+      "body": "目录笔记混排、编辑预览源码三态、大纲查找、专注模式。",
+      "hero": {
+        "type": "tiles",
+        "items": [
+          {
+            "icon": "layers",
+            "t": "目录树"
+          },
+          {
+            "icon": "code",
+            "t": "三态编辑"
+          },
+          {
+            "icon": "search",
+            "t": "大纲查找"
+          },
+          {
+            "icon": "bolt",
+            "t": "专注模式"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "diagram",
+      "kicker": "数据归属",
+      "title": "数据全在你自己的机器上",
+      "accent": "",
+      "hero": {
+        "type": "stack",
+        "layers": [
+          {
+            "name": "应用层",
+            "items": [
+              "API",
+              "管理后台",
+              "桌面客户端"
+            ]
+          },
+          {
+            "name": "数据层",
+            "items": [
+              "MySQL 8",
+              "PostgreSQL"
+            ]
+          },
+          {
+            "name": "存储层",
+            "items": [
+              "Redis",
+              "本地文件"
+            ]
+          }
+        ]
+      },
+      "caption": "除了一台服务器，别处没有你的笔记"
+    },
+    {
+      "variant": "compare",
+      "title": "别人的云笔记 vs V5Notes",
+      "accent": "",
+      "left": {
+        "title": "别人的云笔记",
+        "items": [
+          "数据在别人机房",
+          "迁移导出看心情",
+          "停服就找不回"
+        ]
+      },
+      "right": {
+        "title": "V5Notes",
+        "items": [
+          "数据在自己磁盘",
+          "Markdown 原文件",
+          "随时整包迁走"
+        ]
+      },
+      "caption": "同样的便利，这次数据归你"
+    },
+    {
+      "variant": "point",
+      "num": "03",
+      "label": "管理",
+      "title": "账号和权限，有人管",
+      "accent": "",
+      "body": "用户角色、操作审计、系统监控、客户端配置，后台一屏看全。",
+      "hero": {
+        "type": "image",
+        "img": "admin-home.png"
+      }
+    },
+    {
+      "variant": "ending",
+      "title": "现在就把数据拿回来",
+      "accent": "",
+      "points": [
+        "私有部署，数据在你手里",
+        "写作体验与权限管理都齐",
+        "Apache 2.0 / MIT 开源"
+      ],
+      "cta": "v5notes-website.v5ai.xin",
+      "ctaKicker": "官网 · 开源 · APACHE 2.0",
+      "qr": true,
+      "cta2": "github.com/zyw/v5notes"
+    }
+  ],
+  "article": {
+    "title": "云笔记很好用，直到你想把数据拿回来",
+    "summary": "可私有部署的 Markdown 云笔记：桌面写作、后台管人，数据存在自己的数据库里，开源免费。",
+    "topbar": "一个安静的开源自托管笔记 · 栏目「自托管笔记」",
+    "lead": [
+      "云笔记确实好用，直到某天你想把写了三五年的内容整包搬走。",
+      "导出缺斤少两、附件散落、想自建又得从零写一套用户和权限——很多人卡在这个念头，最后继续将就。",
+      "V5Notes 把这两件事接上了：一套你能自己装、自己备份、自己改的 Markdown 云笔记。"
+    ],
+    "cover": {
+      "kicker": "SELF-HOSTED · MARKDOWN",
+      "title": [
+        "把想法，留在",
+        "自己的服务器上"
+      ],
+      "accent": "自己的服务器上",
+      "sub": "可私有部署的 Markdown 云笔记",
+      "hero": {
+        "type": "image",
+        "img": "editor-dark.png"
+      }
+    },
+    "sections": [
+      {
+        "h": "一、先说结论：一套能自己装、自己备份的 Markdown 云笔记",
+        "paras": [
+          "V5Notes 是 Apache 2.0 / MIT 双协议的开源项目，三端分离：桌面客户端负责写作，管理后台负责人和权限，后端把目录、正文、历史版本和文件收在你自己的数据库里。",
+          "没有租约、没有按座席计费，也没有「数据概不迁出」的小字。服务器在哪、备份给谁，你说了算。"
+        ],
+        "figure": {
+          "image": "editor-dark.png",
+          "cap": "图1：桌面客户端，编辑 / 预览 / 源码三态随时切换"
+        }
+      },
+      {
+        "h": "二、三端怎么配合",
+        "paras": [
+          "客户端走 /client/notes，后台走 /notes、/system、/basics，同一套笔记服务同时服务两端，雪花 ID 从接口到页面全程按字符串处理。",
+          "部署上，一个 docker compose up 就能把 API、管理后台、MySQL、Redis 一起拉起来；也可以打成 Jar 配 Nginx，数据库换成 PostgreSQL。"
+        ],
+        "figure": {
+          "kicker": "三端分工",
+          "title": "写作 · 管理 · 数据",
+          "accent": "",
+          "cap": "图2：三端各司其职——写作用客户端，管人用后台，数据在服务端",
+          "height": 720,
+          "hero": {
+            "type": "stack",
+            "layers": [
+              {
+                "name": "展示端",
+                "items": [
+                  "桌面客户端",
+                  "管理后台"
+                ]
+              },
+              {
+                "name": "服务端",
+                "items": [
+                  "note-notes",
+                  "note-system",
+                  "note-basics"
+                ]
+              },
+              {
+                "name": "数据端",
+                "items": [
+                  "MySQL / PostgreSQL",
+                  "Redis",
+                  "本地文件"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "h": "三、写作与管理，各归其位",
+        "paras": [
+          "写作界面只留目录、正文和写作工具：目录笔记混排的树、编辑/预览/源码三态、大纲、查找、命令面板，Ctrl/Cmd+S 保存，切走前会先问你。",
+          "管理后台则把用户、部门、岗位、角色、菜单、字典、参数、通知打包，还带在线用户、登录日志、操作日志和缓存监控。"
+        ],
+        "figure": {
+          "image": "admin-home.png",
+          "cap": "图3：管理后台工作台——笔记总数、活跃用户、内容增长与系统脉搏"
+        },
+        "quote": "把「数据在别人那儿」换成「数据在我这儿」，安全感是不一样的。"
+      },
+      {
+        "h": "四、边界：它不是万能钥匙",
+        "paras": [
+          "需要说清楚：V5Notes 是单机优先的私有部署方案，不做多人实时协同；同一篇笔记两人同时改，后保存的会覆盖先保存的，需要靠历史版本找回。",
+          "它也不带 SaaS 级的运维兜底——备份、证书、升级都得你自己来。它适合愿意为一台服务器负责的个人和小团队。"
+        ],
+        "table": {
+          "head": [
+            "能力",
+            "说明"
+          ],
+          "rows": [
+            [
+              "数据自主",
+              "数据库与文件都在你的机器"
+            ],
+            [
+              "三端三语",
+              "客户端 · 后台 · 简繁英"
+            ],
+            [
+              "版本与回收站",
+              "历史版本 + 30 天回收站"
+            ],
+            [
+              "部署灵活",
+              "Docker / Jar+Nginx / MySQL·PostgreSQL"
+            ]
+          ]
+        }
+      }
+    ],
+    "closing": "一句话：如果你在意「笔记到底存在谁家」，V5Notes 值得放进你的服务器。",
+    "links": [
+      {
+        "label": "官网",
+        "url": "https://v5notes-website.v5ai.xin/"
+      },
+      {
+        "label": "项目地址",
+        "url": "https://github.com/zyw/v5notes"
+      },
+      {
+        "label": "Gitee",
+        "url": "https://gitee.com/zyw/v5notes"
+      },
+      {
+        "label": "开源协议",
+        "url": "Apache 2.0 / MIT"
+      }
+    ],
+    "cta": "官网：v5notes-website.v5ai.xin ｜ 源码：github.com/zyw/v5notes ｜ 关注「自托管笔记」回复「部署」领取部署清单"
+  }
+}
