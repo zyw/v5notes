@@ -2,6 +2,15 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TreeNode } from '../service/api'
+import {
+  clearNoteDrag,
+  dragDistance,
+  markNoteDragActive,
+  noteDragSession,
+  readDropDirFromPoint,
+  shouldStartNoteDrag,
+  updateNoteDragTarget,
+} from '../models/noteDrag'
 import TreeIcon from './TreeIcon.vue'
 
 const { t } = useI18n()
@@ -22,7 +31,9 @@ const emit = defineEmits<{
   addNote: [id: string]
   noteOpen: [id: string]
   noteRename: [id: string]
+  noteMove: [id: string]
   noteDelete: [id: string]
+  noteDrop: [noteId: string, targetDirId: string]
 }>()
 
 const isDirectory = computed(() => props.node.type === 1)
@@ -38,7 +49,24 @@ type MenuPosition = { top: string; left: string }
 const menuStyle = ref<Partial<MenuPosition>>({})
 let trackingMenu = false
 let sidebarObserver: ResizeObserver | null = null
+let expandTimer: number | undefined
+let suppressClick = false
+let pointerTracking: {
+  pointerId: number
+  startX: number
+  startY: number
+  noteId: string
+  fromDirId: string
+} | null = null
 const onMenuViewportChange = (): void => { placeMenu() }
+
+const dragging = computed(() => noteDragSession.value?.active === true && noteDragSession.value.noteId === props.node.id)
+const dropActive = computed(() => (
+  isDirectory.value
+  && noteDragSession.value?.active === true
+  && noteDragSession.value.targetDirId === props.node.id
+  && noteDragSession.value.noteId !== props.node.id
+))
 
 function menuPopover(): HTMLElement | null {
   const popover = menuRoot.value?.querySelector('.popover-menu')
@@ -134,6 +162,8 @@ function onMenuToggle(event: Event): void {
 watch(menuOpen, (open) => { void syncMenu(open) })
 onBeforeUnmount(() => {
   trackMenu(false)
+  clearExpandTimer()
+  stopPointerTracking()
   const popover = menuPopover()
   if (popover) hideMenu(popover)
 })
@@ -147,7 +177,18 @@ watch(() => props.selectedId, () => {
   if (isDirectory.value && containsSelectedNote(props.node)) expanded.value = true
 })
 
+watch(() => noteDragSession.value?.targetDirId, (targetDirId) => {
+  if (!isDirectory.value) return
+  clearExpandTimer()
+  if (!noteDragSession.value?.active || targetDirId !== props.node.id || expanded.value) return
+  expandTimer = window.setTimeout(() => {
+    expanded.value = true
+    expandTimer = undefined
+  }, 450)
+})
+
 function activate(): void {
+  if (suppressClick) return
   if (isDirectory.value) {
     expanded.value = !expanded.value
     emit('directory', props.node.id)
@@ -155,29 +196,135 @@ function activate(): void {
     emit('select', props.node.id)
   }
 }
+
+function onRowKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  activate()
+}
+
+function clearExpandTimer(): void {
+  if (expandTimer !== undefined) {
+    window.clearTimeout(expandTimer)
+    expandTimer = undefined
+  }
+}
+
+function stopPointerTracking(): void {
+  if (!pointerTracking) return
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
+  pointerTracking = null
+}
+
+function onPointerDown(event: PointerEvent): void {
+  if (isDirectory.value || event.button !== 0 || event.pointerType === 'touch' && event.isPrimary === false) return
+  if (event.target instanceof Element && event.target.closest('.tree-menu, .tree-actions')) return
+  menuOpen.value = false
+  pointerTracking = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    noteId: props.node.id,
+    fromDirId: props.node.pid || '0',
+  }
+  noteDragSession.value = {
+    noteId: props.node.id,
+    fromDirId: props.node.pid || '0',
+    active: false,
+    targetDirId: null,
+  }
+  if (event.currentTarget instanceof HTMLElement) {
+    try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* 部分环境不支持 capture */ }
+  }
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
+}
+
+function onPointerMove(event: PointerEvent): void {
+  const tracking = pointerTracking
+  if (!tracking || event.pointerId !== tracking.pointerId) return
+  const session = noteDragSession.value
+  if (!session || session.noteId !== tracking.noteId) return
+  if (!session.active) {
+    if (!shouldStartNoteDrag(dragDistance(tracking.startX, tracking.startY, event.clientX, event.clientY))) return
+    markNoteDragActive(session)
+    suppressClick = true
+  }
+  event.preventDefault()
+  const targetDirId = readDropDirFromPoint(event.clientX, event.clientY)
+  // 不能拖到自己当前目录时仍高亮目标，松手时再跳过
+  updateNoteDragTarget(targetDirId)
+}
+
+function onPointerUp(event: PointerEvent): void {
+  const tracking = pointerTracking
+  if (!tracking || event.pointerId !== tracking.pointerId) return
+  const session = noteDragSession.value
+  const didDrag = session?.active === true && session.noteId === tracking.noteId
+  const targetDirId = didDrag
+    ? (readDropDirFromPoint(event.clientX, event.clientY) ?? session.targetDirId)
+    : null
+  stopPointerTracking()
+  clearNoteDrag()
+  clearExpandTimer()
+  if (didDrag) {
+    suppressClick = true
+    window.setTimeout(() => { suppressClick = false }, 0)
+    if (targetDirId && targetDirId !== tracking.fromDirId) {
+      emit('noteDrop', tracking.noteId, targetDirId)
+    }
+    return
+  }
+  suppressClick = false
+}
 </script>
 
 <template>
-  <div class="tree-node">
-    <div class="tree-row" :class="{ active: !isDirectory && selectedId === node.id, 'directory-row': isDirectory }" :style="{ '--tree-depth': depth || 0 }" @contextmenu.prevent="menuOpen = true">
-      <button
+  <div class="tree-node" :data-drop-dir="isDirectory ? node.id : undefined" :class="{ 'is-drop-target': dropActive }">
+    <div
+      class="tree-row"
+      :class="{
+        active: !isDirectory && selectedId === node.id,
+        'directory-row': isDirectory,
+        'is-drop-target': dropActive,
+        'is-dragging': dragging,
+        'is-note-row': !isDirectory,
+      }"
+      :style="{ '--tree-depth': depth || 0 }"
+      @contextmenu.prevent="menuOpen = true"
+      @pointerdown="onPointerDown"
+    >
+      <div
         class="tree-disclosure"
-        type="button"
+        role="button"
+        tabindex="0"
         :aria-label="isDirectory ? t('tree.toggle', { action: expanded ? t('tree.collapse') : t('tree.expand'), name: node.label }) : undefined"
         :aria-expanded="isDirectory ? expanded : undefined"
         @click="activate"
+        @keydown="onRowKeydown"
       >
         <svg v-if="isDirectory" viewBox="0 0 16 16" aria-hidden="true">
           <path d="m5.75 3.5 4.5 4.5-4.5 4.5" />
         </svg>
-      </button>
-      <button class="tree-label" type="button" :title="hint ? `${node.label} · ${hint}` : node.label" :aria-label="hint ? `${node.label}，${hint}` : node.label" @click="activate">
+      </div>
+      <div
+        class="tree-label"
+        role="button"
+        tabindex="0"
+        :title="hint ? `${node.label} · ${hint}` : node.label"
+        :aria-label="hint ? `${node.label}，${hint}` : node.label"
+        @click="activate"
+        @keydown="onRowKeydown"
+      >
         <TreeIcon :kind="isDirectory ? 'folder' : 'note'" :open="isDirectory && expanded" />
         <span class="tree-name">{{ node.label }}</span>
         <span v-if="hint" class="tree-hint">{{ hint }}</span>
-      </button>
+      </div>
       <div class="tree-actions">
-        <details ref="menuRoot" class="tree-menu" :open="menuOpen" @toggle="onMenuToggle" @click.stop>
+        <details ref="menuRoot" class="tree-menu" :open="menuOpen" @toggle="onMenuToggle" @click.stop @pointerdown.stop>
           <summary :title="t('tree.more')" :aria-label="t('tree.moreFor', { name: node.label })"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="10" r="1.35"/><circle cx="10" cy="10" r="1.35"/><circle cx="16" cy="10" r="1.35"/></svg></summary>
           <div class="popover-menu" popover="manual" :style="menuStyle" @toggle.stop>
             <template v-if="isDirectory">
@@ -189,6 +336,7 @@ function activate(): void {
             <template v-else>
               <button @click="emit('noteOpen', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16 16 4M8 4h8v8"/></svg>{{ t('tree.open') }}</button>
               <button @click="emit('noteRename', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.8 3.2 4 4M3 17l3.8-.8L16 7a1.4 1.4 0 0 0-2-2L4.8 14.2z"/></svg>{{ t('tree.rename') }}</button>
+              <button @click="emit('noteMove', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10h9.5M10 6.5 13.5 10 10 13.5M15.5 4.5v11"/></svg>{{ t('tree.move') }}</button>
               <button class="danger-menu-item" @click="emit('noteDelete', node.id); menuOpen = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg>{{ t('tree.deleteNote') }}</button>
             </template>
           </div>
@@ -203,7 +351,8 @@ function activate(): void {
             @select="emit('select', $event)" @directory="emit('directory', $event)" @add="emit('add', $event)"
             @rename="emit('rename', $event)" @remove="emit('remove', $event)"
             @add-note="emit('addNote', $event)" @note-open="emit('noteOpen', $event)"
-            @note-rename="emit('noteRename', $event)" @note-delete="emit('noteDelete', $event)"
+            @note-rename="emit('noteRename', $event)" @note-move="emit('noteMove', $event)" @note-delete="emit('noteDelete', $event)"
+            @note-drop="(noteId, targetDirId) => emit('noteDrop', noteId, targetDirId)"
           />
         </div>
       </div>

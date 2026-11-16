@@ -154,13 +154,24 @@ input { outline: none; }
 .search-reveal-enter-from, .search-reveal-leave-to { opacity: 0; transform: translateY(-7px); margin-top: -34px; margin-bottom: 0; }
 .tree-scroll { flex: 1; min-height: 0; overflow: auto; margin-right: -11px; padding: 0 12px 12px 1px; }
 .tree-node { min-width: 0; }
-.tree-row { min-width: 0; min-height: 37px; display: flex; align-items: center; gap: 1px; padding: 2px 4px 2px calc(1px + var(--tree-depth, 0) * 17px); border-radius: 7px; color: #39473d; font-size: 13px; }
+.tree-row { min-width: 0; min-height: 37px; display: flex; align-items: center; gap: 1px; padding: 2px 4px 2px calc(1px + var(--tree-depth, 0) * 17px); border-radius: 7px; color: #39473d; font-size: 13px; user-select: none; }
 .tree-row:hover { background: #ecefe9; }
 .tree-row.active { background: #e2eae1; color: #254c3a; font-weight: 650; }
-.tree-disclosure { width: 22px; min-width: 22px; height: 30px; display: grid; place-items: center; padding: 0; color: #87958a; }
+.tree-row.is-note-row { cursor: grab; touch-action: none; }
+.tree-row.is-dragging { opacity: .55; cursor: grabbing; }
+.tree-row.is-drop-target, .tree-node.is-drop-target > .tree-row, .tree-root-drop.is-drop-target { background: #d7e6db; outline: 1px solid #7fa18a; outline-offset: -1px; }
+.tree-root-drop {
+  display: none; align-items: center; gap: 8px; min-height: 34px; margin: 0 0 8px; padding: 0 10px;
+  border: 1px dashed #c5d2c6; border-radius: 8px; color: #62756a; font-size: 12px;
+}
+.tree-root-drop svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+html.is-dragging-note .tree-root-drop { display: flex; }
+html.is-dragging-note, html.is-dragging-note * { cursor: grabbing !important; }
+html.is-dragging-note .tree-row.is-drop-target, html.is-dragging-note .tree-root-drop.is-drop-target { cursor: copy !important; }
+.tree-disclosure { width: 22px; min-width: 22px; height: 30px; display: grid; place-items: center; padding: 0; color: #87958a; cursor: inherit; }
 .tree-disclosure svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform-origin: center; transition: transform .18s ease; }
 .tree-disclosure[aria-expanded="true"] svg { transform: rotate(90deg); }
-.tree-label { min-width: 0; flex: 1; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 3px; text-align: left; overflow: hidden; }
+.tree-label { min-width: 0; flex: 1; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 3px; text-align: left; overflow: hidden; cursor: inherit; }
 .tree-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tree-hint { min-width: 0; max-width: 46%; overflow: hidden; color: #8b978c; font-size: 11px; font-weight: 400; white-space: nowrap; text-overflow: ellipsis; }
 .tree-icon { width: 17px; height: 17px; flex: 0 0 17px; color: #789380; }
@@ -676,6 +687,20 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .dialog-field { display: grid; gap: 8px; margin-top: 22px; color: #526355; font-size: 12px; font-weight: 600; }
 .dialog-field input { width: 100%; padding: 12px 13px; border: 1px solid #dfe4dc; border-radius: 8px; background: #fff; color: #27342d; font-size: 14px; }
 .dialog-field input:focus { border-color: #7fa18a; box-shadow: 0 0 0 3px #789b8424; }
+.dialog-lead { margin: 10px 0 0; color: #5f6f63; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.move-target-field { margin-top: 18px; border: 0; padding: 0; min-width: 0; }
+.move-target-field legend { margin-bottom: 8px; }
+.move-target-list {
+  max-height: min(42vh, 280px); overflow: auto; display: grid; gap: 4px;
+  padding: 6px; border: 1px solid #e2e7df; border-radius: 10px; background: #f7f8f4;
+}
+.move-target-option {
+  display: flex; align-items: center; gap: 8px; min-height: 34px;
+  padding: 6px 10px 6px calc(10px + var(--move-depth, 0) * 14px);
+  border-radius: 7px; color: #314239; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.move-target-option:hover, .move-target-option.active { background: #e7eee6; }
+.move-target-option input { width: auto; margin: 0; padding: 0; accent-color: #3f6b55; box-shadow: none; }
 .dialog-error { margin: 10px 0 0; color: #ad453b !important; }
 .danger-eyebrow { color: #ad5745; }
 .danger-button { padding: 9px 13px; border-radius: 7px; color: white; background: #b7483c; font-weight: 600; }

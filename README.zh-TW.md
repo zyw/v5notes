@@ -424,6 +424,7 @@ Docker Compose 使用 `v5notes2/docker/.env`，變數名見 [env.example](v5note
 | `V5NOTES_MAIL_ENABLED` / `HOST` / `PORT` / `FROM` / `USER` / `PASSWORD` | SMTP |
 | `V5NOTES_SMS_ALIBABA_*` | 阿里雲簡訊 |
 | `V5NOTES_SMS_TENCENT_*` | 騰訊雲簡訊 |
+| `V5NOTES_JUSTAUTH_ADDRESS` / `CLIENT_ADDRESS` | 管理端 / 客戶端 OAuth 回調基址 |
 | `V5NOTES_GITEE_CLIENT_ID` / `CLIENT_SECRET` | Gitee 登入 |
 | `V5NOTES_GITHUB_CLIENT_ID` / `CLIENT_SECRET` | GitHub 登入 |
 

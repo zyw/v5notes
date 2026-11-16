@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { TreeNode } from '../service/api'
-import { flattenNotes, readNoteGroup, readNoteSort, sortTree } from './sidebarBrowse'
+import {
+  findTreeNode,
+  flattenNotes,
+  listDirectories,
+  readNoteGroup,
+  readNoteSort,
+  sortTree,
+} from './sidebarBrowse'
 
 function note(id: string, label: string, updateTime?: string): TreeNode {
   return { id, pid: '0', label, type: 2, updateTime }
@@ -71,5 +78,19 @@ describe('sidebar browse', () => {
     expect(readNoteSort(null)).toBe('name')
     expect(readNoteSort('updated')).toBe('updated')
     expect(readNoteSort('manual')).toBe('name')
+  })
+
+  it('finds notes and directories in the nested tree', () => {
+    expect(findTreeNode(tree, 'note-old')?.label).toBe('旧稿')
+    expect(findTreeNode(tree, 'dir-archive')?.type).toBe(1)
+    expect(findTreeNode(tree, 'missing')).toBeNull()
+  })
+
+  it('lists only directories with depth for move pickers', () => {
+    expect(listDirectories(tree).map(item => [item.id, item.depth, item.label])).toEqual([
+      ['dir-project', 0, '项目'],
+      ['dir-archive', 1, '资料'],
+      ['dir-daily', 0, '日报'],
+    ])
   })
 })

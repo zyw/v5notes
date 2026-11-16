@@ -9,8 +9,36 @@ export interface FlatNote {
   path: string
 }
 
+export interface DirectoryOption {
+  id: string
+  label: string
+  depth: number
+}
+
 function isDirectory(node: TreeNode): boolean {
   return node.type === 1
+}
+
+export function findTreeNode(nodes: TreeNode[], id: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findTreeNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** 仅列出目录，供移动笔记时选择目标。 */
+export function listDirectories(nodes: TreeNode[], depth = 0): DirectoryOption[] {
+  const options: DirectoryOption[] = []
+  for (const node of nodes) {
+    if (!isDirectory(node)) continue
+    options.push({ id: node.id, label: node.label, depth })
+    if (node.children?.length) options.push(...listDirectories(node.children, depth + 1))
+  }
+  return options
 }
 
 export function compareName(left: string, right: string): number {

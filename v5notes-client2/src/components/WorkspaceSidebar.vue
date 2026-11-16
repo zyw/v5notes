@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { clearNoteDrag, noteDragSession } from '../models/noteDrag'
 import { flattenNotes, sortTree } from '../models/sidebarBrowse'
 import TreeItem from './TreeItem.vue'
 import TreeIcon from './TreeIcon.vue'
 import MessageBell from './MessageBell.vue'
 import brandIcon from '../assets/brand-icon.png'
 const { t } = useI18n()
-const { directoryVisible, focusMode, sidebarSearchVisible, scheduleSearch, runSearch, exitSearch, query, searching, notes, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
+const { directoryVisible, focusMode, sidebarSearchVisible, scheduleSearch, runSearch, exitSearch, query, searching, notes, workspaceMenuOpen, noteGroup, noteSort, setNoteGroup, setNoteSort, openSettings, addDirectory, newNote, selectedId, openNote, directories, defaultTreeExpanded, chooseDirectory, editDirectory, deleteDirectory, addNoteInDirectory, openTreeNoteActions, dropNoteOnDirectory, currentUser, openProfile, username, logout, resizeSidebarStart, trashOpen, openTrash } = useWorkspaceContext()
 
 const sortedTree = computed(() => sortTree(directories.value, noteSort.value))
 const flatNotes = computed(() => flattenNotes(directories.value, noteSort.value))
 const browseEmpty = computed(() => noteGroup.value === 'list' ? flatNotes.value.length === 0 : directories.value.length === 0)
+const rootDropActive = computed(() => (
+  noteDragSession.value?.active === true
+  && noteDragSession.value.targetDirId === '0'
+  && noteDragSession.value.fromDirId !== '0'
+))
 
 function closeProfileMenu(event: Event): void {
   const menu = (event.currentTarget as HTMLElement).closest('details.profile-menu')
@@ -20,6 +26,10 @@ function closeProfileMenu(event: Event): void {
   menu.open = false
   if (event instanceof KeyboardEvent) menu.querySelector('summary')?.focus()
 }
+
+onBeforeUnmount(() => {
+  clearNoteDrag()
+})
 </script>
 
 <template>
@@ -70,12 +80,21 @@ function closeProfileMenu(event: Event): void {
         <p v-if="!notes.length" class="empty-list">{{ t('sidebar.noMatches') }}</p>
       </div>
       <div v-else class="tree-scroll">
+        <div
+          class="tree-root-drop"
+          data-drop-dir="0"
+          :class="{ 'is-drop-target': rootDropActive }"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10h9.5M10 6.5 13.5 10 10 13.5M15.5 4.5v11"/></svg>
+          <span>{{ t('tree.moveToRoot') }}</span>
+        </div>
         <template v-if="noteGroup === 'tree'">
           <TreeItem
             v-for="node in sortedTree" :key="node.id" :node="node" :selected-id="selectedId" :default-tree-expanded="defaultTreeExpanded"
             @select="openNote" @directory="chooseDirectory" @add="addDirectory" @rename="editDirectory" @remove="deleteDirectory"
             @add-note="addNoteInDirectory" @note-open="(id) => openNote(id)"
-            @note-rename="(id) => openTreeNoteActions(id, 'rename')" @note-delete="(id) => openTreeNoteActions(id, 'delete')"
+            @note-rename="(id) => openTreeNoteActions(id, 'rename')" @note-move="(id) => openTreeNoteActions(id, 'move')"
+            @note-delete="(id) => openTreeNoteActions(id, 'delete')" @note-drop="dropNoteOnDirectory"
           />
         </template>
         <template v-else>
@@ -83,7 +102,8 @@ function closeProfileMenu(event: Event): void {
             v-for="item in flatNotes" :key="item.note.id" :node="item.note" :hint="item.path" :selected-id="selectedId" :default-tree-expanded="defaultTreeExpanded"
             @select="openNote" @directory="chooseDirectory" @add="addDirectory" @rename="editDirectory" @remove="deleteDirectory"
             @add-note="addNoteInDirectory" @note-open="(id) => openNote(id)"
-            @note-rename="(id) => openTreeNoteActions(id, 'rename')" @note-delete="(id) => openTreeNoteActions(id, 'delete')"
+            @note-rename="(id) => openTreeNoteActions(id, 'rename')" @note-move="(id) => openTreeNoteActions(id, 'move')"
+            @note-delete="(id) => openTreeNoteActions(id, 'delete')" @note-drop="dropNoteOnDirectory"
           />
         </template>
         <p v-if="browseEmpty" class="empty-list">{{ noteGroup === 'list' ? t('sidebar.emptyNotes') : t('sidebar.emptyTree') }}</p>
