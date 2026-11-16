@@ -209,6 +209,7 @@ export const en: Messages = {
     open: 'Open',
     move: 'Move',
     moveToRoot: 'Move to root',
+    notePointerHint: 'Click to open, hold and drag to move',
     deleteNote: 'Delete note',
   },
   editor: {

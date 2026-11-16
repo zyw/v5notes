@@ -154,11 +154,12 @@ input { outline: none; }
 .search-reveal-enter-from, .search-reveal-leave-to { opacity: 0; transform: translateY(-7px); margin-top: -34px; margin-bottom: 0; }
 .tree-scroll { flex: 1; min-height: 0; overflow: auto; margin-right: -11px; padding: 0 12px 12px 1px; }
 .tree-node { min-width: 0; }
-.tree-row { min-width: 0; min-height: 37px; display: flex; align-items: center; gap: 1px; padding: 2px 4px 2px calc(1px + var(--tree-depth, 0) * 17px); border-radius: 7px; color: #39473d; font-size: 13px; user-select: none; }
+.tree-row { min-width: 0; min-height: 37px; display: flex; align-items: center; gap: 1px; padding: 2px 4px 2px calc(1px + var(--tree-depth, 0) * 17px); border-radius: 7px; color: #39473d; font-size: 13px; cursor: pointer; user-select: none; }
 .tree-row:hover { background: #ecefe9; }
 .tree-row.active { background: #e2eae1; color: #254c3a; font-weight: 650; }
-.tree-row.is-note-row { cursor: grab; touch-action: none; }
-.tree-row.is-dragging { opacity: .55; cursor: grabbing; }
+/* 笔记：悬浮/按下保持可点击光标；真正拖出后再切到拖动光标，避免单击闪一下。 */
+.tree-row.is-note-row { touch-action: none; }
+.tree-row.is-note-row.is-dragging { opacity: .55; cursor: grabbing; }
 .tree-row.is-drop-target, .tree-node.is-drop-target > .tree-row, .tree-root-drop.is-drop-target { background: #d7e6db; outline: 1px solid #7fa18a; outline-offset: -1px; }
 .tree-root-drop {
   display: none; align-items: center; gap: 8px; min-height: 34px; margin: 0 0 8px; padding: 0 10px;

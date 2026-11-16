@@ -3,15 +3,18 @@ import { ref } from 'vue'
 export interface NoteDragSession {
   noteId: string
   fromDirId: string
+  /** 已按下，光标为可拖动；尚未拖出 */
+  ready: boolean
   /** 已超过拖动阈值，进入拖动中 */
   active: boolean
   /** 当前悬停的目标目录；`0` 表示根目录，null 表示无有效目标 */
   targetDirId: string | null
 }
 
-/** 侧栏笔记拖动的共享状态（树递归组件共用）。 */
+/** 侧栏笔记拖动的共享状态（树递归组件共用）。Mac / Windows 同一套规则。 */
 export const noteDragSession = ref<NoteDragSession | null>(null)
 
+/** 按下后移动超过该距离才算拖动，否则仍视为单击打开。 */
 const DRAG_THRESHOLD_PX = 5
 
 export function dragDistance(fromX: number, fromY: number, toX: number, toY: number): number {
@@ -37,7 +40,13 @@ export function clearNoteDrag(): void {
   document.documentElement.classList.remove('is-dragging-note')
 }
 
+export function markNoteDragReady(session: NoteDragSession): void {
+  session.ready = true
+  noteDragSession.value = { ...session }
+}
+
 export function markNoteDragActive(session: NoteDragSession): void {
+  session.ready = true
   session.active = true
   noteDragSession.value = { ...session }
   document.documentElement.classList.add('is-dragging-note')
