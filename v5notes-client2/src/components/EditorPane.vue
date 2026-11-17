@@ -7,6 +7,7 @@ import EditorModeDock from './EditorModeDock.vue'
 import EditorPalette from './EditorPalette.vue'
 import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { useEditorTheme } from '../hooks/useEditorTheme'
 import { editorLocale } from '../i18n'
 import type { LibraryImage } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
@@ -15,6 +16,7 @@ import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRend
 import { modShortcut } from '../utils/platform'
 const { t, locale } = useI18n()
 const { sessionExpired, reauthenticate, error, notice, trialExpired, draft, directoryVisible, focusMode, toggleSidebar, editorMode, sourceMode, toggleSourceMode, toolbarVisible, toggleToolbar, outlineVisible, editorInstance, activeActionMenu, syncActionMenu, renameNote, copyNoteContent, deleteNote, finishEditing, save, openHistory, selectedId, content, api, editorReady, newNote, server } = useWorkspaceContext()
+const { preference: editorThemePreference, theme: editorTheme, setPreference: setEditorThemePreference } = useEditorTheme()
 const outlineWidth = ref(Number(localStorage.getItem('v5notes-outline-width')) || 270)
 const resizingOutline = ref(false)
 const sidebarView = ref<SidebarView>('outline')
@@ -604,7 +606,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :theme="editorTheme" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>
@@ -682,7 +684,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
         <button type="button" @click="focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>{{ t('editor.exitFocus') }}</button>
         <button type="button" @click="directoryVisible = true; focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>{{ t('editor.directory') }}</button>
       </div>
-      <EditorPalette :open="paletteOpen" :commands="commands" :context="commandContext" @close="paletteOpen = false" @run="runCommand" />
+      <EditorPalette :open="paletteOpen" :commands="commands" :context="commandContext" :editor-theme="editorThemePreference" :resolved-theme="editorTheme" @close="paletteOpen = false" @run="runCommand" @theme="setEditorThemePreference" />
       <ImageLibraryDialog v-model="libraryOpen" @insert="insertLibraryImage" />
     </main>
 </template>

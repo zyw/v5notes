@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
+import { useEditorTheme } from '../hooks/useEditorTheme'
 import { editorLocale } from '../i18n'
 import { diffLines } from '../models/lineDiff'
 import type { NoteRevision, NoteRevisionDetail } from '../service/api'
@@ -9,6 +10,7 @@ import { ConflictError } from '../service/request'
 
 const { t, locale } = useI18n()
 const { api, draft, historyOpen, restoreTarget, conflict, reloadAfterConflict, overwriteConflict } = useWorkspaceContext()
+const { theme: editorTheme } = useEditorTheme()
 const rows = ref<NoteRevision[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -149,7 +151,7 @@ function formatSize(size: number): string {
             <p v-for="(line, index) in diff" :key="index" :class="`diff-${line.kind}`"><span>{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' ' }}</span>{{ line.text || ' ' }}</p>
           </div>
           <div v-else-if="selected" class="history-rendered" aria-readonly="true">
-            <V5Editor :key="selected.id" :model-value="selected.content || ''" :locale="editorLocale(locale)" :editable="false" placeholder="" />
+            <V5Editor :key="selected.id" :model-value="selected.content || ''" :locale="editorLocale(locale)" :theme="editorTheme" :editable="false" placeholder="" />
           </div>
           <p v-else class="history-empty">{{ t('history.pick') }}</p>
         </div>

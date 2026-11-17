@@ -348,10 +348,19 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .editor-pane.is-resizing-outline .editor-header,
 .editor-pane.is-resizing-outline .editor-body,
 .editor-pane.is-resizing-outline .outline-sidebar { transition: none; }
-.v5md { min-height: 100%; background: #fffefa; color: #29352e; font-family: 'Noto Serif SC', 'Songti SC', serif; }
+.v5md { min-height: 100%; }
+/* 纸感主题沿用客户端的暖白配色，其余主题完全交给 @v5md/view 的变量。 */
+.v5md[data-theme='paper'] {
+  --v5-bg: #fffefa;
+  --v5-fg: #29352e;
+  --v5-fg-strong: #29352e;
+  --v5-heading-fg: #29352e;
+  --v5-surface: #fffefa;
+  --v5-border-strong: #f2f2ec;
+  --v5-font-body: 'Noto Serif SC', 'Songti SC', serif;
+}
 .v5md .v5-doc { min-height: calc(100vh - 92px); padding: 24px clamp(8px, 1.2vw, 20px) 90px; }
 .edit-scroll .v5md .v5-doc { min-height: 0; }
-.v5md :is(.v5-block-menu, .v5-slash-menu) { font-family: 'DM Sans', 'PingFang SC', sans-serif; font-size: 13px; font-weight: 400; line-height: normal; }
 .v5md .v5-toolbar { position: sticky; top: 0; z-index: 5; border-radius: 0; }
 .v5md.v5-source-mode .v5-toolbar { display: none; }
 /* Source view scrolls with the outer .editor-scroll. Keep the <pre> from
@@ -860,11 +869,10 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 /* The 170px right border is transparent: it reserves the lane for the Aa / 隐藏
    controls and shrinks clientWidth, so the editor's own overflow logic decides
    which format buttons to fold into its ⋮ menu instead of sliding underneath. */
-.editor-pane .v5md .v5-toolbar { min-height: 40px; justify-content: flex-start; gap: 0; padding: 6px 0 6px 24px; border-right: 220px solid transparent; border-bottom: 1px solid #f2f2ec; background: #fffefa; }
+.editor-pane .v5md .v5-toolbar { min-height: 40px; justify-content: flex-start; gap: 0; padding: 6px 0 6px 24px; border-right: 220px solid transparent; }
 .editor-pane .v5md .v5-toolbar-group { flex: 0 0 auto; gap: 0; }
-.editor-pane .v5md .v5-toolbar-group + .v5-toolbar-group { margin-left: 4px; padding-left: 4px; border-left: 1px solid #eceee6; }
+.editor-pane .v5md .v5-toolbar-group + .v5-toolbar-group { margin-left: 4px; padding-left: 4px; border-left: 1px solid var(--v5-border-strong); }
 .editor-pane .v5md .v5-toolbar button { flex: 0 0 30px; width: 30px; height: 27px; border-radius: 6px; }
-.editor-pane .v5md .v5-toolbar button:hover, .editor-pane .v5md .v5-toolbar button[aria-pressed='true'] { background: #f2f4ee; color: #315b4a; }
 
 /* ============================================================
    模式切换标签：贴右悬浮，只可上下拖动、记位置；虚线标示安全栏
@@ -966,6 +974,11 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .palette-input kbd { padding: 3px 5px; border: 1px solid #e0e5dc; border-radius: 5px; color: #9aa49c; font: 600 10px/1 'DM Sans', 'PingFang SC', sans-serif; }
 .palette-state { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 16px; border-bottom: 1px solid #efefe9; background: #fafaf5; color: #8b978d; font-size: 10.5px; letter-spacing: .02em; }
 .palette-state strong { color: #3c5344; font-weight: 600; }
+.palette-theme { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid #efefe9; background: #fbfbf6; }
+.palette-theme-label { display: inline-flex; align-items: center; gap: 7px; color: #5f6f63; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; }
+.palette-theme-label svg { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: #6b8072; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.palette-theme-select { min-width: 200px; max-width: 60%; padding: 6px 28px 6px 10px; border: 1px solid #dfe5da; border-radius: 7px; color: #344b3a; background-color: #fffefa; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23708478' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 9px center; background-size: 13px; appearance: none; font: inherit; font-size: 11.5px; cursor: pointer; }
+.palette-theme-select:focus-visible { outline: 2px solid #78a587; outline-offset: 1px; }
 /* 高度交给内容决定：命令不多时整块面板按内容收缩，只有真的放不下（窗口太矮）才滚动 */
 .palette-list { flex: 0 1 auto; min-height: 0; overflow: auto; scrollbar-gutter: stable; padding: 4px 7px 6px; }
 .palette-group { padding: 7px 10px 3px; color: #a0aaa1; font-size: 10px; font-weight: 700; letter-spacing: .12em; }

@@ -1,13 +1,16 @@
 # 发布 v5notes 桌面端更新清单 latest.json 到 GitHub Releases。
 #
-# 触发：推送 v* tag、发布 Release、或手动运行（Actions → Run workflow）。
+# 触发：发布 Release、或手动运行（Actions → Run workflow）。
+# 推送 v* tag 时由 publish-desktop.yml 构建三端包并上传 latest.json，
+# 本工作流不再监听 tag，避免与打包并发时读到不完整附件。
 # 产物：把 latest.json 作为附件挂到目标 Release。客户端固定拉取
 #   https://github.com/zyw/v5notes/releases/latest/download/latest.json
 #
-# 和 v5xs 的 publish-update-feed 一样：安装包由构建机先上传，CI 只根据
-# Release 里真实存在的更新包现算清单，再上传。latest.json 不入库。
-# 客户端只发布 macOS（Apple 芯片、Intel）和 Windows x64。三份更新包缺一份、
-# 或缺 .sig 时直接失败，避免一份不完整的清单换掉另一个系统的更新入口。
+# 和 v5xs 的 publish-update-feed 一样：安装包由构建机（或 publish-desktop）
+# 先上传，本工作流只根据 Release 里真实存在的更新包现算清单，再上传。
+# latest.json 不入库。客户端只发布 macOS（Apple 芯片、Intel）和 Windows x64。
+# 三份更新包缺一份、或缺 .sig 时直接失败，避免一份不完整的清单换掉
+# 另一个系统的更新入口。
 #
 # Tauri 的签名打在更新包上，不打在清单上。signature 字段是构建时生成的
 # .sig 全文。这个工作流不保存、也不使用 minisign 私钥。
@@ -15,9 +18,6 @@
 name: Publish update feed
 
 on:
-  push:
-    tags:
-      - "v*"
   release:
     types: [published]
   workflow_dispatch:

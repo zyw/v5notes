@@ -1,8 +1,8 @@
 /* ============================================================
    工作区深色主题（源自登录页 C · 影 / 写作的波形）
    - 只作用于 html[data-theme="dark"]，浅色主题一行不改
-   - 深墨绿地面 + 微亮的编辑纸面 + 青瓷强调
-   - 编辑器内容（@v5md/view）没有主题变量，这里按渲染结构覆盖
+   - 深墨绿地面 + 青瓷强调
+   - 编辑器内容（@v5md/view）使用内置主题，不再单独覆盖颜色
    ============================================================ */
 
 html[data-theme='dark'] {
@@ -200,114 +200,8 @@ html[data-theme='dark'] .secondary-action { color: var(--dk-ink-3); border-color
 html[data-theme='dark'] .empty-actions .secondary-action:hover,
 html[data-theme='dark'] .secondary-action:hover { color: var(--dk-accent-bright); border-color: var(--dk-line-strong); background: var(--dk-hover); }
 
-/* ---------- 编辑器正文（@v5md/view） ---------- */
-html[data-theme='dark'] .v5md {
-  background: var(--dk-surface);
-  color: #e6e0d0;
-  caret-color: #b8e8de;
-}
-html[data-theme='dark'] .v5md .v5-doc[data-empty='true']::before { color: var(--dk-faint); }
-html[data-theme='dark'] .v5md .v5-doc :is(h1, h2, h3, h4, h5, h6) { color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-doc h1,
-html[data-theme='dark'] .v5md .v5-doc h2 { border-bottom-color: var(--dk-line); }
-html[data-theme='dark'] .v5md .v5-doc a { color: #9fe0d4; text-underline-offset: 3px; }
-html[data-theme='dark'] .v5md .v5-doc blockquote { border-left-color: rgba(127, 201, 191, .38); color: #b9c9c0; }
-html[data-theme='dark'] .v5md .v5-doc strong { color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-doc del { color: var(--dk-faint); }
-html[data-theme='dark'] .v5md .v5-doc mark { background: rgba(230, 193, 100, .26); color: inherit; }
-html[data-theme='dark'] .v5md .v5-doc hr,
-html[data-theme='dark'] .v5md .v5-doc .v5-hr hr { border-top-color: var(--dk-line); }
-html[data-theme='dark'] .v5md .v5-doc .v5-check { border-color: #8fa99e; background: transparent; }
-html[data-theme='dark'] .v5md .v5-doc .v5-check[data-checked='true'] { border-color: #7fc9bf; background: #7fc9bf; }
-html[data-theme='dark'] .v5md .v5-doc .v5-check[data-checked='true']::after { border-color: var(--dk-on-paper); }
-html[data-theme='dark'] .v5md .v5-doc .v5-marker { color: #6f857b; }
-html[data-theme='dark'] .v5md .v5-doc .v5-image-caption { color: var(--dk-muted); }
-html[data-theme='dark'] .v5md .v5-doc .v5-image img { box-shadow: 0 0 0 1px rgba(255, 255, 255, .07); }
-html[data-theme='dark'] .v5md .v5-doc .v5-image-resize { border-color: var(--dk-surface); background: #7fc9bf; }
-html[data-theme='dark'] .v5md .v5-block-handle { color: #7f948a; }
-html[data-theme='dark'] .v5md .v5-drop-line { background: #7fc9bf; }
-
-html[data-theme='dark'] .v5md .v5-doc pre { background: var(--dk-deep); color: #e6e0d0; }
-html[data-theme='dark'] .v5md .v5-doc :not(pre) > code,
-html[data-theme='dark'] .v5md .v5-doc .v5-inlinecode { background: rgba(255, 255, 255, .08); color: #ecd9b2; }
-html[data-theme='dark'] .v5md .v5-doc .v5-frontmatter { background: rgba(255, 255, 255, .05); color: var(--dk-muted); }
-html[data-theme='dark'] .v5md .v5-doc .v5-html { background: rgba(255, 255, 255, .04); color: var(--dk-ink-3); }
-
-/* 表格 */
-html[data-theme='dark'] .v5md .v5-doc .v5-table th,
-html[data-theme='dark'] .v5md .v5-doc .v5-table td { border-color: var(--dk-line); }
-html[data-theme='dark'] .v5md .v5-doc .v5-table th { background: rgba(255, 255, 255, .055); color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-doc .v5-table tbody tr:nth-child(odd) td { background: rgba(255, 255, 255, .022); }
-html[data-theme='dark'] .v5md .v5-doc .v5-table tbody tr:nth-child(even) td { background: transparent; }
-
-/* 代码高亮（纸色底上的一套低饱和亮色） */
-html[data-theme='dark'] .v5md .v5-doc .hljs-keyword,
-html[data-theme='dark'] .v5md .v5-doc .hljs-selector-tag,
-html[data-theme='dark'] .v5md .v5-doc .hljs-built_in { color: #ff9d90; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-string,
-html[data-theme='dark'] .v5md .v5-doc .hljs-attr,
-html[data-theme='dark'] .v5md .v5-doc .hljs-symbol { color: #a9d9a2; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-comment,
-html[data-theme='dark'] .v5md .v5-doc .hljs-quote { color: #7f948a; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-number,
-html[data-theme='dark'] .v5md .v5-doc .hljs-literal,
-html[data-theme='dark'] .v5md .v5-doc .hljs-bullet { color: #e6c07b; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-title,
-html[data-theme='dark'] .v5md .v5-doc .hljs-section,
-html[data-theme='dark'] .v5md .v5-doc .hljs-function { color: #c7b6ff; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-type,
-html[data-theme='dark'] .v5md .v5-doc .hljs-params { color: #f0b27f; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-name,
-html[data-theme='dark'] .v5md .v5-doc .hljs-tag,
-html[data-theme='dark'] .v5md .v5-doc .hljs-selector-class { color: #93d7c4; }
-html[data-theme='dark'] .v5md .v5-doc .hljs-meta,
-html[data-theme='dark'] .v5md .v5-doc .hljs-variable { color: #c7b6ff; }
-
-/* 编辑器工具条与浮层 */
-html[data-theme='dark'] .v5md .v5-toolbar { border-bottom-color: var(--dk-line-soft); background: var(--dk-header); }
-html[data-theme='dark'] .v5md .v5-toolbar-group + .v5-toolbar-group { border-left-color: var(--dk-line-soft); }
-html[data-theme='dark'] .v5md .v5-toolbar button { color: #b9c9c0; }
-html[data-theme='dark'] .v5md .v5-toolbar button:hover,
-html[data-theme='dark'] .v5md .v5-toolbar button[aria-pressed='true'] { background: var(--dk-hover); color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-toolbar button[data-state='done'] { background: rgba(120, 201, 180, .16); color: #a9e3d2; }
-html[data-theme='dark'] .v5md .v5-toolbar button[data-state='error'] { background: rgba(255, 120, 100, .16); color: #ffb4a8; }
-html[data-theme='dark'] .v5md .v5-toolbar button[data-command='quote'] { color: #ff9d90; }
-html[data-theme='dark'] .v5md .v5-toolbar button::after,
-html[data-theme='dark'] .v5md .v5-tablebar button::after { background: #e4dfd0; color: #12342f; }
-html[data-theme='dark'] .v5md .v5-toolbar-menu,
-html[data-theme='dark'] .v5md .v5-slash-menu,
-html[data-theme='dark'] .v5md .v5-block-menu,
-html[data-theme='dark'] .v5md .v5-tablebar {
-  border-color: var(--dk-line); background: var(--dk-raised); color: var(--dk-ink-2);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
-}
-html[data-theme='dark'] .v5md .v5-toolbar-menu button,
-html[data-theme='dark'] .v5md .v5-slash-menu button,
-html[data-theme='dark'] .v5md .v5-block-menu button,
-html[data-theme='dark'] .v5md .v5-tablebar button { color: var(--dk-ink-3); }
-html[data-theme='dark'] .v5md .v5-toolbar-menu button:hover,
-html[data-theme='dark'] .v5md .v5-slash-menu button:hover,
-html[data-theme='dark'] .v5md .v5-slash-menu button.v5-selected,
-html[data-theme='dark'] .v5md .v5-block-menu button:hover,
-html[data-theme='dark'] .v5md .v5-tablebar button:hover,
-html[data-theme='dark'] .v5md .v5-tablebar button[aria-pressed='true'] { background: rgba(255, 255, 255, .07); color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-tablebar-gap { background: var(--dk-line); }
-
-/* 源码模式 */
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc { border-color: var(--dk-line-soft); background: var(--dk-deep); }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-number { color: #5d7269; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-heading { color: var(--dk-ink); }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-strike { color: var(--dk-faint); }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-highlight { background: rgba(230, 193, 100, .28); }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-inline-code { background: rgba(255, 255, 255, .08); color: #ecd9b2; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-link { color: #9fe0d4; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-url { color: #ecd9b2; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-image { color: #f0b27f; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-math { color: #c7b6ff; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-frontmatter { color: #8fa99e; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-html { color: #93d7c4; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-rule { color: #8fa99e; }
-html[data-theme='dark'] .v5md .v5-doc .v5-source-doc .v5-md-marker { color: #5d7269; }
+/* ---------- 编辑器正文 ---------- */
+/* 正文、工具条、源码与代码高亮全部交给 @v5md/view 的内置主题。 */
 
 html[data-theme='dark'] ::highlight(v5-find) { background: rgba(230, 193, 100, .42); color: inherit; }
 
@@ -498,8 +392,6 @@ html[data-theme='dark'] .history-size { color: var(--dk-muted); }
 html[data-theme='dark'] .history-more { color: var(--dk-accent); }
 html[data-theme='dark'] .history-preview { border-color: var(--dk-line); background: var(--dk-deep); }
 html[data-theme='dark'] .history-rendered { background: var(--dk-deep); }
-html[data-theme='dark'] .history-rendered .v5md { background: transparent; color: #e6e0d0; }
-html[data-theme='dark'] .history-rendered .v5md .v5-doc :is(h1, h2, h3, h4, h5, h6) { color: var(--dk-ink); }
 html[data-theme='dark'] .history-header h2 { color: var(--dk-ink); }
 html[data-theme='dark'] .history-header .eyebrow { color: var(--dk-muted); }
 html[data-theme='dark'] .history-diff { color: var(--dk-ink-2); }
@@ -569,16 +461,6 @@ html[data-theme='dark'] .toolbar-reveal { border-color: var(--dk-line); backgrou
 html[data-theme='dark'] .toolbar-reveal:hover { border-color: var(--dk-line-strong); color: var(--dk-accent-bright); }
 html[data-theme='dark'] .toolbar-reveal kbd { color: var(--dk-faint); }
 
-/* 编辑器自带工具条（在 .editor-pane 下，需要同权重覆盖） */
-html[data-theme='dark'] .editor-pane .v5md .v5-toolbar {
-  border-bottom-color: var(--dk-line-soft);
-  border-right-color: transparent;
-  background: var(--dk-header);
-}
-html[data-theme='dark'] .editor-pane .v5md .v5-toolbar-group + .v5-toolbar-group { border-left-color: var(--dk-line-soft); }
-html[data-theme='dark'] .editor-pane .v5md .v5-toolbar button { color: var(--dk-ink-3); }
-html[data-theme='dark'] .editor-pane .v5md .v5-toolbar button:hover,
-html[data-theme='dark'] .editor-pane .v5md .v5-toolbar button[aria-pressed='true'] { background: var(--dk-hover); color: var(--dk-accent-bright); }
 
 /* ---------- 模式胶囊 / 专注 HUD ---------- */
 html[data-theme='dark'] .mode-dock-edit { color: var(--dk-on-paper); background: #7fc9bf; box-shadow: 0 8px 22px rgba(0, 0, 0, .35); }
@@ -606,6 +488,12 @@ html[data-theme='dark'] .palette-input input { color: var(--dk-ink); }
 html[data-theme='dark'] .palette-input kbd { border-color: var(--dk-line); color: var(--dk-muted); }
 html[data-theme='dark'] .palette-state { border-bottom-color: var(--dk-line-soft); background: rgba(255, 255, 255, .025); color: var(--dk-muted); }
 html[data-theme='dark'] .palette-state strong { color: var(--dk-ink-2); }
+html[data-theme='dark'] .palette-theme { border-bottom-color: var(--dk-line-soft); background: rgba(255, 255, 255, .025); }
+html[data-theme='dark'] .palette-theme-label { color: var(--dk-ink-3); }
+html[data-theme='dark'] .palette-theme-label svg { stroke: var(--dk-accent); }
+html[data-theme='dark'] .palette-theme-select { border-color: var(--dk-line); background-color: rgba(255, 255, 255, .06); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23b8c9bf' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5'/%3E%3C/svg%3E"); color: var(--dk-ink-2); }
+html[data-theme='dark'] .palette-theme-select option,
+html[data-theme='dark'] .palette-theme-select optgroup { background: #12332c; color: var(--dk-ink-2); }
 html[data-theme='dark'] .palette-group { color: var(--dk-faint); }
 html[data-theme='dark'] .palette-item { color: var(--dk-ink-3); }
 html[data-theme='dark'] .palette-item:hover,
@@ -626,11 +514,7 @@ html[data-theme='dark'] .editor-pane {
     radial-gradient(46% 34% at 0% 0%, rgba(127, 201, 191, .04), transparent 62%),
     var(--dk-surface);
 }
-html[data-theme='dark'] .v5md { background: transparent; }
 html[data-theme='dark'] .editor-scroll { background: transparent; }
 html[data-theme='dark'] .sidebar { background: linear-gradient(180deg, #0a241f 0%, #081d19 100%); }
 html[data-theme='dark'] .tree-row.active { box-shadow: inset 2px 0 0 #7fc9bf; }
 html[data-theme='dark'] .editor-header { box-shadow: 0 1px 0 rgba(255, 255, 255, .025); }
-html[data-theme='dark'] .v5md .v5-doc .hljs-comment,
-html[data-theme='dark'] .v5md .v5-doc .hljs-quote { color: #8aa196; }
-html[data-theme='dark'] .v5md .v5-doc .v5-marker { color: #7f948a; }
