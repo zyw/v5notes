@@ -9,17 +9,22 @@ import {
   type CommandContext,
   type EditorCommand,
 } from '../models/editorCommands'
+import { EDITOR_THEME_IDS, EDITOR_THEME_LABELS, isDarkEditorTheme, isEditorThemePreference, type EditorThemePreference } from '../models/editorTheme'
+import type { ThemeId } from '@v5md/view'
 
 const { t, locale } = useI18n()
 const props = defineProps<{
   open: boolean
   commands: EditorCommand[]
   context: CommandContext
+  editorTheme: EditorThemePreference
+  resolvedTheme: ThemeId
 }>()
 
 const emit = defineEmits<{
   close: []
   run: [command: EditorCommand]
+  theme: [value: EditorThemePreference]
 }>()
 
 const query = ref('')
@@ -48,6 +53,14 @@ const modeLabel = computed(() => {
   void locale.value
   return paletteModeLabel(props.context)
 })
+const lightThemes = computed(() => EDITOR_THEME_IDS.filter(id => !isDarkEditorTheme(id)))
+const darkThemes = computed(() => EDITOR_THEME_IDS.filter(id => isDarkEditorTheme(id)))
+const autoThemeLabel = computed(() => `${t('commands.themeAuto')} · ${EDITOR_THEME_LABELS[props.resolvedTheme]}`)
+
+function onThemeChange(event: Event): void {
+  const value = (event.target as HTMLSelectElement).value
+  if (isEditorThemePreference(value)) emit('theme', value)
+}
 
 function iconFor(command: EditorCommand): string {
   return ICONS[command.id] ?? '<circle cx="12" cy="12" r="7.5"/>'
@@ -131,6 +144,21 @@ function onKeydown(event: KeyboardEvent): void {
         <div class="palette-state">
           <span>{{ t('commands.current') }} · <strong>{{ modeLabel }}</strong></span>
           <span>{{ t('commands.available', { count: flat.length }) }}</span>
+        </div>
+        <div v-if="context.hasNote" class="palette-theme">
+          <label class="palette-theme-label" for="palette-theme-select">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6a8.4 8.4 0 0 0 0 16.8 4.2 4.2 0 0 1 0-8.4 4.2 4.2 0 0 0 0-8.4Z"/></svg>
+            <span>{{ t('commands.themeLabel') }}</span>
+          </label>
+          <select id="palette-theme-select" class="palette-theme-select" :value="editorTheme" :aria-label="t('commands.themeLabel')" @change="onThemeChange" @keydown.stop>
+            <option value="auto">{{ autoThemeLabel }}</option>
+            <optgroup :label="t('commands.themeLightHint')">
+              <option v-for="id in lightThemes" :key="id" :value="id">{{ EDITOR_THEME_LABELS[id] }}</option>
+            </optgroup>
+            <optgroup :label="t('commands.themeDarkHint')">
+              <option v-for="id in darkThemes" :key="id" :value="id">{{ EDITOR_THEME_LABELS[id] }}</option>
+            </optgroup>
+          </select>
         </div>
         <div class="palette-list">
           <template v-for="group in groups" :key="group.name">
