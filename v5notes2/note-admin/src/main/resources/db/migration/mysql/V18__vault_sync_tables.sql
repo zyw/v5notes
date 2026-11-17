@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS vault_file
     create_time   datetime               DEFAULT CURRENT_TIMESTAMP,
     update_time   datetime               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_vault_file_vault_identity (vault_id, identity_key),
+    KEY idx_vault_file_vault_identity (vault_id, identity_key(766)),
     KEY idx_vault_file_vault_active (vault_id, deleted)
 ) ENGINE = InnoDB COMMENT = 'Vault 文件元数据';
 
