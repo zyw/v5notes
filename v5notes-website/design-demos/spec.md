@@ -26,7 +26,7 @@ Logo + V5Notes ｜ 写作 · 编辑器 · 回退 · 管理 · 部署 · 技术�
 - 副标：V5Notes 是一套可以私有部署的 Markdown 云笔记。桌面端负责写作，管理后台负责人和权限，正文、目录、历史与文件都落在你自己的 MySQL 或 PostgreSQL 里。
 - 主按钮：下载桌面端
 - 次按钮：在 GitHub 看源码
-- 事实行（小字）：Windows · macOS · Linux ｜ Apache 2.0 ｜ v2.0.2
+- 事实行（小字）：Windows · macOS · Linux ｜ Apache 2.0 ｜ v2.0.3
 
 ### 第 1 段 · 为什么自托管
 - 标题：云笔记很好用，直到你想把数据拿回来。
@@ -105,7 +105,7 @@ Logo + V5Notes ｜ 写作 · 编辑器 · 回退 · 管理 · 部署 · 技术�
 ### 页脚
 - 左：图标 + V5Notes +「可私有部署的 Markdown 云笔记」
 - 中：写作 · 回退 · 管理 · 部署 · 技术栈
-- 右：GitHub ｜ Apache 2.0 ｜ v2.0.2
+- 右：GitHub ｜ Apache 2.0 ｜ v2.0.3
 - 底行：© 2026 V5Notes · Java 21 · Vue 3.5 · Tauri 2
 
 ## 5 · 素材清单（相对路径 ../assets/）
