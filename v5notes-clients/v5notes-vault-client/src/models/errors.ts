@@ -9,6 +9,12 @@ export const VaultErrorCode = {
   NOT_FOUND: 'vault.not.found',
   FILE_NOT_FOUND: 'vault.file.not.found',
   CONFLICT_REV: 'vault.conflict.rev',
+  /** Rename target identity already live (conflict family). */
+  CONFLICT_PATH_EXISTS: 'vault.conflict.path-exists',
+  /** Declared contentHash does not match uploaded bytes. */
+  HASH_MISMATCH: 'vault.hash.mismatch',
+  /** Device-count exceeded on bind (capacity quota keeps QUOTA_EXCEEDED). */
+  QUOTA_DEVICES_EXCEEDED: 'vault.quota.devices-exceeded',
   FILE_TOO_LARGE: 'vault.file.too.large',
   RATE_LIMITED: 'vault.rate.limited',
   PATH_INVALID: 'vault.path.invalid',
@@ -20,9 +26,12 @@ export type VaultErrorCode = (typeof VaultErrorCode)[keyof typeof VaultErrorCode
 export const VaultErrorHttpStatus: Record<VaultErrorCode, number> = {
   [VaultErrorCode.AUTH_UNAUTHORIZED]: 401,
   [VaultErrorCode.QUOTA_EXCEEDED]: 402,
+  [VaultErrorCode.QUOTA_DEVICES_EXCEEDED]: 403,
   [VaultErrorCode.NOT_FOUND]: 404,
   [VaultErrorCode.FILE_NOT_FOUND]: 404,
   [VaultErrorCode.CONFLICT_REV]: 409,
+  [VaultErrorCode.CONFLICT_PATH_EXISTS]: 409,
+  [VaultErrorCode.HASH_MISMATCH]: 400,
   [VaultErrorCode.FILE_TOO_LARGE]: 413,
   [VaultErrorCode.RATE_LIMITED]: 429,
   [VaultErrorCode.PATH_INVALID]: 400,

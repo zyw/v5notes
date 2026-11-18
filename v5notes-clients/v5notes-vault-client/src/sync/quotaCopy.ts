@@ -3,8 +3,10 @@
  */
 
 import { formatBytes } from '../account/quota'
+import type { NumericByteSize } from './api'
 import type { VaultQuota } from './types'
 import { VaultQuotaRules } from './limits'
+import { toNumericBytes } from './api'
 
 export function cloudQuotaHelp(): string {
   return 'Cloud 笔记额度仅用于云端目录树客户端（v5notes-client2），与本机 Vault 库无关。'
@@ -15,16 +17,16 @@ export function vaultSyncQuotaHelp(): string {
 }
 
 export function formatVaultQuotaLine(quota: {
-  usedBytes: number
-  quotaBytes: number
+  usedBytes: NumericByteSize
+  quotaBytes: NumericByteSize
   deviceUsed: number
   deviceLimit: number
   overQuota?: boolean
-  maxFileBytes?: number
+  maxFileBytes?: NumericByteSize
 }): string {
-  const capacity = `${formatBytes(quota.usedBytes)} / ${formatBytes(quota.quotaBytes)}`
+  const capacity = `${formatBytes(toNumericBytes(quota.usedBytes))} / ${formatBytes(toNumericBytes(quota.quotaBytes))}`
   const devices = `设备 ${quota.deviceUsed}/${quota.deviceLimit}`
-  const maxFile = formatBytes(quota.maxFileBytes ?? VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)
+  const maxFile = formatBytes(toNumericBytes(quota.maxFileBytes) || VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)
   const over = quota.overQuota ? ' · 已超额（push 拒绝，pull 只读，本地可继续编辑）' : ''
   return `${capacity} · ${devices} · 单文件上限 ${maxFile}${over}`
 }

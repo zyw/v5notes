@@ -12,7 +12,7 @@ import { toIdentityKey, normalizeVaultPath } from '../path/identity'
 import { SYNC_STATE_REL, SYNCIGNORE_REL, VAULT_JSON_REL } from '../vault/skeleton'
 import type { VaultFs } from '../vault/vaultFs'
 import { vaultFs as defaultVaultFs } from '../vault/vaultFs'
-import { createVaultSyncApi, VaultSyncApiError, type VaultSyncApi } from './api'
+import { createVaultSyncApi, toNumericBytes, VaultSyncApiError, type VaultSyncApi } from './api'
 import {
   attachmentBadgeLabel,
   base64ToBytes,
@@ -228,12 +228,18 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
   async function refreshQuota(): Promise<VaultQuota | null> {
     try {
-      const quota = await api.quota()
-      overQuota = Boolean(quota.overQuota || (quota.quotaBytes > 0 && quota.usedBytes >= quota.quotaBytes))
-      if (quota.maxFileBytes && quota.maxFileBytes > 0) {
-        maxFileBytes = quota.maxFileBytes
+      const raw = await api.quota()
+      // normalizeIds can stringify >2^53 numbers; coerce byte sizes back to
+      // numeric so guards never degrade into NaN comparisons (silent pass).
+      const quotaBytes = toNumericBytes(raw.quotaBytes)
+      const usedBytes = toNumericBytes(raw.usedBytes)
+      const maxFile = toNumericBytes(raw.maxFileBytes ?? undefined)
+      overQuota = Boolean(raw.overQuota || (quotaBytes > 0 && usedBytes >= quotaBytes))
+      if (maxFile > 0) {
+        maxFileBytes = maxFile
       }
-      return quota
+      // Hand the UI numeric sizes so display never sees stringified numbers.
+      return { ...raw, usedBytes, quotaBytes, maxFileBytes: maxFile || undefined }
     } catch {
       return null
     }
@@ -273,7 +279,8 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         localSyncableFileCount: localFiles.length,
       })
       overQuota = Boolean(bindResult.quota?.overQuota)
-      if (bindResult.quota?.maxFileBytes) maxFileBytes = bindResult.quota.maxFileBytes
+      const bindMaxFile = toNumericBytes(bindResult.quota?.maxFileBytes)
+      if (bindMaxFile > 0) maxFileBytes = bindMaxFile
       setStatus('idle', `已绑定 · ${plan.mode}`)
       return plan
     } catch (err) {
@@ -535,6 +542,9 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         Object.values(state.files).map(e => e.identityKey).filter(Boolean) as string[],
       )
       let pullCursor: string | null = cursor
+      // Conflict-copy paths are local-only records of earlier protections;
+      // they must never be treated as a remote change's own state reference.
+      const isCopyPath = (path: string) => path.includes('冲突')
       for (;;) {
         const manifest = await api.manifest(vaultId, pullCursor)
         for (const change of manifest.changes) {
@@ -542,44 +552,36 @@ export function createSyncEngine(deps: SyncEngineDeps) {
             await applyRemoteUpsert(vaultId, change, state, occupied, config.binding.deviceId)
           } else if (change.op === 'delete' && change.path) {
             const identityKey = toIdentityKey(change.path)
-            const localEntry = Object.entries(state.files).find(([, e]) => e.identityKey === identityKey)
+            const localEntry = Object.entries(state.files).find(
+              ([path, e]) => (e.identityKey === identityKey || toIdentityKey(path) === identityKey) && !isCopyPath(path),
+            )
             if (localEntry && (localEntry[1].status === 'dirty' || localEntry[1].status === 'conflict')) {
-              const copyPath = buildConflictCopyPath(localEntry[0], config.binding.deviceId, occupied, toIdentityKey)
-              occupied.add(toIdentityKey(copyPath))
-              if (prefersTextBody(localEntry[0])) {
-                const localContent = await fs.readText(deps.rootPath, localEntry[0])
-                await fs.writeText(deps.rootPath, copyPath, localContent)
-                state.files[copyPath] = {
-                  fileId: null,
-                  identityKey: toIdentityKey(copyPath),
-                  localHash: await sha256Hex(localContent),
-                  remoteRev: null,
-                  status: 'dirty',
-                  size: new TextEncoder().encode(localContent).length,
-                  mtimeMs: Date.now(),
-                }
-              } else {
-                const localBytes = await fs.readBytes(deps.rootPath, localEntry[0])
-                await fs.writeBytes(deps.rootPath, copyPath, localBytes)
-                state.files[copyPath] = {
-                  fileId: null,
-                  identityKey: toIdentityKey(copyPath),
-                  localHash: await sha256Hex(localBytes),
-                  remoteRev: null,
-                  status: 'dirty',
-                  size: localBytes.byteLength,
-                  mtimeMs: Date.now(),
-                }
-              }
-              conflictPaths.push(copyPath)
+              // §9.3 删改冲突：改胜于删。Keep the edited content at its original
+              // path and drop the sync-state reference to the tombstoned file.
+              // The push phase then sees the surviving disk file as untracked and
+              // re-uploads it under a NEW fileId (§8.2: recreate after tombstone
+              // gets a new identity reference). No rename, no conflict copy —
+              // the user keeps editing hot.md without noticing the churn, and
+              // version history follows the new fileId per spec.
+            } else if (localEntry && !localEntry[1].fileId) {
+              // Untracked ghost entry (no fileId): nothing was ever uploaded
+              // under this identity, so the cloud tombstone is not ours to
+              // apply — keep the local file; the push phase uploads it as new.
             } else {
               try {
                 await fs.delete(deps.rootPath, change.path)
               } catch {
                 // already gone
               }
+              if (localEntry) delete state.files[localEntry[0]]
             }
-            if (localEntry) delete state.files[localEntry[0]]
+            // Drop any stray non-copy records still pointing at the tombstoned
+            // identity (e.g. case-variant display paths). The protected branch
+            // above intentionally keeps the file on disk and lets the push
+            // phase re-upload it, so its record is deleted here too.
+            for (const [path, e] of Object.entries(state.files)) {
+              if (!isCopyPath(path) && e.identityKey === identityKey) delete state.files[path]
+            }
           } else if (change.op === 'rename' && change.from && change.path) {
             try {
               await fs.rename(deps.rootPath, change.from, change.path)
@@ -587,15 +589,67 @@ export function createSyncEngine(deps: SyncEngineDeps) {
               // may already be at target after prior pull
             }
             const fromKey = toIdentityKey(change.from)
-            const entry = Object.entries(state.files).find(([, e]) => e.identityKey === fromKey)
+            // Conflict-copy paths are local-only records; never treat one as
+            // the renamed file's own state entry.
+            const entry = Object.entries(state.files).find(
+              ([path, e]) => !isCopyPath(path) && (e.identityKey === fromKey || toIdentityKey(path) === fromKey),
+            )
             if (entry) {
               const [, meta] = entry
               delete state.files[entry[0]]
+              // Local edits at the source survive as a conflict copy (§9.3
+              // rename×edit); never push them over the renamed cloud body.
+              let copyPath: string | null = null
+              if ((meta.status === 'dirty' || meta.status === 'conflict') && meta.fileId) {
+                try {
+                  if (await fs.exists(deps.rootPath, change.from)) {
+                    copyPath = buildConflictCopyPath(change.from, config.binding.deviceId, occupied, toIdentityKey)
+                    occupied.add(toIdentityKey(copyPath))
+                    if (prefersTextBody(change.from)) {
+                      const localContent = await fs.readText(deps.rootPath, change.from)
+                      await fs.writeText(deps.rootPath, copyPath, localContent)
+                      state.files[copyPath] = {
+                        fileId: null,
+                        identityKey: toIdentityKey(copyPath),
+                        localHash: await sha256Hex(localContent),
+                        remoteRev: null,
+                        status: 'dirty',
+                        size: new TextEncoder().encode(localContent).length,
+                        mtimeMs: Date.now(),
+                      }
+                    } else {
+                      const localBytes = await fs.readBytes(deps.rootPath, change.from)
+                      await fs.writeBytes(deps.rootPath, copyPath, localBytes)
+                      state.files[copyPath] = {
+                        fileId: null,
+                        identityKey: toIdentityKey(copyPath),
+                        localHash: await sha256Hex(localBytes),
+                        remoteRev: null,
+                        status: 'dirty',
+                        size: localBytes.byteLength,
+                        mtimeMs: Date.now(),
+                      }
+                    }
+                    conflictPaths.push(copyPath)
+                  }
+                } catch {
+                  // unreadable source — proceed; nothing is lost from the cloud side
+                }
+              }
+              // Body at the target is stale until the rename's follow-up upsert
+              // change refetches it (backend logs rename as metadata-only). The
+              // disk content moved with the path, so keep meta.localHash — the
+              // pull's clean-vs-remote hash check detects staleness there.
+              // Marking dirty (not clean) prevents this cycle's push from
+              // mistaking the renamed file for a vanished local rename/tombstone
+              // while its body is still pending; the upsert rewrites the entry
+              // clean when the new rev's content lands. Local edits were
+              // preserved above as a conflict copy (§9.3 rename×edit).
               state.files[change.path] = {
                 ...meta,
                 identityKey: toIdentityKey(change.path),
                 remoteRev: change.remoteRev,
-                status: 'clean',
+                status: 'dirty',
               }
             }
           }

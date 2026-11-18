@@ -194,6 +194,10 @@ function makeApi(overrides: ApiOverrides = {}): VaultSyncApi & { calls: string[]
       if (overrides.onDelete) return overrides.onDelete(body)
       return meta(body.path)
     },
+    async putBatch() {
+      // Wired in api.ts but intentionally unused by the engine loop for now.
+      throw new Error('not used by engine yet')
+    },
     async rename(_vaultId: string, body: { from: string; to: string; baseRev: number }) {
       calls.push(`rename:${body.from}->${body.to}:${body.baseRev}`)
       if (overrides.onRename) return overrides.onRename(body)
@@ -306,7 +310,6 @@ describe('push-side rename/tombstone propagation (§6.2)', () => {
     })
     // On disk: old file gone, new untracked file present.
     files.set('new-name.md', '# moved')
-    files.delete('old-name.md')
 
     const api = makeApi({
       manifests: [{ cursor: '10', hasMore: false, changes: [] }],
@@ -315,6 +318,7 @@ describe('push-side rename/tombstone propagation (§6.2)', () => {
     await engine.pushPull()
 
     expect(api.calls).toContain('rename:old-name.md->new-name.md:4')
+    // The local move must not also tombstone the cloud file.
     expect(api.calls.some(c => c.startsWith('delete:'))).toBe(false)
     const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
     expect(state.files['new-name.md'].fileId).toBe('f-100')
@@ -475,5 +479,162 @@ describe('sanity', () => {
     const { fs } = makeFs()
     const api = makeApi()
     expect(() => createSyncEngine(makeDeps(fs, api))).not.toThrow()
+  })
+})
+
+describe('pull-side protective branches (§9.3)', () => {
+  it('keeps a local dirty file when the cloud deletes its identity, re-uploading it as a new file', async () => {
+    const localBody = '# my edits win over an un-synced delete'
+    const localHash = await sha256Hex(localBody)
+    const { fs, files } = seedState({
+      'hot.md': {
+        fileId: 'f-400',
+        identityKey: 'hot.md',
+        localHash,
+        remoteRev: 3,
+        status: 'dirty',
+        size: localBody.length,
+        mtimeMs: 0,
+      },
+    })
+    files.set('hot.md', localBody)
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '20',
+          hasMore: false,
+          changes: [{ op: 'delete', path: 'hot.md', fileId: 'f-400', remoteRev: 4 }],
+        },
+      ],
+      onPut: ({ path }) => ({
+        fileId: 'f-900',
+        path,
+        remoteRev: 1,
+        contentHash: localHash,
+        size: localBody.length,
+        type: 'note',
+        cursor: '21',
+      }),
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    const status = await engine.pushPull()
+
+    // §9.3 删改冲突：改胜于删 — the edited content survives at its original path.
+    expect(status.conflictPaths).toHaveLength(0)
+    expect(files.get('hot.md')).toBe(localBody)
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    // The reference to the tombstoned file is dropped; the same-cycle push sees
+    // the surviving disk file as untracked and uploads it under a NEW fileId
+    // (§8.2: recreate after tombstone gets a new identity reference), so the
+    // deleted cloud file is never resurrected with its old rev.
+    const rec = state.files['hot.md']
+    expect(rec).toBeDefined()
+    expect(rec.fileId).toBe('f-900')
+    expect(rec.remoteRev).toBe(1)
+    expect(rec.status).toBe('clean')
+    const puts = api.calls.filter(c => c.startsWith('put:'))
+    expect(puts).toEqual(['put:hot.md:0'])
+  })
+
+  it('deletes a clean local file when the cloud tombstones it', async () => {
+    const { fs, files } = seedState({
+      'gone.md': {
+        fileId: 'f-401',
+        identityKey: 'gone.md',
+        localHash: null,
+        remoteRev: 2,
+        status: 'clean',
+        size: 10,
+        mtimeMs: 0,
+      },
+    })
+    files.set('gone.md', '# gone')
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '21',
+          hasMore: false,
+          changes: [{ op: 'delete', path: 'gone.md', fileId: 'f-401', remoteRev: 3 }],
+        },
+      ],
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    const status = await engine.pushPull()
+
+    expect(status.conflictPaths).toHaveLength(0)
+    expect(files.has('gone.md')).toBe(false)
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files['gone.md']).toBeUndefined()
+  })
+
+  it('applies a cloud rename keeping rev and lands the new body at the target path', async () => {
+    const renamedBody = '# renamed'
+    const renamedHash = await sha256Hex(renamedBody)
+    const { fs, files } = seedState({
+      'old-name.md': {
+        fileId: 'f-402',
+        identityKey: 'old-name.md',
+        localHash: null,
+        remoteRev: 4,
+        status: 'clean',
+        size: 10,
+        mtimeMs: 0,
+      },
+    })
+    files.set('old-name.md', '# stale until pulled')
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '22',
+          hasMore: false,
+          changes: [
+            {
+              op: 'rename',
+              from: 'old-name.md',
+              path: 'new-name.md',
+              fileId: 'f-402',
+              remoteRev: 5,
+              contentHash: renamedHash,
+            },
+            // The server logs rename as metadata-only; the body arrives via
+            // its own upsert change (backend appendChange emits upsert per PUT).
+            {
+              op: 'upsert',
+              path: 'new-name.md',
+              fileId: 'f-402',
+              remoteRev: 5,
+              contentHash: renamedHash,
+            },
+          ],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-402',
+        path,
+        // Server-accurate echo: the stored rev at request time is what the
+        // manifest promised (5); a mid-cycle bump would be a 409 instead.
+        remoteRev: 5,
+        contentHash: renamedHash,
+        size: renamedBody.length,
+        body: renamedBody,
+        base64Body: null,
+      }),
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    await engine.pushPull()
+
+    // Disk follows the rename; the upsert refetch applies the new rev's body.
+    expect(files.has('old-name.md')).toBe(false)
+    expect(files.get('new-name.md')).toBe(renamedBody)
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files['old-name.md']).toBeUndefined()
+    const moved = state.files['new-name.md']
+    expect(moved.identityKey).toBe('new-name.md')
+    expect(moved.remoteRev).toBe(5)
+    expect(moved.status).toBe('clean')
+    // The renamed file kept its identity: never re-PUT or tombstoned locally.
+    const puts = api.calls.filter(c => c.startsWith('put:'))
+    expect(puts.some(c => c.includes('old-name.md') || c.includes('new-name.md'))).toBe(false)
+    expect(api.calls.some(c => c.startsWith('delete:'))).toBe(false)
   })
 })

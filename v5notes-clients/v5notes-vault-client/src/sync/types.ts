@@ -1,5 +1,6 @@
 import type { SyncFileEntry, SyncStateJson } from '../models/sync-state'
 import type { VaultJson } from '../models/vault'
+import type { NumericByteSize } from './api'
 
 export type SyncStatus =
   | 'idle'
@@ -70,13 +71,14 @@ export interface VaultFileContent {
 
 export interface VaultQuota {
   available: boolean
-  usedBytes: number
-  quotaBytes: number
+  usedBytes: NumericByteSize
+  quotaBytes: NumericByteSize
   deviceLimit: number
   deviceUsed: number
   planName?: string | null
   overQuota?: boolean
-  maxFileBytes?: number
+  /** May arrive stringified by normalizeIds; always read via toNumericBytes. */
+  maxFileBytes?: NumericByteSize
 }
 
 export interface VaultSpaceSummary {

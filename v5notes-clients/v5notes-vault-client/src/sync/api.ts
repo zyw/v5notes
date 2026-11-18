@@ -24,12 +24,15 @@ export class VaultSyncApiError extends Error {
   }
 
   get isConflict(): boolean {
-    return this.httpStatus === 409 || this.businessCode === VaultErrorCode.CONFLICT_REV
+    return this.httpStatus === 409
+      || this.businessCode === VaultErrorCode.CONFLICT_REV
+      || this.businessCode === VaultErrorCode.CONFLICT_PATH_EXISTS
   }
 
   get isQuota(): boolean {
     return this.httpStatus === 402 || this.httpStatus === 403
       || this.businessCode === VaultErrorCode.QUOTA_EXCEEDED
+      || this.businessCode === VaultErrorCode.QUOTA_DEVICES_EXCEEDED
   }
 
   get isTooLarge(): boolean {
@@ -42,6 +45,22 @@ export class VaultSyncApiError extends Error {
     if (this.httpStatus === 401) return false
     return this.httpStatus === 0 || this.httpStatus === 429 || this.httpStatus >= 500
   }
+}
+
+export type NumericByteSize = number | string
+
+/**
+ * `normalizeIds` stringifies numbers above 2^53 (snowflake-safe IDs). Byte-size
+ * fields must stay numeric for comparisons; coerce back so a future server that
+ * returns a >2^53 limit cannot poison the guard into NaN (silent pass-through).
+ */
+export function toNumericBytes(value: NumericByteSize | null | undefined): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
 }
 
 interface Envelope<T> {
@@ -156,6 +175,27 @@ export function createVaultSyncApi(
       call<VaultFileMeta>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/files`, {
         method: 'PUT',
         body: JSON.stringify(body),
+      }),
+    /**
+     * Sequential transactional batch (design §8.2): all items apply or none do.
+     * Not yet wired into SyncEngine's per-file retry/conflict loop; bootstrap
+     * upload may adopt it once item-level rollback semantics are proven safe.
+     */
+    putBatch: (
+      vaultId: string,
+      files: Array<{
+        path: string
+        fileId?: string | null
+        baseRev?: number | null
+        hash: string
+        type?: string
+        body?: string
+        base64Body?: string
+      }>,
+    ) =>
+      call<VaultFileMeta[]>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/files/batch`, {
+        method: 'POST',
+        body: JSON.stringify({ files }),
       }),
     getContent: (vaultId: string, path: string, rev?: number | null) => {
       const params = new URLSearchParams({ path })
