@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "v5notes",
+  "productName": "V5Notes Cloud",
   "version": "2.0.3",
   "identifier": "xin.v5ai.v5notes.client2",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "V5Notes云笔记",
+        "title": "V5Notes Cloud",
         "width": 1200,
         "height": 800,
         "minWidth": 760,

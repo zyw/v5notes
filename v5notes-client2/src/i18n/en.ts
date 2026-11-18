@@ -2,7 +2,7 @@ import type { Messages } from './zh-CN'
 
 export const en: Messages = {
   app: {
-    title: 'V5Notes',
+    title: 'V5Notes Cloud',
     tagline: 'Keep your ideas here.',
     summary: 'Connect to your notes and keep writing.',
     dualProduct:
@@ -138,7 +138,7 @@ export const en: Messages = {
     themeAuto: 'Auto',
     themeLight: 'Light',
     themeDark: 'Dark',
-    autostart: 'Launch v5notes at login',
+    autostart: 'Launch V5Notes Cloud at login',
     autostartHint: 'When on, the app starts after you sign in to the system. Off by default.',
     autostartReadFailed: 'Could not read the launch-at-login setting.',
     autostartWriteFailed: 'Could not update launch at login. Please try again.',

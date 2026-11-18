@@ -78,7 +78,7 @@ fn apply_windows_window_icon(app: &tauri::AppHandle) {
 }
 
 fn app_display_name() -> String {
-    tr("V5Notes云笔记", "V5Notes雲筆記", "V5Notes")
+    tr("V5Notes Cloud", "V5Notes Cloud", "V5Notes Cloud")
 }
 
 fn quit_label() -> String {

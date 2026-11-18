@@ -1,6 +1,6 @@
 export const zhCN = {
   app: {
-    title: 'V5Notes云笔记',
+    title: 'V5Notes Cloud',
     tagline: '把想法留在这里。',
     summary: '连接你的笔记空间，继续写作。',
     dualProduct:
@@ -136,7 +136,7 @@ export const zhCN = {
     themeAuto: '自动',
     themeLight: '浅色',
     themeDark: '深色',
-    autostart: '登录系统后自动启动 v5notes',
+    autostart: '登录系统后自动启动 V5Notes Cloud',
     autostartHint: '开启后应用会在你登录系统后自动启动；默认关闭。',
     autostartReadFailed: '读取登录启动状态失败。',
     autostartWriteFailed: '更新登录启动设置失败，请重试。',
