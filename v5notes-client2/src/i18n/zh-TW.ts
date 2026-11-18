@@ -2,7 +2,7 @@ import type { Messages } from './zh-CN'
 
 export const zhTW: Messages = {
   app: {
-    title: 'V5Notes雲筆記',
+    title: 'V5Notes Cloud',
     tagline: '把想法留在這裡。',
     summary: '連接你的筆記空間，繼續寫作。',
   },
@@ -132,7 +132,7 @@ export const zhTW: Messages = {
     themeAuto: '自動',
     themeLight: '淺色',
     themeDark: '深色',
-    autostart: '登入系統後自動啟動 v5notes',
+    autostart: '登入系統後自動啟動 V5Notes Cloud',
     autostartHint: '開啟後，應用程式會在你登入系統後自動啟動；預設關閉。',
     autostartReadFailed: '讀取登入啟動狀態失敗。',
     autostartWriteFailed: '更新登入啟動設定失敗，請重試。',
