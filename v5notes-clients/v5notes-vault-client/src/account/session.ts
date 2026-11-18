@@ -1,49 +1,49 @@
+import { getSessionStore, type CredentialStore, type SessionSecrets } from './credentialStore'
 import { STORAGE_KEYS } from './constants'
 
-export interface AccountSession {
-  token: string
-  refreshToken: string
+export interface AccountSession extends SessionSecrets {
   username: string
 }
+
+const EMPTY: AccountSession = { token: '', refreshToken: '', username: '' }
 
 function storage(): Storage | null {
   if (typeof localStorage === 'undefined') return null
   return localStorage
 }
 
-/** 读取已保存会话。从不持久化密码。 */
-export function readSession(store: Storage | null = storage()): AccountSession {
-  if (!store) return { token: '', refreshToken: '', username: '' }
-  return {
-    token: store.getItem(STORAGE_KEYS.token) || '',
-    refreshToken: store.getItem(STORAGE_KEYS.refreshToken) || '',
-    username: store.getItem(STORAGE_KEYS.username) || '',
-  }
+/** Username is not a secret — it stays in localStorage for re-login convenience. */
+function readUsername(): string {
+  return storage()?.getItem(STORAGE_KEYS.username) || ''
 }
 
-export function writeSession(
+/**
+ * 读取已保存会话。tokens 来自系统钥匙串（Tauri）或 localStorage 回退（浏览器预览）。
+ * 从不持久化密码。异步：钥匙串访问走 Rust IPC。
+ */
+export async function readSession(store: CredentialStore = getSessionStore()): Promise<AccountSession> {
+  const secrets = await store.load()
+  return { ...secrets, username: readUsername() }
+}
+
+export async function writeSession(
   session: { token: string; refreshToken?: string; username?: string },
-  store: Storage | null = storage(),
-): void {
-  if (!store) return
-  store.setItem(STORAGE_KEYS.token, session.token)
-  if (session.refreshToken) store.setItem(STORAGE_KEYS.refreshToken, session.refreshToken)
-  else store.removeItem(STORAGE_KEYS.refreshToken)
+  store: CredentialStore = getSessionStore(),
+): Promise<void> {
+  await store.save({ token: session.token, refreshToken: session.refreshToken || '' })
   if (session.username !== undefined) {
     const name = session.username.trim()
-    if (name) store.setItem(STORAGE_KEYS.username, name)
+    const st = storage()
+    if (st && name) st.setItem(STORAGE_KEYS.username, name)
   }
 }
 
-/** 登出或 401：只清 token，保留用户名便于再登录；密码从不写入存储。 */
-export function clearTokens(store: Storage | null = storage()): void {
-  if (!store) return
-  store.removeItem(STORAGE_KEYS.token)
-  store.removeItem(STORAGE_KEYS.refreshToken)
+/** 登出或 401：只清 tokens，保留用户名便于再登录；密码从不写入存储。 */
+export async function clearTokens(store: CredentialStore = getSessionStore()): Promise<void> {
+  await store.clear()
 }
 
-export function clearSession(store: Storage | null = storage()): void {
-  clearTokens(store)
-  if (!store) return
-  store.removeItem(STORAGE_KEYS.username)
+export async function clearSession(store: CredentialStore = getSessionStore()): Promise<void> {
+  await clearTokens(store)
+  storage()?.removeItem(STORAGE_KEYS.username)
 }

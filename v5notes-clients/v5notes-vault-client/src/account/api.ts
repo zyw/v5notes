@@ -63,7 +63,7 @@ export function createAccountApi(
   config: () => Connection,
   onUnauthorized: () => void,
   transport: typeof fetch = fetch,
-  onTokensRefreshed?: (accessToken: string, refreshToken: string) => void,
+  onTokensRefreshed?: (accessToken: string, refreshToken: string) => void | Promise<void>,
 ) {
   const rawCall = createRequest(config, onUnauthorized, transport)
 
@@ -78,7 +78,9 @@ export function createAccountApi(
         false,
       )
       if (!pair?.access_token || !pair.refresh_token) return false
-      onTokensRefreshed?.(pair.access_token, pair.refresh_token)
+      // Awaited: keychain persistence must complete before the caller retries
+      // the original request (and before a reload could race the write).
+      await onTokensRefreshed?.(pair.access_token, pair.refresh_token)
       return true
     } catch {
       return false

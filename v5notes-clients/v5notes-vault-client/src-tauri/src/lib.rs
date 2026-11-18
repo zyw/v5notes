@@ -80,13 +80,77 @@ fn open_with_system(url: &str) -> Result<(), String> {
     }
 }
 
+/// Session tokens in the OS keychain (macOS Keychain / Windows Credential
+/// Manager / Linux Secret Service via the `keyring` crate). One entry per
+/// account label; both tokens share a serialized payload so they rotate
+/// together. Username stays client-side — it is not a secret.
+const KEYCHAIN_SERVICE: &str = "com.v5notes.vault-client";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct KeychainPayload {
+    token: String,
+    #[serde(rename = "refreshToken")]
+    refresh_token: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct KeychainArgs {
+    account: String,
+    /// "get" | "set" | "delete"
+    operation: String,
+    #[serde(default)]
+    token: String,
+    #[serde(default)]
+    refresh_token: String,
+}
+
+#[tauri::command]
+fn keychain(args: KeychainArgs) -> Result<Option<KeychainPayload>, String> {
+    if args.account.is_empty() || args.account.contains(['/', '\\', '\0']) {
+        return Err("invalid keychain account".into());
+    }
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, &args.account).map_err(|e| e.to_string())?;
+    match args.operation.as_str() {
+        "get" => match entry.get_password() {
+            Ok(json) => serde_json::from_str(&json).map(Some).map_err(|e| e.to_string()),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        },
+        "set" => {
+            let payload = KeychainPayload {
+                token: args.token,
+                refresh_token: args.refresh_token,
+            };
+            // Empty access token means nothing worth keeping: drop the entry.
+            if payload.token.is_empty() {
+                let _ = entry.delete_credential();
+                return Ok(None);
+            }
+            let json = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
+            entry.set_password(&json).map_err(|e| e.to_string())?;
+            Ok(Some(payload))
+        }
+        "delete" => {
+            // Missing entry is fine — clearing an already-cleared session.
+            let _ = entry.delete_credential();
+            Ok(None)
+        }
+        other => Err(format!("unknown keychain operation: {other}")),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![allow_vault_directory, open_external_url])
+        .invoke_handler(tauri::generate_handler![
+            allow_vault_directory,
+            open_external_url,
+            keychain
+        ])
         .setup(|app| {
             // Linux / Windows debug builds can register the scheme at runtime.
             // macOS registers via the packaged Info.plist after install/bundle.

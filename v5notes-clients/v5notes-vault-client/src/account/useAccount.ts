@@ -2,7 +2,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import { createAccountApi, probeServer, type UserProfile } from './api'
 import { fieldErrorText, validateLoginAccount, validatePassword } from './authValidation'
-import { DEFAULT_CLIENT_ID, DUAL_PRODUCT_LINE, OFFICIAL_SERVER } from './constants'
+import { DEFAULT_CLIENT_ID, DUAL_PRODUCT_LINE, OFFICIAL_SERVER, STORAGE_KEYS } from './constants'
 import { openExternalUrl } from './openExternal'
 import type { AccountPlan } from './quota'
 import { formatBytes } from './quota'
@@ -28,6 +28,12 @@ import {
 /** 同一 webview 生命周期内只消费一次 getCurrent()，避免 remount 重放旧 deep link。 */
 let deepLinkColdStartApplied = false
 
+/** Username is stored in plain localStorage (not a secret) — readable synchronously. */
+function readUsername(): string {
+  if (typeof localStorage === 'undefined') return ''
+  return localStorage.getItem(STORAGE_KEYS.username) || ''
+}
+
 export function useAccount() {
   const clientId = import.meta.env.VITE_CLIENT_ID || DEFAULT_CLIENT_ID
   const stored = readServerSettings()
@@ -35,11 +41,10 @@ export function useAccount() {
   const useOfficialServer = ref(stored.official)
   const customServer = ref(stored.official ? '' : stored.server)
 
-  const session = readSession()
-  const username = ref(session.username)
+  const username = ref(readUsername())
   const password = ref('')
-  const token = ref(session.token)
-  const refreshToken = ref(session.refreshToken)
+  const token = ref('')
+  const refreshToken = ref('')
 
   const busy = ref(false)
   const error = ref('')
@@ -65,26 +70,26 @@ export function useAccount() {
       sessionExpired.value = true
       token.value = ''
       refreshToken.value = ''
-      clearTokens()
+      void clearTokens()
       profile.value = null
       plan.value = null
     },
     fetch,
-    (accessToken, newRefreshToken) => {
+    async (accessToken, newRefreshToken) => {
       token.value = accessToken
       refreshToken.value = newRefreshToken
-      writeSession({ token: accessToken, refreshToken: newRefreshToken })
+      await writeSession({ token: accessToken, refreshToken: newRefreshToken })
     },
   )
 
-  function applyLoginResult(result: { access_token: string; refresh_token?: string }, account: string) {
+  async function applyLoginResult(result: { access_token: string; refresh_token?: string }, account: string) {
     token.value = result.access_token
     refreshToken.value = result.refresh_token || ''
     username.value = account.trim()
     password.value = ''
     sessionExpired.value = false
     error.value = ''
-    writeSession({
+    await writeSession({
       token: result.access_token,
       refreshToken: result.refresh_token,
       username: account.trim(),
@@ -141,7 +146,7 @@ export function useAccount() {
     try {
       await probeServerSafe(server.value)
       const result = await api.login(username.value.trim(), password.value)
-      applyLoginResult(result, username.value)
+      await applyLoginResult(result, username.value)
       await refreshProfileAndPlan()
       return true
     } catch (cause) {
@@ -159,7 +164,7 @@ export function useAccount() {
     sessionExpired.value = false
     profile.value = null
     plan.value = null
-    clearTokens()
+    await clearTokens()
   }
 
   async function startSocialLogin(source: string) {
@@ -192,7 +197,7 @@ export function useAccount() {
         socialCode: params.code,
         socialState: params.state,
       })
-      applyLoginResult(result, username.value || params.source)
+      await applyLoginResult(result, username.value || params.source)
       clearSocialOAuthIntent()
       clearSocialCallbackUrl()
       await refreshProfileAndPlan()
@@ -217,6 +222,14 @@ export function useAccount() {
   }
 
   async function bootstrap() {
+    // Restore the saved session from the credential store (OS keychain under
+    // Tauri). Awaited so auto-refresh and sync see the token immediately.
+    const session = await readSession().catch(() => ({ token: '', refreshToken: '', username: '' }))
+    if (session.token) {
+      token.value = session.token
+      refreshToken.value = session.refreshToken
+      if (session.username && !username.value) username.value = session.username
+    }
     await probeAuthFeatures()
     if (token.value) {
       try {
