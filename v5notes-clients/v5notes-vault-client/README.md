@@ -61,6 +61,6 @@ npm run build     # 前端类型检查 + 打包
 
 ## @v5md 编辑器
 
-依赖与 Cloud（`v5notes-client2`）相同，来自 npm：`@v5md/core|view|vue@0.0.6`。
+依赖与 Cloud（`v5notes-client2`）相同，来自 npm：`@v5md/core|view|vue@0.0.7`。
 
 开发时可设置 `V5MD_LOCAL_ROOT=/绝对路径/v5md npm run dev`（或 `npm run build`）指向本地 v5md 构建产物；未设置时使用 npm 锁定版本。
