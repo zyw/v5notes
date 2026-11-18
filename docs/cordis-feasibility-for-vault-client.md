@@ -45,7 +45,7 @@
 | 核心插件 | `src/plugin-host/core/` | 日记、模板(吃狗粮);samples 有 hello-world、safe-fetch |
 | ThemeHost | `src/theme-host/` | 一等主题品类,CSS 校验 + 回退 |
 
-设计文档([vault-client-plugin-design.md](docs/vault-client-plugin-design.md))冻结的边界:**"权限代理 + Safe Mode + 审核"是承诺的安全模型,不承诺进程级沙箱**;第三方永不获得 publish/sync/shell/任意 fs;主题一等;发布仅官方通道。
+设计文档（[vault-client-design.md](vault-client-design.md) 插件系统一节）冻结的边界:**"权限代理 + Safe Mode + 审核"是承诺的安全模型,不承诺进程级沙箱**;第三方永不获得 publish/sync/shell/任意 fs;主题一等;发布仅官方通道。
 
 ---
 
@@ -234,5 +234,5 @@ S1 失败即止损回路线三;S2 独立有价值,任何路线都建议做。**�
 
 - Cordis 仓库与概念:https://github.com/cordiverse/cordis ;@cordisjs/core npm(registry 实测 3.18.1 / 4.0.0-beta.5);[koishijs/skills cordis 插件开发 SKILL](https://github.com/koishijs/skills/blob/master/skills/cordis-v3-plugin-dev/SKILL.md);[ams-harness cordis-tutorial](https://github.com/yan-mc/ams-harness/blob/main/docs/cordis-tutorial/index.md)
 - DeepSeek Harness:https://github.com/deepseek-ai/deepseek-harness 及其 `docs/architecture.md`(everything-is-a-plugin、bundles/profiles、vendor/cordis)
-- 本地代码与文档:`v5notes-clients/v5notes-vault-client/src/plugin-host/`、`v5notes-clients/packages/vault-plugin-api/`、[docs/vault-client-plugin-design.md](docs/vault-client-plugin-design.md)、[docs/vault-client-design.md](docs/vault-client-design.md)
+- 本地代码与文档:`v5notes-clients/v5notes-vault-client/src/plugin-host/`、`v5notes-clients/packages/vault-plugin-api/`、[docs/vault-client-design.md](vault-client-design.md)
 - 浏览器兼容验证:本次实测 npm pack 下载两版 core,静态检查无 `node:` 内建导入(未执行下载代码)

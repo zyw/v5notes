@@ -17,7 +17,7 @@
 | `deviceType` | `vault_client` |
 | 默认 `client_id` | `b8e4f02a5c3d7916f2a0b1d9e7c5f3a1` |
 
-依据：`docs/vault-client-dev-plan.md`、`docs/vault-client-design.md`。
+依据：`docs/vault-client-design.md`（含插件系统、工程拍板与延期能力）。
 
 ## 开发
 
