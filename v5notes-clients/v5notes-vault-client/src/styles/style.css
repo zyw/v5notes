@@ -243,7 +243,7 @@ code {
 
 .welcome-action-stack {
   list-style: none;
-  margin: 28px 0 0;
+  margin: clamp(20px, 4vh, 36px) 0 0;
   padding: 0;
   display: grid;
   gap: 14px;
@@ -283,7 +283,7 @@ code {
 }
 
 .welcome-cta.ghost {
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--line) 78%, var(--bg));
   background: var(--panel);
   color: var(--ink);
 }
@@ -293,15 +293,8 @@ code {
   background: color-mix(in srgb, var(--panel) 70%, #fff);
 }
 
-.welcome-hint {
-  margin: 16px 0 0;
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
 .welcome-recent {
-  margin: 22px 0 0;
+  margin: clamp(22px, 4.5vh, 40px) 0 0;
   text-align: left;
 }
 
@@ -318,43 +311,69 @@ code {
 .welcome-recent-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .welcome-recent-chip {
+  --chip-color: var(--accent);
+  position: relative;
   display: inline-grid;
-  grid-template-columns: 6px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
+  min-width: 168px;
   max-width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--panel);
+  padding: 12px 44px 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--chip-color) 26%, var(--line));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--chip-color) 12%, var(--panel)) 0%,
+      var(--panel) 58%
+    );
   font-family: var(--font-ui);
   text-align: left;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.welcome-recent-chip:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+.welcome-recent-chip:hover:not(:disabled),
+.welcome-recent-chip:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--chip-color) 55%, var(--line));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.welcome-recent-chip:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
 .chip-swatch {
-  width: 6px;
-  height: 28px;
-  border-radius: 2px;
+  width: 8px;
+  height: 38px;
+  border-radius: 999px;
   display: block;
+  background: var(--chip-color);
+}
+
+:root[data-color-mode='dark'] .chip-swatch {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent);
 }
 
 .chip-copy {
   min-width: 0;
   display: grid;
-  gap: 1px;
+  gap: 2px;
 }
 
 .chip-copy strong {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 650;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -362,26 +381,57 @@ code {
 
 .chip-copy em {
   font-style: normal;
-  font-size: 0.68rem;
-  color: var(--muted);
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--chip-color) 55%, var(--muted));
 }
 
 .chip-forget {
-  font-size: 0.68rem;
-  font-weight: 600;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   color: var(--muted);
-  opacity: 0.65;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 120ms ease, transform 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.welcome-recent-chip:hover .chip-forget { opacity: 1; }
+.chip-forget svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.welcome-recent-chip:hover .chip-forget,
+.welcome-recent-chip:focus-within .chip-forget {
+  opacity: 1;
+  transform: none;
+}
+
+.chip-forget:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+@media (hover: none) {
+  .chip-forget {
+    opacity: 1;
+    transform: none;
+  }
+}
 
 .term-rail {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-  margin: 28px 0 0;
+  gap: 6px;
+  margin: clamp(22px, 4.5vh, 40px) 0 0;
   align-items: end;
-  min-height: 64px;
+  min-height: 68px;
 }
 
 .term-swatch {
@@ -390,27 +440,44 @@ code {
   flex-direction: column;
   justify-content: flex-end;
   gap: 2px;
-  min-height: 46px;
-  padding: 8px 6px 7px;
-  border-radius: 3px 3px 0 0;
+  min-height: 48px;
+  padding: 8px 8px 7px;
+  border-radius: 6px;
   background: var(--swatch, var(--accent));
-  color: #fff;
+  /* --on-swatch comes from vaultOnColor(): ink or paper by contrast. */
+  color: var(--on-swatch, #fff);
   text-align: left;
-  transition: min-height 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: min-height 140ms ease, transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .term-swatch.active {
-  min-height: 70px;
+  min-height: 68px;
   z-index: 1;
   transform: translateY(-2px);
+  border: 1px solid var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 0 2px color-mix(in srgb, var(--ink) 22%, transparent);
+    0 8px 18px rgba(42, 41, 36, 0.18);
+}
+
+/* Check badge on the selected term so identity is not height alone. */
+.term-swatch.active::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="%23fbf7ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') center / 10px no-repeat;
 }
 
 .term-swatch:hover:not(.active) {
-  filter: brightness(1.04);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(42, 41, 36, 0.16);
 }
 
 .term-name {

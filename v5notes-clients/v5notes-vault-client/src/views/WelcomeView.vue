@@ -11,6 +11,7 @@ import {
   getPendingWelcomeColor,
   resolveVaultColor,
   setPendingWelcomeColor,
+  vaultOnColor,
   type VaultColorSwatch,
 } from '../appearance/vaultColors'
 import { VaultPathError } from '../path/identity'
@@ -168,7 +169,6 @@ function forget(entry: RecentVaultEntry) {
       </ul>
 
       <p v-if="error" class="banner-error" role="alert">{{ error }}</p>
-      <p class="welcome-hint">请勿把库放进网盘同步目录后再开官方 Sync。</p>
 
       <div
         v-if="recent.length"
@@ -182,10 +182,11 @@ function forget(entry: RecentVaultEntry) {
             :key="entry.rootPath"
             type="button"
             class="welcome-recent-chip"
+            :style="{ '--chip-color': colorFor(entry).color }"
             :disabled="busy"
             @click="openRecent(entry)"
           >
-            <i class="chip-swatch" :style="{ background: colorFor(entry).color }" aria-hidden="true" />
+            <span class="chip-swatch" aria-hidden="true" />
             <span class="chip-copy">
               <strong>{{ entry.name }}</strong>
               <em>{{ colorFor(entry).term }}</em>
@@ -193,10 +194,20 @@ function forget(entry: RecentVaultEntry) {
             <span
               class="chip-forget"
               role="button"
-              tabindex="0"
+              tabindex="-1"
+              :aria-label="`从最近列表移除 ${entry.name}`"
+              title="从最近列表移除"
               @click.stop="forget(entry)"
-              @keydown.enter.stop="forget(entry)"
-            >移除</span>
+            >
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path
+                  d="M6.4 6.4l7.2 7.2M13.6 6.4l-7.2 7.2"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </span>
           </button>
         </div>
       </div>
@@ -208,7 +219,7 @@ function forget(entry: RecentVaultEntry) {
           type="button"
           class="term-swatch"
           :class="{ active: pending.id === swatch.id }"
-          :style="{ '--swatch': swatch.color }"
+          :style="{ '--swatch': swatch.color, '--on-swatch': vaultOnColor(swatch.color) }"
           role="radio"
           :aria-checked="pending.id === swatch.id"
           :aria-label="`${swatch.term} · ${swatch.name}`"
