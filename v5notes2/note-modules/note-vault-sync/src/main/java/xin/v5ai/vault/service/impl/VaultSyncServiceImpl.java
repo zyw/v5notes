@@ -99,7 +99,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             .eq(VaultDevice::getVaultId, vaultId)));
         boolean alreadyBound = existing != null;
         if (VaultQuotaRules.wouldExceedDevices(deviceUsed, alreadyBound, VaultQuotaRules.DEFAULT_DEVICE_LIMIT)) {
-            throw new VaultBusinessException(HttpStatus.FORBIDDEN, VaultErrorCodes.QUOTA_EXCEEDED,
+            throw new VaultBusinessException(HttpStatus.FORBIDDEN, VaultErrorCodes.QUOTA_DEVICES_EXCEEDED,
                 "同步设备数已达上限，请踢除旧设备或升级套餐");
         }
         Date now = new Date();
@@ -185,8 +185,22 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public VaultFileMetaVo putFile(Long userId, Long vaultId, VaultFilePutBo bo) {
+        return putFileInternal(userId, vaultId, bo);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<VaultFileMetaVo> putBatch(Long userId, Long vaultId, List<VaultFilePutBo> files) {
+        // One transaction for the whole batch: item N failing rolls back items 1..N-1.
+        List<VaultFileMetaVo> out = new ArrayList<>(files.size());
+        for (VaultFilePutBo bo : files) {
+            out.add(putFileInternal(userId, vaultId, bo));
+        }
+        return out;
+    }
+
+    private VaultFileMetaVo putFileInternal(Long userId, Long vaultId, VaultFilePutBo bo) {
         VaultSpace space = requireOwnedVault(userId, vaultId);
         VaultPathRules.NormalizedVaultPath normalized;
         try {
@@ -207,7 +221,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         }
         String computed = VaultContentHash.ofBytes(bytes);
         if (!VaultContentHash.equalsNormalized(hash, computed)) {
-            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "contentHash 与正文不一致");
+            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.HASH_MISMATCH, "contentHash 与正文不一致");
         }
 
         VaultFile liveByIdentity = findLiveByIdentity(vaultId, normalized.identityKey());
@@ -381,7 +395,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         }
         VaultFile target = findLiveByIdentity(vaultId, to.identityKey());
         if (target != null && !Objects.equals(target.getId(), file.getId())) {
-            throw new VaultBusinessException(HttpStatus.CONFLICT, VaultErrorCodes.PATH_INVALID, "目标路径已存在");
+            // Target path taken: conflict family, not a malformed-path error (design §8.2).
+            throw new VaultConflictException(conflictVo(VaultErrorCodes.CONFLICT_PATH_EXISTS, target));
         }
         String oldPath = file.getPath();
         file.setPath(to.displayPath());
@@ -501,14 +516,19 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     }
 
     private VaultConflictException conflict(VaultFile file) {
+        return new VaultConflictException(conflictVo(VaultErrorCodes.CONFLICT_REV, file));
+    }
+
+    /** Conflict payload for the given live file (design §8.2: body carries server metadata). */
+    private VaultConflictVo conflictVo(String code, VaultFile file) {
         VaultConflictVo vo = new VaultConflictVo();
-        vo.setCode(VaultErrorCodes.CONFLICT_REV);
+        vo.setCode(code);
         vo.setPath(file.getPath());
         vo.setFileId(String.valueOf(file.getId()));
         vo.setRemoteRev(file.getRev());
         vo.setContentHash(file.getContentHash());
         vo.setSize(file.getSizeBytes());
-        return new VaultConflictException(vo);
+        return vo;
     }
 
     private VaultSpaceVo toSpaceVo(VaultSpace space, boolean empty) {

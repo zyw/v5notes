@@ -16,6 +16,7 @@ import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.common.core.domain.R;
 import xin.v5ai.common.satoken.utils.LoginHelper;
 import xin.v5ai.common.web.core.BaseController;
+import xin.v5ai.vault.domain.bo.VaultFileBatchBo;
 import xin.v5ai.vault.domain.bo.VaultFileDeleteBo;
 import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.domain.bo.VaultRenameBo;
@@ -46,6 +47,16 @@ public class VaultFileController extends BaseController {
     public R<?> putFile(@PathVariable String vaultId, @Valid @RequestBody VaultFilePutBo bo) {
         try {
             return R.ok(vaultSyncService.putFile(LoginHelper.getUserId(), Long.parseLong(vaultId), bo));
+        } catch (VaultConflictException ex) {
+            return R.fail(HttpStatus.CONFLICT, ex.getMessage(), ex.getConflict());
+        }
+    }
+
+    /** Sequential transactional batch (design §8.2); same 409 envelope as single PUT. */
+    @PostMapping("/files/batch")
+    public R<?> putBatch(@PathVariable String vaultId, @Valid @RequestBody VaultFileBatchBo bo) {
+        try {
+            return R.ok(vaultSyncService.putBatch(LoginHelper.getUserId(), Long.parseLong(vaultId), bo.getFiles()));
         } catch (VaultConflictException ex) {
             return R.fail(HttpStatus.CONFLICT, ex.getMessage(), ex.getConflict());
         }

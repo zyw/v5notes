@@ -36,6 +36,12 @@ public interface IVaultSyncService {
 
     VaultFileMetaVo putFile(Long userId, Long vaultId, VaultFilePutBo bo);
 
+    /**
+     * Sequential transactional apply of {@link #putFile} (design §8.2 batch endpoint).
+     * Any item failure rolls the whole batch back; response lists items in request order.
+     */
+    List<VaultFileMetaVo> putBatch(Long userId, Long vaultId, List<VaultFilePutBo> files);
+
     VaultFileContentVo getContent(Long userId, Long vaultId, String path, Long rev);
 
     VaultFileMetaVo deleteFile(Long userId, Long vaultId, VaultFileDeleteBo bo);
