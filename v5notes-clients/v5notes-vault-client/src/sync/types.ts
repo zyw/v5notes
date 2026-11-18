@@ -42,6 +42,8 @@ export interface VaultFileVersion {
 export interface VaultManifest {
   cursor: string
   changes: VaultChange[]
+  /** True when more pages remain; client must keep paging via cursor (design §8.2). */
+  hasMore?: boolean
   empty?: boolean
 }
 

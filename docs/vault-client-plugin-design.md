@@ -260,10 +260,14 @@ PluginHost
 - 解析 frontmatter、wikilink/反向链接（若产品支持）、标题大纲。
 - 插件可读缓存；写正文仍走 `vault.write`，由宿主重解析。
 
-### 5.4 编辑器扩展
+### 5.4 编辑器扩展与可替换编辑器
 
-- `registerEditorExtension(spec)`：对接 V5Editor 公开扩展点（命令、装饰、块菜单、输入规则），**不**保证暴露完整 ProseMirror/TipTap 内部。
+- `registerEditorExtension(spec)`：对接当前编辑器的公开扩展点（命令、装饰、块菜单、输入规则），**不**保证暴露完整 ProseMirror/TipTap 内部。
 - Markdown 渲染后处理：`registerMarkdownPostProcessor`（预览模式 HTML 节点）。
+- **编辑器本身是插件**（不引入 Cordis）。`registerEditorProvider` 需要 `editor:provide`。宿主同一时间只挂一个 provider，画布是空容器，由 provider `mount()` 填入。
+- 核心插件 `v5-editor`（V5 编辑器）**始终加载、不可禁用**。可选核心插件 `plain-text`（纯文本）启用后可在设置里切换。第三方插件同样可注册 provider。
+- 预览/编辑切换只调用 `EditorSession.setEditable`，**不得卸载再挂载**，以便保留撤销历史。换笔记可以 `setMarkdown`，换 provider 才销毁旧会话。
+- 安全模式仍加载核心编辑器；若当前选中的社区编辑器被跳过，回退到 `v5-editor`。
 
 ### 5.5 设置
 
@@ -358,6 +362,7 @@ await instance.onload()
 | `ui:views` | 自定义视图叶子 |
 | `ui:theme` | 注册/提供主题（一等 Theme 品类） |
 | `editor:extend` | 编辑器扩展 / 后处理器 |
+| `editor:provide` | 注册一个可切换的笔记编辑器 |
 | `network:safe` | **安全网络**：仅白名单 host + 方法限制（见 §7.4） |
 | `clipboard` | 读写剪贴板 |
 

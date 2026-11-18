@@ -13,6 +13,7 @@ export type PluginPermission =
   | 'ui:views'
   | 'ui:theme'
   | 'editor:extend'
+  | 'editor:provide'
   | 'network:safe'
   | 'clipboard'
 
@@ -146,6 +147,58 @@ export interface ViewSpec {
   unmount?: () => void
 }
 
+export interface EditorOutlineEntry {
+  depth: number
+  text: string
+  start: number
+}
+
+export interface EditorFindOptions {
+  caseSensitive?: boolean
+  wholeWord?: boolean
+  regexp?: boolean
+}
+
+export interface EditorFindResult {
+  hit: { from: number; to: number; index: number; total: number } | null
+  error: string | null
+}
+
+export interface EditorMountOptions {
+  markdown: string
+  editable: boolean
+  placeholder?: string
+  locale?: string
+  theme?: string
+  onChange: (markdown: string) => void
+  onFindRequest?: () => void
+  onReady?: () => void
+}
+
+/**
+ * One mounted note editor. The host toggles preview/edit via `setEditable`
+ * and must not remount, so undo history stays on this instance.
+ */
+export interface EditorSession {
+  getMarkdown(): string
+  setMarkdown(markdown: string): void
+  setEditable(editable: boolean): void
+  focus(): void
+  focusAt(offset: number): void
+  getOutline(): EditorOutlineEntry[]
+  selectFindMatch(from: number, to: number): void
+  replaceNextMatch(query: string, replacement: string, options?: EditorFindOptions): EditorFindResult
+  replaceAllMatches(query: string, replacement: string, options?: EditorFindOptions): EditorFindResult
+  destroy(): void
+}
+
+/** Requires `editor:provide`. One active provider paints the note canvas. */
+export interface EditorProviderSpec {
+  id: string
+  name: string
+  mount(container: HTMLElement, options: EditorMountOptions): EditorSession | Promise<EditorSession>
+}
+
 export abstract class Plugin {
   readonly app: App
   readonly manifest: PluginManifest
@@ -154,6 +207,7 @@ export abstract class Plugin {
   private readonly _ribbons: RibbonIconSpec[] = []
   private readonly _settingTabs: SettingTabSpec[] = []
   private readonly _views: ViewSpec[] = []
+  private readonly _editors: EditorProviderSpec[] = []
 
   constructor(app: App, manifest: PluginManifest) {
     this.app = app
@@ -192,6 +246,11 @@ export abstract class Plugin {
     this._views.push(spec)
   }
 
+  /** Requires `editor:provide`. Replaces the note canvas when the user selects this id. */
+  registerEditorProvider(spec: EditorProviderSpec): void {
+    this._editors.push(spec)
+  }
+
   /** Host-only: registered commands before unload. */
   getRegisteredCommands(): readonly PluginCommand[] {
     return this._commands
@@ -210,6 +269,11 @@ export abstract class Plugin {
   /** Host-only. */
   getRegisteredViews(): readonly ViewSpec[] {
     return this._views
+  }
+
+  /** Host-only. */
+  getRegisteredEditorProviders(): readonly EditorProviderSpec[] {
+    return this._editors
   }
 
   /** Host-only: run all disposers. */

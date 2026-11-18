@@ -309,6 +309,33 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     }
   }
 
+  /** Hash an untracked on-disk file (text or binary) for bootstrap comparison. */
+  async function hashUntrackedFile(path: string): Promise<string> {
+    if (prefersTextBody(path)) {
+      return sha256Hex(await fs.readText(deps.rootPath, path))
+    }
+    return sha256Hex(await fs.readBytes(deps.rootPath, path))
+  }
+
+  /** Find an on-disk file whose identity key matches, for bootstrap conflict copies. */
+  async function findOnDiskPathByIdentity(identityKey: string): Promise<string | null> {
+    try {
+      const tree = await fs.listTree(deps.rootPath)
+      const stack = [...tree]
+      while (stack.length > 0) {
+        const node = stack.pop()!
+        if (node.kind === 'dir') {
+          if (node.children) stack.push(...node.children)
+          continue
+        }
+        if (node.identityKey === identityKey) return node.path
+      }
+    } catch {
+      // unreadable tree
+    }
+    return null
+  }
+
   async function applyRemoteUpsert(
     vaultId: string,
     change: VaultChange,
@@ -336,11 +363,56 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       && remoteHash
       && normalizeContentHash(local.localHash) !== remoteHash
 
-    if (localDirty && hashMismatch && localPath) {
-      const copyPath = buildConflictCopyPath(localPath, deviceId, occupied, toIdentityKey)
+    // Bootstrap merge (design §9.3 "两端都有内容"): a local file exists on disk but has
+    // no sync-state entry yet (first bind). If its content differs from the remote
+    // baseline, the local copy must be preserved as a conflict copy — never silently
+    // overwritten by the cloud baseline pull.
+    let localExistsUntracked = false
+    let untrackedLocalPath: string | null = null
+    if (!localPath) {
+      try {
+        if (await fs.exists(deps.rootPath, change.path)) {
+          localExistsUntracked = true
+          untrackedLocalPath = change.path
+        } else {
+          // Case-variant display path may exist on disk for the same identity key.
+          const tree = await fs.listTree(deps.rootPath)
+          const stack = [...tree]
+          while (stack.length > 0) {
+            const node = stack.pop()!
+            if (node.kind === 'dir') {
+              if (node.children) stack.push(...node.children)
+              continue
+            }
+            if (node.identityKey === identityKey) {
+              localExistsUntracked = true
+              untrackedLocalPath = node.path
+              break
+            }
+          }
+        }
+      } catch {
+        // Unreadable tree — treat as no local file; pull proceeds.
+      }
+    }
+    // Same content on both sides is not a conflict: the cloud baseline simply
+    // adopts the existing local file without a copy.
+    const untrackedMatchesRemote = localExistsUntracked
+      && remoteHash != null
+      && untrackedLocalPath != null
+      && (await hashUntrackedFile(untrackedLocalPath)) === remoteHash
+    const bootstrapConflict = localExistsUntracked && !untrackedMatchesRemote && remoteHash != null
+
+    if (bootstrapConflict || (localDirty && hashMismatch && localPath)) {
+      // Conflict-copy source: the tracked dirty path, or the on-disk case-variant path
+      // when bootstrapping against an untracked local file.
+      const sourcePath = localPath
+        ?? untrackedLocalPath
+        ?? (await findOnDiskPathByIdentity(identityKey)) ?? change.path
+      const copyPath = buildConflictCopyPath(sourcePath, deviceId, occupied, toIdentityKey)
       occupied.add(toIdentityKey(copyPath))
-      if (prefersTextBody(localPath)) {
-        const localContent = await fs.readText(deps.rootPath, localPath)
+      if (prefersTextBody(sourcePath)) {
+        const localContent = await fs.readText(deps.rootPath, sourcePath)
         await fs.writeText(deps.rootPath, copyPath, localContent)
         state.files[copyPath] = {
           fileId: null,
@@ -352,7 +424,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
           mtimeMs: Date.now(),
         }
       } else {
-        const localBytes = await fs.readBytes(deps.rootPath, localPath)
+        const localBytes = await fs.readBytes(deps.rootPath, sourcePath)
         await fs.writeBytes(deps.rootPath, copyPath, localBytes)
         state.files[copyPath] = {
           fileId: null,
@@ -458,75 +530,84 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       const state = await readSyncState()
       const cursor = config.binding.lastCursor
 
-      // Pull
-      const manifest = await api.manifest(vaultId, cursor)
+      // Pull — page through manifest until exhausted (design §8.2 pagination).
       const occupied = new Set(
         Object.values(state.files).map(e => e.identityKey).filter(Boolean) as string[],
       )
-      for (const change of manifest.changes) {
-        if (change.op === 'upsert') {
-          await applyRemoteUpsert(vaultId, change, state, occupied, config.binding.deviceId)
-        } else if (change.op === 'delete' && change.path) {
-          const identityKey = toIdentityKey(change.path)
-          const localEntry = Object.entries(state.files).find(([, e]) => e.identityKey === identityKey)
-          if (localEntry && (localEntry[1].status === 'dirty' || localEntry[1].status === 'conflict')) {
-            const copyPath = buildConflictCopyPath(localEntry[0], config.binding.deviceId, occupied, toIdentityKey)
-            occupied.add(toIdentityKey(copyPath))
-            if (prefersTextBody(localEntry[0])) {
-              const localContent = await fs.readText(deps.rootPath, localEntry[0])
-              await fs.writeText(deps.rootPath, copyPath, localContent)
-              state.files[copyPath] = {
-                fileId: null,
-                identityKey: toIdentityKey(copyPath),
-                localHash: await sha256Hex(localContent),
-                remoteRev: null,
-                status: 'dirty',
-                size: new TextEncoder().encode(localContent).length,
-                mtimeMs: Date.now(),
+      let pullCursor: string | null = cursor
+      for (;;) {
+        const manifest = await api.manifest(vaultId, pullCursor)
+        for (const change of manifest.changes) {
+          if (change.op === 'upsert') {
+            await applyRemoteUpsert(vaultId, change, state, occupied, config.binding.deviceId)
+          } else if (change.op === 'delete' && change.path) {
+            const identityKey = toIdentityKey(change.path)
+            const localEntry = Object.entries(state.files).find(([, e]) => e.identityKey === identityKey)
+            if (localEntry && (localEntry[1].status === 'dirty' || localEntry[1].status === 'conflict')) {
+              const copyPath = buildConflictCopyPath(localEntry[0], config.binding.deviceId, occupied, toIdentityKey)
+              occupied.add(toIdentityKey(copyPath))
+              if (prefersTextBody(localEntry[0])) {
+                const localContent = await fs.readText(deps.rootPath, localEntry[0])
+                await fs.writeText(deps.rootPath, copyPath, localContent)
+                state.files[copyPath] = {
+                  fileId: null,
+                  identityKey: toIdentityKey(copyPath),
+                  localHash: await sha256Hex(localContent),
+                  remoteRev: null,
+                  status: 'dirty',
+                  size: new TextEncoder().encode(localContent).length,
+                  mtimeMs: Date.now(),
+                }
+              } else {
+                const localBytes = await fs.readBytes(deps.rootPath, localEntry[0])
+                await fs.writeBytes(deps.rootPath, copyPath, localBytes)
+                state.files[copyPath] = {
+                  fileId: null,
+                  identityKey: toIdentityKey(copyPath),
+                  localHash: await sha256Hex(localBytes),
+                  remoteRev: null,
+                  status: 'dirty',
+                  size: localBytes.byteLength,
+                  mtimeMs: Date.now(),
+                }
               }
+              conflictPaths.push(copyPath)
             } else {
-              const localBytes = await fs.readBytes(deps.rootPath, localEntry[0])
-              await fs.writeBytes(deps.rootPath, copyPath, localBytes)
-              state.files[copyPath] = {
-                fileId: null,
-                identityKey: toIdentityKey(copyPath),
-                localHash: await sha256Hex(localBytes),
-                remoteRev: null,
-                status: 'dirty',
-                size: localBytes.byteLength,
-                mtimeMs: Date.now(),
+              try {
+                await fs.delete(deps.rootPath, change.path)
+              } catch {
+                // already gone
               }
             }
-            conflictPaths.push(copyPath)
-          } else {
+            if (localEntry) delete state.files[localEntry[0]]
+          } else if (change.op === 'rename' && change.from && change.path) {
             try {
-              await fs.delete(deps.rootPath, change.path)
+              await fs.rename(deps.rootPath, change.from, change.path)
             } catch {
-              // already gone
+              // may already be at target after prior pull
             }
-          }
-          if (localEntry) delete state.files[localEntry[0]]
-        } else if (change.op === 'rename' && change.from && change.path) {
-          try {
-            await fs.rename(deps.rootPath, change.from, change.path)
-          } catch {
-            // may already be at target after prior pull
-          }
-          const fromKey = toIdentityKey(change.from)
-          const entry = Object.entries(state.files).find(([, e]) => e.identityKey === fromKey)
-          if (entry) {
-            const [, meta] = entry
-            delete state.files[entry[0]]
-            state.files[change.path] = {
-              ...meta,
-              identityKey: toIdentityKey(change.path),
-              remoteRev: change.remoteRev,
-              status: 'clean',
+            const fromKey = toIdentityKey(change.from)
+            const entry = Object.entries(state.files).find(([, e]) => e.identityKey === fromKey)
+            if (entry) {
+              const [, meta] = entry
+              delete state.files[entry[0]]
+              state.files[change.path] = {
+                ...meta,
+                identityKey: toIdentityKey(change.path),
+                remoteRev: change.remoteRev,
+                status: 'clean',
+              }
             }
           }
         }
+        if (manifest.hasMore && manifest.changes.length > 0) {
+          pullCursor = manifest.cursor
+          continue
+        }
+        // Final page (or stale hasMore with an empty page): commit the cursor.
+        config.binding.lastCursor = manifest.cursor
+        break
       }
-      config.binding.lastCursor = manifest.cursor
       await writeVaultJson(config)
 
       // Push local
@@ -536,6 +617,69 @@ export function createSyncEngine(deps: SyncEngineDeps) {
           .filter(e => e.fileId && e.status === 'clean')
           .map(e => e.identityKey),
       )
+
+      // Local renames and deletes must propagate as explicit rename/tombstone ops,
+      // never as silent delete+create (design §6.2 / §9.4).
+      const localIdentity = new Set(localFiles.map(f => f.identityKey))
+      const renamedLocally = new Set<string>() // identity keys already claimed by a rename this cycle
+      for (const [path, entry] of Object.entries(state.files)) {
+        if (!entry.fileId || entry.status !== 'clean') continue
+        if (localIdentity.has(entry.identityKey)) continue
+        // Tracked clean file vanished from disk since last cycle.
+        if (overQuota) break
+        // Look for a candidate untracked local file that plausibly is the rename target:
+        // same kind (note→.md, asset→non-md), not already in sync-state under any path
+        // with a fileId, and not the source of another rename.
+        const renameTarget = localFiles.find(candidate => {
+          if (candidate.tooLarge) return false
+          if (candidate.kind !== classifyFileKind(path)) return false
+          if (renamedLocally.has(candidate.identityKey)) return false
+          const candidateEntry = state.files[candidate.displayPath]
+            || Object.values(state.files).find(e => e.identityKey === candidate.identityKey)
+          // Untracked only: a tracked-but-dirty file is an edit, not a rename target.
+          return !candidateEntry || (!candidateEntry.fileId && candidateEntry.status !== 'conflict')
+        })
+        try {
+          if (renameTarget) {
+            await api.rename(vaultId, {
+              from: path,
+              to: renameTarget.displayPath,
+              baseRev: entry.remoteRev ?? 0,
+            })
+            renamedLocally.add(renameTarget.identityKey)
+            delete state.files[path]
+            state.files[renameTarget.displayPath] = {
+              fileId: entry.fileId,
+              identityKey: renameTarget.identityKey,
+              localHash: renameTarget.hash,
+              remoteRev: entry.remoteRev,
+              status: 'clean',
+              size: renameTarget.size,
+              mtimeMs: renameTarget.mtimeMs,
+            }
+          } else {
+            await api.deleteFile(vaultId, { path, baseRev: entry.remoteRev ?? 0 })
+            delete state.files[path]
+          }
+        } catch (err) {
+          if (err instanceof VaultSyncApiError && err.isConflict) {
+            // Remote moved on while we deleted/renamed locally; surface for user review.
+            state.files[path] = { ...entry, status: 'conflict' }
+            conflictPaths.push(path)
+            continue
+          }
+          if (err instanceof VaultSyncApiError && err.isRetryable) {
+            await enqueueTransientFailure(err, 'push', path)
+            continue
+          }
+          if (err instanceof VaultSyncApiError && err.isQuota) {
+            overQuota = true
+            setStatus('over-quota', err.message || overQuotaPushMessage(), err.businessCode)
+            break
+          }
+          await enqueueTransientFailure(err, 'push', path)
+        }
+      }
 
       for (const file of localFiles) {
         if (file.tooLarge) {

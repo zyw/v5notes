@@ -19,6 +19,36 @@ export const VAULT_COLOR_PALETTE: VaultColorSwatch[] = [
   { id: 'guyu', term: '谷雨', name: '艾绿', color: '#9aab8c' },
 ]
 
+function parseHexColor(color: string): [number, number, number] | null {
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
+  if (!match) return null
+  const raw = match[1]!
+  const full = raw.length === 3 ? raw.split('').map(part => part + part).join('') : raw
+  return [
+    Number.parseInt(full.slice(0, 2), 16),
+    Number.parseInt(full.slice(2, 4), 16),
+    Number.parseInt(full.slice(4, 6), 16),
+  ]
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const channel = (value: number) => {
+    const v = value / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+/** Ink for text/icons sitting on a solid vault-color fill. */
+export function vaultOnColor(color: string): string {
+  const rgb = parseHexColor(color)
+  if (!rgb) return '#fffefa'
+  const luminance = relativeLuminance(rgb)
+  const againstLight = 1.05 / (luminance + 0.05)
+  const againstDark = (luminance + 0.05) / 0.05
+  return againstLight >= againstDark ? '#fffefa' : '#1f1d18'
+}
+
 const STORAGE_KEY = 'v5notes.vault.vault-color.v1'
 const PENDING_KEY = 'v5notes.vault.welcome-color.v1'
 
@@ -73,9 +103,11 @@ export function applyVaultColor(color: string | null): void {
   const root = document.documentElement
   if (color) {
     root.style.setProperty('--vault', color)
+    root.style.setProperty('--vault-on', vaultOnColor(color))
     root.dataset.vaultColor = color
   } else {
     root.style.removeProperty('--vault')
+    root.style.removeProperty('--vault-on')
     delete root.dataset.vaultColor
   }
 }

@@ -51,6 +51,9 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class VaultSyncServiceImpl implements IVaultSyncService {
 
+    /** Max changes per manifest page; client pages via hasMore until exhausted (design §8.2). */
+    public static final int MANIFEST_PAGE_LIMIT = 500;
+
     private final VaultSpaceMapper spaceMapper;
     private final VaultDeviceMapper deviceMapper;
     private final VaultFileMapper fileMapper;
@@ -161,7 +164,12 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             .eq(VaultChange::getVaultId, vaultId)
             .gt(VaultChange::getId, since)
             .orderByAsc(VaultChange::getId)
-            .last("LIMIT 500"));
+            .last("LIMIT " + (MANIFEST_PAGE_LIMIT + 1)));
+        // Page limit + 1 probe: an extra row means more pages remain (design §8.2 pagination).
+        boolean hasMore = changes.size() > MANIFEST_PAGE_LIMIT;
+        if (hasMore) {
+            changes = changes.subList(0, MANIFEST_PAGE_LIMIT);
+        }
         VaultManifestVo vo = new VaultManifestVo();
         vo.setEmpty(!hasLiveFiles(vaultId));
         List<VaultChangeVo> items = new ArrayList<>(changes.size());
@@ -172,6 +180,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         }
         vo.setChanges(items);
         vo.setCursor(String.valueOf(maxCursor));
+        vo.setHasMore(hasMore);
         return vo;
     }
 
@@ -245,6 +254,12 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             if (liveByIdentity != null && (liveByIdentity.getDeleted() == null || liveByIdentity.getDeleted() == 0)) {
                 throw conflict(liveByIdentity);
             }
+            // Re-check under row lock: two devices first-uploading the same identity
+            // concurrently must not both insert (design §8.2 active-identity uniqueness).
+            VaultFile concurrent = findLiveByIdentityForUpdate(vaultId, normalized.identityKey());
+            if (concurrent != null) {
+                throw conflict(concurrent);
+            }
             file = new VaultFile();
             file.setVaultId(vaultId);
             file.setPath(normalized.displayPath());
@@ -292,7 +307,9 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.FILE_NOT_FOUND, "文件不存在");
         }
         if (rev != null && !Objects.equals(file.getRev(), rev)) {
-            // Still return current content; client can detect mismatch via remoteRev.
+            // Requested rev no longer current (design §8.2): surface the live metadata so
+            // the client can decide to refetch instead of silently writing stale content.
+            throw conflict(file);
         }
         VaultFileBlob blob = blobMapper.selectById(file.getContentHash());
         if (blob == null || blob.getContent() == null) {
@@ -451,6 +468,22 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             .eq(VaultFile::getIdentityKey, identityKey)
             .eq(VaultFile::getDeleted, 0)
             .last("LIMIT 1"));
+    }
+
+    /**
+     * Row-locked existence check for the active identity (design §8.2 uniqueness).
+     *
+     * <p>The soft-deleted history rows share the identity key, so a plain UNIQUE index
+     * cannot enforce "at most one live row per (vault_id, identity_key)". Instead, on
+     * first upload we lock the vault_space row (serializing writers per vault) and
+     * re-check before insert. Concurrent first-uploads of the same identity then
+     * serialize: the loser sees the winner's row and gets {@code 409}.</p>
+     */
+    private VaultFile findLiveByIdentityForUpdate(Long vaultId, String identityKey) {
+        spaceMapper.selectOne(new LambdaQueryWrapper<VaultSpace>()
+            .eq(VaultSpace::getId, vaultId)
+            .last("FOR UPDATE"));
+        return findLiveByIdentity(vaultId, identityKey);
     }
 
     private boolean hasLiveFiles(Long vaultId) {

@@ -1,5 +1,6 @@
 import {
   Plugin,
+  type EditorProviderSpec,
   type PluginCommand,
   type PluginManifest,
   type RibbonIconSpec,
@@ -12,11 +13,14 @@ import {
 import { attachDataMethods, createPluginApi } from './createPluginApi'
 import { emptyCommunityPlugins, parseCommunityPlugins, type CommunityPluginsFile } from './communityPlugins'
 import { DailyNotesPlugin, DAILY_NOTES_MANIFEST } from './core/dailyNotes'
+import { PlainEditorPlugin, PLAIN_EDITOR_MANIFEST } from './core/plainEditor'
 import { TemplatesPlugin, TEMPLATES_MANIFEST } from './core/templates'
+import { V5EditorPlugin, V5_EDITOR_ID, V5_EDITOR_MANIFEST } from './core/v5Editor'
 import { parseManifestJson, satisfiesMinAppVersion } from './manifest'
 import { loadSafeMode, saveSafeMode } from './safeMode'
 
 const APP_VERSION = '2.1.0'
+export const ACTIVE_EDITOR_STORAGE_KEY = 'v5notes.vault.active-editor'
 
 export type PluginStatus = 'loaded' | 'failed' | 'disabled' | 'skipped-safe-mode'
 
@@ -60,6 +64,13 @@ export interface HostView {
   unmount?: () => void
 }
 
+export interface HostEditorProvider {
+  pluginId: string
+  id: string
+  name: string
+  mount: EditorProviderSpec['mount']
+}
+
 export interface VaultPluginPackage {
   id: string
   manifest: PluginManifest
@@ -82,9 +93,29 @@ export interface PluginHostDeps {
 type CoreFactory = new (app: import('@v5notes/vault-plugin-api').App, manifest: PluginManifest) => Plugin
 
 const CORE_REGISTRY: { manifest: PluginManifest; Factory: CoreFactory }[] = [
+  { manifest: V5_EDITOR_MANIFEST, Factory: V5EditorPlugin },
+  { manifest: PLAIN_EDITOR_MANIFEST, Factory: PlainEditorPlugin },
   { manifest: DAILY_NOTES_MANIFEST, Factory: DailyNotesPlugin },
   { manifest: TEMPLATES_MANIFEST, Factory: TemplatesPlugin },
 ]
+
+const ALWAYS_ON_CORE = new Set<string>([V5_EDITOR_ID])
+
+function readStoredEditorId(): string {
+  try {
+    return localStorage.getItem(ACTIVE_EDITOR_STORAGE_KEY) || V5_EDITOR_ID
+  } catch {
+    return V5_EDITOR_ID
+  }
+}
+
+function storeEditorId(id: string) {
+  try {
+    localStorage.setItem(ACTIVE_EDITOR_STORAGE_KEY, id)
+  } catch {
+    /* private mode / non-browser tests */
+  }
+}
 
 function loadCjsPluginClass(source: string): typeof Plugin {
   const module = { exports: {} as { default?: typeof Plugin } & typeof Plugin }
@@ -111,6 +142,10 @@ export interface PluginHost {
   listRibbons(): HostRibbon[]
   listSettingTabs(): HostSettingTab[]
   listViews(): HostView[]
+  listEditorProviders(): HostEditorProvider[]
+  getActiveEditor(): HostEditorProvider | null
+  getActiveEditorId(): string
+  setActiveEditor(id: string): void
   setSafeMode(enabled: boolean): Promise<void>
   isSafeMode(): boolean
   getEnabledIds(): string[]
@@ -128,6 +163,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
   const ribbons = new Map<string, HostRibbon>()
   const settingTabs = new Map<string, HostSettingTab>()
   const views = new Map<string, HostView>()
+  const editors = new Map<string, HostEditorProvider>()
 
   function clearSurfaceFor(pluginId: string) {
     for (const key of [...commands.keys()]) {
@@ -141,6 +177,9 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     }
     for (const key of [...views.keys()]) {
       if (key.startsWith(`${pluginId}:`)) views.delete(key)
+    }
+    for (const [key, editor] of [...editors.entries()]) {
+      if (editor.pluginId === pluginId) editors.delete(key)
     }
   }
 
@@ -214,6 +253,14 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
           unmount: spec.unmount,
         })
       },
+      registerEditorProvider: (pluginId: string, spec: EditorProviderSpec) => {
+        editors.set(spec.id, {
+          pluginId,
+          id: spec.id,
+          name: spec.name,
+          mount: spec.mount,
+        })
+      },
     }
   }
 
@@ -253,7 +300,8 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
 
   async function loadCore() {
     for (const { manifest, Factory } of CORE_REGISTRY) {
-      if (!community.enabled.includes(manifest.id)) {
+      const alwaysOn = ALWAYS_ON_CORE.has(manifest.id)
+      if (!alwaysOn && !community.enabled.includes(manifest.id)) {
         infos.set(manifest.id, {
           id: manifest.id,
           name: manifest.name,
@@ -346,6 +394,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     ribbons.clear()
     settingTabs.clear()
     views.clear()
+    editors.clear()
     community = await deps.readCommunityPlugins()
     await loadCore()
     await loadVaultPlugins()
@@ -363,6 +412,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
       ribbons.clear()
       settingTabs.clear()
       views.clear()
+      editors.clear()
     },
     list() {
       return [...infos.values()].sort((a, b) => Number(b.core) - Number(a.core) || a.id.localeCompare(b.id))
@@ -379,6 +429,20 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     listViews() {
       return [...views.values()]
     },
+    listEditorProviders() {
+      return [...editors.values()].sort((a, b) => Number(b.id === V5_EDITOR_ID) - Number(a.id === V5_EDITOR_ID) || a.name.localeCompare(b.name))
+    },
+    getActiveEditor() {
+      const stored = readStoredEditorId()
+      return editors.get(stored) || editors.get(V5_EDITOR_ID) || [...editors.values()][0] || null
+    },
+    getActiveEditorId() {
+      return this.getActiveEditor()?.id ?? V5_EDITOR_ID
+    },
+    setActiveEditor(id: string) {
+      if (!editors.has(id)) throw new Error(`没有编辑器 ${id}`)
+      storeEditorId(id)
+    },
     isSafeMode() {
       return safeMode
     },
@@ -394,6 +458,10 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
       return [...community.enabled]
     },
     async setEnabled(pluginId: string, enabled: boolean) {
+      if (pluginId === V5_EDITOR_ID && !enabled) {
+        deps.onNotice?.('默认编辑器不能禁用')
+        return
+      }
       const set = new Set(community.enabled)
       if (enabled) set.add(pluginId)
       else set.delete(pluginId)
@@ -403,7 +471,10 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     },
     async enableCoreDefaults() {
       const set = new Set(community.enabled)
-      for (const { manifest } of CORE_REGISTRY) set.add(manifest.id)
+      for (const { manifest } of CORE_REGISTRY) {
+        if (manifest.id === PLAIN_EDITOR_MANIFEST.id) continue
+        set.add(manifest.id)
+      }
       community = { ...community, enabled: [...set] }
       await deps.writeCommunityPlugins(community)
       await reload()

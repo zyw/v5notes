@@ -13,5 +13,11 @@ public class VaultManifestVo {
 
     private List<VaultChangeVo> changes = new ArrayList<>();
 
+    /**
+     * True when more changes remain beyond this page (design §8.2 pagination).
+     * Clients must keep requesting with the returned cursor until false.
+     */
+    private Boolean hasMore;
+
     private Boolean empty;
 }

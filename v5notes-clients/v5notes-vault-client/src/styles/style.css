@@ -429,48 +429,48 @@ code {
 }
 
 .welcome-preview {
-  --pv-sidebar: #f5f6f1;
+  --pv-sidebar: color-mix(in srgb, var(--vault) 8%, #f5f6f1);
   --pv-paper: #fffefa;
-  --pv-line: #e4e6df;
-  --pv-line-soft: #efefe9;
+  --pv-line: color-mix(in srgb, var(--vault) 12%, #e4e6df);
+  --pv-line-soft: color-mix(in srgb, var(--vault) 7%, #efefe9);
   --pv-text: #39473d;
   --pv-muted: #718077;
   --pv-muted-2: #99a39a;
-  --pv-active: #e2eae1;
-  --pv-active-text: #254c3a;
-  --pv-icon: #789380;
-  --pv-folder: #5d8268;
-  --pv-accent: #315b4a;
-  --pv-accent-text: #fffefa;
+  --pv-active: color-mix(in srgb, var(--vault) 16%, #fffefa);
+  --pv-active-text: var(--vault-deep);
+  --pv-icon: color-mix(in srgb, var(--vault) 30%, #789380);
+  --pv-folder: color-mix(in srgb, var(--vault) 44%, #5d8268);
+  --pv-accent: var(--accent);
+  --pv-accent-text: var(--panel);
   --pv-command-bg: #f4f5f1;
-  --pv-command-border: #e3e7df;
+  --pv-command-border: color-mix(in srgb, var(--vault) 12%, #e3e7df);
   --pv-brand: #2f4f3e;
   --pv-body-text: #7a7368;
-  --pv-h: #29352e;
+  --pv-h: var(--vault-deep);
   margin-top: auto;
   padding: 0 20px 20px;
   border-top: 1px solid var(--line);
 }
 
 :root[data-color-mode='dark'] .welcome-preview {
-  --pv-sidebar: var(--sidebar-bg);
+  --pv-sidebar: color-mix(in srgb, var(--vault) 10%, var(--sidebar-bg));
   --pv-paper: var(--panel);
-  --pv-line: var(--line);
-  --pv-line-soft: color-mix(in srgb, var(--line) 72%, transparent);
+  --pv-line: color-mix(in srgb, var(--vault) 14%, var(--line));
+  --pv-line-soft: color-mix(in srgb, var(--vault) 8%, transparent);
   --pv-text: var(--ink);
   --pv-muted: var(--muted);
   --pv-muted-2: var(--muted);
-  --pv-active: color-mix(in srgb, var(--accent) 16%, var(--panel));
-  --pv-active-text: var(--accent-hover);
-  --pv-icon: var(--accent);
-  --pv-folder: var(--accent);
+  --pv-active: color-mix(in srgb, var(--vault) 26%, var(--panel));
+  --pv-active-text: var(--vault-deep);
+  --pv-icon: color-mix(in srgb, var(--vault) 55%, var(--accent));
+  --pv-folder: color-mix(in srgb, var(--vault) 65%, var(--accent));
   --pv-accent: var(--accent);
   --pv-accent-text: var(--panel);
   --pv-command-bg: color-mix(in srgb, var(--surface) 55%, var(--panel));
-  --pv-command-border: var(--line);
+  --pv-command-border: color-mix(in srgb, var(--vault) 18%, var(--line));
   --pv-brand: var(--ink);
   --pv-body-text: var(--muted);
-  --pv-h: var(--ink);
+  --pv-h: var(--vault-deep);
 }
 
 .preview-shell {
@@ -481,6 +481,8 @@ code {
   min-height: 220px;
   overflow: hidden;
   border: 1px solid var(--pv-line);
+  /* Literal identity strip: the first thing a multi-vault user can scan. */
+  border-top: 3px solid var(--vault);
   border-radius: 10px;
   background: var(--pv-paper);
   box-shadow: 0 12px 36px rgba(42, 41, 36, 0.05);
@@ -493,21 +495,35 @@ code {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--pv-sidebar);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--vault) 9%, transparent), transparent 34%),
+    var(--pv-sidebar);
   border-right: 1px solid var(--pv-line);
 }
 
 .preview-brand {
+  position: relative;
   min-height: 36px;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 0 10px;
+  padding: 0 10px 0 12px;
   color: var(--pv-brand);
   font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.preview-brand::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 1px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--vault);
 }
 
 .preview-brand img {
@@ -619,6 +635,9 @@ code {
   align-items: center;
   gap: 5px;
   padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--vault) 16%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--vault) 9%, transparent);
   color: var(--pv-text);
   font-family: var(--font-ui);
   font-size: 9px;
@@ -631,9 +650,9 @@ code {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: #fff;
+  color: var(--vault-on);
   font-size: 8px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .preview-profile-name {
@@ -706,6 +725,7 @@ code {
 }
 
 .preview-mode {
+  color: var(--vault-deep);
   font-style: normal;
   font-size: 8px;
   white-space: nowrap;
@@ -760,8 +780,9 @@ code {
   align-items: center;
   gap: 3px;
   padding: 3px 7px;
-  border-radius: 5px;
-  background: var(--pv-accent);
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 84%, #fff), var(--accent));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 26%, transparent);
   color: var(--pv-accent-text);
   font-family: var(--font-ui);
   font-size: 8px;
@@ -780,6 +801,10 @@ code {
 
 .preview-h {
   margin: 12px 0 4px;
+  padding-left: 8px;
+  border-left: 3px solid var(--vault);
+  border-radius: 1px;
+  color: var(--vault-deep);
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 650;
@@ -821,8 +846,9 @@ code {
 }
 
 .preview-outline-tabs .on {
-  background: color-mix(in srgb, var(--pv-accent) 10%, var(--pv-sidebar));
-  color: var(--pv-accent);
+  background: color-mix(in srgb, var(--vault) 12%, var(--pv-sidebar));
+  box-shadow: inset 0 -2px 0 var(--vault);
+  color: var(--vault-deep);
   font-weight: 600;
 }
 
@@ -831,6 +857,12 @@ code {
   color: var(--pv-text);
   font-size: 9px;
   line-height: 1.4;
+}
+
+.preview-outline p:first-of-type {
+  padding-left: 6px;
+  border-left: 2px solid color-mix(in srgb, var(--vault) 55%, transparent);
+  color: var(--vault-deep);
 }
 
 .preview-outline p.nested {
@@ -1093,14 +1125,14 @@ code {
    ============================================================ */
 
 .workspace {
-  --ws-sidebar: #f5f6f1;
+  --ws-sidebar: color-mix(in srgb, var(--vault) 6%, #f5f6f1);
   --ws-paper: #fffefa;
-  --ws-line: #e4e6df;
-  --ws-line-soft: #e6e8e1;
+  --ws-line: color-mix(in srgb, var(--vault) 9%, #e4e6df);
+  --ws-line-soft: color-mix(in srgb, var(--vault) 6%, #e6e8e1);
   --ws-tree-text: #39473d;
-  --ws-tree-active-text: #254c3a;
+  --ws-tree-active-text: var(--vault-deep);
   --ws-tree-hover: #ecefe9;
-  --ws-tree-active: #e2eae1;
+  --ws-tree-active: color-mix(in srgb, var(--vault) 14%, #fffefa);
   --ws-icon: #68776d;
   --ws-icon-strong: #315b4a;
   --ws-icon-hover-bg: #e6ebe3;
@@ -1109,13 +1141,14 @@ code {
   --ws-foot-text: #526355;
   --ws-foot-muted: #748177;
   --ws-foot-hover: #e9eee8;
-  --ws-foot-active: #eef3ee;
+  --ws-foot-active: color-mix(in srgb, var(--vault) 11%, transparent);
   --ws-search-bg: #eaede7;
   --ws-search-focus: #cbd7cb;
   --ws-popover-bg: #fffefa;
   --ws-brand: #2f4f3e;
   --ws-shadow: 0 10px 28px rgba(39, 52, 45, 0.12);
   --ws-outline-width: 270px;
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, var(--sidebar-width, 286px)) minmax(0, 1fr);
   height: 100%;
@@ -1124,15 +1157,26 @@ code {
   color: var(--ws-tree-text);
 }
 
+/* A single continuous identity strip across the whole workspace. */
+.workspace::before {
+  content: '';
+  position: absolute;
+  z-index: 6;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--vault);
+  pointer-events: none;
+}
+
 :root[data-color-mode='dark'] .workspace {
-  --ws-sidebar: var(--sidebar-bg);
+  --ws-sidebar: color-mix(in srgb, var(--vault) 8%, var(--sidebar-bg));
   --ws-paper: var(--panel);
-  --ws-line: var(--line);
-  --ws-line-soft: color-mix(in srgb, var(--line) 72%, transparent);
+  --ws-line: color-mix(in srgb, var(--vault) 10%, var(--line));
+  --ws-line-soft: color-mix(in srgb, var(--vault) 7%, transparent);
   --ws-tree-text: var(--ink);
-  --ws-tree-active-text: var(--accent-hover);
+  --ws-tree-active-text: var(--vault-deep);
   --ws-tree-hover: color-mix(in srgb, var(--ink) 6%, transparent);
-  --ws-tree-active: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  --ws-tree-active: color-mix(in srgb, var(--vault) 22%, var(--panel));
   --ws-icon: var(--muted);
   --ws-icon-strong: var(--accent-hover);
   --ws-icon-hover-bg: color-mix(in srgb, var(--ink) 8%, transparent);
@@ -1141,7 +1185,7 @@ code {
   --ws-foot-text: var(--ink);
   --ws-foot-muted: var(--muted);
   --ws-foot-hover: color-mix(in srgb, var(--ink) 7%, transparent);
-  --ws-foot-active: color-mix(in srgb, var(--accent) 12%, transparent);
+  --ws-foot-active: color-mix(in srgb, var(--vault) 16%, transparent);
   --ws-search-bg: color-mix(in srgb, var(--surface) 55%, var(--panel));
   --ws-search-focus: color-mix(in srgb, var(--accent) 30%, var(--line));
   --ws-popover-bg: var(--panel);
@@ -1164,7 +1208,9 @@ code {
   min-height: 0;
   padding: 13px 11px 0;
   border-right: 1px solid var(--ws-line);
-  background: var(--ws-sidebar);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--vault) 8%, transparent), transparent 26%),
+    var(--ws-sidebar);
   overflow: visible;
 }
 
@@ -1202,17 +1248,29 @@ code {
 }
 
 .sidebar-brand {
+  position: relative;
   min-height: 53px;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 0 8px 12px;
+  padding: 0 8px 12px 12px;
   color: var(--ws-brand);
   font-family: var(--font-ui);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.04em;
+}
+
+.sidebar-brand::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 0;
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--vault);
 }
 
 .brand-mark {
@@ -1531,6 +1589,17 @@ code {
   font-weight: 650;
 }
 
+.tree-row.selected::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--vault);
+}
+
 .tree-row.file {
   color: var(--ws-muted);
 }
@@ -1638,7 +1707,7 @@ code {
 }
 
 .tree-row.selected .tree-icon {
-  color: #3f6f52;
+  color: var(--vault-deep);
 }
 
 :root[data-color-mode='dark'] .tree-row .tree-icon {
@@ -1646,7 +1715,7 @@ code {
 }
 
 :root[data-color-mode='dark'] .tree-row.selected .tree-icon {
-  color: var(--accent-hover);
+  color: var(--vault-deep);
 }
 
 .tree-more {
@@ -1978,7 +2047,7 @@ code {
   flex: 0 0 auto;
   margin-top: auto;
   padding: 8px 0 6px;
-  border-top: 1px solid var(--ws-line-soft);
+  border-top: 1px solid color-mix(in srgb, var(--vault) 18%, var(--ws-line-soft));
 }
 
 .trash-entry {
@@ -1997,7 +2066,7 @@ code {
 
 .trash-entry:hover,
 .trash-entry.active {
-  color: var(--ws-icon-strong);
+  color: var(--vault-deep);
   background: var(--ws-foot-active);
 }
 
@@ -2031,7 +2100,9 @@ code {
   align-items: center;
   gap: 8px;
   padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--vault) 16%, transparent);
   border-radius: 8px;
+  background: color-mix(in srgb, var(--vault) 9%, transparent);
 }
 
 .vault-avatar {
@@ -2042,11 +2113,10 @@ code {
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  color: #fff;
+  color: var(--vault-on);
   font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 600;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+  font-weight: 700;
 }
 
 .vault-name {
@@ -2153,7 +2223,7 @@ code {
   align-items: center;
   gap: 5px;
   flex: 0 0 auto;
-  color: var(--ws-muted);
+  color: var(--vault-deep);
   font-family: var(--font-ui);
   font-size: 12px;
   white-space: nowrap;
@@ -2349,13 +2419,35 @@ code {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
   background: var(--ws-paper);
+}
+
+.editor-body .vault-plain-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 24px 32px;
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.editor-body .vault-plain-editor:read-only {
+  cursor: default;
 }
 
 .editor-body .v5md-host,
 .editor-body .v5md {
+  flex: 1;
   width: 100%;
-  min-height: 100%;
+  min-height: 0;
 }
 
 .editor-body .v5md[data-theme='paper'] {
@@ -2480,33 +2572,47 @@ code {
   right: 22px;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 .editor-pane.editing .mode-dock {
   top: 104px;
 }
 
+/* Preview → edit: one confident green pill; the action, not the vault identity. */
 .dock-edit {
-  min-height: 36px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 16px;
-  border-radius: 10px;
-  color: var(--ws-paper);
-  background: var(--accent);
+  gap: 9px;
+  padding: 5px 16px 5px 5px;
+  border-radius: 999px;
+  color: var(--panel);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 95%, #fff), var(--accent));
   box-shadow:
-    0 6px 16px color-mix(in srgb, var(--accent) 24%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 10px 24px color-mix(in srgb, var(--accent) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent);
   font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 600;
-  transition: transform 0.15s ease, background 0.15s ease;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dock-edit-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel) 20%, transparent);
 }
 
 .dock-edit:hover {
   background: var(--accent-hover);
+  box-shadow:
+    0 12px 26px color-mix(in srgb, var(--accent) 32%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 24%, transparent);
   transform: translateY(-1px);
 }
 
@@ -2515,8 +2621,8 @@ code {
 }
 
 .dock-edit svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.7;
@@ -2524,30 +2630,47 @@ code {
   stroke-linejoin: round;
 }
 
-.dock-done {
-  min-height: 34px;
+/* Edit mode: one paper capsule; done on the left, save state on the right. */
+.dock-cluster {
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 14px;
-  border: 1px solid var(--ws-line);
-  border-radius: 9px;
-  background: var(--ws-paper);
-  color: var(--ws-icon-strong);
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--ink) 8%, transparent);
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--ws-line) 76%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ws-paper) 94%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--ink) 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.dock-done {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  color: var(--ws-tree-text);
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .dock-done:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--ws-line));
   background: var(--ws-foot-hover);
+  color: var(--ws-icon-strong);
 }
 
 .dock-done svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--accent);
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -2555,36 +2678,58 @@ code {
   stroke-linejoin: round;
 }
 
+.dock-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.dock-status-dot.is-dirty {
+  background: #c08a4e;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #c08a4e 16%, transparent);
+}
+
 .dock-save {
-  min-height: 34px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 14px;
-  border-radius: 9px;
-  color: var(--ws-paper);
-  background: var(--accent);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent);
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--panel);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 96%, #fff), var(--accent));
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--accent) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.dock-save:hover:not(:disabled) {
+.dock-save svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+button.dock-save:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
 .dock-save.is-saved {
   cursor: default;
-  opacity: 0.92;
-}
-
-.dock-save i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--ws-paper) 70%, transparent);
+  pointer-events: none;
 }
 
 .workspace-toast {
@@ -2651,8 +2796,9 @@ code {
 }
 
 .outline-tabs button[aria-selected='true'] {
-  color: var(--ws-icon-strong);
-  background: color-mix(in srgb, var(--accent) 10%, var(--ws-sidebar));
+  color: var(--vault-deep);
+  background: color-mix(in srgb, var(--vault) 12%, var(--ws-sidebar));
+  box-shadow: inset 0 -2px 0 var(--vault);
 }
 
 .outline-tabs button:focus-visible {

@@ -9,6 +9,7 @@ import {
   resolveVaultColor,
   setPendingWelcomeColor,
   setVaultColor,
+  vaultOnColor,
 } from './vaultColors'
 
 const store = new Map<string, string>()
@@ -68,6 +69,20 @@ describe('vaultColors', () => {
     const pending = applyVaultColorForPath(null)
     expect(pending?.id).toBe('yushui')
     expect(styleMap.get('--vault')).toBe(pending?.color)
+  })
+
+  it('picks readable ink for solid vault fills', () => {
+    expect(vaultOnColor('#8a3b2e')).toBe('#fffefa')
+    expect(vaultOnColor('#c4a882')).toBe('#1f1d18')
+    expect(vaultOnColor('#7d8f6e')).toBe('#1f1d18')
+  })
+
+  it('writes and clears the derived on-color token', () => {
+    applyVaultColor('#c4a882')
+    expect(styleMap.get('--vault-on')).toBe('#1f1d18')
+    applyVaultColor(null)
+    expect(styleMap.has('--vault')).toBe(false)
+    expect(styleMap.has('--vault-on')).toBe(false)
   })
 
   it('persists welcome pending color and commits it to a path', () => {

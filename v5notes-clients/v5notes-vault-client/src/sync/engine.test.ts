@@ -1,0 +1,479 @@
+/**
+ * Engine tests for the §8.2/§9.3 protocol fixes:
+ * - manifest pagination loop (hasMore)
+ * - push-side rename/tombstone propagation (design §6.2)
+ * - bootstrap merge conflict copies (design §9.3 两端都有内容)
+ */
+
+import { describe, expect, it, vi } from 'vitest'
+import { createSyncEngine, type SyncEngineDeps } from './engine'
+import { VaultSyncApiError, type VaultSyncApi } from './api'
+
+// The engine reads/writes vault.json / sync-state.json / retry-queue.json via
+// Tauri fs directly. Route those calls through the in-memory files map below.
+const metaFiles = new Map<string, string>()
+vi.mock('@tauri-apps/api/path', () => ({
+  join: async (...parts: string[]) => parts.join('/'),
+}))
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  readTextFile: async (path: string) => {
+    const content = metaFiles.get(path)
+    if (content === undefined) throw new Error(`missing: ${path}`)
+    return content
+  },
+  writeTextFile: async (path: string, content: string) => {
+    metaFiles.set(path, content)
+  },
+}))
+import type {
+  VaultBindResult,
+  VaultChange,
+  VaultFileContent,
+  VaultFileMeta,
+  VaultManifest,
+  VaultQuota,
+} from './types'
+import type { VaultTreeNode } from '../vault/types'
+import type { VaultFs } from '../vault/vaultFs'
+import type { VaultJson } from '../models/vault'
+import { sha256Hex } from './hash'
+
+const ROOT = '/vault'
+
+function makeVaultJson(overrides?: Partial<VaultJson>): VaultJson {
+  return {
+    schemaVersion: 1,
+    localVaultId: 'local-1',
+    name: 'TestVault',
+    createdAt: '2026-11-18T00:00:00.000Z',
+    binding: {
+      server: 'https://api.example.com',
+      cloudVaultId: '9001',
+      deviceId: 'device-abc123',
+      lastCursor: null,
+    },
+    ...overrides,
+  } as VaultJson
+}
+
+/** In-memory VaultFs over a map of relative path → text content. */
+function makeFs(seed: Record<string, string> = {}) {
+  const files = new Map(Object.entries(seed))
+  const treeFromFiles = (): VaultTreeNode[] => {
+    const dirs = new Map<string, VaultTreeNode>()
+    const root: VaultTreeNode[] = []
+    const ensureDir = (path: string): VaultTreeNode[] => {
+      if (!path) return root
+      let node = dirs.get(path)
+      if (!node) {
+        const slash = path.lastIndexOf('/')
+        node = {
+          path,
+          identityKey: path.toLowerCase(),
+          name: path.slice(slash + 1),
+          kind: 'dir',
+          children: [],
+        }
+        dirs.set(path, node)
+        ensureDir(slash === -1 ? '' : path.slice(0, slash)).push(node)
+      }
+      return node.children!
+    }
+    for (const path of files.keys()) {
+      const slash = path.lastIndexOf('/')
+      const name = path.slice(slash + 1)
+      ensureDir(slash === -1 ? '' : path.slice(0, slash)).push({
+        path,
+        identityKey: path.toLowerCase(),
+        name,
+        kind: name.toLowerCase().endsWith('.md') ? 'note' : 'file',
+      })
+    }
+    return root
+  }
+  const fs: VaultFs = {
+    async listTree() {
+      return treeFromFiles()
+    },
+    async readText(_root, rel) {
+      const content = files.get(rel)
+      if (content === undefined) throw new Error(`missing: ${rel}`)
+      return content
+    },
+    async writeText(_root, rel, content) {
+      files.set(rel, content)
+    },
+    async readBytes(_root, rel) {
+      const content = files.get(rel)
+      if (content === undefined) throw new Error(`missing: ${rel}`)
+      return new TextEncoder().encode(content)
+    },
+    async writeBytes(_root, rel, content) {
+      files.set(rel, new TextDecoder().decode(content))
+    },
+    async mkdir() {},
+    async rename(_root, from, to) {
+      const content = files.get(from)
+      if (content === undefined) throw new Error(`missing: ${from}`)
+      files.delete(from)
+      files.set(to, content)
+    },
+    async delete(_root, rel) {
+      files.delete(rel)
+    },
+    async exists(_root, rel) {
+      return rel === undefined || rel === '.' ? true : files.has(rel)
+    },
+    async absolute(_root, rel) {
+      return `${ROOT}/${rel}`
+    },
+  }
+  return { fs, files }
+}
+
+interface ApiOverrides {
+  manifests?: VaultManifest[]
+  onPut?: (args: { path: string; baseRev?: number | null }) => VaultFileMeta | never
+  onDelete?: (args: { path: string; baseRev: number }) => VaultFileMeta | never
+  onRename?: (args: { from: string; to: string; baseRev: number }) => VaultFileMeta | never
+  onGetContent?: (path: string, rev?: number | null) => VaultFileContent
+}
+
+function makeApi(overrides: ApiOverrides = {}): VaultSyncApi & { calls: string[] } {
+  const calls: string[] = []
+  const meta = (path: string, rev = 1): VaultFileMeta => ({
+    fileId: 'f-' + path,
+    path,
+    remoteRev: rev,
+    contentHash: 'sha256:' + '0'.repeat(64),
+    size: 10,
+    type: 'note',
+    cursor: '1',
+  })
+  const api = {
+    calls,
+    async createVault(): Promise<VaultSpaceSummaryAlias> {
+      throw new Error('not used')
+    },
+    async listVaults() {
+      throw new Error('not used')
+    },
+    async bind(): Promise<VaultBindResult> {
+      throw new Error('not used')
+    },
+    async listDevices() {
+      return []
+    },
+    async kickDevice() {},
+    async manifest(_vaultId: string, since?: string | null): Promise<VaultManifest> {
+      calls.push(`manifest:${since ?? ''}`)
+      const pages = overrides.manifests ?? []
+      const idx = calls.filter(c => c.startsWith('manifest:')).length - 1
+      return pages[Math.min(idx, pages.length - 1)]
+    },
+    async putFile(_vaultId: string, body: { path: string; baseRev?: number | null }) {
+      calls.push(`put:${body.path}:${body.baseRev}`)
+      if (overrides.onPut) return overrides.onPut(body)
+      return meta(body.path)
+    },
+    async getContent(_vaultId: string, path: string, rev?: number | null) {
+      calls.push(`content:${path}:${rev}`)
+      if (overrides.onGetContent) return overrides.onGetContent(path, rev)
+      return {
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: 'sha256:' + '0'.repeat(64),
+        size: 10,
+        body: 'remote-content',
+        base64Body: null,
+      }
+    },
+    async deleteFile(_vaultId: string, body: { path: string; baseRev: number }) {
+      calls.push(`delete:${body.path}:${body.baseRev}`)
+      if (overrides.onDelete) return overrides.onDelete(body)
+      return meta(body.path)
+    },
+    async rename(_vaultId: string, body: { from: string; to: string; baseRev: number }) {
+      calls.push(`rename:${body.from}->${body.to}:${body.baseRev}`)
+      if (overrides.onRename) return overrides.onRename(body)
+      return meta(body.to)
+    },
+    async quota(): Promise<VaultQuota> {
+      return {
+        available: true,
+        usedBytes: 0,
+        quotaBytes: 1024 * 1024,
+        deviceLimit: 3,
+        deviceUsed: 1,
+        overQuota: false,
+        maxFileBytes: 25 * 1024 * 1024,
+      }
+    },
+    async listFileVersions() {
+      return []
+    },
+  }
+  return api as unknown as VaultSyncApi & { calls: string[] }
+}
+type VaultSpaceSummaryAlias = { vaultId: string; name: string; usedBytes: number; empty?: boolean }
+
+function makeDeps(
+  fs: VaultFs,
+  api: VaultSyncApi,
+  extra: Partial<SyncEngineDeps> = {},
+): SyncEngineDeps {
+  return {
+    rootPath: ROOT,
+    getAuth: () => ({ server: 'https://api.example.com', clientId: 'c1', token: 'tok' }),
+    onUnauthorized: () => {},
+    fs,
+    api,
+    isOnline: () => true,
+    ...extra,
+  }
+}
+
+function seedState(state: Record<string, unknown>) {
+  const metaPath = (rel: string) => `${ROOT}/${rel}`
+  metaFiles.set(metaPath('.v5notes/vault.json'), JSON.stringify(makeVaultJson()))
+  metaFiles.set(metaPath('.v5notes/sync-state.json'), JSON.stringify({ schemaVersion: 1, files: state }))
+  return makeFs()
+}
+
+const change = (over: Partial<VaultChange> & { path: string }): VaultChange => ({
+  op: 'upsert',
+  fileId: 'f-' + over.path,
+  remoteRev: 1,
+  contentHash: 'sha256:' + '0'.repeat(64),
+  size: 10,
+  ...over,
+})
+
+describe('manifest pagination (§8.2)', () => {
+  it('pages through hasMore pages until exhausted and stores the final cursor', async () => {
+    const { fs, files } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '500',
+          hasMore: true,
+          changes: [change({ path: 'a.md' })],
+        },
+        {
+          cursor: '900',
+          hasMore: false,
+          changes: [change({ path: 'b.md' })],
+        },
+      ],
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    await engine.pushPull()
+
+    expect(api.calls.filter(c => c.startsWith('manifest:'))).toEqual([
+      'manifest:',
+      'manifest:500',
+    ])
+    const saved = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/vault.json`)!)
+    expect(saved.binding.lastCursor).toBe('900')
+  })
+
+  it('does not loop forever when the server keeps saying hasMore with an unchanged cursor', async () => {
+    const { fs } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const stuck: VaultManifest = { cursor: '500', hasMore: true, changes: [] }
+    const api = makeApi({ manifests: [stuck] })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    // Must terminate (single request; stale hasMore with no changes cannot advance).
+    await engine.pushPull()
+    expect(api.calls.filter(c => c.startsWith('manifest:')).length).toBe(1)
+  })
+})
+
+describe('push-side rename/tombstone propagation (§6.2)', () => {
+  it('sends an explicit rename when a tracked clean file moved locally', async () => {
+    const { fs, files } = seedState({
+      'old-name.md': {
+        fileId: 'f-100',
+        identityKey: 'old-name.md',
+        localHash: null,
+        remoteRev: 4,
+        status: 'clean',
+        size: 10,
+        mtimeMs: 0,
+      },
+    })
+    // On disk: old file gone, new untracked file present.
+    files.set('new-name.md', '# moved')
+    files.delete('old-name.md')
+
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+    })
+    const engine = createSyncEngine(makeDeps(fs as VaultFs, api))
+    await engine.pushPull()
+
+    expect(api.calls).toContain('rename:old-name.md->new-name.md:4')
+    expect(api.calls.some(c => c.startsWith('delete:'))).toBe(false)
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files['new-name.md'].fileId).toBe('f-100')
+    expect(state.files['old-name.md']).toBeUndefined()
+  })
+
+  it('sends a tombstone when a tracked clean file was deleted locally', async () => {
+    const { fs, files } = seedState({
+      'gone.md': {
+        fileId: 'f-200',
+        identityKey: 'gone.md',
+        localHash: null,
+        remoteRev: 2,
+        status: 'clean',
+        size: 10,
+        mtimeMs: 0,
+      },
+    })
+    // On disk the file is already gone — nothing else present.
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    await engine.pushPull()
+
+    expect(api.calls).toContain('delete:gone.md:2')
+    expect(api.calls.some(c => c.startsWith('rename:'))).toBe(false)
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files['gone.md']).toBeUndefined()
+  })
+
+  it('marks a conflict instead of silently deleting when the delete hits a remote 409', async () => {
+    const { fs, files } = seedState({
+      'hot.md': {
+        fileId: 'f-300',
+        identityKey: 'hot.md',
+        localHash: null,
+        remoteRev: 2,
+        status: 'clean',
+        size: 10,
+        mtimeMs: 0,
+      },
+    })
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+      onDelete: () => {
+        throw new VaultSyncApiError('conflict', 409, 'vault.conflict.rev')
+      },
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    const status = await engine.pushPull()
+    expect(status.conflictPaths).toContain('hot.md')
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files['hot.md'].status).toBe('conflict')
+  })
+})
+
+describe('bootstrap merge conflict copies (§9.3)', () => {
+  it('preserves an untracked local file as a conflict copy when the cloud baseline differs', async () => {
+    const localBody = '# my local version'
+    const localHash = await sha256Hex(localBody)
+    const { fs, files } = makeFs({ 'weekly.md': localBody })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const remoteHash = 'sha256:' + '1'.repeat(64)
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'weekly.md', contentHash: remoteHash })],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: remoteHash,
+        size: 10,
+        body: '# cloud version',
+        base64Body: null,
+      }),
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    const status = await engine.pushPull()
+
+    expect(status.conflictPaths.length).toBe(1)
+    // Cloud baseline landed at the original path.
+    expect(files.get('weekly.md')).toBe('# cloud version')
+    // Local version preserved under a conflict copy path.
+    const copyKey = [...files.keys()].find(k => k.includes('冲突') && k.endsWith('.md'))
+    expect(copyKey).toBeDefined()
+    expect(files.get(copyKey!)).toBe(localBody)
+    // The conflict copy is preserved with the local content; since it is a new
+    // untracked file, the push phase of the same cycle uploads it (dirty → clean)
+    // so the local version also reaches the cloud under its copy path.
+    const state = JSON.parse(metaFiles.get(`${ROOT}/.v5notes/sync-state.json`)!)
+    expect(state.files[copyKey!].status).toBe('clean')
+    expect(api.calls.some(c => c.startsWith(`put:${copyKey}:`))).toBe(true)
+  })
+
+  it('overwrites without a conflict copy when the untracked local content matches the cloud baseline', async () => {
+    const sameBody = '# identical'
+    const sameHash = await sha256Hex(sameBody)
+    const { fs, files } = makeFs({ 'same.md': sameBody })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'same.md', contentHash: sameHash })],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: sameHash,
+        size: 10,
+        body: sameBody,
+        base64Body: null,
+      }),
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    const status = await engine.pushPull()
+
+    expect(status.conflictPaths.length).toBe(0)
+    expect([...files.keys()].filter(k => k.includes('冲突'))).toHaveLength(0)
+  })
+})
+
+describe('getContent rev mismatch (§8.2)', () => {
+  it('does not write stale content when the content endpoint reports a rev conflict', async () => {
+    const { fs, files } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'moving.md', remoteRev: 5 })],
+        },
+      ],
+      onGetContent: () => {
+        throw new VaultSyncApiError('rev mismatch', 409, 'vault.conflict.rev')
+      },
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    // Must not throw out of the cycle; the change is skipped and retried next cycle.
+    const status = await engine.pushPull()
+    expect(status.status).toBeDefined()
+    expect(files.get('moving.md')).toBeUndefined()
+  })
+})
+
+describe('sanity', () => {
+  it('injects fs and api without tauri', () => {
+    const { fs } = makeFs()
+    const api = makeApi()
+    expect(() => createSyncEngine(makeDeps(fs, api))).not.toThrow()
+  })
+})

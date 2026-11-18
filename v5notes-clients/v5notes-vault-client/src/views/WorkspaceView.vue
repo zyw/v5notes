@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { listMatches, type FindOptions, type OutlineEntry } from '@v5md/core'
-import type { Editor } from '@v5md/view'
+import type { EditorSession } from '@v5notes/vault-plugin-api'
 import brandIcon from '../assets/brand-icon.png'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import NameDialog from '../components/NameDialog.vue'
@@ -22,6 +22,7 @@ import {
 } from '../appearance/themes'
 import { applyVaultColorForPath, resolveVaultColor, type VaultColorSwatch } from '../appearance/vaultColors'
 import {
+  getActiveEditorProvider,
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
@@ -245,7 +246,10 @@ function createFromSidebar(mode: 'note' | 'dir') {
   else openCreateDir(null)
 }
 
-const editorInstance = shallowRef<Editor | null>(null)
+const editorMountEl = ref<HTMLElement | null>(null)
+const editorSession = shallowRef<EditorSession | null>(null)
+let mountedEditorId: string | null = null
+let applyingFromEditor = false
 const outlineOpen = ref(true)
 const outlineTab = ref<'outline' | 'find'>('outline')
 const outlineEntries = ref<OutlineEntry[]>([])
@@ -355,26 +359,78 @@ function refreshOutline() {
   if (outlineTimer) clearTimeout(outlineTimer)
   outlineTimer = setTimeout(() => {
     outlineTimer = null
-    outlineEntries.value = selectedPath.value ? (editorInstance.value?.getOutline() ?? []) : []
+    outlineEntries.value = selectedPath.value ? (editorSession.value?.getOutline() ?? []) : []
     if (outlineOpen.value && outlineTab.value === 'find' && findQuery.value.trim()) {
       runFind(false)
     }
   }, 140)
 }
 
-function onEditorReady(instance: Editor) {
-  editorInstance.value = instance
-  refreshOutline()
+function destroyEditorSession() {
+  editorSession.value?.destroy()
+  editorSession.value = null
+  mountedEditorId = null
 }
 
-watch(content, refreshOutline)
-watch(selectedPath, path => {
-  if (!path) outlineEntries.value = []
-  else refreshOutline()
+async function ensureEditorMounted() {
+  await nextTick()
+  const el = editorMountEl.value
+  const path = selectedPath.value
+  if (!el || !path) {
+    destroyEditorSession()
+    return
+  }
+  const provider = getActiveEditorProvider()
+  if (!provider) return
+  if (editorSession.value && mountedEditorId === provider.id) {
+    editorSession.value.setEditable(editorMode.value === 'edit')
+    return
+  }
+  destroyEditorSession()
+  const session = await provider.mount(el, {
+    markdown: content.value,
+    editable: editorMode.value === 'edit',
+    locale: 'zh-CN',
+    theme: 'paper',
+    placeholder: '开始写作…',
+    onChange: (markdown) => {
+      if (markdown === content.value) return
+      applyingFromEditor = true
+      content.value = markdown
+    },
+    onFindRequest: () => openFind(),
+    onReady: () => refreshOutline(),
+  })
+  if (selectedPath.value !== path) {
+    session.destroy()
+    return
+  }
+  editorSession.value = session
+  mountedEditorId = provider.id
+}
+
+watch(content, (value) => {
+  refreshOutline()
+  if (applyingFromEditor) {
+    applyingFromEditor = false
+    return
+  }
+  editorSession.value?.setMarkdown(value)
+})
+watch(editorMode, (mode) => {
+  editorSession.value?.setEditable(mode === 'edit')
+})
+watch(selectedPath, (path) => {
+  if (!path) {
+    outlineEntries.value = []
+    destroyEditorSession()
+    return
+  }
+  void ensureEditorMounted()
 })
 
 function focusOutline(start: number) {
-  editorInstance.value?.focusAt(start)
+  editorSession.value?.focusAt(start)
 }
 
 function setOutlineTab(tab: 'outline' | 'find') {
@@ -433,7 +489,7 @@ function selectFindHit(index: number) {
   const hit = findHits.value[index]
   if (!hit) return
   findCurrent.value = index
-  editorInstance.value?.selectFindMatch(hit.from, hit.to)
+  editorSession.value?.selectFindMatch(hit.from, hit.to)
 }
 
 function findStep(direction: 1 | -1) {
@@ -447,10 +503,10 @@ watch([caseSensitive, wholeWord, useRegexp], () => {
 })
 
 function replaceOne() {
-  if (!canReplace.value || !editorInstance.value) return
+  if (!canReplace.value || !editorSession.value) return
   const index = findCurrent.value >= 0 ? findCurrent.value : 0
   selectFindHit(index)
-  const result = editorInstance.value.replaceNextMatch(
+  const result = editorSession.value.replaceNextMatch(
     findQuery.value,
     replacement.value,
     findOptions.value,
@@ -463,8 +519,8 @@ function replaceOne() {
 }
 
 function replaceEvery() {
-  if (!canReplace.value || !editorInstance.value) return
-  const result = editorInstance.value.replaceAllMatches(
+  if (!canReplace.value || !editorSession.value) return
+  const result = editorSession.value.replaceAllMatches(
     findQuery.value,
     replacement.value,
     findOptions.value,
@@ -965,6 +1021,7 @@ onMounted(async () => {
     })
     await startExtensionRuntime(props.vault.rootPath)
     refreshRibbons()
+    if (selectedPath.value) void ensureEditorMounted()
     const prefs = loadAppearancePrefs()
     applyAppearance(prefs)
     void persistAppearanceIntent(prefs)
@@ -985,6 +1042,7 @@ onUnmounted(() => {
   if (outlineTimer) clearTimeout(outlineTimer)
   if (findTimer) clearTimeout(findTimer)
   if (toastTimer) clearTimeout(toastTimer)
+  destroyEditorSession()
   void stopExtensionRuntime()
   emit('dirtyChange', false)
 })
@@ -1443,17 +1501,7 @@ defineExpose({
           <button v-if="dirty" type="button" class="ghost compact" @click="reloadExternal">加载磁盘版本</button>
         </p>
 
-        <div v-if="selectedPath" class="editor-body">
-          <V5Editor
-            v-model="content"
-            locale="zh-CN"
-            theme="paper"
-            placeholder="开始写作…"
-            :editable="editorMode === 'edit'"
-            :on-ready="onEditorReady"
-            :on-find-request="onFindRequest"
-          />
-        </div>
+        <div v-if="selectedPath" ref="editorMountEl" class="editor-body"></div>
 
         <div v-else class="editor-empty">
           <span class="empty-mark" aria-hidden="true">
@@ -1479,28 +1527,43 @@ defineExpose({
         <div v-if="selectedPath && !commandOpen && !externalNotice" class="mode-dock">
           <template v-if="editorMode === 'preview'">
             <button type="button" class="dock-edit" @click="enterEdit">
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M3 12.7 4.2 9 11 2.2l2.5 2.5-6.8 6.8z" />
-                <path d="m9.6 3.8 2.4 2.4" />
-              </svg>
-              编辑
+              <span class="dock-edit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.4 2.6a2.1 2.1 0 1 1 3 3L12 15l-4 1 1-4Z" />
+                </svg>
+              </span>
+              <span>编辑</span>
             </button>
           </template>
           <template v-else>
-            <button type="button" class="dock-done" :disabled="busy" @click="leaveEdit">
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>
-              完成
-            </button>
-            <button
-              v-if="dirty"
-              type="button"
-              class="dock-save"
-              :disabled="busy"
-              @click="saveCurrent"
-            >
-              保存
-            </button>
-            <span v-else class="dock-save is-saved"><i aria-hidden="true" />已保存</span>
+            <div class="dock-cluster" role="group" aria-label="编辑状态">
+              <button type="button" class="dock-done" :disabled="busy" @click="leaveEdit">
+                <span class="dock-status-dot" :class="{ 'is-dirty': dirty }" aria-hidden="true" />
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>
+                <span>完成</span>
+              </button>
+              <button
+                v-if="dirty"
+                type="button"
+                class="dock-save"
+                :disabled="busy"
+                @click="saveCurrent"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M4 3.4h9.2L16.6 6.8V16.6H4z" />
+                  <path d="M6.6 3.6v4.6h6.2V3.6M6.8 16.4v-4.6h6.4v4.6" />
+                </svg>
+                <span>保存</span>
+              </button>
+              <span v-else class="dock-save is-saved" role="status" aria-live="polite">
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M4 3.4h9.2L16.6 6.8V16.6H4z" />
+                  <path d="M6.6 3.6v4.6h6.2V3.6M6.8 16.4v-4.6h6.4v4.6" />
+                </svg>
+                <span>已保存</span>
+              </span>
+            </div>
           </template>
         </div>
 

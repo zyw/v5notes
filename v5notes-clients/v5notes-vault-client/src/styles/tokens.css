@@ -90,3 +90,15 @@
   --rail: #1c1812;
   --sidebar-bg: #1c1812;
 }
+
+/*
+ * Vault identity tones. --vault (and --vault-on) are written per open vault;
+ * these derivations let surfaces carry the identity without repainting the app.
+ * Keep the vault color as an accent: wash/tint for regions, deep for text,
+ * solid for the identity strip and the primary document action.
+ */
+:root {
+  --vault-on: #fffefa;
+  --vault-deep: color-mix(in srgb, var(--vault) 50%, var(--ink));
+  --vault-strong: color-mix(in srgb, var(--vault) 88%, var(--ink));
+}

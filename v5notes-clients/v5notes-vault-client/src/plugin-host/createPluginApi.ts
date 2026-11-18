@@ -7,6 +7,7 @@ import {
   type SettingTabSpec,
   type ThemeApi,
   type VaultAdapter,
+  type EditorProviderSpec,
   type ViewSpec,
   type WorkspaceApi,
 } from '@v5notes/vault-plugin-api'
@@ -27,6 +28,7 @@ export interface PluginHostHooks {
   registerRibbon?: (pluginId: string, spec: RibbonIconSpec) => void
   registerSettingTab?: (pluginId: string, spec: SettingTabSpec) => void
   registerView?: (pluginId: string, spec: ViewSpec) => void
+  registerEditorProvider?: (pluginId: string, spec: EditorProviderSpec) => void
 }
 
 /**
@@ -154,6 +156,13 @@ export function attachDataMethods(
     assertPermission(instance.manifest.permissions || [], 'ui:views', '注册视图')
     originalView(spec)
     hooks.registerView?.(pluginId, spec)
+  }
+
+  const originalEditor = instance.registerEditorProvider.bind(instance)
+  instance.registerEditorProvider = (spec: EditorProviderSpec) => {
+    assertPermission(instance.manifest.permissions || [], 'editor:provide', '提供编辑器')
+    originalEditor(spec)
+    hooks.registerEditorProvider?.(pluginId, spec)
   }
 }
 

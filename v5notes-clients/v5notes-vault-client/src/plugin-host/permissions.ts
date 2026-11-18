@@ -24,6 +24,7 @@ export const PHASE7_GRANTABLE = new Set<PluginPermission>([
   'ui:views',
   'ui:theme',
   'editor:extend',
+  'editor:provide',
   'clipboard',
   'network:safe',
 ])

@@ -10,6 +10,7 @@ import type {
   HostRibbon,
   HostSettingTab,
   HostView,
+  HostEditorProvider,
 } from '../plugin-host'
 import {
   createPluginHost,
@@ -138,6 +139,14 @@ export function listHostSettingTabs(): HostSettingTab[] {
 
 export function listHostViews(): HostView[] {
   return pluginHost?.listViews() ?? []
+}
+
+export function listEditorProviders(): HostEditorProvider[] {
+  return pluginHost?.listEditorProviders() ?? []
+}
+
+export function getActiveEditorProvider(): HostEditorProvider | null {
+  return pluginHost?.getActiveEditor() ?? null
 }
 
 export async function ensureSampleExtensions(): Promise<void> {

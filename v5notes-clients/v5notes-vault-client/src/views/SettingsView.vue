@@ -27,7 +27,7 @@ import {
 } from '../appearance/vaultColors'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
-import type { HostCommand, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
+import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
 import { loadSafeMode } from '../plugin-host/safeMode'
 import {
   ensureSampleExtensions,
@@ -67,6 +67,8 @@ const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
 const safeMode = ref(loadSafeMode())
 const themes = ref<ThemeInfo[]>([])
 const plugins = ref<PluginRuntimeInfo[]>([])
+const editors = ref<HostEditorProvider[]>([])
+const activeEditorId = ref('v5-editor')
 const commands = ref<HostCommand[]>([])
 const settingTabs = ref<HostSettingTab[]>([])
 const catalogItems = ref<CatalogItem[]>([])
@@ -157,6 +159,9 @@ function refreshExtensionState() {
     themeError.value = null
   }
   plugins.value = listPluginInfos()
+  const host = getPluginHost()
+  editors.value = host?.listEditorProviders() ?? []
+  activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
   commands.value = listHostCommands()
   settingTabs.value = listHostSettingTabs()
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
@@ -240,6 +245,24 @@ async function toggleSafeMode() {
     extensionMessage.value = next
       ? '已开启安全模式：社区插件跳过，主题回退内置'
       : '已关闭安全模式'
+  } catch (error) {
+    extensionMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    extensionBusy.value = false
+  }
+}
+
+async function chooseEditor(id: string) {
+  const host = getPluginHost()
+  if (!host) {
+    extensionMessage.value = '请先打开 Vault'
+    return
+  }
+  extensionBusy.value = true
+  try {
+    host.setActiveEditor(id)
+    refreshExtensionState()
+    extensionMessage.value = '已切换编辑器。回到笔记后生效。'
   } catch (error) {
     extensionMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -622,10 +645,26 @@ watch(
                     <div class="book-mono">权限: {{ p.permissions.join(', ') || '（无）' }}</div>
                     <div v-if="p.error" class="book-danger">{{ p.error }}</div>
                   </div>
-                  <button class="book-text-btn" type="button" :disabled="extensionBusy || (safeMode && !p.core)" @click="togglePlugin(p.id, p.status !== 'loaded')">{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
+                  <button class="book-text-btn" type="button" :disabled="extensionBusy || p.id === 'v5-editor' || (safeMode && !p.core)" @click="togglePlugin(p.id, p.status !== 'loaded')">{{ p.id === 'v5-editor' ? '始终启用' : p.status === 'loaded' ? '禁用' : '启用' }}</button>
                 </li>
               </ul>
               <p v-if="hasVault && !plugins.length" class="book-small">暂无已安装扩展。</p>
+              <div v-if="editors.length" class="book-cmd-row">
+                <p class="book-mono">笔记编辑器</p>
+                <p class="book-small">同一时间只用一个。切换后回到笔记生效。预览和编辑仍复用当前实例。默认 V5 编辑器不能禁用；启用「纯文本」后可以换过去。</p>
+                <button
+                  v-for="ed in editors"
+                  :key="ed.id"
+                  class="book-cmd"
+                  :class="{ 'is-on': ed.id === activeEditorId }"
+                  type="button"
+                  :aria-pressed="ed.id === activeEditorId"
+                  :disabled="extensionBusy"
+                  @click="chooseEditor(ed.id)"
+                >
+                  <strong>{{ ed.name }}</strong><span>{{ ed.pluginId }}</span>
+                </button>
+              </div>
               <div v-if="commands.length" class="book-cmd-row">
                 <p class="book-mono">已注册命令</p>
                 <button v-for="cmd in commands" :key="cmd.pluginId + ':' + cmd.id" class="book-cmd" type="button" @click="runCommand(cmd)">
@@ -1770,6 +1809,9 @@ watch(
   border-radius: 5px;
   background: var(--panel);
   text-align: left;
+}
+.book-cmd.is-on {
+  border-color: var(--accent);
 }
 .book-cmd strong {
   display: block;
