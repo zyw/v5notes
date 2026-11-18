@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAccount } from './account'
+import { useSyncCoordinator } from './sync'
 import WelcomeView from './views/WelcomeView.vue'
 import SettingsView from './views/SettingsView.vue'
 import WorkspaceView from './views/WorkspaceView.vue'
@@ -21,11 +22,17 @@ const workspaceRef = ref<{
 } | null>(null)
 
 const account = useAccount()
+// Global sync owner: engine + background timer + status live here, not in the
+// settings panel, so navigating away never stops syncing (Phase 5).
+const sync = useSyncCoordinator(account)
 
 watch(
   () => vault.value?.rootPath,
   path => {
     applyVaultColorForPath(path)
+    // Keep the coordinator's vault handle in step with the page state.
+    sync.vault.value = vault.value
+    void path
   },
   { immediate: true },
 )
@@ -159,7 +166,7 @@ onUnmounted(() => {
           @dirty-change="workspaceDirty = $event"
           @settings="goSettings"
         />
-        <SettingsView v-else :account="account" :vault="vault" />
+        <SettingsView v-else :account="account" :vault="vault" :sync="sync" />
       </main>
     </div>
   </div>

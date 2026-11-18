@@ -15,6 +15,7 @@ export {
   shouldSyncPath,
 } from './exclude'
 export { createSyncEngine, type SyncEngine, type SyncEngineDeps } from './engine'
+export { useSyncCoordinator, type SyncCoordinatorHandles } from './coordinator'
 export { normalizeContentHash, sha256Hex } from './hash'
 export { VaultQuotaRules } from './limits'
 export {

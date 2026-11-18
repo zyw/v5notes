@@ -9,6 +9,7 @@ import {
   deviceLimitMessage,
   formatVaultQuotaLine,
   vaultSyncQuotaHelp,
+  type SyncCoordinatorHandles,
   type SyncEngine,
   type SyncEngineStatus,
   type VaultDeviceInfo,
@@ -22,21 +23,37 @@ import type { VaultJson } from '../models/vault'
 const props = defineProps<{
   account: AccountState
   vault?: OpenedVault | null
+  /** Global coordinator from App.vue; local engine only as a fallback. */
+  sync?: SyncCoordinatorHandles | null
 }>()
 
 const serverBusy = ref(false)
 const serverError = ref('')
 const showPassword = ref(false)
-const syncBusy = ref(false)
-const syncMessage = ref('')
-const syncStatus = ref<SyncEngineStatus | null>(null)
+const syncBusyLocal = ref(false)
+const syncMessageLocal = ref('')
+const syncStatusLocal = ref<SyncEngineStatus | null>(null)
+// Coordinator-pushed status is authoritative whenever present (background
+// cycles included); button handlers only see their own cycle results.
+const syncStatus = computed(() => props.sync?.syncStatus.value ?? syncStatusLocal.value)
+function setSyncMessage(text: string) {
+  syncMessageLocal.value = text
+  if (props.sync) props.sync.lastSyncMessage.value = text
+}
+const syncMessage = computed(() => props.sync?.lastSyncMessage.value ?? syncMessageLocal.value)
+const syncBusy = computed(() => props.sync?.syncing.value ?? syncBusyLocal.value)
 const devices = ref<VaultDeviceInfo[]>([])
 const devicesBusy = ref(false)
 const devicesError = ref('')
 const kickBusyId = ref<string | null>(null)
 const localDeviceId = ref<string | null>(null)
-const bgStop = ref<null | (() => void)>(null)
-let sharedEngine: SyncEngine | null = null
+// Local fallback engine for standalone mounting (tests/storybook); the real
+// one is owned by the App-level coordinator and passed through `sync`.
+let fallbackEngine: SyncEngine | null = null
+
+function activeEngine(): SyncEngine | null {
+  return props.sync?.currentEngine() ?? fallbackEngine
+}
 
 const canSync = computed(() => Boolean(props.account.loggedIn.value && props.vault?.rootPath))
 const vaultSync = computed(() => props.account.plan.value?.vaultSync)
@@ -51,11 +68,13 @@ async function onLogin() {
 }
 
 async function onLogout() {
-  stopBackground()
-  sharedEngine = null
+  fallbackEngine?.stopBackgroundSync()
+  fallbackEngine = null
   await props.account.logout()
-  syncStatus.value = null
-  syncMessage.value = ''
+  // Coordinator state resets itself when login drops; mirror locally too so a
+  // standalone mount without the coordinator also clears.
+  syncStatusLocal.value = null
+  setSyncMessage('')
   devices.value = []
   localDeviceId.value = null
 }
@@ -88,10 +107,15 @@ async function saveCustomServer() {
 }
 
 function makeEngine(): SyncEngine {
+  if (props.sync) {
+    const shared = props.sync.currentEngine()
+    if (shared) return shared
+    throw new Error('同步尚未就绪：请确认已登录并打开本地库')
+  }
   const rootPath = props.vault?.rootPath
   if (!rootPath) throw new Error('请先打开本地库再同步')
-  if (sharedEngine) return sharedEngine
-  sharedEngine = createSyncEngine({
+  if (fallbackEngine) return fallbackEngine
+  fallbackEngine = createSyncEngine({
     rootPath,
     getAuth: () => ({
       server: props.account.server.value,
@@ -102,24 +126,7 @@ function makeEngine(): SyncEngine {
       void props.account.logout()
     },
   })
-  return sharedEngine
-}
-
-function stopBackground() {
-  bgStop.value?.()
-  bgStop.value = null
-  sharedEngine?.stopBackgroundSync()
-}
-
-function ensureBackground() {
-  if (!canSync.value) return
-  try {
-    const engine = makeEngine()
-    stopBackground()
-    bgStop.value = engine.startBackgroundSync()
-  } catch {
-    /* no vault open */
-  }
+  return fallbackEngine
 }
 
 async function refreshLocalDeviceId() {
@@ -172,58 +179,66 @@ async function onKick(device: VaultDeviceInfo) {
   }
 }
 
+function reportCycle(status: SyncEngineStatus, note?: string) {
+  if (props.sync) return // coordinator subscription already applied it
+  syncStatusLocal.value = status
+  syncMessageLocal.value = note ?? status.message
+}
+
 async function onBindAndSync() {
   if (!canSync.value) return
-  syncBusy.value = true
-  syncMessage.value = ''
+  syncBusyLocal.value = true
+  syncMessageLocal.value = ''
   try {
-    const engine = makeEngine()
-    const plan = await engine.bind()
-    syncMessage.value = bootstrapModeLabel(plan.mode)
-    const status = await engine.pushPull()
-    syncStatus.value = status
-    syncMessage.value = `${bootstrapModeLabel(plan.mode)} · ${status.message}`
+    const cycle = async () => {
+      const engine = makeEngine()
+      const plan = await engine.bind()
+      const status = await engine.pushPull()
+      reportCycle(status, `${bootstrapModeLabel(plan.mode)} · ${status.message}`)
+    }
+    await (props.sync?.runExclusive(cycle) ?? cycle())
     await props.account.refreshProfileAndPlan()
     await refreshDevices()
-    ensureBackground()
   } catch (cause) {
     const msg = cause instanceof Error ? cause.message : '同步失败'
-    syncMessage.value = msg.includes('设备') ? `${msg}（${deviceLimitMessage()}）` : msg
+    const shown = msg.includes('设备') ? `${msg}（${deviceLimitMessage()}）` : msg
+    setSyncMessage(shown)
   } finally {
-    syncBusy.value = false
+    syncBusyLocal.value = false
   }
 }
 
 async function onSyncNow() {
   if (!canSync.value) return
-  syncBusy.value = true
+  syncBusyLocal.value = true
   try {
-    const engine = makeEngine()
-    const status = await engine.pushPull()
-    syncStatus.value = status
-    syncMessage.value = status.message
+    const cycle = async () => {
+      const status = await makeEngine().pushPull()
+      reportCycle(status)
+    }
+    await (props.sync?.runExclusive(cycle) ?? cycle())
     await props.account.refreshProfileAndPlan()
     await refreshDevices()
-    ensureBackground()
   } catch (cause) {
-    syncMessage.value = cause instanceof Error ? cause.message : '同步失败'
+    setSyncMessage(cause instanceof Error ? cause.message : '同步失败')
   } finally {
-    syncBusy.value = false
+    syncBusyLocal.value = false
   }
 }
 
 async function onFlushRetry() {
   if (!canSync.value) return
-  syncBusy.value = true
+  syncBusyLocal.value = true
   try {
-    const engine = makeEngine()
-    const status = await engine.flushRetryQueue()
-    syncStatus.value = status
-    syncMessage.value = status.message
+    const cycle = async () => {
+      const status = await makeEngine().flushRetryQueue()
+      reportCycle(status)
+    }
+    await (props.sync?.runExclusive(cycle) ?? cycle())
   } catch (cause) {
-    syncMessage.value = cause instanceof Error ? cause.message : '重试失败'
+    setSyncMessage(cause instanceof Error ? cause.message : '重试失败')
   } finally {
-    syncBusy.value = false
+    syncBusyLocal.value = false
   }
 }
 
@@ -236,30 +251,35 @@ function formatSeen(value?: string | null): string {
   }
 }
 
+// Device list and fallback-engine lifecycle only; the coordinator owns the
+// engine, its background timer, online/focus wakeups, and status pushes.
 watch(
   () => [props.account.loggedIn.value, props.vault?.rootPath] as const,
   ([loggedIn, root]) => {
-    sharedEngine = null
-    stopBackground()
-    if (loggedIn && root) {
-      void refreshDevices()
-      ensureBackground()
-    } else {
-      devices.value = []
-    }
+    fallbackEngine = null
+    if (loggedIn && root) void refreshDevices()
+    else devices.value = []
   },
 )
 
 onMounted(() => {
-  if (canSync.value) {
+  if (!props.sync && canSync.value) {
+    // Standalone mount without App-level coordinator: keep a local loop alive.
+    try {
+      fallbackEngine = makeEngine()
+      fallbackEngine.startBackgroundSync()
+    } catch {
+      /* no vault open */
+    }
     void refreshDevices()
-    ensureBackground()
+  } else if (canSync.value) {
+    void refreshDevices()
   }
 })
 
 onBeforeUnmount(() => {
-  stopBackground()
-  sharedEngine = null
+  fallbackEngine?.stopBackgroundSync()
+  fallbackEngine = null
 })
 </script>
 

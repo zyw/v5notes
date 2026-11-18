@@ -4,6 +4,7 @@ import AccountPanel from '../components/AccountPanel.vue'
 import brandIcon from '../assets/brand-icon.png'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import type { AccountState } from '../account'
+import type { SyncCoordinatorHandles } from '../sync'
 import {
   CLOUD_PRODUCT_DISPLAY_NAME,
   DUAL_PRODUCT_HELP,
@@ -61,6 +62,7 @@ import {
 const props = defineProps<{
   account: AccountState
   vault?: OpenedVault | null
+  sync?: SyncCoordinatorHandles
 }>()
 
 const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
@@ -497,7 +499,7 @@ watch(
             </div>
             <div class="p-body">
               <p class="p-lead">同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Vault 始终在本机文件夹。</p>
-              <AccountPanel :account="account" :vault="vault" />
+              <AccountPanel :account="account" :vault="vault" :sync="sync" />
             </div>
           </section>
 
