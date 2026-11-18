@@ -4,6 +4,7 @@ import { listMatches, type FindOptions, type OutlineEntry } from '@v5md/core'
 import type { EditorSession } from '@v5notes/vault-plugin-api'
 import brandIcon from '../assets/brand-icon.png'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import EditorModeDock from '../components/EditorModeDock.vue'
 import NameDialog from '../components/NameDialog.vue'
 import TreeIcon from '../components/TreeIcon.vue'
 import { closeTreeMenu } from '../components/treeMenu'
@@ -1524,48 +1525,15 @@ defineExpose({
           </p>
         </div>
 
-        <div v-if="selectedPath && !commandOpen && !externalNotice" class="mode-dock">
-          <template v-if="editorMode === 'preview'">
-            <button type="button" class="dock-edit" @click="enterEdit">
-              <span class="dock-edit-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.4 2.6a2.1 2.1 0 1 1 3 3L12 15l-4 1 1-4Z" />
-                </svg>
-              </span>
-              <span>编辑</span>
-            </button>
-          </template>
-          <template v-else>
-            <div class="dock-cluster" role="group" aria-label="编辑状态">
-              <button type="button" class="dock-done" :disabled="busy" @click="leaveEdit">
-                <span class="dock-status-dot" :class="{ 'is-dirty': dirty }" aria-hidden="true" />
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>
-                <span>完成</span>
-              </button>
-              <button
-                v-if="dirty"
-                type="button"
-                class="dock-save"
-                :disabled="busy"
-                @click="saveCurrent"
-              >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M4 3.4h9.2L16.6 6.8V16.6H4z" />
-                  <path d="M6.6 3.6v4.6h6.2V3.6M6.8 16.4v-4.6h6.4v4.6" />
-                </svg>
-                <span>保存</span>
-              </button>
-              <span v-else class="dock-save is-saved" role="status" aria-live="polite">
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M4 3.4h9.2L16.6 6.8V16.6H4z" />
-                  <path d="M6.6 3.6v4.6h6.2V3.6M6.8 16.4v-4.6h6.4v4.6" />
-                </svg>
-                <span>已保存</span>
-              </span>
-            </div>
-          </template>
-        </div>
+        <EditorModeDock
+          v-if="selectedPath && !commandOpen && !externalNotice"
+          :mode="editorMode"
+          :dirty="dirty"
+          :busy="busy"
+          @edit="enterEdit"
+          @save="saveCurrent"
+          @done="leaveEdit"
+        />
 
         <p v-if="toast" class="workspace-toast" role="status">{{ toast }}</p>
       </div>

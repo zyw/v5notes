@@ -2563,19 +2563,66 @@ code {
   border-bottom-color: var(--ws-line);
 }
 
-/* ---------- 浮动模式操作 ---------- */
+/* ---------- 浮动模式操作：右侧可上下拖动的安全栏 ---------- */
+
+.mode-dock-rail {
+  position: absolute;
+  z-index: 5;
+  top: 48px;
+  bottom: 0;
+  right: var(--rail-right, 140px);
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--accent) 22%, var(--ws-line));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s ease, border-color 0.16s ease;
+}
+
+.mode-dock-rail.is-shown {
+  opacity: 0.8;
+}
+
+.mode-dock-rail.is-active {
+  border-left-color: color-mix(in srgb, var(--accent) 48%, var(--ws-line));
+  opacity: 1;
+}
 
 .mode-dock {
   position: absolute;
-  z-index: 3;
-  top: 64px;
+  z-index: 6;
+  top: var(--dock-top, 64px);
   right: 22px;
   display: flex;
   align-items: center;
+  gap: 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
-.editor-pane.editing .mode-dock {
-  top: 104px;
+.mode-dock.is-dragging {
+  cursor: grabbing;
+}
+
+.mode-dock-grip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 1px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mode-dock:hover .mode-dock-grip,
+.mode-dock.is-dragging .mode-dock-grip {
+  opacity: 0.8;
+}
+
+.mode-dock-grip i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ws-muted) 70%, transparent);
 }
 
 /* Preview → edit: one confident green pill; the action, not the vault identity. */
@@ -3320,15 +3367,6 @@ button.dock-save:hover:not(:disabled) {
 
   .mode-indicator {
     display: none;
-  }
-
-  .mode-dock {
-    top: 58px;
-    right: 12px;
-  }
-
-  .editor-pane.editing .mode-dock {
-    top: 98px;
   }
 
   .editor-body .v5md .v5-doc {
