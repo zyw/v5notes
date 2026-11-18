@@ -1,6 +1,6 @@
 # 编辑器顶部工具条 · 三方向设计记录
 
-日期：2026-03-20　画布：1440 × 900　落点：`v5notes-client2/src/components/EditorPane.vue` + `src/styles/style.css`
+日期：2026-03-20　画布：1440 × 900　落点：`v5notes-clients/v5notes-client2/src/components/EditorPane.vue` + `src/styles/style.css`
 
 ## 1 · 起点（现状）
 

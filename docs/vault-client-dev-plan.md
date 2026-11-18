@@ -11,17 +11,17 @@
 
 | 现状 | 对 Phase 0 的含义 |
 |---|---|
-| 仓库已有 `v5notes-client2/`（Tauri 2 + Vue 3 + Vite）、`v5notes2/note-modules/{note-basics,note-notes,note-system}` | Vault 客户端与 Sync 模块作为**同仓兄弟目录**落地，不另起仓库 |
-| **不存在** 顶层 `packages/` npm workspace | Phase 0 **默认不强制**一次切成 monorepo；先建独立 App，共享物按需抽出 |
+| 仓库已有 `v5notes-clients/v5notes-client2/`（Tauri 2 + Vue 3 + Vite）、`v5notes2/note-modules/{note-basics,note-notes,note-system}` | Vault 客户端与 Sync 模块作为**同仓兄弟目录**落地，不另起仓库 |
+| **不存在** 顶层 `v5notes-clients/packages/` npm workspace | Phase 0 **默认不强制**一次切成 monorepo；先建独立 App，共享物按需抽出 |
 | 编辑器依赖为 `vendor/v5md/*.tgz`（`@v5md/core|view|vue`） | Vault 壳先 **同方式引用**（复制或 symlink vendor）；后续再抽 `@v5notes/editor` 可选 |
 | Cloud deep link：`v5notes://`，bundle `xin.v5ai.v5notes.client2`，`deviceType=client` | Vault 必须独立：`v5notes-vault://`、新 identifier、`deviceType=vault_client` |
-| 社交登录落地页：`v5notes-oauth-landing/` + `justauth.client-address` | Phase 3 前扩展 `app=vault` → `v5notes-vault://`；后端加 `justauth.vault-client-address` |
+| 社交登录落地页：`v5notes-clients/v5notes-oauth-landing/` + `justauth.client-address` | Phase 3 前扩展 `app=vault` → `v5notes-vault://`；后端加 `justauth.vault-client-address` |
 | Cloud API 在 `note-notes`（`/client/notes*`） | Sync **禁止**并入 note-notes；新建 `note-vault-sync`，前缀 `/vault/v1` |
 
 **工程形态默认（文档开放题 → 本计划拍板建议）：**
 
-1. 在仓库根创建 `v5notes-vault-client/`（镜像 `v5notes-client2` 的 Tauri+Vue 骨架）。  
-2. **暂不**引入根级 npm/pnpm workspace；共享包到真正有第二消费者时再抽到 `packages/`。  
+1. 在仓库根创建 `v5notes-clients/v5notes-vault-client/`（镜像 `v5notes-client2` 的 Tauri+Vue 骨架）。  
+2. **暂不**引入根级 npm/pnpm workspace；共享包到真正有第二消费者时再抽到 `v5notes-clients/packages/`。  
 3. 后端在 `v5notes2/note-modules/note-vault-sync/` 新建 Maven 模块并挂入 `note-api`/`note-admin` 启动装配。
 
 ---
@@ -76,7 +76,7 @@ Phase 0 脚手架/冻结
 | 3 | 双产品一句话定稿 | 「同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Cloud 在服务端目录树；Vault 在本机文件夹，可选同步。」 | Phase 3 登录/设置文案 |
 | 4 | 商店/安装包显示名与 bundle id 字符串 | `productName=V5Notes Vault`；`identifier=xin.v5ai.v5notes.vault` | Phase 0 脚手架 |
 | 5 | tombstone GC 天数 | **≥ 90 天**（文档建议） | Phase 4/5 后端 |
-| 6 | 工程：何时抽 `packages/` | M1 完成后再抽 `account-sdk` / `vault-plugin-api`；Phase 0 不建 workspace | 仅节奏，不挡开工 |
+| 6 | 工程：何时抽 `v5notes-clients/packages/` | M1 完成后再抽 `account-sdk` / `vault-plugin-api`；Phase 0 不建 workspace | 仅节奏，不挡开工 |
 
 **Phase 0 Done when：** 上表 2.1 全部写入团队 checklist；2.2 至少勾选 1–4（或书面接受建议默认）；空壳 App 可 `npm run tauri dev` 启动并注册 scheme。
 
@@ -90,13 +90,14 @@ Phase 0 脚手架/冻结
 
 ```
 v5notes/
-  v5notes-vault-client/          # NEW：从 create-tauri-app 或复制 client2 骨架后删业务
-    package.json                 # name: v5notes-vault-client
-    src/                         # Vue 空壳：欢迎占位 + 设置空页
-    src-tauri/
-      tauri.conf.json            # productName / identifier / deep-link schemes
-      capabilities/              # fs/dialog 预留，先最小
-    vendor/v5md/                 # 复用 client2 的 tgz（复制或文档约定同步方式）
+  v5notes-clients/
+    v5notes-vault-client/          # NEW：从 create-tauri-app 或复制 client2 骨架后删业务
+      package.json                 # name: v5notes-vault-client
+      src/                         # Vue 空壳：欢迎占位 + 设置空页
+      src-tauri/
+        tauri.conf.json            # productName / identifier / deep-link schemes
+        capabilities/              # fs/dialog 预留，先最小
+      vendor/v5md/                 # 复用 client2 的 tgz（复制或文档约定同步方式）
   v5notes2/note-modules/
     note-vault-sync/             # NEW：空 Maven 模块 + 占位 Controller 健康检查
   docs/
@@ -241,7 +242,7 @@ v5notes/
 | | |
 |---|---|
 | **目标** | 可加载官方/本地功能插件；主题可切换 |
-| **交付** | `@v5notes/vault-plugin-api`（可此时建 `packages/vault-plugin-api`）；PluginHost；权限代理；Safe Mode；ThemeHost + CSS 校验；`appearance.json`；核心插件：日记、模板；**无**第三方发布；**无** `network:safe` |
+| **交付** | `@v5notes/vault-plugin-api`（可此时建 `v5notes-clients/packages/vault-plugin-api`）；PluginHost；权限代理；Safe Mode；ThemeHost + CSS 校验；`appearance.json`；核心插件：日记、模板；**无**第三方发布；**无** `network:safe` |
 | **验收** | 启用/禁用热加载；无权限写入抛错；非法主题回退；Safe Mode 仅核心+内置主题；token 不可被插件枚举 |
 | **依赖** | Phase 2 tokens；可与 Phase 5 **部分并行**，但以主设计依赖图为准（建议 Phase 4 完成后再大面积开宿主） |
 | **风险** | API 面一次铺太大；同页隔离被误解为沙箱 |
@@ -331,7 +332,7 @@ v5notes/
 
 ## 8. 计划接受后的推荐下一编码动作（单一 kickoff）
 
-**Kickoff：** 开 `PR-0a`——在仓库根创建可启动的空壳 `v5notes-vault-client/`（Tauri 2 + Vue 3），配置 `identifier=xin.v5ai.v5notes.vault`、`schemes=["v5notes-vault"]`，vendor 复用 `@v5md`，并附最小 README（双产品一句 + Phase 0 冻结引用）。**同周并行**可开 `PR-0b` 空 `note-vault-sync` 模块，但不阻塞客户端空壳合并。
+**Kickoff：** 开 `PR-0a`——在仓库根创建可启动的空壳 `v5notes-clients/v5notes-vault-client/`（Tauri 2 + Vue 3），配置 `identifier=xin.v5ai.v5notes.vault`、`schemes=["v5notes-vault"]`，vendor 复用 `@v5md`，并附最小 README（双产品一句 + Phase 0 冻结引用）。**同周并行**可开 `PR-0b` 空 `note-vault-sync` 模块，但不阻塞客户端空壳合并。
 
 在 Yanwei Zhu 书面接受本计划（含 §2.2 建议默认或改选）之前，**不开始**业务编码。
 

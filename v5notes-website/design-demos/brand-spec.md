@@ -3,7 +3,7 @@
 ## 资产（真实文件，不得重绘）
 | 资产 | 路径 | 用法 |
 |---|---|---|
-| App 图标（青绿圆角方块 + 奶油便签 + 铅笔） | assets/brand/brand-icon.png（源 v5notes-client2/src/assets/brand-icon.png，438×430） | 导航、页脚、favicon；浅底深底都可用 |
+| App 图标（青绿圆角方块 + 奶油便签 + 铅笔） | assets/brand/brand-icon.png（源 v5notes-clients/v5notes-client2/src/assets/brand-icon.png，438×430） | 导航、页脚、favicon；浅底深底都可用 |
 | 管理后台图标（橙色渐变 + V5Notes 云朵字） | assets/brand/admin-logo.png | 只在「管理后台」语境出现；不要和青绿图标同时抢主位 |
 
 产品名写作 V5Notes（拉丁）。不用文字重绘图标；图标旁可以排 V5Notes 作为产品名。

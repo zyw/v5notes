@@ -5,14 +5,14 @@
 [![Java](https://img.shields.io/badge/Java-21-4479A1?logo=openjdk&logoColor=white)](v5notes2/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)](v5notes2/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white)](v5notes-admin2/)
-[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](v5notes-client2/)
+[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](v5notes-clients/v5notes-client2/)
 [![License](https://img.shields.io/badge/License-Apache%202.0%20%2F%20MIT-blue)](LICENSE)
 
 Keep the ideas. Keep the server.
 
 V5Notes is a Markdown notebook you host yourself. The desktop app is for writing. The admin console is for people and permissions. The API keeps folders, note bodies, revision history, and files in a database you control. Open the app, write, then continue on another computer. The notes stay on your machine.
 
-This document covers three directories: [`v5notes2`](v5notes2/), [`v5notes-admin2`](v5notes-admin2/), and [`v5notes-client2`](v5notes-client2/).
+This document covers three directories: [`v5notes2`](v5notes2/), [`v5notes-admin2`](v5notes-admin2/), and [`v5notes-client2`](v5notes-clients/v5notes-client2/).
 
 ## Contents
 
@@ -59,7 +59,7 @@ flowchart LR
 | --- | --- | --- |
 | [`v5notes2`](v5notes2/) | Sign-in, notes, folders, trash, revisions, files, and admin APIs | Java 21, Spring Boot 4.1 |
 | [`v5notes-admin2`](v5notes-admin2/) | Users and permissions, notes and folders, files, sign-in and operation audit | Vue 3.5, TypeScript, Element Plus, Vite 8 |
-| [`v5notes-client2`](v5notes-client2/) | Reading and editing Markdown on Windows, macOS, and Linux | Vue 3.5, TypeScript, Tauri 2 |
+| [`v5notes-client2`](v5notes-clients/v5notes-client2/) | Reading and editing Markdown on Windows, macOS, and Linux | Vue 3.5, TypeScript, Tauri 2 |
 
 The desktop client calls `/client/notes/**`. The admin console calls `/notes/**`, `/system/**`, and `/basics/**`. One note service backs both. Snowflake IDs stay strings from the API response through every page.
 
@@ -196,7 +196,7 @@ pnpm dev
 
 ```bash
 # Desktop client. The browser dev server is http://127.0.0.1:1420.
-cd v5notes-client2
+cd v5notes-clients/v5notes-client2
 npm install
 npm run dev          # UI only
 npm run tauri dev    # with the desktop shell
@@ -331,12 +331,12 @@ Docker Compose brings MySQL. For an external PostgreSQL server, point the API di
 After installation, the client only needs the API address. It does not have to run on the API host. Packaging needs a local Rust toolchain:
 
 ```bash
-cd v5notes-client2
+cd v5notes-clients/v5notes-client2
 npm install
 npm run tauri build
 ```
 
-Installers land in `v5notes-client2/src-tauri/target/release/bundle/` for the Windows, macOS, and Linux targets Tauri can produce on the current platform. In-app updates read `latest.json` from GitHub Releases.
+Installers land in `v5notes-clients/v5notes-client2/src-tauri/target/release/bundle/` for the Windows, macOS, and Linux targets Tauri can produce on the current platform. In-app updates read `latest.json` from GitHub Releases.
 
 If the server client id or the sign-in RSA public key differs from the repository defaults, set these before the build:
 
@@ -364,7 +364,7 @@ The three directories move independently. Add a capability in the API, then call
 | Users, roles, menus, dictionaries | `v5notes2/note-modules/note-system` |
 | Uploads and local files | `v5notes2/note-modules/note-basics` |
 | Admin pages | `v5notes-admin2/src/views` and `src/api` |
-| Writing UI, sidebar, outline, find | `v5notes-client2/src` |
+| Writing UI, sidebar, outline, find | `v5notes-clients/v5notes-client2/src` |
 | Copy in three languages | Admin and client i18n, plus API messages |
 | Schema | `v5notes2/note-admin/src/main/resources/db/migration` |
 
@@ -394,7 +394,7 @@ pnpm build
 pnpm lint
 ```
 
-Module layout, the refresh-token flow, and the full environment list are in [v5notes2/README.md](v5notes2/README.md), [v5notes-admin2/README.md](v5notes-admin2/README.md), and [v5notes-client2/README.md](v5notes-client2/README.md).
+Module layout, the refresh-token flow, and the full environment list are in [v5notes2/README.md](v5notes2/README.md), [v5notes-admin2/README.md](v5notes-admin2/README.md), and [v5notes-clients/v5notes-client2/README.md](v5notes-clients/v5notes-client2/README.md).
 
 ## Configuration
 

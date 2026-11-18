@@ -75,5 +75,5 @@ V5Notes 是一套可以私有部署的 Markdown 云笔记：桌面客户端写�
 | 标记按需显形；中文输入法友好（组合输入不重绘 DOM）；粘贴富文本转 Markdown | v5md README |
 | 六个包：@v5md/vue、@v5md/react、@v5md/view、@v5md/core、plugin-typography、plugin-export（ESM） | v5md README |
 | 支持标题、粗斜体、下划线、删除线、高亮、链接、列表、任务列表、引用、代码块（语法高亮）、表格、图片（拖拽缩放）、KaTeX、Mermaid、frontmatter；撤销重做、查找替换（正则/全词）、源码模式、大纲跳转、导出 | v5md README |
-| V5Notes 客户端用 @v5md/vue 驱动正文编辑 | v5notes-client2/package.json、src/components/EditorPane.vue |
+| V5Notes 客户端用 @v5md/vue 驱动正文编辑 | v5notes-clients/v5notes-client2/package.json、src/components/EditorPane.vue |
 | 不能写：AI 补全、实时协作、移动端 App | 无依据 |

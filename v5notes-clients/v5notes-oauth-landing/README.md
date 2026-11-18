@@ -72,7 +72,7 @@ justauth:
 本地预览：
 
 ```bash
-cd v5notes-oauth-landing
+cd v5notes-clients/v5notes-oauth-landing
 python3 -m http.server 8088
 # Cloud: http://127.0.0.1:8088/social-callback/?source=gitee&code=demo&state=demo
 # Vault: http://127.0.0.1:8088/social-callback/?source=gitee&code=demo&state=demo&app=vault

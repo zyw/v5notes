@@ -1,6 +1,6 @@
 # Repository guidance
 
-These rules apply to `v5notes-client2/` and its notes API integrations. Keep the legacy `v5notes-client/` behavior separate unless a task explicitly targets it.
+These rules apply to `v5notes-clients/v5notes-client2/` and its notes API integrations. Keep the legacy `v5notes-client/` behavior separate unless a task explicitly targets it.
 
 ## Page layout
 

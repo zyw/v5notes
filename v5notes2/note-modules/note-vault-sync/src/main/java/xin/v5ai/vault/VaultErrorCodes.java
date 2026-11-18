@@ -2,7 +2,7 @@ package xin.v5ai.vault;
 
 /**
  * Draft Vault Sync business error codes (design §8.2).
- * Keep aligned with {@code v5notes-vault-client/src/models/errors.ts}.
+ * Keep aligned with {@code v5notes-clients/v5notes-vault-client/src/models/errors.ts}.
  */
 public final class VaultErrorCodes {
 

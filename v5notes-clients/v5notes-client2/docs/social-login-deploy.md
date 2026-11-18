@@ -21,7 +21,7 @@
 
 | 场景 | `client-address` 示例 |
 |---|---|
-| 仅 API + 桌面端（推荐） | `https://oauth.example.com`（仓库 `v5notes-oauth-landing/`） |
+| 仅 API + 桌面端（推荐） | `https://oauth.example.com`（仓库 `v5notes-clients/v5notes-oauth-landing/`） |
 | 打包 Tauri 且平台允许自定义 scheme | `v5notes://app` |
 
 向 OAuth 平台登记时，按实际用到的端分别登记拼装后的完整 URL（不是 YAML 里那条 `redirect-uri`）。  
@@ -30,7 +30,7 @@
 
 ### 仅桌面端时的 HTTPS 中转
 
-仓库根目录 `v5notes-oauth-landing/` 是极简静态落地页：接收  
+仓库根目录 `v5notes-clients/v5notes-oauth-landing/` 是极简静态落地页：接收  
 `/social-callback?source&code&state`，再唤起 `v5notes://app/social-callback?...`。  
 把该目录挂到公网 HTTPS，并将 `justauth.client-address` 指到该源即可；详见目录内 README。
 

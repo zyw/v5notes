@@ -5,14 +5,14 @@
 [![Java](https://img.shields.io/badge/Java-21-4479A1?logo=openjdk&logoColor=white)](v5notes2/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)](v5notes2/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white)](v5notes-admin2/)
-[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](v5notes-client2/)
+[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](v5notes-clients/v5notes-client2/)
 [![License](https://img.shields.io/badge/License-Apache%202.0%20%2F%20MIT-blue)](LICENSE)
 
 把想法留在自己的伺服器上。
 
 V5Notes 是一套可以私有部署的 Markdown 雲端筆記。桌面用戶端負責寫作，管理後台負責人和權限，後端把目錄、正文、歷史版本和檔案收在你自己的資料庫裡。打開電腦就能寫，換一台電腦接著寫，筆記不會散落到別人的雲端硬碟裡。
 
-本文說明三個目錄：[`v5notes2`](v5notes2/)、[`v5notes-admin2`](v5notes-admin2/)、[`v5notes-client2`](v5notes-client2/)。
+本文說明三個目錄：[`v5notes2`](v5notes2/)、[`v5notes-admin2`](v5notes-admin2/)、[`v5notes-client2`](v5notes-clients/v5notes-client2/)。
 
 ## 目錄
 
@@ -59,7 +59,7 @@ flowchart LR
 | --- | --- | --- |
 | [`v5notes2`](v5notes2/) | 登入、筆記、目錄、回收桶、歷史版本、檔案和管理介面 | Java 21、Spring Boot 4.1 |
 | [`v5notes-admin2`](v5notes-admin2/) | 使用者與權限、筆記與目錄、檔案、登入和操作稽核 | Vue 3.5、TypeScript、Element Plus、Vite 8 |
-| [`v5notes-client2`](v5notes-client2/) | 在 Windows、macOS、Linux 上閱讀和編輯 Markdown | Vue 3.5、TypeScript、Tauri 2 |
+| [`v5notes-client2`](v5notes-clients/v5notes-client2/) | 在 Windows、macOS、Linux 上閱讀和編輯 Markdown | Vue 3.5、TypeScript、Tauri 2 |
 
 用戶端走 `/client/notes/**`，管理後台走 `/notes/**`、`/system/**` 和 `/basics/**`。同一套筆記服務同時服務兩端，雪花 ID 從介面到頁面始終按字串處理。
 
@@ -196,7 +196,7 @@ pnpm dev
 
 ```bash
 # 桌面用戶端。瀏覽器開發位址為 http://127.0.0.1:1420。
-cd v5notes-client2
+cd v5notes-clients/v5notes-client2
 npm install
 npm run dev          # 只跑頁面
 npm run tauri dev    # 帶桌面殼
@@ -331,12 +331,12 @@ Docker Compose 預設附帶的是 MySQL。使用外部 PostgreSQL 時，把 API 
 用戶端安裝後填寫伺服器位址即可，不需要和 API 裝在同一台機器上。打包需要本機已安裝 Rust：
 
 ```bash
-cd v5notes-client2
+cd v5notes-clients/v5notes-client2
 npm install
 npm run tauri build
 ```
 
-安裝包出現在 `v5notes-client2/src-tauri/target/release/bundle/`，涵蓋 Tauri 目前平台能產出的 Windows、macOS 和 Linux 目標。應用內更新讀取 GitHub Releases 上的 `latest.json`。
+安裝包出現在 `v5notes-clients/v5notes-client2/src-tauri/target/release/bundle/`，涵蓋 Tauri 目前平台能產出的 Windows、macOS 和 Linux 目標。應用內更新讀取 GitHub Releases 上的 `latest.json`。
 
 若伺服器的用戶端編號或登入 RSA 公鑰與儲存庫預設值不同，打包前設定：
 
@@ -364,7 +364,7 @@ Docker 部署時，管理後台是 [http://localhost:8988](http://localhost:8988
 | 使用者、角色、選單、字典 | `v5notes2/note-modules/note-system` |
 | 上傳與本機檔案 | `v5notes2/note-modules/note-basics` |
 | 管理後台頁面 | `v5notes-admin2/src/views` 與 `src/api` |
-| 寫作介面、側欄、大綱、尋找 | `v5notes-client2/src` |
+| 寫作介面、側欄、大綱、尋找 | `v5notes-clients/v5notes-client2/src` |
 | 三語文案 | 管理後台與用戶端的 i18n，以及後端提示語 |
 | 表結構 | `v5notes2/note-admin/src/main/resources/db/migration` |
 
@@ -394,7 +394,7 @@ pnpm build
 pnpm lint
 ```
 
-更細的模組說明、重新整理權杖協定和完整環境變數見 [v5notes2/README.md](v5notes2/README.md)、[v5notes-admin2/README.md](v5notes-admin2/README.md)、[v5notes-client2/README.md](v5notes-client2/README.md)。
+更細的模組說明、重新整理權杖協定和完整環境變數見 [v5notes2/README.md](v5notes2/README.md)、[v5notes-admin2/README.md](v5notes-admin2/README.md)、[v5notes-clients/v5notes-client2/README.md](v5notes-clients/v5notes-client2/README.md)。
 
 ## 設定
 

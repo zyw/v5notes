@@ -14,9 +14,9 @@
 
 ## 改动文件
 
-- `v5notes-client2/src/components/SettingsDialog.vue`：头部、连接卡、分组头、底栏结构与图标；补 `aria-describedby`。
-- `v5notes-client2/src/styles/style.css`：`.settings-*` 整段重写（从「设置弹窗：一张轻轻放下的纸」到 `.settings-footer .dialog-error`），并同步 700px / 860px 断点，新增 520px 窄屏规则（连接行换行、语言行下拉占满）。
-- `v5notes-client2/src/i18n/{zh-CN,zh-TW,en}.ts`：新增 `settings.subtitle`。
+- `v5notes-clients/v5notes-client2/src/components/SettingsDialog.vue`：头部、连接卡、分组头、底栏结构与图标；补 `aria-describedby`。
+- `v5notes-clients/v5notes-client2/src/styles/style.css`：`.settings-*` 整段重写（从「设置弹窗：一张轻轻放下的纸」到 `.settings-footer .dialog-error`），并同步 700px / 860px 断点，新增 520px 窄屏规则（连接行换行、语言行下拉占满）。
+- `v5notes-clients/v5notes-client2/src/i18n/{zh-CN,zh-TW,en}.ts`：新增 `settings.subtitle`。
 
 ## 预览与截图
 

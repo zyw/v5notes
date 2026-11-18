@@ -438,12 +438,12 @@ GET /vault/v1/catalog/plugins/{id}
 ## 10. 工程结构
 
 ```
-v5notes-vault-client/
+v5notes-clients/v5notes-vault-client/
   src/
     plugin-host/           # PluginHost、加载器、权限代理
     theme-host/            # ThemeApi、CSS 校验、appearance
     ...
-packages/
+v5notes-clients/packages/
   vault-plugin-api/        # @v5notes/vault-plugin-api（含 ThemeApi 类型）
   create-vault-plugin/     # 功能插件脚手架
   create-vault-theme/      # 主题脚手架

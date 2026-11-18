@@ -38,7 +38,7 @@
 | `channel=product`、`status=preview`；文案写明永不对第三方开放 | 无 Publish HTTP API / 无托管后端 |
 | 插件宿主 / Catalog **永久拒绝** `publish:*` / `publishing`（正确禁区） | 预览保存 ≠ 上线；验收报告 #12 仅认 stub 文案 PASS |
 
-关键路径：`v5notes-vault-client/src/publish/officialPublish.ts`、`SettingsView.vue`；Phase 8 交接明确延期「完整站点托管 / 公开 URL / CDN」。
+关键路径：`v5notes-clients/v5notes-vault-client/src/publish/officialPublish.ts`、`SettingsView.vue`；Phase 8 交接明确延期「完整站点托管 / 公开 URL / CDN」。
 
 ### 目标能力边界
 
@@ -98,7 +98,7 @@
 | `PUT/GET …/files` 支持 `body`（文本）与 `base64Body`（附件） | 大文件经 API 网关，扩展性差 |
 | 附件分类、默认 25MB 超限跳过角标；重试队列 | 设计写明「Phase 5 可改 OSS 直传」——**未做** |
 
-关键注释：`v5notes-vault-client/src/sync/attachments.ts`（*OSS direct upload remains deferred*）；Phase 4/5 交接均列延期。
+关键注释：`v5notes-clients/v5notes-vault-client/src/sync/attachments.ts`（*OSS direct upload remains deferred*）；Phase 4/5 交接均列延期。
 
 ### 目标能力边界
 
@@ -359,7 +359,7 @@ Phase 8：*自动化导入工具（本 PR 仅显式说明）*；下一步曾写�
 | 验收报告 | `docs/vault-acceptance-report.md` |
 | Phase 4/5/8 交接 | `internal/phase4-vault-sync-handoff.md` 等 |
 |  stub 审计（内部） | `internal/deferred-vault-features-audit.md` |
-| Publish stub | `v5notes-vault-client/src/publish/` |
-| 备份/迁移文案 | `v5notes-vault-client/src/backup/` |
-| 附件/Sync | `v5notes-vault-client/src/sync/` |
+| Publish stub | `v5notes-clients/v5notes-vault-client/src/publish/` |
+| 备份/迁移文案 | `v5notes-clients/v5notes-vault-client/src/backup/` |
+| 附件/Sync | `v5notes-clients/v5notes-vault-client/src/sync/` |
 | 版本 stub API | `note-vault-sync` → `VaultFileController#versions` |

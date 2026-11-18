@@ -70,7 +70,7 @@ jobs:
           if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null 2>&1; then
             echo "Release '$tag' 不存在。" >&2
             echo "请先创建 Release，并上传带架构名的更新包和同名 .sig：" >&2
-            echo "  gh release create '$tag' v5notes-client2/releases/<version>.md --title 'v5notes <version>' --notes-file v5notes-client2/releases/<version>.md" >&2
+            echo "  gh release create '$tag' v5notes-clients/v5notes-client2/releases/<version>.md --title 'v5notes <version>' --notes-file v5notes-clients/v5notes-client2/releases/<version>.md" >&2
             echo "  gh release upload '$tag' v5notes_aarch64.app.tar.gz v5notes_aarch64.app.tar.gz.sig --clobber" >&2
             exit 1
           fi
@@ -132,9 +132,9 @@ jobs:
           def show(path: str) -> str:
               return subprocess.check_output(["git", "show", f"{tag}:{path}"], text=True)
 
-          conf = json.loads(show("v5notes-client2/src-tauri/tauri.conf.json"))
-          package = json.loads(show("v5notes-client2/package.json"))
-          cargo = show("v5notes-client2/src-tauri/Cargo.toml")
+          conf = json.loads(show("v5notes-clients/v5notes-client2/src-tauri/tauri.conf.json"))
+          package = json.loads(show("v5notes-clients/v5notes-client2/package.json"))
+          cargo = show("v5notes-clients/v5notes-client2/src-tauri/Cargo.toml")
           cargo_version = ""
           in_package = False
           for line in cargo.splitlines():
@@ -156,7 +156,7 @@ jobs:
               print(f"tag {tag} 的版本是 {version}，与该提交里的版本不一致：{', '.join(mismatched)}", file=sys.stderr)
               sys.exit(1)
 
-          notes_path = f"v5notes-client2/releases/{version}.md"
+          notes_path = f"v5notes-clients/v5notes-client2/releases/{version}.md"
           try:
               notes = show(notes_path)
           except subprocess.CalledProcessError:
@@ -204,7 +204,7 @@ jobs:
           PUBLISHED_AT: ${{ steps.release.outputs.published_at }}
         run: |
           set -euo pipefail
-          python3 v5notes-client2/scripts/make-latest-json.py \
+          python3 v5notes-clients/v5notes-client2/scripts/make-latest-json.py \
             --assets-dir dist \
             --version "$VERSION" \
             --tag "$TAG" \

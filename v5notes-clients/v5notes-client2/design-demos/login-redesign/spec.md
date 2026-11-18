@@ -1,6 +1,6 @@
 # 登录页重设计 · 共同规格
 
-日期 2026-11-10　画布 1440 × 900（另验 1280 × 800、375 × 812）　落点 `v5notes-client2/src/views/LoginView.vue` + `src/styles/style.css`
+日期 2026-11-10　画布 1440 × 900（另验 1280 × 800、375 × 812）　落点 `v5notes-clients/v5notes-client2/src/views/LoginView.vue` + `src/styles/style.css`
 单文件 HTML、无外链资源、macOS 桌面客户端（Tauri）满窗渲染，不画 macOS 红绿灯（那是系统窗口，叠在真实应用上会重影）。
 
 ## 1 · 起点与要解决的问题

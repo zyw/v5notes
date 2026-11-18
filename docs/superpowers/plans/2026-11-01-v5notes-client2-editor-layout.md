@@ -12,7 +12,7 @@
 
 ### Task 1: Workspace pane controls
 
-**Files:** Modify `v5notes-client2/src/App.vue`, `v5notes-client2/src/style.css`.
+**Files:** Modify `v5notes-clients/v5notes-client2/src/App.vue`, `v5notes-clients/v5notes-client2/src/style.css`.
 
 - [x] Add reactive pane visibility and focus-mode state.
 - [x] Add accessible toolbar controls to toggle the directory pane, note list, and focus mode; provide a clear way to restore navigation while focused.
@@ -21,7 +21,7 @@
 
 ### Task 2: Editor-first visual hierarchy
 
-**Files:** Modify `v5notes-client2/src/App.vue`, `v5notes-client2/src/style.css`.
+**Files:** Modify `v5notes-clients/v5notes-client2/src/App.vue`, `v5notes-clients/v5notes-client2/src/style.css`.
 
 - [x] Refine the editor toolbar into a compact application bar with note identity, save state, and primary save action.
 - [x] Increase the available canvas width and vertical writing area; retain a comfortable maximum line width and block-handle gutter.

@@ -30,8 +30,8 @@
 ### Task 1: Move outline into a workspace side panel
 
 **Files:**
-- Modify: `v5notes-client2/src/components/EditorPane.vue`
-- Modify: `v5notes-client2/src/styles/style.css`
+- Modify: `v5notes-clients/v5notes-client2/src/components/EditorPane.vue`
+- Modify: `v5notes-clients/v5notes-client2/src/styles/style.css`
 
 **Interfaces:**
 - Consumes: existing `outlineVisible`, `editorInstance`, and `editorHost` workspace context values.

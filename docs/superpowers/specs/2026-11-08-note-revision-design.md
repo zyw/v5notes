@@ -419,7 +419,7 @@ WHERE note_id = ?
 
 ### 客户端请求层
 
-`v5notes-client2/src/service/request/index.ts` 在 `code !== 200` 的通用抛错之前识别 `code === 409`。抛出的错误要带上 `msg`、`contentHash` 和 `updateTime`，供对话框使用。其他非 200 仍按现在的方式抛 `Error(msg)`。
+`v5notes-clients/v5notes-client2/src/service/request/index.ts` 在 `code !== 200` 的通用抛错之前识别 `code === 409`。抛出的错误要带上 `msg`、`contentHash` 和 `updateTime`，供对话框使用。其他非 200 仍按现在的方式抛 `Error(msg)`。
 
 `Note` 增加可选的 `contentHash`。`update` 的成功结果改为 `{ contentHash: string }`。草稿在 `load` 和每次成功保存、成功恢复后记下这个值，下一次 `PUT` 作为 `baseHash` 送出。
 

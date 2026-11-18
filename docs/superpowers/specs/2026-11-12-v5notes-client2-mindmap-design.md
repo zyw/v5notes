@@ -39,13 +39,13 @@ Phase 3  Markdown v5map-ref 引用与导出静态图（后置）
 
 ## 已有实现与约束
 
-- Client2 的目录树使用 `GET /client/notes/dir/tree`，当前目录节点 `type=1`、笔记节点 `type=2`。笔记读写统一走 `/client/notes`。API 调用集中在 `v5notes-client2/src/service/api/index.ts`。
+- Client2 的目录树使用 `GET /client/notes/dir/tree`，当前目录节点 `type=1`、笔记节点 `type=2`。笔记读写统一走 `/client/notes`。API 调用集中在 `v5notes-clients/v5notes-client2/src/service/api/index.ts`。
 - Client2 的笔记草稿由 `Draft` 管理正文、脏状态、保存串行化和服务端 `contentHash`；`useWorkspace.ts` 管理导航保护、版本冲突、选择状态和笔记历史。
 - Markdown 编辑器是 `V5Editor`。当前 `EditorPane.vue` 尚未传入思维导图插件。工作区预览和编辑共用已挂载的 V5Editor 实例，切换模式前保存脏正文。
 - 当前工作区新建笔记使用名称对话框，目录树行操作集中在 `WorkspaceSidebar.vue` 与 `TreeItem.vue`，对话框集中在 `WorkspaceDialogs.vue`。
 - 后端 `note_notes.content` 是 Markdown 正文，`note_revision` 按正文文本记录版本；目录删除和笔记删除经过同一回收站服务。目录树由 `NoteDirectoryServiceImpl` 组装。
 - Client2 当前依赖本地 `@v5md/* 0.0.3` 包。`@v5md/view` 的 `V5mdPlugin.blocks` 和 `V5mdBlockRenderer` 支持定制 fenced-code renderer，异步 `hydrate` 可通过 `AbortSignal` 与 `isCurrent()` 避免过期结果写入；这适合作为 Markdown 引用块的接入点。V5Editor 的插件列表在实例创建时读取，因此插件实例必须在编辑器挂载时稳定提供。
-- `v5notes-client2/package.json`、锁文件和 `vendor/v5md` 当前有未提交的 0.0.3 包变更。实现时应保留并核对这些工作区改动，不回退或覆盖。
+- `v5notes-clients/v5notes-client2/package.json`、锁文件和 `vendor/v5md` 当前有未提交的 0.0.3 包变更。实现时应保留并核对这些工作区改动，不回退或覆盖。
 
 ## 设计决策
 

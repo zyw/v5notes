@@ -6,7 +6,7 @@
 
 ### Task 1: Session persistence and refresh restoration
 
-**Files:** Modify `v5notes-client2/src/App.vue`.
+**Files:** Modify `v5notes-clients/v5notes-client2/src/App.vue`.
 
 - [x] Persist the access token and username after successful login; never persist the password.
 - [x] Restore the token, selected directory, and last opened note into the tree/editor after reload.
@@ -15,7 +15,7 @@
 
 ### Task 2: Editor layout and brand
 
-**Files:** Add `v5notes-client2/src/assets/brand-icon.png`; modify `src/App.vue` and `src/style.css`.
+**Files:** Add `v5notes-clients/v5notes-client2/src/assets/brand-icon.png`; modify `src/App.vue` and `src/style.css`.
 
 - [x] Use the dark teal note icon variant as the sidebar mark.
 - [x] Replace the separate directory and note-list panes with one compact tree containing both directories and notes.
@@ -27,7 +27,7 @@
 
 ### Task 3: In-app dialogs and CRUD
 
-**Files:** Modify `v5notes-client2/src/App.vue`, replace `src/DirectoryItem.vue` with `src/TreeItem.vue`, and modify `src/style.css`.
+**Files:** Modify `v5notes-clients/v5notes-client2/src/App.vue`, replace `src/DirectoryItem.vue` with `src/TreeItem.vue`, and modify `src/style.css`.
 
 - [x] Replace all browser prompt/confirm dialogs with one reusable styled dialog state for name forms and destructive confirmation.
 - [x] Wire note and directory create, rename, and delete flows to existing API methods; show validation/server failures in the dialog.

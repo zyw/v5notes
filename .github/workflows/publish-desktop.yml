@@ -64,7 +64,7 @@ jobs:
           elif [ -n "${INPUT_TAG:-}" ]; then
             tag="$INPUT_TAG"
           else
-            version="$(python3 -c "import json; print(json.load(open('v5notes-client2/src-tauri/tauri.conf.json'))['version'])")"
+            version="$(python3 -c "import json; print(json.load(open('v5notes-clients/v5notes-client2/src-tauri/tauri.conf.json'))['version'])")"
             tag="v${version}"
             echo "未指定 tag，使用 tauri.conf.json 版本: $tag"
           fi
@@ -82,9 +82,9 @@ jobs:
 
           tag, version = sys.argv[1], sys.argv[2]
 
-          conf = json.loads(pathlib.Path("v5notes-client2/src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
-          package = json.loads(pathlib.Path("v5notes-client2/package.json").read_text(encoding="utf-8"))
-          cargo = pathlib.Path("v5notes-client2/src-tauri/Cargo.toml").read_text(encoding="utf-8")
+          conf = json.loads(pathlib.Path("v5notes-clients/v5notes-client2/src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
+          package = json.loads(pathlib.Path("v5notes-clients/v5notes-client2/package.json").read_text(encoding="utf-8"))
+          cargo = pathlib.Path("v5notes-clients/v5notes-client2/src-tauri/Cargo.toml").read_text(encoding="utf-8")
           cargo_version = ""
           in_package = False
           for line in cargo.splitlines():
@@ -109,7 +109,7 @@ jobs:
               )
               sys.exit(1)
 
-          notes_path = pathlib.Path(f"v5notes-client2/releases/{version}.md")
+          notes_path = pathlib.Path(f"v5notes-clients/v5notes-client2/releases/{version}.md")
           if notes_path.is_file():
               heading = next((line.strip() for line in notes_path.read_text(encoding="utf-8").splitlines() if line.strip()), "")
               if heading not in {f"# {version}", f"# v{version}"}:
@@ -158,7 +158,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
-        working-directory: v5notes-client2
+        working-directory: v5notes-clients/v5notes-client2
     steps:
       - uses: actions/checkout@v4
         with:
@@ -169,7 +169,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: v5notes-client2/package-lock.json
+          cache-dependency-path: v5notes-clients/v5notes-client2/package-lock.json
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -179,7 +179,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: v5notes-client2/src-tauri -> target
+          workspaces: v5notes-clients/v5notes-client2/src-tauri -> target
           key: desktop-${{ matrix.rust_target }}
 
       - name: Install frontend dependencies
@@ -324,7 +324,7 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           set -euo pipefail
-          notes="v5notes-client2/releases/${VERSION}.md"
+          notes="v5notes-clients/v5notes-client2/releases/${VERSION}.md"
           if [ -f "$notes" ]; then
             cp "$notes" release-notes.md
           else
@@ -333,7 +333,7 @@ jobs:
 
           # Release 尚未创建时没有 publishedAt，用当前 UTC，清单只要求 RFC3339。
           published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          python3 v5notes-client2/scripts/make-latest-json.py \
+          python3 v5notes-clients/v5notes-client2/scripts/make-latest-json.py \
             --assets-dir dist \
             --version "$VERSION" \
             --tag "$TAG" \

@@ -1,6 +1,6 @@
 # 预览 / 编辑 切换 · 三方向设计记录
 
-日期：2026-11-09　画布：1440 × 900　落点：`v5notes-client2/src/components/EditorPane.vue` + `src/styles/style.css`
+日期：2026-11-09　画布：1440 × 900　落点：`v5notes-clients/v5notes-client2/src/components/EditorPane.vue` + `src/styles/style.css`
 原型：`a-pinned-segmented.html` / `b-floating-dock.html` / `c-in-place.html`　索引：`index.html`　截图：`shots/`
 
 ## 1 · 起点（现状，已核对）

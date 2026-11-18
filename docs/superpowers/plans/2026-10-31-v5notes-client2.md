@@ -30,7 +30,7 @@
 
 ### Task 1: HTTP and identity boundary
 
-**Files:** `v5notes-client2/src/api.ts`, `v5notes-client2/src/identity.ts`, `v5notes-client2/src/identity.test.ts`, project configuration.
+**Files:** `v5notes-clients/v5notes-client2/src/api.ts`, `v5notes-clients/v5notes-client2/src/identity.ts`, `v5notes-clients/v5notes-client2/src/identity.test.ts`, project configuration.
 
 **Interfaces:** `createApi(config: () => Connection, onUnauthorized: () => void)` produces `ping`, `login`, `tree`, `list`, `search`, `read`, `create`, `update`, `remove`, `upload`; `normalizeIds<T>(value: T): T` guarantees string IDs.
 
@@ -41,7 +41,7 @@
 
 ### Task 2: Draft save controller
 
-**Files:** `v5notes-client2/src/draft.ts`, `v5notes-client2/src/draft.test.ts`.
+**Files:** `v5notes-clients/v5notes-client2/src/draft.ts`, `v5notes-clients/v5notes-client2/src/draft.test.ts`.
 
 **Interfaces:** `Draft` exposes `load(note)`, `edit(markdown)`, `save(write)`, `dirty`, `note`; save snapshots id/content/revision and does not clear newer edits.
 
@@ -52,7 +52,7 @@
 
 ### Task 3: Client UI and navigation
 
-**Files:** `v5notes-client2/src/App.vue`, `src/main.ts`, `src/style.css`, `src/window.ts`, `src/navigation.ts`, `src/navigation.test.ts`.
+**Files:** `v5notes-clients/v5notes-client2/src/App.vue`, `src/main.ts`, `src/style.css`, `src/window.ts`, `src/navigation.ts`, `src/navigation.test.ts`.
 
 **Interfaces:** `resolveDirty(draft, choose)` returns boolean; the app uses it before selection, logout and close. The keyed `V5Editor` receives content only on note load.
 
@@ -71,6 +71,6 @@
 - [x] Implement core block transactions and run tests.
 - [x] Write view failing tests for slash, keyboard, selection and IME; drag requires desktop verification.
 - [x] Implement view behavior and run tests; verify block movement and save in browser.
-- [x] Package the built editor as integrity-pinned local npm tarballs under `v5notes-client2/vendor/v5md/`.
+- [x] Package the built editor as integrity-pinned local npm tarballs under `v5notes-clients/v5notes-client2/vendor/v5md/`.
 - [x] Run a browser smoke with the user-provided Markdown sample expanded in memory to 12 copies (~20 KB): render mixed Markdown, edit, undo, and save twice through a temporary same-origin mock API. The original file was not changed.
 - [ ] Validate Chinese IME, long-document editing and desktop drag behavior against anonymized real notes in the target Tauri WebView; replace the local tarballs with a published package version when released.

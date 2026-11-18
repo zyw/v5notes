@@ -23,7 +23,7 @@
 5. 多语言：简体 / 繁体 / 英文三语界面，后端按 `Content-Language` 返回提示。
 6. 安全：访问令牌 + 刷新令牌（默认 30 天、一次性轮换），客户端不保存密码。
 
-> 事实来源：仓库 `README.md`、`images/` 实拍截图、`v5notes-website/design-demos/brand-spec.md`、`v5notes-client2/design-demos/mode-switch/brand-spec.md`。均取自真实产品，未虚构数据。
+> 事实来源：仓库 `README.md`、`images/` 实拍截图、`v5notes-website/design-demos/brand-spec.md`、`v5notes-clients/v5notes-client2/design-demos/mode-switch/brand-spec.md`。均取自真实产品，未虚构数据。
 
 ## 二、四个样例
 

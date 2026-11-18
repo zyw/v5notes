@@ -22,7 +22,7 @@
 ## 开发
 
 ```bash
-cd v5notes-vault-client
+cd v5notes-clients/v5notes-vault-client
 npm install
 npm run tauri dev
 ```

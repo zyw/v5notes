@@ -461,7 +461,7 @@ POST 购买套餐、Webhook
 | OAuth 应用回调 | 登记 Cloud 回调 | **另登记** Vault 回调（Gitee 等常限单回调 → 常需独立 OAuth 应用或中转页） |
 | `sys_client` | 现有 client | `deviceType=vault_client`，grant 含密码/社交 |
 
-落地页可复用 `v5notes-oauth-landing/`，按 `app=vault` 唤起对应 scheme。
+落地页可复用 `v5notes-clients/v5notes-oauth-landing/`，按 `app=vault` 唤起对应 scheme。
 
 ---
 
@@ -553,14 +553,15 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 
 ```
 v5notes/
-  v5notes-client2/          # Cloud Client（现有）
-  v5notes-vault-client/     # 新建 Vault Client（Tauri + Vue）+ PluginHost
-  packages/                 # 可选 monorepo
-    editor/                 # 共享编辑器
-    account-sdk/
-    ui-tokens/
-    vault-plugin-api/       # @v5notes/vault-plugin-api
-    create-vault-plugin/    # 插件脚手架
+  v5notes-clients/
+    v5notes-client2/          # Cloud Client（现有）
+    v5notes-vault-client/     # 新建 Vault Client（Tauri + Vue）+ PluginHost
+    packages/                 # 可选 monorepo
+      editor/                 # 共享编辑器
+      account-sdk/
+      ui-tokens/
+      vault-plugin-api/       # @v5notes/vault-plugin-api
+      create-vault-plugin/    # 插件脚手架
   v5notes2/
     note-modules/note-notes/          # Cloud API
     note-modules/note-vault-sync/     # 新建 Sync API
@@ -605,7 +606,7 @@ Phase 0 脚手架/冻结
 **交付：** 可编译的空壳 `v5notes-vault-client` + 文档决策闭合。
 
 - [ ] 命名与边界已冻结（本文「命名冻结」+ 插件/主题/发布政策；**保留**：双客户端/双 API、本地权威、冲突副本、主题一等、第三方无发布）  
-- [ ] 仓库：`v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分（§8.4）
+- [ ] 仓库：`v5notes-clients/v5notes-vault-client/`（Tauri + Vue）；bundle id / deep link `v5notes-vault://` 与 cloud 区分（§8.4）
 - [ ] `vault.json` / `sync-state` schema 与错误码表落地（§6.5 / §8.2）  
 - [ ] 工程形态：monorepo **或** 独立仓 + editor / account-sdk 引用方式定稿（影响脚手架，不影响产品语义）  
 - [ ] **同步身份：** §6.2 冻结（相对 path + NFC + case-fold 身份键 + 展示 path + 保留名 + symlink 不跟随出库）  
