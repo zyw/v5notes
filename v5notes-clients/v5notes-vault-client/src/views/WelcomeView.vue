@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import brandIcon from '../assets/brand-icon.png'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import CreateVaultDialog from '../components/CreateVaultDialog.vue'
 import TreeIcon from '../components/TreeIcon.vue'
+import VaultRegistryDialog from '../components/VaultRegistryDialog.vue'
 import {
   VAULT_COLOR_PALETTE,
   applyPendingWelcomeColor,
@@ -16,7 +18,12 @@ import {
 } from '../appearance/vaultColors'
 import { VaultPathError } from '../path/identity'
 import type { OpenedVault, RecentVaultEntry } from '../vault/types'
-import { hydrateRecentVaults } from '../vault/recent'
+import {
+  hydrateRecentVaults,
+  hydrateVaultRegistry,
+  listVaultRegistry,
+  setVaultHidden,
+} from '../vault/recent'
 import { vaultWorkspace } from '../vault/workspace'
 
 const emit = defineEmits<{
@@ -27,6 +34,10 @@ const error = ref<string | null>(null)
 const busy = ref(false)
 const createOpen = ref(false)
 const createError = ref<string | null>(null)
+// NOTE: never name these refs `open` — inside a <script setup> component the
+// template would resolve a bare `open` to window.open and pollute :open bindings.
+const registryOpen = ref(false)
+const hideTarget = ref<RecentVaultEntry | null>(null)
 const recent = ref<RecentVaultEntry[]>(vaultWorkspace.listRecent())
 const pending = ref<VaultColorSwatch>(getPendingWelcomeColor())
 const inTauri = isTauri()
@@ -43,9 +54,20 @@ function colorFor(entry: RecentVaultEntry) {
 
 onMounted(() => {
   pending.value = applyPendingWelcomeColor()
-  void hydrateRecentVaults().then(entries => {
-    recent.value = entries
-  })
+  void hydrateVaultRegistry().then(() =>
+    hydrateRecentVaults().then(entries => {
+      // Drop legacy recents the user already hid in 所有库; registry wins.
+      const hidden = new Set(
+        listVaultRegistry()
+          .filter(entry => entry.hidden)
+          .map(entry => entry.rootPath),
+      )
+      recent.value = entries.filter(entry => !hidden.has(entry.rootPath))
+      for (const entry of entries) {
+        if (hidden.has(entry.rootPath)) vaultWorkspace.forgetRecent(entry.rootPath)
+      }
+    }),
+  )
 })
 
 function pickColor(id: string) {
@@ -121,11 +143,13 @@ function openRecent(entry: RecentVaultEntry) {
       try {
         return await vaultWorkspace.openRecent(entry.rootPath)
       } catch (err) {
+        // Path is dead: drop the chip, but keep the durable registry record so
+        // 「所有库」still remembers where this vault used to live.
         vaultWorkspace.forgetRecent(entry.rootPath)
         refreshRecent()
         const base = explain(err)
         throw new Error(
-          `${base}。库可能已移动或权限失效，已从最近列表移除；请用「打开已有库」重新授权。`,
+          `${base}。可在「所有库…」中查看该库的记录路径，或用目录扫描重新定位。`,
         )
       }
     },
@@ -133,9 +157,33 @@ function openRecent(entry: RecentVaultEntry) {
   )
 }
 
-function forget(entry: RecentVaultEntry) {
+/** × on a chip now hides it from the welcome row (registry keeps the record). */
+function requestHide(entry: RecentVaultEntry) {
+  hideTarget.value = entry
+}
+
+async function confirmHide() {
+  const entry = hideTarget.value
+  if (!entry) return
+  setVaultHidden(entry.rootPath, true)
   vaultWorkspace.forgetRecent(entry.rootPath)
   refreshRecent()
+  hideTarget.value = null
+}
+
+function openRegistry() {
+  error.value = null
+  registryOpen.value = true
+}
+
+async function openFromRegistry(rootPath: string) {
+  try {
+    const vault = await vaultWorkspace.openRecent(rootPath)
+    registryOpen.value = false
+    afterOpened(vault, { bindPendingColor: false })
+  } catch (err) {
+    error.value = explain(err)
+  }
 }
 </script>
 
@@ -195,22 +243,37 @@ function forget(entry: RecentVaultEntry) {
               class="chip-forget"
               role="button"
               tabindex="-1"
-              :aria-label="`从最近列表移除 ${entry.name}`"
-              title="从最近列表移除"
-              @click.stop="forget(entry)"
+              :aria-label="`从首页隐藏 ${entry.name}`"
+              title="从首页隐藏（仍保存在「所有库」记录中）"
+              @click.stop="requestHide(entry)"
             >
               <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path
-                  d="M6.4 6.4l7.2 7.2M13.6 6.4l-7.2 7.2"
+                  d="M2.6 10C4.6 6.6 7.2 5 10 5c2.8 0 5.4 1.6 7.4 5-2 3.4-4.6 5-7.4 5-2.8 0-5.4-1.6-7.4-5Z"
                   stroke="currentColor"
-                  stroke-width="1.7"
-                  stroke-linecap="round"
+                  stroke-width="1.4"
+                  stroke-linejoin="round"
                 />
+                <circle cx="10" cy="10" r="2" stroke="currentColor" stroke-width="1.4" />
+                <path d="m4.6 15.4 10.8-10.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
             </span>
           </button>
         </div>
+        <button type="button" class="all-vaults-link" @click="openRegistry">
+          所有库与创建记录…
+          <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
       </div>
+
+      <button v-else type="button" class="all-vaults-link solo" @click="openRegistry">
+        所有库与创建记录…
+        <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
 
       <div class="term-rail" role="radiogroup" aria-label="节气库色">
         <button
@@ -308,6 +371,21 @@ function forget(entry: RecentVaultEntry) {
       :error="createError"
       @cancel="createOpen = false"
       @submit="submitCreate"
+    />
+
+    <VaultRegistryDialog
+      :is-open="registryOpen"
+      @cancel="registryOpen = false"
+      @open-vault="openFromRegistry"
+    />
+
+    <ConfirmDialog
+      :open="hideTarget !== null"
+      :title="`从首页隐藏「${hideTarget?.name ?? ''}」？`"
+      message="隐藏后它不再出现在「最近」卡片里，但仍保存在「所有库」记录中（路径不受影响），随时可以重新显示或直接打开。若想彻底删除这条记录，请到「所有库」面板操作。"
+      confirm-label="仅隐藏"
+      @cancel="hideTarget = null"
+      @confirm="confirmHide"
     />
   </section>
 </template>

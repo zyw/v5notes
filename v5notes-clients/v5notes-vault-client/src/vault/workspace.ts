@@ -4,7 +4,13 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { mkdir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { VaultJson } from '../models/vault'
 import { normalizeVaultName, resolveCreateVaultRoot, VaultPathError } from '../path/identity'
-import { listRecentVaults, rememberRecentVault, removeRecentVault } from './recent'
+import {
+  listRecentVaults,
+  rememberRecentVault,
+  removeRecentVault,
+  registerVault,
+  renameVaultInRegistry,
+} from './recent'
 import {
   APPEARANCE_REL,
   buildAppearanceJson,
@@ -98,7 +104,28 @@ async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
     config,
   }
   rememberRecentVault({ rootPath: opened.rootPath, name: opened.name })
+  // Durable registry: every open refreshes the record and clears "hidden".
+  registerVault({ rootPath: opened.rootPath, name: opened.name, createdAt: config.createdAt }, 'opened')
   return opened
+}
+
+/** Verify a registry entry's folder still holds a readable vault.json. */
+export interface VaultProbeResult {
+  ok: boolean
+  name?: string
+}
+
+async function probeVaultRoot(rootPath: string): Promise<VaultProbeResult> {
+  try {
+    await scopeVaultRoot(rootPath)
+    if (!(await vaultFs.exists(rootPath)) || !(await vaultFs.exists(rootPath, VAULT_JSON_REL))) {
+      return { ok: false }
+    }
+    const config = await readVaultConfig(rootPath)
+    return { ok: true, name: config.name }
+  } catch {
+    return { ok: false }
+  }
 }
 
 export interface VaultWorkspace {
@@ -108,6 +135,12 @@ export interface VaultWorkspace {
   openRecent(rootPath: string): Promise<OpenedVault>
   listRecent(): RecentVaultEntry[]
   forgetRecent(rootPath: string): void
+  /** Check whether a registered root still holds a valid vault on disk. */
+  probeVaultRoot(rootPath: string): Promise<VaultProbeResult>
+  /** Add a scanner-found vault to the registry without opening it. */
+  registerScannedVault(scanned: { rootPath: string; name: string; createdAt?: string }): Promise<void>
+  /** Keep the registry name in sync after an in-app rename. */
+  renameRegisteredVault(rootPath: string, name: string): void
 }
 
 export const vaultWorkspace: VaultWorkspace = {
@@ -142,6 +175,7 @@ export const vaultWorkspace: VaultWorkspace = {
       const config = await ensureSkeleton(rootPath, name)
       const opened: OpenedVault = { rootPath, name: config.name, config }
       rememberRecentVault({ rootPath, name: opened.name })
+      registerVault({ rootPath, name: opened.name, createdAt: config.createdAt }, 'created')
       return opened
     } catch (error) {
       if (createdRoot) {
@@ -177,6 +211,7 @@ export const vaultWorkspace: VaultWorkspace = {
       : await ensureSkeleton(rootPath, '默认库')
     const opened: OpenedVault = { rootPath, name: config.name, config }
     rememberRecentVault({ rootPath, name: opened.name })
+    registerVault({ rootPath, name: opened.name, createdAt: config.createdAt }, 'opened')
     return opened
   },
 
@@ -190,5 +225,20 @@ export const vaultWorkspace: VaultWorkspace = {
 
   forgetRecent(rootPath: string) {
     removeRecentVault(rootPath)
+  },
+
+  probeVaultRoot,
+
+  /** Register a folder the scanner confirmed as a vault (no UI flow of its own). */
+  async registerScannedVault(scanned: { rootPath: string; name: string; createdAt?: string }) {
+    await scopeVaultRoot(scanned.rootPath)
+    registerVault(
+      { rootPath: scanned.rootPath, name: scanned.name, createdAt: scanned.createdAt },
+      'scanned',
+    )
+  },
+
+  renameRegisteredVault(rootPath: string, name: string) {
+    renameVaultInRegistry(rootPath, normalizeVaultName(name))
   },
 }

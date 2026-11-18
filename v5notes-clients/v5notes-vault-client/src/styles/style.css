@@ -314,6 +314,35 @@ code {
   gap: 10px;
 }
 
+.all-vaults-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.all-vaults-link:hover { color: var(--accent); }
+
+.all-vaults-link svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 120ms ease;
+}
+
+.all-vaults-link:hover svg { transform: translateX(2px); }
+
+.all-vaults-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .welcome-recent-chip {
   --chip-color: var(--accent);
   position: relative;
@@ -396,14 +425,16 @@ code {
   height: 22px;
   border-radius: 50%;
   color: var(--muted);
+  cursor: pointer;
   opacity: 0;
   transform: scale(0.8);
   transition: opacity 120ms ease, transform 120ms ease, background 120ms ease, color 120ms ease;
 }
 
+/* Neutral eye-off mark: hiding keeps the vault record (danger red was wrong). */
 .chip-forget svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   display: block;
 }
 
@@ -414,8 +445,8 @@ code {
 }
 
 .chip-forget:hover {
-  background: var(--danger-bg);
-  color: var(--danger);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
 }
 
 @media (hover: none) {
@@ -1181,6 +1212,236 @@ code {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ============================================================
+   所有库 — vault registry dialog (welcome page)
+   ============================================================ */
+
+.vault-registry-card {
+  width: min(560px, 100%);
+  max-height: min(78vh, 640px);
+  display: flex;
+  flex-direction: column;
+}
+
+.vr-count {
+  font-style: normal;
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+
+.vr-list {
+  list-style: none;
+  margin: 0 -6px;
+  padding: 2px 6px;
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.vr-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--panel) 60%, #fff);
+  font-family: var(--font-ui);
+}
+
+.vr-item.missing {
+  background: var(--panel);
+  opacity: 0.72;
+}
+
+.vr-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.vr-copy strong {
+  font-size: 0.85rem;
+  font-weight: 650;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.vr-item.missing .vr-copy strong > b:first-child,
+.vr-item.missing .vr-copy strong {
+  text-decoration: none;
+}
+
+.vr-source,
+.vr-hidden-tag,
+.vr-missing-tag {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.vr-source {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+
+.vr-hidden-tag {
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.vr-missing-tag {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.vr-path {
+  font-size: 0.68rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vr-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.vr-btn {
+  font-size: 0.72rem !important;
+  padding: 6px 11px !important;
+  min-height: 0 !important;
+  border-radius: 7px !important;
+}
+
+.vr-empty {
+  margin: 0 0 10px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.vr-footer-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.vr-scan {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 9px;
+  padding: 9px 14px;
+}
+
+.vr-scan:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+.vr-scan svg {
+  width: 13px;
+  height: 13px;
+}
+
+.vr-probe {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.vr-probe:hover:not(:disabled) { color: var(--accent); }
+
+.vr-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+  margin: 14px 0 4px;
+}
+
+.vr-progress i {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: vr-scan-slide 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes vr-scan-slide {
+  from { transform: translateX(-60%); }
+  to { transform: translateX(140%); }
+}
+
+.vr-check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-family: var(--font-ui);
+}
+
+.vr-check:hover {
+  background: color-mix(in srgb, var(--line) 30%, transparent);
+}
+
+.vr-check input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.vr-check label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  cursor: pointer;
+}
+
+.vr-check strong { font-size: 0.82rem; font-weight: 650; }
+
+.vr-check span {
+  font-size: 0.68rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ============================================================

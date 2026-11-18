@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>库登记簿与扫描 — 交互效果图</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=DM+Sans:wght@400;500;650;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #f3efe4; --panel: #fbf7ee; --ink: #2a2924; --muted: #7a7368;
+  --line: #d8d0c4; --accent: #2f5b48; --danger: #8a3b2e; --danger-bg: #f0e0da;
+  --surface: #ebe4d4;
+  --font-display: 'Noto Serif SC', serif; --font-ui: 'DM Sans', 'PingFang SC', sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; padding: 40px 24px 80px;
+  font-family: var(--font-display); color: var(--ink); background: var(--bg);
+  display: grid; gap: 48px; justify-items: center;
+}
+.frame { width: min(560px, 100%); }
+h2 { font-size: 0.8rem; font-family: var(--font-ui); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 14px; }
+button { font: inherit; cursor: pointer; }
+
+/* ============ ① 开库页底部：「所有库…」入口 ============ */
+.recent-label { font-family: var(--font-ui); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip {
+  position: relative; display: inline-grid; grid-template-columns: 8px minmax(0,1fr); gap: 12px; align-items: center;
+  min-width: 168px; padding: 12px 44px 12px 14px; border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--cc) 26%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cc) 12%, var(--panel)) 0%, var(--panel) 58%);
+  font-family: var(--font-ui); text-align: left; transition: transform .14s ease, box-shadow .14s ease;
+}
+.chip:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(42,41,36,.12); }
+.chip i { width: 8px; height: 38px; border-radius: 999px; background: var(--cc); }
+.chip b { display: block; font-size: .9rem; font-weight: 650; }
+.chip em { font-style: normal; font-size: .7rem; color: color-mix(in srgb, var(--cc) 55%, var(--muted)); }
+.x { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); opacity: 0; transition: .12s; }
+.chip:hover .x { opacity: 1; }
+.x:hover { background: var(--danger-bg); color: var(--danger); }
+.all-vaults-link {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  font-family: var(--font-ui); font-size: .76rem; color: var(--muted);
+  background: none; border: none; padding: 4px 2px;
+}
+.all-vaults-link:hover { color: var(--accent); }
+.all-vaults-link svg { width: 12px; height: 12px; }
+
+/* ============ 弹窗通用 ============ */
+.dialog {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+  box-shadow: 0 24px 60px rgba(36,53,44,.18); overflow: hidden;
+}
+.dialog-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px 12px; }
+.dialog-head strong { font-family: var(--font-ui); font-size: .95rem; font-weight: 650; }
+.dialog-head .spacer { flex: 1; }
+.dialog-close { width: 26px; height: 26px; border-radius: 50%; border: none; background: none; color: var(--muted); display: grid; place-items: center; }
+.dialog-close:hover { background: var(--surface); color: var(--ink); }
+.dialog-note { margin: 0; padding: 0 20px; font-family: var(--font-ui); font-size: .74rem; line-height: 1.5; color: var(--muted); }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); margin-top: 14px; }
+.btn { font-family: var(--font-ui); font-size: .82rem; font-weight: 600; border-radius: 8px; padding: 8px 16px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ============ ② 「所有库」管理面板 ============ */
+.vault-list { list-style: none; margin: 12px 0 0; padding: 0 20px; display: grid; gap: 8px; max-height: 320px; overflow: auto; }
+.vault-item {
+  display: grid; grid-template-columns: 8px minmax(0,1fr) auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--vc) 6%, var(--panel));
+  font-family: var(--font-ui);
+}
+.vault-item i { width: 8px; height: 30px; border-radius: 999px; background: var(--vc); }
+.v-name { font-size: .85rem; font-weight: 650; }
+.v-path { font-size: .68rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.v-meta { font-size: .64rem; color: var(--muted); margin-top: 2px; }
+.v-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: .6rem; font-weight: 700; background: color-mix(in srgb, var(--accent) 14%, var(--panel)); color: var(--accent); }
+.v-actions { display: flex; gap: 6px; }
+.v-btn { font-size: .7rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.v-btn:hover { border-color: var(--accent); color: var(--accent); }
+.v-btn.open { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.vault-item.missing { background: var(--panel); opacity: .62; }
+.vault-item.missing i { background: var(--line); }
+.vault-item.missing .v-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.v-status { font-size: .66rem; color: var(--danger); font-weight: 600; }
+.scan-entry { margin: 4px 20px 0; }
+.scan-entry button { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-ui); font-size: .76rem; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 9px; padding: 9px 14px; width: 100%; justify-content: center; }
+.scan-entry button:hover { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); }
+.scan-entry svg { width: 13px; height: 13px; }
+
+/* ============ ③ 扫描结果 ============ */
+.progress { margin: 14px 20px 0; font-family: var(--font-ui); font-size: .72rem; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.bar { flex: 1; height: 4px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+.bar i { display: block; width: 62%; height: 100%; border-radius: 999px; background: var(--accent); animation: slide 1.6s ease-in-out infinite alternate; }
+@keyframes slide { to { width: 88%; } }
+.check-item { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 10px; align-items: center; padding: 9px 12px; border-radius: 9px; font-family: var(--font-ui); }
+.check-item:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
+.check-item input { accent-color: var(--accent); width: 15px; height: 15px; }
+.check-item b { font-size: .82rem; font-weight: 650; display: block; }
+.check-item span { font-size: .68rem; color: var(--muted); }
+.found-tag { margin-left: 6px; font-size: .6rem; font-weight: 700; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <h2>① 开库页 · 新增「所有库…」入口（最近区下方）</h2>
+  <div>
+    <p class="recent-label">最近</p>
+    <div class="chip-row">
+      <button class="chip" style="--cc:#8a3b2e"><i></i><span><b>测试</b><em>寒露</em></span><span class="x"><svg viewBox="0 0 20 20" fill="none" width="12"><path d="M6.4 6.4l7.2 7.2M13.6 6.4l-7.2 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></button>
+      <button class="chip" style="--cc:#9aab8c"><i></i><span><b>MyVault</b><em>谷雨</em></span><span class="x"><svg viewBox="0 0 20 20" fill="none" width="12"><path d="M6.4 6.4l7.2 7.2M13.6 6.4l-7.2 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></button>
+    </div>
+    <button class="all-vaults-link">所有库与创建记录…
+      <svg viewBox="0 0 12 12" fill="none"><path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="frame">
+  <h2>② 「所有库」管理面板（in-app modal）</h2>
+  <div class="dialog">
+    <div class="dialog-head">
+      <strong>所有库</strong><span class="spacer"></span>
+      <button class="dialog-close"><svg viewBox="0 0 16 16" fill="none" width="11"><path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <p class="dialog-note">应用创建或打开过的库都会记录在这里；从首页「最近」移除不影响本记录。路径失效的库会标出。</p>
+    <ul class="vault-list">
+      <li class="vault-item" style="--vc:#8a3b2e">
+        <i></i>
+        <div><span class="v-name">测试</span><span class="v-tag">在首页显示</span><div class="v-path">…/Documents/v5notes/<b>测试</b></div><div class="v-meta">创建于 2026-10-21 · 最后打开 2 天前</div></div>
+        <div class="v-actions"><button class="v-btn open">打开</button><button class="v-btn">定位</button></div>
+      </li>
+      <li class="vault-item" style="--vc:#9aab8c">
+        <i></i>
+        <div><span class="v-name">MyVault</span><div class="v-path">…/Documents/v5notes/<b>MyVault</b></div><div class="v-meta">创建于 2026-09-02 · 最后打开 5 天前</div></div>
+        <div class="v-actions"><button class="v-btn open">打开</button><button class="v-btn">定位</button></div>
+      </li>
+      <li class="vault-item" style="--vc:#6a8a9a">
+        <i></i>
+        <div><span class="v-name">研究库</span><div class="v-path">…/Work/<b>research-vault</b></div><div class="v-meta">打开于 2026-08-11 · 非本应用创建</div></div>
+        <div class="v-actions"><button class="v-btn open">打开</button><button class="v-btn">定位</button></div>
+      </li>
+      <li class="vault-item missing">
+        <i></i>
+        <div><span class="v-name">旧笔记库</span><span class="v-status">路径不存在</span><div class="v-path">…/Desktop/<b>old-notes</b></div><div class="v-meta">创建于 2026-05-30 · 文件夹可能被移动或删除</div></div>
+        <div class="v-actions"><button class="v-btn">重新定位…</button><button class="v-btn">清除记录</button></div>
+      </li>
+    </ul>
+    <div class="scan-entry">
+      <button><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.5"/><path d="m10.4 10.4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>扫描某个目录，找回丢失的库…</button>
+    </div>
+    <div class="dialog-foot"><button class="btn">关闭</button></div>
+  </div>
+</div>
+
+<div class="frame">
+  <h2>③ 扫描进行中 → 结果勾选添加</h2>
+  <div class="dialog">
+    <div class="dialog-head">
+      <strong>扫描到 3 个库</strong><span class="spacer"></span>
+      <button class="dialog-close"><svg viewBox="0 0 16 16" fill="none" width="11"><path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="progress"><span>正在扫描 ~/Documents（深度 ≤3，已找到 3 个）</span><span class="bar"><i></i></span></div>
+    <ul class="vault-list">
+      <li class="check-item"><input type="checkbox" id="s1" checked /><label for="s1"><b>日记归档</b><span>…/Documents/Notes/<b>vault-journal</b> · vault.json v1</span></label></li>
+      <li class="check-item"><input type="checkbox" id="s2" checked /><label for="s2"><b>工作库</b><span>…/Documents/Work/<b>vault-work</b> · vault.json v1</span></label></li>
+      <li class="check-item"><input type="checkbox" id="s3" /><label for="s3"><b>测试</b><span class="found-tag">已在列表中</span><br/><span>…/Documents/v5notes/<b>测试</b></span></label></li>
+    </ul>
+    <div class="dialog-foot"><button class="btn">取消</button><button class="btn primary">添加所选（2）</button></div>
+  </div>
+</div>
+
+<div class="frame">
+  <h2>④ 点 × 后的确认（不再直接抹掉记录）</h2>
+  <div class="dialog" style="width:min(400px,100%)">
+    <div class="dialog-head"><strong>从首页隐藏「测试」？</strong><span class="spacer"></span><button class="dialog-close"><svg viewBox="0 0 16 16" fill="none" width="11"><path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button></div>
+    <p class="dialog-note">隐藏后它不再出现在「最近」卡片里，但仍保存在<b>「所有库」</b>记录中（路径不受影响），随时可以重新显示或直接打开。<br/><br/>若想彻底删除这条记录，请到「所有库」面板操作。</p>
+    <div class="dialog-foot"><button class="btn">取消</button><button class="btn danger">仅隐藏</button></div>
+  </div>
+</div>
+
+</body>
+</html>
