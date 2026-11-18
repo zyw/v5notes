@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V5Notes Vault · 设置页六候选</title>
+<style>
+  :root {
+    --paper: #f3efe4;
+    --paper-hi: #fbf7ee;
+    --paper-lo: #e9e2d4;
+    --ink: #2a2924;
+    --muted: #7a7368;
+    --line: #d8d0c4;
+    --green: #2f5b48;
+    --green-2: #47775a;
+    --rust: #8a3b2e;
+    --serif: 'Noto Serif SC', 'Songti SC', 'Iowan Old Style', 'Palatino Linotype', serif;
+    --ui: 'DM Sans', 'PingFang SC', 'Helvetica Neue', sans-serif;
+    --mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 42px 48px 64px;
+    background: #ded7c8;
+    color: var(--ink);
+    font-family: var(--ui);
+  }
+  .page-head { max-width: 1512px; margin: 0 auto 28px; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
+  .page-head .eyebrow { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .18em; color: #6c665b; }
+  .page-head h1 { margin: 0; font-family: var(--serif); font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+  .page-head p { margin: 8px 0 0; max-width: 560px; font-size: 12px; line-height: 1.7; color: #6c665b; }
+  .page-head .note { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: #7b7466; text-align: right; line-height: 1.8; }
+  .grid { max-width: 1512px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px 30px; }
+  .card { min-width: 0; }
+  .frame {
+    position: relative; width: 100%; aspect-ratio: 480 / 300; overflow: hidden;
+    border-radius: 10px; background: var(--paper);
+    box-shadow: 0 1px 0 #ffffff88 inset, 0 12px 28px #4d44331c;
+  }
+  .caption { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 11px; }
+  .caption strong { font-family: var(--serif); font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .caption span { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; color: #776f60; text-align: right; }
+  .caption em { display: block; margin-top: 3px; font-style: normal; font-family: var(--ui); font-size: 10.5px; line-height: 1.5; color: #6d6659; }
+
+  /* ============ 1 案头 ============ */
+  .a { display: grid; grid-template-columns: 136px 1fr; height: 100%; background: var(--paper); }
+  .a-index { padding: 18px 12px 14px 18px; border-right: 1px solid #d3cabb; display: flex; flex-direction: column; }
+  .a-brand { display: flex; align-items: center; gap: 6px; font-family: var(--serif); font-size: 10px; font-weight: 700; }
+  .a-brand i { width: 12px; height: 12px; border-radius: 3px; background: var(--rust); display: block; }
+  .a-nav { margin-top: 20px; display: grid; gap: 7px; }
+  .a-nav b { display: flex; gap: 7px; align-items: baseline; font-weight: 400; font-size: 9px; color: #6d6659; }
+  .a-nav b i { font-family: var(--mono); font-size: 7px; color: #a59b8a; font-style: normal; }
+  .a-nav b.on { color: var(--green); font-weight: 700; }
+  .a-nav b.on i { color: var(--rust); }
+  .a-index .tail { margin-top: auto; font-size: 7.5px; line-height: 1.5; color: #8a8172; }
+  .a-main { padding: 18px 24px 0 20px; }
+  .a-kicker { font-size: 7px; letter-spacing: .2em; font-weight: 700; color: #8a8172; }
+  .a-main h2 { margin: 3px 0 2px; font-family: var(--serif); font-size: 27px; line-height: 1; letter-spacing: -.03em; }
+  .a-main .sub { margin: 0; font-size: 8px; color: #726a5d; }
+  .a-sec { margin-top: 13px; padding-top: 9px; border-top: 1px solid #d6cdbe; }
+  .a-sec-h { display: flex; align-items: baseline; gap: 7px; }
+  .a-sec-h i { font-family: var(--mono); font-size: 7px; color: var(--rust); font-style: normal; }
+  .a-sec-h h3 { margin: 0; font-family: var(--serif); font-size: 12px; }
+  .a-sec-h .chip { margin-left: auto; font-size: 7px; border: 1px solid #c9bead; border-radius: 99px; padding: 1px 5px; color: #6d6659; }
+  .a-field { margin-top: 7px; display: flex; gap: 5px; align-items: center; }
+  .a-field span { flex: 1; height: 13px; border-bottom: 1px solid #bdb2a0; display: flex; align-items: center; font-size: 7.5px; color: #8b8374; }
+  .a-btn { height: 13px; padding: 0 6px; border-radius: 3px; background: var(--green); color: #fbf7ee; font-size: 7px; display: grid; place-items: center; }
+  .a-line { margin-top: 6px; height: 1px; background: #ddd4c6; }
+  .a-quiet { margin-top: 7px; font-size: 7.5px; color: #7a7265; }
+
+  /* ============ 2 仪器 ============ */
+  .b { height: 100%; background: #efece5; padding: 12px 16px; display: flex; flex-direction: column; }
+  .b-top { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #b9b3a7; padding-bottom: 7px; }
+  .b-top strong { font-family: var(--serif); font-size: 15px; letter-spacing: -.02em; }
+  .b-top .lamp { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px #2f5b4822; }
+  .b-top .lamp-t { font-family: var(--mono); font-size: 6.5px; letter-spacing: .08em; color: #6d6659; }
+  .b-top .serial { margin-left: auto; font-family: var(--mono); font-size: 6.5px; color: #88806f; }
+  .b-tabs { display: flex; gap: 0; margin-top: 7px; border-bottom: 1px solid #c2bbb0; }
+  .b-tabs span { padding: 3px 7px; font-size: 7px; border-right: 1px solid #c2bbb0; color: #6d6659; }
+  .b-tabs span.on { background: #ded8cb; color: var(--ink); font-weight: 700; }
+  .b-body { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; margin-top: 9px; flex: 1; }
+  .b-col { display: flex; flex-direction: column; gap: 9px; }
+  .b-mod { border: 1px solid #bdb6a8; background: #f6f3ec; padding: 6px 7px; }
+  .b-mod h4 { margin: 0 0 4px; font-size: 6.5px; letter-spacing: .12em; color: #5f5a4e; display: flex; justify-content: space-between; }
+  .b-mod h4 i { font-family: var(--mono); font-style: normal; color: #918875; }
+  .b-read { font-family: var(--mono); font-size: 10px; letter-spacing: -.02em; }
+  .b-small { font-size: 7px; color: #6f685c; line-height: 1.4; }
+  .b-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-top: 1px solid #ded8cb; font-size: 7px; }
+  .b-row:first-of-type { border-top: 0; }
+  .b-sw { width: 17px; height: 9px; border-radius: 99px; background: #c5bfb2; position: relative; }
+  .b-sw::after { content: ''; position: absolute; width: 7px; height: 7px; top: 1px; left: 1px; border-radius: 50%; background: #fff; }
+  .b-sw.on { background: var(--green); }
+  .b-sw.on::after { left: 9px; }
+  .b-foot { margin-top: 7px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 6px; color: #8b8374; border-top: 1px solid #b9b3a7; padding-top: 4px; }
+
+  /* ============ 3 工作台 ============ */
+  .c { height: 100%; display: grid; grid-template-columns: 104px 1fr; background: #fffefa; }
+  .c-rail { background: #f2efe6; border-right: 1px solid #e2ddcf; padding: 12px 9px; display: flex; flex-direction: column; }
+  .c-brand { display: flex; align-items: center; gap: 5px; font-size: 8px; font-weight: 700; color: #2f4f3e; }
+  .c-brand i { width: 12px; height: 12px; border-radius: 4px; background: #2f4f3e; display: block; }
+  .c-nav { margin-top: 12px; display: grid; gap: 2px; }
+  .c-nav span { display: flex; align-items: center; gap: 5px; height: 17px; border-radius: 4px; padding: 0 5px; font-size: 7px; color: #687267; }
+  .c-nav span i { width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 2px; }
+  .c-nav span.on { background: #e4ebdf; color: #2f5b48; font-weight: 700; }
+  .c-rail .bot { margin-top: auto; font-size: 6.5px; color: #8a9287; }
+  .c-main { padding: 10px 12px; min-width: 0; }
+  .c-head { display: flex; align-items: flex-end; justify-content: space-between; }
+  .c-head h2 { margin: 0; font-family: var(--serif); font-size: 16px; letter-spacing: -.02em; }
+  .c-head p { margin: 1px 0 0; font-size: 7px; color: #7a8377; }
+  .c-search { height: 14px; width: 90px; border: 1px solid #e2ded2; border-radius: 4px; background: #fff; display: flex; align-items: center; padding: 0 5px; font-size: 6.5px; color: #9aa197; }
+  .c-status { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 8px; border: 1px solid #e4e0d4; border-radius: 5px; overflow: hidden; }
+  .c-status div { padding: 4px 6px; border-right: 1px solid #e4e0d4; background: #fbf9f3; }
+  .c-status div:last-child { border-right: 0; }
+  .c-status b { display: block; font-size: 6px; letter-spacing: .08em; color: #8b9287; font-weight: 500; }
+  .c-status span { display: block; margin-top: 1px; font-size: 7.5px; color: #33473a; font-weight: 600; }
+  .c-status span.g { color: #2f5b48; }
+  .c-grid { margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .c-panel { border: 1px solid #e7e3d7; border-radius: 7px; background: linear-gradient(180deg, #fbf9f2, #f7f4ea); padding: 7px 8px; }
+  .c-ph { display: flex; align-items: center; gap: 4px; }
+  .c-ph i { width: 12px; height: 12px; border-radius: 3px; background: #e8efe1; display: grid; place-items: center; color: #4f7359; font-style: normal; font-size: 6px; }
+  .c-ph strong { font-size: 7.5px; letter-spacing: .03em; color: #3c5446; }
+  .c-panel p { margin: 4px 0 0; font-size: 6.5px; color: #7c8579; line-height: 1.4; }
+  .c-row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 4px; border-top: 1px solid #e9e5d9; font-size: 7px; color: #4d5a4f; }
+  .c-sw { width: 16px; height: 9px; border-radius: 99px; background: #d7dcd4; position: relative; }
+  .c-sw.on { background: #47775a; }
+  .c-sw::after { content: ''; position: absolute; top: 1px; left: 1px; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+  .c-sw.on::after { left: 8px; }
+  .c-field { margin-top: 4px; height: 13px; border: 1px solid #e1ddd0; border-radius: 3px; background: #fffefa; display: flex; align-items: center; padding: 0 4px; font-size: 6.5px; color: #9aa197; }
+  .c-cta { margin-top: 5px; display: inline-flex; height: 13px; align-items: center; padding: 0 6px; border-radius: 3px; background: #315b4a; color: #fff; font-size: 6.5px; }
+
+  /* ============ 4 索引 ============ */
+  .d { height: 100%; background: #f7f3e9; padding: 14px 18px; }
+  .d-top { display: flex; align-items: center; gap: 7px; }
+  .d-top .mark { width: 13px; height: 13px; border-radius: 4px; background: var(--green); }
+  .d-top strong { font-family: var(--serif); font-size: 12px; }
+  .d-top span { margin-left: auto; font-size: 6.5px; color: #87806f; }
+  .d h2 { margin: 10px 0 0; font-family: var(--serif); font-size: 21px; letter-spacing: -.03em; }
+  .d-search { margin-top: 7px; height: 20px; border: 1px solid #ded6c6; background: #fbf8f0; border-radius: 5px; display: flex; align-items: center; gap: 5px; padding: 0 7px; font-size: 7.5px; color: #9b9281; }
+  .d-search kbd { margin-left: auto; font-family: var(--mono); font-size: 6px; border: 1px solid #ded6c6; border-radius: 2px; padding: 0 2px; }
+  .d-list { margin-top: 8px; display: grid; gap: 0; }
+  .d-row { display: flex; align-items: center; gap: 6px; height: 20px; border-top: 1px solid #e2dacb; font-size: 8px; }
+  .d-row i { width: 8px; height: 8px; border: 1px solid #a9a08e; border-radius: 2px; }
+  .d-row b { font-weight: 500; }
+  .d-row span { margin-left: auto; font-size: 6.5px; color: #918878; }
+  .d-row.open { height: auto; display: block; padding: 5px 0 7px 21px; }
+  .d-row.open b { font-size: 8px; }
+  .d-row .inline { margin-top: 4px; display: flex; gap: 4px; }
+  .d-row .pill { border: 1px solid #d8d0c0; border-radius: 99px; padding: 1px 5px; font-size: 6px; color: #77705f; }
+  .d-row .pill.on { background: #e6eee2; border-color: #b7c9b3; color: #315b4a; }
+  .d-foot { margin-top: 8px; display: flex; justify-content: space-between; font-size: 6px; color: #918878; border-top: 1px solid #ded6c6; padding-top: 4px; }
+
+  /* ============ 5 白盒 ============ */
+  .e { height: 100%; background: #fbfaf6; padding: 20px 34px 12px; position: relative; }
+  .e-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .e-top span { font-family: var(--mono); font-size: 6px; letter-spacing: .16em; color: #9b968a; }
+  .e-top b { font-family: var(--mono); font-size: 6px; color: #b6b1a6; font-weight: 400; }
+  .e h2 { margin: 24px 0 4px; font-family: var(--serif); font-size: 25px; font-weight: 700; letter-spacing: -.03em; }
+  .e .sub { margin: 0; font-size: 7.5px; line-height: 1.6; color: #7d786d; max-width: 300px; }
+  .e-sec { margin-top: 16px; padding-top: 9px; border-top: 1px solid #e5e1d7; }
+  .e-sec .h { display: flex; align-items: baseline; gap: 7px; }
+  .e-sec .h em { font-family: var(--mono); font-style: normal; font-size: 6px; color: #aaa498; }
+  .e-sec .h strong { font-family: var(--serif); font-size: 11px; }
+  .e-sec .h span { margin-left: auto; font-size: 6.5px; color: #918b7f; }
+  .e-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; font-size: 7px; color: #5f5b51; }
+  .e-row span:last-child { font-family: var(--mono); font-size: 6.5px; color: #8e887c; }
+  .e-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; }
+
+  /* ============ 6 书页 ============ */
+  .f { height: 100%; background: #ded6c5; padding: 12px 18px; display: flex; align-items: center; justify-content: center; }
+  .f-book { width: 100%; height: 100%; display: grid; grid-template-columns: 38% 62%; background: #fbf7ee; box-shadow: 0 6px 18px #4d443330; position: relative; overflow: hidden; }
+  .f-book::before { content: ''; position: absolute; left: 38%; top: 0; bottom: 0; width: 14px; transform: translateX(-7px); background: linear-gradient(90deg, #00000000, #6b5d4a24 45%, #00000010); z-index: 2; }
+  .f-left { padding: 13px 12px 10px 16px; background: #f7f1e5; border-right: 1px solid #e1d7c6; display: flex; flex-direction: column; }
+  .f-left .k { font-family: var(--mono); font-size: 5.5px; letter-spacing: .14em; color: #918875; }
+  .f-left h3 { margin: 3px 0 0; font-family: var(--serif); font-size: 14px; }
+  .f-nav { margin-top: 11px; display: grid; gap: 5px; }
+  .f-nav span { display: flex; gap: 5px; font-size: 7px; color: #746c5d; }
+  .f-nav span i { font-family: var(--mono); font-style: normal; font-size: 5.5px; color: #a39a88; }
+  .f-nav span.on { color: var(--rust); font-weight: 700; }
+  .f-nav span.on i { color: var(--rust); }
+  .f-left .bot { margin-top: auto; font-size: 6px; color: #8f8676; line-height: 1.5; }
+  .f-right { padding: 13px 18px 10px 20px; position: relative; display: flex; flex-direction: column; }
+  .f-folio { text-align: right; font-family: var(--mono); font-size: 5.5px; color: #a49b8a; }
+  .f-seal { width: 13px; height: 13px; background: var(--rust); color: #fbf7ee; display: grid; place-items: center; font-family: var(--serif); font-size: 7px; margin-top: 7px; }
+  .f-right h3 { margin: 4px 0 1px; font-family: var(--serif); font-size: 16px; letter-spacing: -.02em; }
+  .f-right .sub { margin: 0; font-size: 6.5px; color: #7e7565; }
+  .f-form { margin-top: 8px; }
+  .f-form label { display: block; font-size: 6px; color: #857c6b; margin-top: 5px; }
+  .f-form .in { height: 12px; margin-top: 2px; border-bottom: 1px solid #c8bda9; display: flex; align-items: center; font-size: 6.5px; color: #9b9281; }
+  .f-btns { display: flex; gap: 4px; margin-top: 7px; }
+  .f-btns span { height: 13px; padding: 0 7px; display: grid; place-items: center; border-radius: 2px; font-size: 6.5px; }
+  .f-btns .p { background: var(--green); color: #fbf7ee; }
+  .f-btns .s { border: 1px solid #c8bda9; color: #6d6558; }
+  .f-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #dfd5c4; padding-top: 4px; font-family: var(--mono); font-size: 5.5px; color: #9b9281; }
+
+  @media (max-width: 1150px) {
+    body { padding: 26px 20px 44px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 26px 20px; }
+    .page-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+    .page-head .note { text-align: left; }
+  }
+</style>
+</head>
+<body>
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">V5NOTES VAULT · SETTINGS REDESIGN</p>
+      <h1>设置页 · 六个候选</h1>
+      <p>同一份真实内容、同一套品牌色（暖纸 / 墨绿 / 朱砂），只是骨架不同。挑三张做成完整版给用户看。</p>
+    </div>
+    <div class="note">REFERENCE · v5notes-client2<br>1 个已登录账号 · 1 个已打开库<br>2026.11 · 1032 × 4064 现状</div>
+  </header>
+
+  <div class="grid">
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="a">
+          <aside class="a-index">
+            <div class="a-brand"><i></i>V5Notes</div>
+            <nav class="a-nav">
+              <b class="on"><i>01</i>账户</b>
+              <b><i>02</i>帮助 · 双产品</b>
+              <b><i>03</i>备份与迁移</b>
+              <b><i>04</i>官方发布</b>
+              <b><i>05</i>外观</b>
+              <b><i>06</i>插件与安全</b>
+              <b><i>07</i>插件目录</b>
+            </nav>
+            <div class="tail">本地优先<br>无需登录<br><br>v2.1.0</div>
+          </aside>
+          <div class="a-main">
+            <div class="a-kicker">SETTINGS · 本机偏好</div>
+            <h2>设置</h2>
+            <p class="sub">本地 Vault 优先。账号登录可选；插件与主题经权限代理。</p>
+            <section class="a-sec">
+              <div class="a-sec-h"><i>01</i><h3>账户</h3><span class="chip">未登录</span></div>
+              <div class="a-field"><span>官方服务器 · deviceType=vault_client</span><div class="a-btn">使用自定义</div></div>
+              <div class="a-field"><span>https://your-server.example</span></div>
+              <div class="a-line"></div>
+              <div class="a-field"><span>账号 / 密码</span><div class="a-btn">登录</div></div>
+              <div class="a-quiet">Gitee · GitHub　　登录后可绑定本库并增量同步。</div>
+            </section>
+            <section class="a-sec">
+              <div class="a-sec-h"><i>05</i><h3>外观</h3><span class="chip">默认</span></div>
+              <div class="a-field"><span>默认 · 节气暖纸底 / 暮色 · 深橄榄底</span></div>
+              <div class="a-field"><span>跟随系统　浅色　深色</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>01 · 案头</strong><em>吕敬人书籍设计：页边目录、版心呼吸、朱砂一处</em></div><span>EDITORIAL<br>INDEX</span></figcaption>
+    </figure>
+
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="b">
+          <div class="b-top"><strong>设置</strong><span class="lamp"></span><span class="lamp-t">LOCAL ONLY</span><span class="serial">V2.1.0 / VAULT</span></div>
+          <div class="b-tabs"><span class="on">01 账户</span><span>02 帮助</span><span>03 备份</span><span>04 发布</span><span>05 外观</span><span>06 安全</span></div>
+          <div class="b-body">
+            <div class="b-col">
+              <div class="b-mod"><h4><span>当前库 / VAULT</span><i>01</i></h4><div class="b-read">晴耕雨读</div><div class="b-small">本地路径 · 4,218 个文件<br>库色 · 立冬 / 楝色</div></div>
+              <div class="b-mod"><h4><span>账号 / ACCOUNT</span><i>02</i></h4><div class="b-small">未登录 · 本地功能不受限</div><div class="b-row">Gitee 登录 <span>→</span></div><div class="b-row">GitHub 登录 <span>→</span></div></div>
+            </div>
+            <div class="b-col">
+              <div class="b-mod"><h4><span>外观 / APPEARANCE</span><i>03</i></h4><div class="b-row">主题　默认 <span class="b-sw on"></span></div><div class="b-row">色模式　跟随系统 <span class="b-sw on"></span></div><div class="b-row">库色条　启用 <span class="b-sw on"></span></div></div>
+              <div class="b-mod"><h4><span>安全 / SAFETY</span><i>04</i></h4><div class="b-row">安全模式 <span class="b-sw"></span></div><div class="b-small">仅核心插件 + 内置主题</div></div>
+            </div>
+          </div>
+          <div class="b-foot"><span>01 / 08　本地优先 · 不自动上传</span><span>DEVICE TYPE = VAULT_CLIENT</span></div>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>02 · 仪器</strong><em>Dieter Rams 功能主义：标注、刻度、单一指示灯</em></div><span>INSTRUMENT<br>PANEL</span></figcaption>
+    </figure>
+
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="c">
+          <aside class="c-rail">
+            <div class="c-brand"><i></i>V5Notes</div>
+            <nav class="c-nav">
+              <span class="on"><i></i>账户</span>
+              <span><i></i>帮助</span>
+              <span><i></i>备份与迁移</span>
+              <span><i></i>官方发布</span>
+              <span><i></i>外观</span>
+              <span><i></i>插件与安全</span>
+              <span><i></i>插件目录</span>
+            </nav>
+            <div class="bot">未登录<br>v2.1.0</div>
+          </aside>
+          <div class="c-main">
+            <div class="c-head"><div><h2>设置</h2><p>本地 Vault 优先 · 账号可选</p></div><div class="c-search">搜索设置…</div></div>
+            <div class="c-status">
+              <div><b>本地库</b><span class="g">晴耕雨读</span></div>
+              <div><b>账号</b><span>未登录</span></div>
+              <div><b>同步</b><span>待登录</span></div>
+              <div><b>安全模式</b><span>关</span></div>
+            </div>
+            <div class="c-grid">
+              <div class="c-panel"><div class="c-ph"><i>◎</i><strong>账户</strong></div><p>官方服务器 · 可用自定义</p><div class="c-field">https://your-server.example</div><div class="c-row"><span>Gitee</span><span>GitHub</span><span class="c-cta">登录</span></div></div>
+              <div class="c-panel"><div class="c-ph"><i>◐</i><strong>外观</strong></div><p>默认 · 节气暖纸底</p><div class="c-row"><span>跟随系统</span><span class="c-sw on"></span></div><div class="c-row"><span>暮色</span><span class="c-sw"></span></div></div>
+              <div class="c-panel"><div class="c-ph"><i>↓</i><strong>备份与迁移</strong></div><p>仅备份 · 非 Sync</p><div class="c-row"><span>导出整库 zip</span><span>→</span></div></div>
+              <div class="c-panel"><div class="c-ph"><i>⛨</i><strong>插件与安全</strong></div><p>2 个目录条目</p><div class="c-row"><span>安全模式</span><span class="c-sw"></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>03 · 工作台</strong><em>v5notes-client2 的设置面板语言：侧栏、图标头、两栏卡</em></div><span>CLIENT2<br>WORKBENCH</span></figcaption>
+    </figure>
+
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="d">
+          <div class="d-top"><span class="mark"></span><strong>V5Notes Vault</strong><span>设置 / 系统</span></div>
+          <h2>设置</h2>
+          <div class="d-search">搜索设置、插件、命令… <kbd>⌘K</kbd></div>
+          <div class="d-list">
+            <div class="d-row"><i></i><b>账户与服务器</b><span>未登录 · 官方服务器</span></div>
+            <div class="d-row open"><b>▾ 外观</b><div class="inline"><span class="pill on">默认</span><span class="pill">暮色</span><span class="pill">跟随系统</span><span class="pill">浅色</span><span class="pill">深色</span></div></div>
+            <div class="d-row"><i></i><b>备份与迁移</b><span>仅备份 · 非 Sync</span></div>
+            <div class="d-row"><i></i><b>官方发布 / 分享</b><span>本机预览</span></div>
+            <div class="d-row"><i></i><b>插件与安全</b><span>安全模式：关</span></div>
+            <div class="d-row"><i></i><b>插件目录</b><span>2 个可用</span></div>
+          </div>
+          <div class="d-foot"><span>↑↓ 选择　↵ 打开　esc 关闭</span><span>本地优先 · 36 项</span></div>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>04 · 索引</strong><em>Raycast 式可搜索设置：⌘K、键盘导航、就地展开</em></div><span>COMMAND<br>INDEX</span></figcaption>
+    </figure>
+
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="e">
+          <div class="e-top"><span>PREFERENCES</span><b>V5NOTES VAULT · 2.1.0</b></div>
+          <h2>设置</h2>
+          <p class="sub">本地 Vault 优先。账号登录可选；插件与主题经权限代理，非进程隔离。</p>
+          <section class="e-sec">
+            <div class="h"><em>01</em><strong>账户</strong><span>未登录 · 官方服务器</span></div>
+            <div class="e-row"><span>服务器地址</span><span>your-server.example</span></div>
+            <div class="e-row"><span>账号 / 密码</span><span>使用 Gitee 或 GitHub 登录</span></div>
+          </section>
+          <section class="e-sec">
+            <div class="h"><em>05</em><strong>外观</strong><span>默认 · 跟随系统</span></div>
+            <div class="e-row"><span><i class="e-dot"></i>节气暖纸底 + 墨绿强调</span><span>当前主题</span></div>
+            <div class="e-row"><span>社区主题需通过 CSS 校验</span><span>2 个内置</span></div>
+          </section>
+          <section class="e-sec">
+            <div class="h"><em>06</em><strong>插件与安全</strong><span>安全模式：关</span></div>
+            <div class="e-row"><span>Safe Fetch Demo · 1.0.0</span><span>安装</span></div>
+          </section>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>05 · 白盒</strong><em>原研哉：近白纸面、极细规则线、UI 退到内容后面</em></div><span>WHITE<br>GALLERY</span></figcaption>
+    </figure>
+
+    <figure class="card" style="margin:0">
+      <div class="frame">
+        <div class="f">
+          <div class="f-book">
+            <aside class="f-left">
+              <div class="k">CONTENTS · 目录</div>
+              <h3>设置</h3>
+              <nav class="f-nav">
+                <span class="on"><i>01</i>账户</span>
+                <span><i>02</i>帮助 · 双产品</span>
+                <span><i>03</i>备份与迁移</span>
+                <span><i>04</i>官方发布</span>
+                <span><i>05</i>外观</span>
+                <span><i>06</i>插件与安全</span>
+                <span><i>07</i>插件目录</span>
+              </nav>
+              <div class="bot">未登录 · 本地可用<br>V5Notes Vault 2.1.0</div>
+            </aside>
+            <div class="f-right">
+              <div class="f-folio">SETTINGS · 01 / 08</div>
+              <div class="f-seal">壹</div>
+              <h3>账户</h3>
+              <p class="sub">登录可选；同一账号可登录两个客户端。Vault 仍在本机文件夹。</p>
+              <div class="f-form">
+                <label>服务器</label><div class="in">https://your-server.example</div>
+                <label>账号</label><div class="in">用户名或邮箱</div>
+                <label>密码</label><div class="in">不会被保存到本地</div>
+                <div class="f-btns"><span class="p">登录</span><span class="s">Gitee</span><span class="s">GitHub</span></div>
+              </div>
+              <div class="f-foot"><span>← 上一章</span><span>下一章 →</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="caption"><div><strong>06 · 书页</strong><em>宋刻本 / 民国书衣：对开页、朱印章节、一次只读一章</em></div><span>BOOK<br>SPREAD</span></figcaption>
+    </figure>
+  </div>
+</body>
+</html>

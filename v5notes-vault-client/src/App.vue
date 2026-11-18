@@ -91,7 +91,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="shell" :class="{ 'is-workspace': page === 'workspace', 'is-welcome': page === 'welcome' }">
+  <div class="shell" :class="{ 'is-workspace': page === 'workspace', 'is-welcome': page === 'welcome', 'is-settings': page === 'settings' }">
     <aside class="app-ribbon" aria-label="快捷丝带">
       <img class="ribbon-mark" src="./assets/brand-icon.png" width="26" height="26" alt="" />
       <button
@@ -148,7 +148,7 @@ onUnmounted(() => {
       </p>
       <p v-else-if="banner" class="app-banner" role="status">{{ banner }}</p>
 
-      <main class="main" :class="{ 'main-fill': page === 'workspace' || page === 'welcome' }">
+      <main class="main" :class="{ 'main-fill': page === 'workspace' || page === 'welcome' || page === 'settings' }">
         <WelcomeView v-if="page === 'welcome'" @opened="onOpened" />
         <WorkspaceView
           v-else-if="page === 'workspace' && vault"
@@ -157,6 +157,7 @@ onUnmounted(() => {
           @close="closeVault"
           @error="banner = $event"
           @dirty-change="workspaceDirty = $event"
+          @settings="goSettings"
         />
         <SettingsView v-else :account="account" :vault="vault" />
       </main>

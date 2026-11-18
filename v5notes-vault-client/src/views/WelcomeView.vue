@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
+import brandIcon from '../assets/brand-icon.png'
 import CreateVaultDialog from '../components/CreateVaultDialog.vue'
+import TreeIcon from '../components/TreeIcon.vue'
 import {
   VAULT_COLOR_PALETTE,
   applyPendingWelcomeColor,
@@ -221,36 +223,71 @@ function forget(entry: RecentVaultEntry) {
     <div class="welcome-preview" aria-hidden="true">
       <div class="preview-shell">
         <aside class="preview-sidebar">
-          <div class="preview-vault-bar" :style="{ background: pending.color }" />
-          <div class="preview-vault-meta">
-            <strong>research-vault</strong>
-            <span>~/Documents/research-vault</span>
+          <div class="preview-brand">
+            <img :src="brandIcon" width="22" height="22" alt="" />
+            <strong>V5Notes</strong>
           </div>
-          <div class="preview-search">搜索笔记</div>
+          <div class="preview-heading">
+            <span>笔记</span>
+            <span class="preview-heading-icons">
+              <svg viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.2" /><path d="m13 13 3.2 3.2" /></svg>
+              <svg viewBox="0 0 20 20">
+                <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+                <circle cx="7.2" cy="5.5" r="1.7" />
+                <circle cx="13" cy="10" r="1.7" />
+                <circle cx="6.2" cy="14.5" r="1.7" />
+              </svg>
+              <svg viewBox="0 0 20 20">
+                <path d="M2.6 5.6h4.1l1.1 1.3h9.5v8.7H2.6z" />
+                <path d="M10 9.4v4.2M7.9 11.5h4.2" />
+              </svg>
+            </span>
+          </div>
           <ul class="preview-tree">
-            <li class="folder">日记</li>
-            <li class="note active">今日.md</li>
-            <li class="folder">项目</li>
-            <li class="note nested">草案.md</li>
+            <li class="folder"><TreeIcon kind="folder" />日记</li>
+            <li class="note active"><TreeIcon kind="note" />今日</li>
+            <li class="folder"><TreeIcon kind="folder" />项目</li>
+            <li class="note nested"><TreeIcon kind="note" />草案</li>
           </ul>
-          <div class="preview-foot">
-            <span class="preview-dot" :style="{ background: pending.color }" />
-            {{ pending.term }} · {{ pending.name }}
+          <div class="preview-footer">
+            <div class="preview-trash">
+              <svg viewBox="0 0 20 20"><path d="M4.2 6h11.6M8 6V4.2h4V6M5.6 6l.8 11h7.2l.8-11" /></svg>
+              回收站
+            </div>
+            <div class="preview-profile">
+              <span class="preview-avatar" :style="{ background: pending.color }">R</span>
+              <span class="preview-profile-name">research-vault</span>
+              <svg viewBox="0 0 16 16"><path d="M4.5 6.5 8 10l3.5-3.5" /></svg>
+            </div>
           </div>
         </aside>
         <div class="preview-editor">
           <header class="preview-editor-bar">
+            <span class="preview-panel-btn">
+              <svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M8 4v12" /></svg>
+            </span>
             <strong>今日</strong>
-            <span>
-              <em>预览</em>
-              <em class="on">编辑</em>
+            <em class="preview-mode">预览中</em>
+            <span class="preview-command">命令 ⌘K</span>
+            <span class="preview-outline-toggle">
+              <svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M12 4v12" /></svg>
             </span>
           </header>
           <div class="preview-body">
+            <span class="preview-edit-pill">
+              <svg viewBox="0 0 16 16"><path d="M3 12.7 4.2 9 11 2.2l2.5 2.5-6.8 6.8z" /></svg>
+              编辑
+            </span>
             <p class="preview-h">今日</p>
-            <p>编辑器占满剩余宽度。左侧顶条用库色辨认多库——身份，不是装饰。</p>
+            <p>编辑器占满剩余宽度；右侧大纲与查找随手可用。</p>
           </div>
         </div>
+        <aside class="preview-outline">
+          <div class="preview-outline-tabs"><span class="on">大纲</span><span>查找</span></div>
+          <p>今日</p>
+          <p class="nested">晨间</p>
+          <p class="nested">待办</p>
+        </aside>
       </div>
     </div>
 
