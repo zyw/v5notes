@@ -27,8 +27,14 @@ const props = withDefaults(defineProps<{
   sync?: SyncCoordinatorHandles | null
   /** 'account' shows identity only; 'sync' shows what acts on syncing. */
   mode?: 'account' | 'sync'
+  /** A section that already shows the server address leaves it out here. */
+  hideServer?: boolean
+  /** Place named in a failure report, e.g. '账户'. */
+  subject?: string
 }>(), {
   mode: 'account',
+  hideServer: false,
+  subject: '账户',
 })
 
 const serverBusy = ref(false)
@@ -83,11 +89,25 @@ async function onLogout() {
   localDeviceId.value = null
 }
 
-async function useOfficial() {
+/**
+ * The server address decides where login and sync both go, so it is set once.
+ * Using an address signs out of the previous one: its token and sync binding
+ * do not carry over, and hiding that would send the next request somewhere
+ * the user never chose.
+ */
+async function applyServer(next: { server: string; official: boolean }) {
   serverBusy.value = true
   serverError.value = ''
   try {
-    await props.account.saveServer({ server: props.account.server.value, official: true })
+    const changed = next.official
+      ? !props.account.useOfficialServer.value
+      : next.server.trim().replace(/\/+$/, '') !== (props.account.useOfficialServer.value ? '' : props.account.server.value)
+    await props.account.saveServer(next)
+    if (changed && props.account.loggedIn.value) {
+      await onLogout()
+      setSyncMessage('')
+      syncMessageLocal.value = '服务器地址已更换，请重新登录'
+    }
   } catch (cause) {
     serverError.value = cause instanceof Error ? cause.message : '无法保存服务器'
   } finally {
@@ -95,19 +115,12 @@ async function useOfficial() {
   }
 }
 
-async function saveCustomServer() {
-  serverBusy.value = true
-  serverError.value = ''
-  try {
-    await props.account.saveServer({
-      server: props.account.customServer.value,
-      official: false,
-    })
-  } catch (cause) {
-    serverError.value = cause instanceof Error ? cause.message : '无法保存服务器'
-  } finally {
-    serverBusy.value = false
-  }
+function useOfficial() {
+  return applyServer({ server: props.account.server.value, official: true })
+}
+
+function saveCustomServer() {
+  return applyServer({ server: props.account.customServer.value, official: false })
 }
 
 function makeEngine(): SyncEngine {
@@ -291,11 +304,12 @@ onBeforeUnmount(() => {
   <section class="settings-block account-panel" aria-labelledby="account-title">
     <h2 id="account-title">{{ props.mode === 'sync' ? '同步' : '账号' }}</h2>
 
-    <div class="server-row" role="group" aria-label="服务器">
+    <div v-if="!props.hideServer" class="server-row" role="group" aria-label="服务器">
       <button
         type="button"
         class="choice compact-choice server-choice"
         :class="{ active: account.useOfficialServer.value }"
+        :aria-pressed="account.useOfficialServer.value"
         :disabled="serverBusy"
         @click="useOfficial"
       >
@@ -304,7 +318,7 @@ onBeforeUnmount(() => {
         </span>
         <strong>官方服务器</strong>
       </button>
-      <div class="custom-server">
+      <form class="custom-server" @submit.prevent="saveCustomServer">
         <label class="sr-only" for="vault-server">自定义服务器</label>
         <input
           id="vault-server"
@@ -314,19 +328,15 @@ onBeforeUnmount(() => {
           placeholder="https://your-server.example"
           :disabled="serverBusy"
         >
-        <button type="button" class="ghost server-custom-btn" :disabled="serverBusy" @click="saveCustomServer">
-          <span class="btn-ico" aria-hidden="true">
-            <svg viewBox="0 0 16 16"><rect x="2.8" y="3.2" width="10.4" height="9.6" rx="1.4"/><path d="M2.8 6.2h10.4M5.2 3.2v9.6M8 8.4h3.2M8 10.6h2.2"/></svg>
+        <button type="submit" class="ghost server-custom-btn" :disabled="serverBusy">
+          <span class="btn-ico server-state-ico" aria-hidden="true">
+            <svg v-if="account.useOfficialServer.value" viewBox="0 0 16 16" class="i-cloud"><path d="M3.2 10.2a2.4 2.4 0 0 1 .4-4.7A3.4 3.4 0 0 1 9.8 4a2.8 2.8 0 0 1 2.8 2.7 2.2 2.2 0 0 1 .2 4.3H3.6"/><path d="M8 8.2v3.4M6.4 10.2 8 11.8l1.6-1.6"/></svg>
+            <svg v-else viewBox="0 0 16 16" class="i-check"><path d="m3.4 8.4 3 3 6.2-6.6"/></svg>
           </span>
           {{ serverBusy ? '检测中…' : '使用自定义' }}
         </button>
-      </div>
+      </form>
       <p v-if="serverError" class="inline-error" role="alert">{{ serverError }}</p>
-      <p class="settings-help tight">
-        当前：
-        <code>{{ account.useOfficialServer.value ? '官方服务器' : account.server.value }}</code>
-        · deviceType=<code>vault_client</code>
-      </p>
     </div>
 
     <div v-if="account.loggedIn.value" class="account-card">
@@ -447,7 +457,7 @@ onBeforeUnmount(() => {
       <button v-if="props.mode === 'account'" type="button" class="danger" @click="onLogout">退出登录</button>
     </div>
 
-    <form v-else-if="props.mode === 'account'" class="login-form" @submit.prevent="onLogin">
+    <form v-else-if="props.mode === 'account'" class="login-form" :aria-label="props.subject + '登录'" @submit.prevent="onLogin">
 
       <label>
         <span>账号</span>
@@ -501,33 +511,30 @@ onBeforeUnmount(() => {
           </span>
           {{ account.busy.value ? '登录中…' : '登录' }}
         </button>
-      </div>
-
-      <div v-if="account.socialLoginEnabled.value" class="social-block">
-        <div class="auth-sep" role="separator" aria-label="或使用第三方登录">
-          <span>或</span>
-        </div>
-        <div class="social-row" role="group" aria-label="第三方登录">
-          <button
-            v-for="provider in account.socialProviders"
-            :key="provider.source"
-            type="button"
-            class="ghost social-btn"
-            :class="`social-${provider.tone}`"
-            :disabled="account.busy.value"
-            @click="account.startSocialLogin(provider.source)"
-          >
-            <span class="btn-ico social-ico" aria-hidden="true">
-              <svg v-if="provider.source === 'gitee'" viewBox="0 0 1024 1024">
-                <path fill="currentColor" d="M512 1024C230.4 1024 0 793.6 0 512S230.4 0 512 0s512 230.4 512 512-230.4 512-512 512zm259.2-569.6H480c-12.8 0-25.6 12.8-25.6 25.6v64c0 12.8 12.8 25.6 25.6 25.6h176c12.8 0 25.6 12.8 25.6 25.6v12.8c0 41.6-35.2 76.8-76.8 76.8h-240c-12.8 0-25.6-12.8-25.6-25.6V416c0-41.6 35.2-76.8 76.8-76.8h355.2c12.8 0 25.6-12.8 25.6-25.6v-64c0-12.8-12.8-25.6-25.6-25.6H441.6C355.2 224 288 291.2 288 377.6v355.2c0 12.8 12.8 25.6 25.6 25.6h371.2c70.4 0 128-57.6 128-128V480c0-12.8-12.8-25.6-25.6-25.6z"/>
-              </svg>
-              <svg v-else viewBox="0 0 16 16">
-                <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.58c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-              </svg>
-            </span>
-            {{ provider.label }}
-          </button>
-        </div>
+        <template v-if="account.socialLoginEnabled.value">
+          <span class="auth-sep" role="separator" aria-label="或使用第三方登录"><span>或</span></span>
+          <div class="social-row" role="group" aria-label="第三方登录">
+            <button
+              v-for="provider in account.socialProviders"
+              :key="provider.source"
+              type="button"
+              class="ghost social-btn"
+              :class="`social-${provider.tone}`"
+              :disabled="account.busy.value"
+              @click="account.startSocialLogin(provider.source)"
+            >
+              <span class="btn-ico social-ico" aria-hidden="true">
+                <svg v-if="provider.source === 'gitee'" viewBox="0 0 1024 1024">
+                  <path fill="currentColor" d="M512 1024C230.4 1024 0 793.6 0 512S230.4 0 512 0s512 230.4 512 512-230.4 512-512 512zm259.2-569.6H480c-12.8 0-25.6 12.8-25.6 25.6v64c0 12.8 12.8 25.6 25.6 25.6h176c12.8 0 25.6 12.8 25.6 25.6v12.8c0 41.6-35.2 76.8-76.8 76.8h-240c-12.8 0-25.6-12.8-25.6-25.6V416c0-41.6 35.2-76.8 76.8-76.8h355.2c12.8 0 25.6-12.8 25.6-25.6v-64c0-12.8-12.8-25.6-25.6-25.6H441.6C355.2 224 288 291.2 288 377.6v355.2c0 12.8 12.8 25.6 25.6 25.6h371.2c70.4 0 128-57.6 128-128V480c0-12.8-12.8-25.6-25.6-25.6z"/>
+                </svg>
+                <svg v-else viewBox="0 0 16 16">
+                  <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.58c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+              </span>
+              {{ provider.label }}
+            </button>
+          </div>
+        </template>
       </div>
 
     </form>

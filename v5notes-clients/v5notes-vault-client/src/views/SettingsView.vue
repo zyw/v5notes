@@ -542,9 +542,11 @@ watch(publishDraft, () => {
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
               <h3 id="panel-sync-title">同步</h3>
+              <span v-if="account.useOfficialServer.value" class="state">官方服务器</span>
+              <span v-else class="state" :title="account.server.value">{{ account.server.value.replace(/^https?:\/\//, '') }}</span>
             </div>
             <div class="p-body">
-              <AccountPanel :account="account" :vault="vault" :sync="sync" mode="sync" />
+              <AccountPanel :account="account" :vault="vault" :sync="sync" mode="sync" subject="同步" hide-server />
             </div>
           </section>
 
@@ -2253,7 +2255,20 @@ watch(publishDraft, () => {
 .settings-workspace :deep(.account-panel .login-actions) {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+/* Third-party sign-in reads as another way in beside the primary button;
+   the rule marks where its own block used to start. */
+.settings-workspace :deep(.account-panel .login-actions .auth-sep) {
+  margin: 0 0 0 4px;
+  display: block;
+}
+.settings-workspace :deep(.account-panel .login-actions .auth-sep span) {
+  font-size: 9.5px;
+}
+.settings-workspace :deep(.account-panel .login-actions .social-row) {
+  display: contents;
 }
 .settings-workspace :deep(.account-panel .login-actions .primary),
 .settings-workspace :deep(.account-panel .login-actions .ghost) {
@@ -2305,6 +2320,11 @@ watch(publishDraft, () => {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
   background: color-mix(in srgb, var(--accent) 12%, var(--panel));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+/* The button reports the live mode too: cloud stroke while official, a
+   check once the typed address is the one in use. */
+.settings-workspace :deep(.account-panel .custom-server .server-state-ico:has(.i-check)) {
   color: var(--accent);
 }
 .settings-workspace :deep(.account-panel .server-row > .choice strong) {
