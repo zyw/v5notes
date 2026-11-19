@@ -40,6 +40,27 @@ function mountPlainEditor(container: HTMLElement, options: EditorMountOptions): 
   textarea.readOnly = !options.editable
   textarea.spellcheck = false
   textarea.addEventListener('input', () => options.onChange(textarea.value))
+  if (options.onUploadImage) {
+    // Keep pasted images from being swallowed: insert the stored Markdown link.
+    textarea.addEventListener('paste', (event) => {
+      const files = event.clipboardData?.files
+      const image = files ? Array.from(files).find((file) => file.type.startsWith('image/')) : undefined
+      if (!image) return
+      event.preventDefault()
+      void Promise.resolve(options.onUploadImage!(image))
+        .then((url) => {
+          if (!url) return
+          const alt = image.name.replace(/\.[^.]+$/, '')
+          const pos = textarea.selectionStart ?? textarea.value.length
+          const next = `${textarea.value.slice(0, pos)}![${alt}](${url})${textarea.value.slice(pos)}`
+          textarea.value = next
+          options.onChange(next)
+        })
+        .catch(() => {
+          /* host reports upload failures */
+        })
+    })
+  }
   container.replaceChildren(textarea)
   options.onReady?.()
 

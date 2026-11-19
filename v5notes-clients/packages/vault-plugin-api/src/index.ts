@@ -172,6 +172,12 @@ export interface EditorMountOptions {
   theme?: string
   onChange: (markdown: string) => void
   onFindRequest?: () => void
+  /** Store an image and return a URL usable inside the note's Markdown. */
+  onUploadImage?: (file: File) => string | Promise<string>
+  /** Handles the toolbar image button; return false to keep the system file picker. */
+  onPickImage?: () => void | false
+  /** Resolve a vault-relative resource path to a displayable URL, or '' when missing. */
+  resolveVaultAsset?: (relativePath: string) => Promise<string>
   onReady?: () => void
 }
 

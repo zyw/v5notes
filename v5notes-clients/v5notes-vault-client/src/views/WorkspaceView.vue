@@ -11,6 +11,7 @@ import { closeTreeMenu } from '../components/treeMenu'
 import VaultTree from '../components/VaultTree.vue'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
 import { APPEARANCE_REL } from '../vault/skeleton'
+import { saveImageToVault, vaultAssetUrl } from '../vault/attachments'
 import { vaultSearch, type SearchHit } from '../vault/search'
 import { emptyTrash, listTrash, moveToTrash, restoreFromTrash, type TrashEntry } from '../vault/trash'
 import type { OpenedVault, VaultTreeNode } from '../vault/types'
@@ -388,6 +389,7 @@ async function ensureEditorMounted() {
     return
   }
   destroyEditorSession()
+  const rootPath = props.vault.rootPath
   const session = await provider.mount(el, {
     markdown: content.value,
     editable: editorMode.value === 'edit',
@@ -398,6 +400,22 @@ async function ensureEditorMounted() {
       if (markdown === content.value) return
       applyingFromEditor = true
       content.value = markdown
+    },
+    onUploadImage: async (file) => {
+      try {
+        return await saveImageToVault(rootPath, file)
+      } catch (error) {
+        status.value = error instanceof Error ? error.message : String(error)
+        return ''
+      }
+    },
+    resolveVaultAsset: async (relativePath) => {
+      try {
+        if (!(await vaultFs.exists(rootPath, relativePath))) return ''
+        return await vaultAssetUrl(rootPath, relativePath)
+      } catch {
+        return ''
+      }
     },
     onFindRequest: () => openFind(),
     onReady: () => refreshOutline(),
