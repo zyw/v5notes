@@ -34,7 +34,9 @@ import {
   listHostSettingTabs,
   listPluginInfos,
   setSafeModeAndReload,
+  startExtensionRuntime,
 } from '../extension/runtime'
+import { decideRuntimeBoot } from './settingsRuntime'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
   MIGRATION_EXPLICIT_LINE,
@@ -371,14 +373,35 @@ function savePublishDraft() {
   }
 }
 
-onMounted(() => {
+async function ensureExtensionRuntime(): Promise<void> {
+  // The plugin host lives with the workspace. Opening settings from the welcome
+  // screen (or before the workspace mounted) would otherwise show an empty
+  // plugin list forever, because the list is read from the host in memory.
+  const rootPath = props.vault?.rootPath
+  const decision = decideRuntimeBoot({ rootPath, hostPresent: getPluginHost() !== null })
+  if (decision !== 'start') return
+  extensionBusy.value = true
+  try {
+    await startExtensionRuntime(rootPath as string)
+  } catch (error) {
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    extensionBusy.value = false
+  }
+}
+
+onMounted(async () => {
+  await ensureExtensionRuntime()
   refreshExtensionState()
   void loadCatalog()
   publishDraft.value = loadOfficialPublishDraft()
 })
 watch(
   () => props.vault?.rootPath,
-  () => refreshExtensionState(),
+  async () => {
+    await ensureExtensionRuntime()
+    refreshExtensionState()
+  },
 )
 
 watch(publishDraft, () => {
