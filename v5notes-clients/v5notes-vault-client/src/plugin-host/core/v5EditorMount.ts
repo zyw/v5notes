@@ -7,6 +7,7 @@ import type {
   EditorMountOptions,
   EditorSession,
 } from '@v5notes/vault-plugin-api'
+import { RelativeImageRewriter } from './relativeImages'
 
 /** Loaded only when the note canvas mounts, so host tests do not pull the editor. */
 export function mountV5Editor(container: HTMLElement, options: EditorMountOptions): EditorSession {
@@ -15,51 +16,11 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
   let editor: Editor | null = null
   let applyingHost = false
 
-  /* Relative vault image links (`附件/x.png`) resolve through the vault FS;
-   * the browser cannot fetch them, so swap in an asset/data URL on error. */
-  const pendingResolutions = new Map<string, Promise<void>>()
-  const unresolvedRelativesByPath = new Map<string, HTMLImageElement[]>()
-
-  function resolveRelativeImage(img: HTMLImageElement): void {
-    const target = img.getAttribute('src')?.trim() ?? ''
-    if (!target || hasScheme(target) || target.startsWith('/')) return
-    let decoded = target
-    try {
-      decoded = decodeURIComponent(target)
-    } catch {
-      /* keep raw form */
-    }
-    // Keep a strong reference to every DOM node that asked (weak refs could be
-    // collected before the resolution lands and leave later renders broken).
-    const waiters = unresolvedRelativesByPath.get(decoded)
-    if (waiters) {
-      if (!waiters.includes(img)) waiters.push(img)
-    } else {
-      unresolvedRelativesByPath.set(decoded, [img])
-    }
-    if (pendingResolutions.has(decoded)) return
-    const promise = Promise.resolve(options.resolveVaultAsset?.(decoded) ?? '')
-      .catch(() => '')
-      .then((url) => {
-        pendingResolutions.delete(decoded)
-        const waiters = unresolvedRelativesByPath.get(decoded) ?? []
-        unresolvedRelativesByPath.delete(decoded)
-        if (!url) return
-        for (const node of waiters) {
-          if (node.isConnected && !hasScheme(node.getAttribute('src') ?? '')) node.src = url
-        }
-      })
-    pendingResolutions.set(decoded, promise)
-  }
-
-  function hasScheme(target: string): boolean {
-    return /^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('//')
-  }
-
-  const onImgError = (event: Event) => {
-    const img = event.target as HTMLElement
-    if (img instanceof HTMLImageElement) resolveRelativeImage(img)
-  }
+  // `attachments/x.png` links resolve through the vault FS before the browser
+  // tries (and fails) to fetch them.
+  const relativeImages = new RelativeImageRewriter(container, {
+    resolve: (relativePath) => options.resolveVaultAsset?.(relativePath) ?? Promise.resolve(''),
+  })
 
   const app = createApp({
     name: 'V5EditorMount',
@@ -80,11 +41,6 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
           onPickImage: options.onPickImage,
           onReady: (instance: Editor) => {
             editor = instance
-            container.addEventListener('error', onImgError, true)
-            // Images that errored before the listener attached need a nudge.
-            Array.from(container.querySelectorAll('img')).forEach((img) => {
-              if (img.complete && img.naturalWidth === 0) resolveRelativeImage(img)
-            })
             options.onReady?.()
           },
           onFindRequest: () => options.onFindRequest?.(),
@@ -126,9 +82,7 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
       return editor.replaceAllMatches(query, replacement, findOptions)
     },
     destroy() {
-      container.removeEventListener('error', onImgError, true)
-      pendingResolutions.clear()
-      unresolvedRelativesByPath.clear()
+      relativeImages.destroy()
       app.unmount()
       container.replaceChildren()
     },

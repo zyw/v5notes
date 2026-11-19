@@ -12,6 +12,7 @@ import {
 } from '@tauri-apps/plugin-fs'
 import { normalizeVaultPath, toIdentityKey, VaultPathError } from '../path/identity'
 import { TRASH_DIR_REL, V5NOTES_DIR } from './skeleton'
+import { ATTACHMENT_DIR_REL } from './attachments'
 import type { VaultTreeNode } from './types'
 
 const HIDDEN_ROOT_SKIP = new Set(['.git', '.DS_Store', 'Thumbs.db'])
@@ -69,7 +70,14 @@ function isMarkdown(name: string): boolean {
 
 async function readChildren(rootPath: string, dirRel: string | null): Promise<VaultTreeNode[]> {
   const dirAbs = dirRel ? (await abs(rootPath, dirRel)).absPath : rootPath
-  const entries = await readDir(dirAbs)
+  let entries
+  try {
+    entries = await readDir(dirAbs)
+  } catch (error) {
+    // A missing directory reads as empty; anything else propagates.
+    if (dirRel && !(await exists(dirAbs))) return []
+    throw error
+  }
   const nodes: VaultTreeNode[] = []
 
   for (const entry of entries) {
@@ -115,6 +123,19 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
     if (a.kind !== 'dir' && b.kind === 'dir') return 1
     return a.name.localeCompare(b.name, 'zh')
   })
+
+  // Virtual `attachments/` row at the root so inserted images have a visible home.
+  if (!dirRel && !nodes.some(node => toIdentityKey(node.path) === toIdentityKey(ATTACHMENT_DIR_REL))) {
+    const virtual = normalizeVaultPath(ATTACHMENT_DIR_REL)
+    nodes.unshift({
+      path: virtual.displayPath,
+      identityKey: virtual.identityKey,
+      name: ATTACHMENT_DIR_REL,
+      kind: 'dir',
+      children: [],
+      virtual: true,
+    })
+  }
 
   // Reject case-only duplicates under the same parent (Linux-safe §6.2).
   const seen = new Set<string>()

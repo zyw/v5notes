@@ -789,6 +789,10 @@ async function submitName(raw: string) {
     }
 
     if (dialog.mode === 'rename' && dialog.target) {
+      if (dialog.target.virtual) {
+        // The attachments folder is auto-created on first insert; not renamable.
+        throw new VaultPathError('附件目录不可重命名')
+      }
       if (dirty.value && selectedPath.value === dialog.target.path) {
         const ok = await saveCurrent()
         if (!ok) return
@@ -827,6 +831,11 @@ async function confirmAction() {
   busy.value = true
   try {
     if (dialog.mode === 'delete' && dialog.node) {
+      if (dialog.node.virtual) {
+        // Nothing on disk to remove; the row reappears on next refresh.
+        confirmDialog.value = null
+        return
+      }
       if (dirty.value && selectedPath.value === dialog.node.path) {
         // Discard or save? Destructive delete of current — clear dirty after trash.
       }

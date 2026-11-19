@@ -1,7 +1,9 @@
 /**
- * Vault image attachments (design §9.5): inserted/pasted images are written
- * under the vault's `附件/` directory and referenced by a relative Markdown
- * link so sync treats them as ordinary assets.
+ * Vault image attachments: inserted/pasted images are written under the
+ * vault's `attachments/` directory and referenced by a relative Markdown
+ * link so sync treats them as ordinary assets. (The design doc §9.5 names
+ * this folder 「附件」; the client standardizes on ASCII `attachments` for
+ * URL-safe, cross-platform links.)
  */
 
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
@@ -10,7 +12,26 @@ import { bytesToBase64, extensionOf, isAttachmentTooLarge } from '../sync/attach
 import { VaultQuotaRules } from '../sync/limits'
 import { vaultFs } from './vaultFs'
 
-export const ATTACHMENT_DIR_REL = '附件'
+export const ATTACHMENT_DIR_REL = 'attachments'
+
+/** Legacy attachment folders from earlier builds; still previewed, no longer written. */
+const LEGACY_ATTACHMENT_DIRS = ['附件'] as const
+
+/** Decoded relative path of an image inside the attachment folder, else null. */
+export function attachmentRelFromImageUrl(src: string | null | undefined): string | null {
+  const raw = src?.trim()
+  if (!raw || /^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith('//') || raw.startsWith('/') || raw.startsWith('data:') || raw.startsWith('#')) {
+    return null
+  }
+  let decoded = raw
+  try {
+    decoded = decodeURIComponent(raw)
+  } catch {
+    /* keep raw form */
+  }
+  const dirs = [ATTACHMENT_DIR_REL, ...LEGACY_ATTACHMENT_DIRS]
+  return dirs.some(dir => decoded === dir || decoded.startsWith(`${dir}/`)) ? decoded : null
+}
 
 /** Extensions the editor renders inline; others still insert but preview as links. */
 const INLINE_IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.avif', '.ico'])
@@ -49,7 +70,7 @@ export function sanitizeAttachmentName(name: string, mimeHint?: string): string 
   }
 }
 
-/** Unique `附件/<name>` path; appends `-1`, `-2`, … before the extension on collision. */
+/** Unique `attachments/<name>` path; appends `-1`, `-2`, … before the extension on collision. */
 async function uniqueAttachmentPath(rootPath: string, name: string): Promise<string> {
   const ext = extensionOf(name)
   const stem = ext ? name.slice(0, -ext.length) : name
@@ -71,6 +92,7 @@ export function attachmentUrlText(relativePath: string): string {
 /**
  * True when an image URL refers to something inside the vault rather than an
  * absolute/data URL. Accepts both raw and percent-encoded vault paths.
+ * @deprecated Prefer {@link attachmentRelFromImageUrl} for attachment-scoped checks.
  */
 export function isVaultRelativeImageUrl(url: string): boolean {
   const target = url.trim()

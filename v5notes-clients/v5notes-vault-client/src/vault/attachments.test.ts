@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachmentRelFromImageUrl,
   attachmentUrlText,
   isInlineImageExtension,
   isVaultRelativeImageUrl,
@@ -29,13 +30,38 @@ describe('sanitizeAttachmentName', () => {
 
 describe('attachmentUrlText', () => {
   it('percent-encodes each segment but keeps slashes', () => {
-    expect(attachmentUrlText('附件/照片 one.png')).toBe('%E9%99%84%E4%BB%B6/%E7%85%A7%E7%89%87%20one.png')
+    expect(attachmentUrlText('attachments/照片 one.png')).toBe('attachments/%E7%85%A7%E7%89%87%20one.png')
+  })
+
+  it('writes into the ASCII attachments directory', () => {
+    expect(sanitizeAttachmentName('截图.png')).toBe('截图.png')
+    const rel = `attachments/${sanitizeAttachmentName('截图.png')}`
+    expect(rel.startsWith('attachments/')).toBe(true)
+  })
+})
+
+describe('attachmentRelFromImageUrl', () => {
+  it('accepts current and legacy attachment folders, encoded or raw', () => {
+    expect(attachmentRelFromImageUrl('attachments/photo.png')).toBe('attachments/photo.png')
+    expect(attachmentRelFromImageUrl('attachments/%E7%85%A7%E7%89%87.png')).toBe('attachments/照片.png')
+    expect(attachmentRelFromImageUrl('%E9%99%84%E4%BB%B6/photo.png')).toBe('附件/photo.png')
+  })
+
+  it('rejects external, absolute, data, and non-attachment relatives', () => {
+    expect(attachmentRelFromImageUrl('https://example.com/a.png')).toBeNull()
+    expect(attachmentRelFromImageUrl('data:image/png;base64,AAA')).toBeNull()
+    expect(attachmentRelFromImageUrl('//cdn.example.com/a.png')).toBeNull()
+    expect(attachmentRelFromImageUrl('/abs/a.png')).toBeNull()
+    expect(attachmentRelFromImageUrl('../outside.png')).toBeNull()
+    expect(attachmentRelFromImageUrl('other/photo.png')).toBeNull()
+    expect(attachmentRelFromImageUrl('')).toBeNull()
+    expect(attachmentRelFromImageUrl(null)).toBeNull()
   })
 })
 
 describe('isVaultRelativeImageUrl', () => {
   it('accepts vault-relative raw and encoded paths', () => {
-    expect(isVaultRelativeImageUrl('附件/photo.png')).toBe(true)
+    expect(isVaultRelativeImageUrl('attachments/photo.png')).toBe(true)
     expect(isVaultRelativeImageUrl('%E9%99%84%E4%BB%B6/photo.png')).toBe(true)
     expect(isVaultRelativeImageUrl('sub dir/photo.png')).toBe(true)
   })

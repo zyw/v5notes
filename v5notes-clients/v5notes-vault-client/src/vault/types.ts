@@ -10,6 +10,8 @@ export interface VaultTreeNode {
   name: string
   kind: VaultTreeKind
   children?: VaultTreeNode[]
+  /** Folder shown in the tree before it exists on disk (e.g. `attachments/`). */
+  virtual?: boolean
 }
 
 export interface OpenedVault {
