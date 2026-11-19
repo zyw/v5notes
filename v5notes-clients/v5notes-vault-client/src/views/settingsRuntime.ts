@@ -4,12 +4,18 @@
  * screen, or before the workspace mounted) used to leave 插件与安全 permanently
  * empty, so the settings page starts the host itself when it is missing.
  */
-export type RuntimeBootDecision = 'reuse' | 'start' | 'unavailable'
+export type RuntimeBootDecision = 'reuse' | 'restart' | 'start' | 'unavailable'
 
+/**
+ * A host left over for another vault is rebuilt rather than reused: the list
+ * would otherwise show the previous vault's plugins, or none.
+ */
 export function decideRuntimeBoot(options: {
   rootPath: string | null | undefined
   hostPresent: boolean
+  hostRoot?: string | null
 }): RuntimeBootDecision {
   if (!options.rootPath) return 'unavailable'
-  return options.hostPresent ? 'reuse' : 'start'
+  if (!options.hostPresent) return 'start'
+  return options.hostRoot && options.hostRoot !== options.rootPath ? 'restart' : 'reuse'
 }

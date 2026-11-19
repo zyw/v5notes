@@ -27,6 +27,7 @@ import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo
 import { loadSafeMode } from '../plugin-host/safeMode'
 import {
   ensureSampleExtensions,
+  getExtensionRuntimeRoot,
   getPluginHost,
   getThemeHost,
   installFromCatalog,
@@ -35,8 +36,10 @@ import {
   listPluginInfos,
   setSafeModeAndReload,
   startExtensionRuntime,
+  stopExtensionRuntime,
 } from '../extension/runtime'
 import { decideRuntimeBoot } from './settingsRuntime'
+import { listCorePluginsWithoutVault } from '../extension/corePlugins'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
   MIGRATION_EXPLICIT_LINE,
@@ -143,6 +146,8 @@ const pendingSwatchId = ref<string | null>(getPendingWelcomeColor()?.id ?? null)
 const activeSwatchId = computed(() => vaultSwatch.value?.id ?? pendingSwatchId.value)
 /** An empty plugin list means different things before and after the host starts. */
 const hostReady = ref(false)
+/** Plugin state lives in the vault that is open; show the registry alone otherwise. */
+const vaultBound = ref(false)
 
 watch(
   () => props.vault?.rootPath,
@@ -178,9 +183,11 @@ function refreshExtensionState() {
     }))
     themeError.value = null
   }
-  plugins.value = listPluginInfos()
   const host = getPluginHost()
+  // Without a vault there is no host; the core registry still describes what is installed.
+  plugins.value = host ? listPluginInfos() : listCorePluginsWithoutVault()
   hostReady.value = host !== null
+  vaultBound.value = Boolean(host && props.vault?.rootPath)
   editors.value = host?.listEditorProviders() ?? []
   activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
   commands.value = listHostCommands()
@@ -378,13 +385,25 @@ async function ensureExtensionRuntime(): Promise<void> {
   // screen (or before the workspace mounted) would otherwise show an empty
   // plugin list forever, because the list is read from the host in memory.
   const rootPath = props.vault?.rootPath
-  const decision = decideRuntimeBoot({ rootPath, hostPresent: getPluginHost() !== null })
-  if (decision !== 'start') return
+  const decision = decideRuntimeBoot({
+    rootPath,
+    hostPresent: getPluginHost() !== null,
+    hostRoot: getExtensionRuntimeRoot(),
+  })
+  if (decision !== 'start' && decision !== 'restart') return
   extensionBusy.value = true
+  // Running hosts may hold editor instances the page rendered; say so instead of
+  // quietly turning them off again when a start fails halfway.
+  let releasedRenderedHost = false
   try {
+    if (decision === 'restart') {
+      releasedRenderedHost = true
+      await stopExtensionRuntime()
+    }
     await startExtensionRuntime(rootPath as string)
   } catch (error) {
-    pluginMessage.value = error instanceof Error ? error.message : String(error)
+    const reason = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = releasedRenderedHost ? `插件宿主未能重新启动：${reason}。回到工作区后再回到这里。` : reason
   } finally {
     extensionBusy.value = false
   }

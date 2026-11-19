@@ -63,6 +63,14 @@ export function getPluginHost(): PluginHost | null {
   return pluginHost
 }
 
+/**
+ * The vault the running hosts were started for. Workspace and settings both
+ * mount against it, so a host for another vault is never reused.
+ */
+export function getExtensionRuntimeRoot(): string | null {
+  return activeRoot
+}
+
 export async function startExtensionRuntime(rootPath: string): Promise<void> {
   await stopExtensionRuntime()
   activeRoot = rootPath
@@ -149,12 +157,18 @@ export function getActiveEditorProvider(): HostEditorProvider | null {
   return pluginHost?.getActiveEditor() ?? null
 }
 
+/** The sample extension this button installs; the row reports it once it is on disk. */
+export const SAMPLE_EXTENSION_ID = 'hello-world'
+
+/**
+ * Samples are vault files, so this needs an open vault — and writes them there
+ * instead of creating a host for one. Without a vault the vault picker has to
+ * name where they should land.
+ */
 export async function ensureSampleExtensions(): Promise<void> {
-  if (!activeRoot || !pluginHost || !themeHost) {
-    throw new Error('请先打开 Vault')
-  }
+  if (!activeRoot) throw new Error('请先打开库')
   await writeSamplePlugin(activeRoot, {
-    id: 'hello-world',
+    id: SAMPLE_EXTENSION_ID,
     manifestJson: JSON.stringify(HELLO_WORLD_MANIFEST, null, 2),
     mainJs: HELLO_WORLD_MAIN_JS,
   })
@@ -164,7 +178,8 @@ export async function ensureSampleExtensions(): Promise<void> {
     mainJs: SAFE_FETCH_MAIN_JS,
   })
   await installForestInkSample(activeRoot)
-  await pluginHost.setEnabled('hello-world', true)
+  if (!pluginHost || !themeHost) return
+  await pluginHost.setEnabled(SAMPLE_EXTENSION_ID, true)
   await pluginHost.setEnabled(SAFE_FETCH_MANIFEST.id, true)
   // Refresh theme discovery
   await themeHost.start()
