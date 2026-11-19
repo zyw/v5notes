@@ -1,4 +1,6 @@
 export * from './types'
+export * from './exportFile'
+export * from './fileSave'
 export * from './skeleton'
 export * from './vaultFs'
 export * from './workspace'

@@ -76,7 +76,7 @@ input { outline: none; }
 .rail-brand:hover, .rail-notes:hover { background: #e8ede6; }
 .rail-brand .brand-mark { width: 31px; height: 31px; }
 .rail-notes { gap: 4px; padding: 4px 0; font-size: 12px; }
-.rail-notes svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+.rail-notes svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
 .rail-spacer { flex: 1; }
 .rail-profile { width: 34px; height: 42px; display: grid; place-items: center; margin-bottom: 4px; border-radius: 9px; }
 .rail-profile:hover { background: #e8ede6; }
@@ -199,7 +199,8 @@ html.is-dragging-note .tree-row.is-drop-target, html.is-dragging-note .tree-root
 .search-result.active .search-result-snippet { color: #6f8678; font-weight: 400; }
 .empty-list { padding: 18px 10px; color: #98a49a; font-size: 12px; line-height: 1.7; text-align: center; }
 .trash-entry { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin: 8px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: #526355; font-size: 13px; text-align: left; }
-.trash-entry svg, .rail-trash svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+/* 丝带图标统一按设置齿轮的 19px 描边图标绘制 */
+.trash-entry svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .trash-entry:hover, .trash-entry.active, .rail-trash[aria-pressed="true"] { color: #315b4a; background: #eef3ee; }
 .sidebar-footer { min-height: 53px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; border-top: 1px solid #e6e8e1; color: #9aa49b; font-size: 10px; }
 .sidebar-footer button, .sidebar-footer summary { color: #748177; font-size: 11px; }

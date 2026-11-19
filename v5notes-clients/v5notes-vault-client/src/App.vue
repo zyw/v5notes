@@ -9,6 +9,8 @@ import type { OpenedVault } from './vault/types'
 import { applyAppearance, loadAppearancePrefs } from './appearance/themes'
 import { applyVaultColorForPath } from './appearance/vaultColors'
 import { stopExtensionRuntime } from './extension/runtime'
+import UpdateDialog from './components/UpdateDialog.vue'
+import { useAppUpdate } from './update'
 
 type Page = 'welcome' | 'workspace' | 'settings'
 const page = ref<Page>('welcome')
@@ -87,6 +89,34 @@ function dismissReauth() {
   account.dismissSessionExpired()
 }
 
+// 安装前先落盘：更新会重启应用，未保存的笔记必须先保存；保存失败就留在编辑状态。
+async function savePristine(): Promise<boolean> {
+  if (!workspaceDirty.value || !workspaceRef.value) return true
+  const saved = await workspaceRef.value.save()
+  if (!saved) banner.value = '当前笔记保存失败，已暂停安装更新'
+  return saved
+}
+
+const {
+  updateState,
+  currentVersion,
+  updateChecking,
+  offeredVersion,
+  releaseNotesAvailable,
+  requestUpdateCheck,
+  showInstalledNotes,
+  downloadUpdate,
+  installReadyUpdate,
+  retryUpdate,
+  dismissUpdateLater,
+  closeUpdate,
+  cancelUpdateDownload,
+} = useAppUpdate({
+  // 有库打开时先把升级提示收住；新版本先落到「关于本机」，或等退出工作区时再弹出。
+  currentVault: () => (page.value === 'workspace' ? vault.value : null),
+  savePristine,
+})
+
 onMounted(() => {
   applyAppearance(loadAppearancePrefs())
   window.addEventListener('beforeunload', onBeforeUnload)
@@ -124,6 +154,7 @@ onUnmounted(() => {
           <path d="M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5zM13 13h6v6h-6z" />
         </svg>
       </button>
+      <div class="ribbon-spacer" />
       <button
         type="button"
         class="ribbon-btn"
@@ -132,11 +163,10 @@ onUnmounted(() => {
         @click="goSettings"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+          <!-- Gear: cog outline with hub, stroke-only like the rest of the rail. -->
+          <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.28 7.28 0 0 0-1.73-1l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65a7.28 7.28 0 0 0-1.73 1l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .61.22l2.49-1c.52.4 1.09.73 1.73 1l.38 2.65c.04.24.25.42.49.42h4c.24 0 .46-.18.49-.42l.38-2.65a7.28 7.28 0 0 0 1.73-1l2.49 1a.5.5 0 0 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2" />
         </svg>
       </button>
-      <div class="ribbon-spacer" />
       <span
         v-if="account.loggedIn.value"
         class="ribbon-account"
@@ -166,8 +196,31 @@ onUnmounted(() => {
           @dirty-change="workspaceDirty = $event"
           @settings="goSettings"
         />
-        <SettingsView v-else :account="account" :vault="vault" :sync="sync" />
+        <SettingsView
+          v-else
+          :account="account"
+          :vault="vault"
+          :sync="sync"
+          :current-version="currentVersion"
+          :update-checking="updateChecking"
+          :offered-version="offeredVersion"
+          :release-notes-available="releaseNotesAvailable"
+          @check-update="requestUpdateCheck"
+          @show-release-notes="showInstalledNotes"
+        />
       </main>
     </div>
+
+    <UpdateDialog
+      v-if="updateState.visible"
+      :phase="updateState.phase"
+      :current-version="currentVersion"
+      @download="downloadUpdate"
+      @install="installReadyUpdate"
+      @retry="retryUpdate"
+      @later="dismissUpdateLater"
+      @close="closeUpdate"
+      @cancel="cancelUpdateDownload"
+    />
   </div>
 </template>

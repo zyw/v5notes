@@ -13,8 +13,10 @@ export const FOREST_INK_MANIFEST = {
   themeMeta: 'theme.json',
 }
 
-export const FOREST_INK_CSS = `/* Forest Ink — sample first-class theme (Phase 6). Only design tokens. */
-:root,
+export const FOREST_INK_CSS = `/* Forest Ink — sample first-class theme (Phase 6). Only design tokens.
+ * Every rule is scoped to this theme: an unscoped :root rule would keep the
+ * palette applied after switching to another theme, because injected theme CSS
+ * is overlaid on top of the shell tokens. */
 :root[data-community-theme='forest-ink'] {
   --bg: #e8f0ea;
   --panel: #f7fbf8;
@@ -28,6 +30,8 @@ export const FOREST_INK_CSS = `/* Forest Ink — sample first-class theme (Phase
   --danger-bg: #f3e4e0;
   --bg-glow-a: #d2e2d8;
   --bg-glow-b: #e3eee6;
+  /* Vault identity strip/colours belong to the theme as well. */
+  --vault: #3d6b54;
 }
 
 :root[data-community-theme='forest-ink'][data-color-mode='dark'] {
@@ -43,5 +47,6 @@ export const FOREST_INK_CSS = `/* Forest Ink — sample first-class theme (Phase
   --danger-bg: #3a2a26;
   --bg-glow-a: #1a241e;
   --bg-glow-b: #15201a;
+  --vault: #6fad8e;
 }
 `

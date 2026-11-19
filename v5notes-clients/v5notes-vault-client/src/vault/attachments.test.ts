@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachmentFromInsertUrl,
   attachmentRelFromImageUrl,
   attachmentUrlText,
   isInlineImageExtension,
@@ -81,5 +82,20 @@ describe('isInlineImageExtension', () => {
     expect(isInlineImageExtension('x.PNG')).toBe(true)
     expect(isInlineImageExtension('x.webp')).toBe(true)
     expect(isInlineImageExtension('x.pdf')).toBe(false)
+  })
+})
+
+describe('attachmentFromInsertUrl', () => {
+  it('turns a percent-encoded insert URL back into an attachment record', () => {
+    const record = attachmentFromInsertUrl('attachments/%E7%85%A7%E7%89%87.png', 1234)
+    expect(record.rel).toBe('attachments/照片.png')
+    expect(record.name).toBe('照片.png')
+    expect(record.sizeBytes).toBe(1234)
+    expect(record.modifiedAt).toBeTypeOf('number')
+  })
+
+  it('round-trips through attachmentUrlText', () => {
+    const rel = 'attachments/my pic-1.png'
+    expect(attachmentFromInsertUrl(attachmentUrlText(rel), 0).rel).toBe(rel)
   })
 })

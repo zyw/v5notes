@@ -7,7 +7,10 @@
  */
 
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
+import { join } from '@tauri-apps/api/path'
+import { exists, readDir, rename, stat } from '@tauri-apps/plugin-fs'
 import { normalizeVaultPath } from '../path/identity'
+import { buildTrashRel } from './trashPaths'
 import { bytesToBase64, extensionOf, isAttachmentTooLarge } from '../sync/attachments'
 import { VaultQuotaRules } from '../sync/limits'
 import { vaultFs } from './vaultFs'
@@ -89,6 +92,13 @@ export function attachmentUrlText(relativePath: string): string {
     .join('/')
 }
 
+/** `attachments/<name>` record derived from an import result's Markdown URL text. */
+export function attachmentFromInsertUrl(urlText: string, sizeBytes: number): VaultAttachment {
+  const rel = attachmentRelFromImageUrl(urlText) ?? decodeURIComponent(urlText)
+  const name = rel.includes('/') ? rel.slice(rel.lastIndexOf('/') + 1) : rel
+  return { rel, name, sizeBytes, modifiedAt: Date.now() }
+}
+
 /**
  * True when an image URL refers to something inside the vault rather than an
  * absolute/data URL. Accepts both raw and percent-encoded vault paths.
@@ -111,6 +121,77 @@ export function isVaultRelativeImageUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+/** One image stored in the attachment folder, for the picker dialog. */
+export interface VaultAttachment {
+  /** Vault-relative path (`attachments/x.png`). */
+  rel: string
+  name: string
+  sizeBytes: number
+  modifiedAt: number | null
+}
+
+/** List images in `attachments/` (newest first); missing folder reads as empty. */
+export async function listVaultAttachments(rootPath: string): Promise<VaultAttachment[]> {
+  const dirAbs = await vaultFs.absolute(rootPath, ATTACHMENT_DIR_REL)
+  let entries
+  try {
+    entries = await readDir(dirAbs)
+  } catch {
+    return []
+  }
+  const out: VaultAttachment[] = []
+  for (const entry of entries) {
+    const name = entry.name
+    if (!name || !entry.isFile || !isInlineImageExtension(name)) continue
+    const fileAbs = await join(dirAbs, name)
+    let sizeBytes = 0
+    let modifiedAt: number | null = null
+    try {
+      const info = await stat(fileAbs)
+      sizeBytes = info.size
+      modifiedAt = info.mtime ? new Date(info.mtime).getTime() : null
+    } catch {
+      /* entry vanished mid-scan; show it without metadata */
+    }
+    out.push({ rel: `${ATTACHMENT_DIR_REL}/${name}`, name, sizeBytes, modifiedAt })
+  }
+  out.sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) || a.name.localeCompare(b.name, 'zh'))
+  return out
+}
+
+/** Move an attachment into the local trash (same `.v5notes/trash` as notes). */
+export async function deleteVaultAttachment(rootPath: string, relativePath: string): Promise<void> {
+  const { displayPath } = normalizeVaultPath(relativePath)
+  if (attachmentRelFromImageUrl(displayPath) === null) {
+    throw new AttachmentError('只能删除附件目录内的图片')
+  }
+  const fromAbs = await vaultFs.absolute(rootPath, displayPath)
+  try {
+    if (!(await exists(fromAbs))) return // already gone — desired end state
+    const trashRel = buildTrashRel(displayPath)
+    const parentRel = trashRel.slice(0, trashRel.lastIndexOf('/'))
+    await vaultFs.mkdir(rootPath, parentRel)
+    let toAbs = await vaultFs.absolute(rootPath, trashRel)
+    for (let i = 2; i < 1000 && (await exists(toAbs)); i++) {
+      toAbs = `${await vaultFs.absolute(rootPath, trashRel)}-${i}`
+    }
+    await rename(fromAbs, toAbs)
+  } catch (error) {
+    // Missing file after a concurrent delete is still success.
+    if (!(await vaultFs.exists(rootPath, displayPath))) return
+    throw error
+  }
+}
+
+/** Import an OS-picked image file into `attachments/`; returns its record. */
+export async function importImageFileToVault(
+  rootPath: string,
+  file: File,
+): Promise<VaultAttachment> {
+  const urlText = await saveImageToVault(rootPath, file)
+  return attachmentFromInsertUrl(urlText, file.size)
 }
 
 /**

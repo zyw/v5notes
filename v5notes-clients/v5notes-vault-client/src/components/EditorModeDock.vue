@@ -11,6 +11,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
  */
 const props = defineProps<{
   mode: 'edit' | 'preview'
+  /** Editing the Markdown source rather than the rendered view. */
+  sourceMode: boolean
   dirty: boolean
   busy: boolean
 }>()
@@ -36,7 +38,10 @@ const customPosition = ref(false)
 const isEditing = computed(() => props.mode === 'edit')
 const minTop = computed(() => MIN_TOP[props.mode])
 const railShown = computed(() => isEditing.value || hovering.value || dragging.value)
-const stateLabel = computed(() => (props.dirty ? '有未保存的更改' : '所有更改已保存'))
+const stateLabel = computed(() => {
+  const mode = props.sourceMode ? '源码模式，' : ''
+  return `${mode}${props.dirty ? '有未保存的更改' : '所有更改已保存'}`
+})
 
 let pointerDown = false
 let moved = false

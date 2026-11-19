@@ -1,16 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
 import brandIcon from '../assets/brand-icon.png'
-import ConfirmDialog from '../components/ConfirmDialog.vue'
 import type { AccountState } from '../account'
 import type { SyncCoordinatorHandles } from '../sync'
-import {
-  CLOUD_PRODUCT_DISPLAY_NAME,
-  DUAL_PRODUCT_HELP,
-  DUAL_PRODUCT_LINE,
-  PRODUCT_DISPLAY_NAME,
-} from '../account/constants'
 import {
   applyAppearance,
   BUILTIN_THEMES,
@@ -22,7 +15,9 @@ import {
 import {
   VAULT_COLOR_PALETTE,
   applyVaultColorForPath,
+  getPendingWelcomeColor,
   resolveVaultColor,
+  setPendingWelcomeColor,
   setVaultColor,
   type VaultColorSwatch,
 } from '../appearance/vaultColors'
@@ -42,16 +37,11 @@ import {
 } from '../extension/runtime'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
-  BACKUP_NOT_SYNC_LINE,
-  BACKUP_SCOPE_HELP,
   MIGRATION_EXPLICIT_LINE,
   MIGRATION_STEPS_HELP,
   backupVaultToZip,
 } from '../backup'
 import {
-  OFFICIAL_PUBLISH_LEAD,
-  OFFICIAL_PUBLISH_STUB_HELP,
-  OFFICIAL_PUBLISH_TITLE,
   assertOfficialPublishChannel,
   loadOfficialPublishDraft,
   saveOfficialPublishDraft,
@@ -63,6 +53,15 @@ const props = defineProps<{
   account: AccountState
   vault?: OpenedVault | null
   sync?: SyncCoordinatorHandles
+  currentVersion?: string
+  updateChecking?: boolean
+  offeredVersion?: string | null
+  releaseNotesAvailable?: boolean
+}>()
+
+const emit = defineEmits<{
+  'check-update': []
+  'show-release-notes': []
 }>()
 
 const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
@@ -77,20 +76,32 @@ const catalogItems = ref<CatalogItem[]>([])
 const catalogSource = ref<'server' | 'bundled' | ''>('')
 const catalogBusy = ref(false)
 const extensionBusy = ref(false)
-const extensionMessage = ref('')
+/** Errors land in the panel where the user acted, never in a distant status line. */
+const pluginMessage = ref('')
+const catalogMessage = ref('')
 const themeError = ref<string | null>(null)
 const pluginTabHosts: Ref<Record<string, HTMLElement | null>> = ref({})
 const backupBusy = ref(false)
-const backupMessage = ref('')
-const migrationAck = ref(false)
-const migrationMessage = ref('')
+const backupResult = ref('')
+const backupError = ref('')
+/** Guide opens in place once acknowledged; no separate confirmation round-trip. */
+const migrationOpen = ref(false)
 const publishDraft = ref<OfficialPublishDraft>(loadOfficialPublishDraft())
-const publishMessage = ref('')
-const showMigrationConfirm = ref(false)
+const publishSaved = ref(false)
+const publishError = ref('')
 
-const panelIds = ['p-account', 'p-backup', 'p-publish', 'p-appearance', 'p-plugins', 'p-catalog', 'p-help', 'p-about'] as const
-const activePanel = ref('p-account')
+
 const mainScroll = ref<HTMLElement | null>(null)
+
+/** 版本号来自壳；浏览器预览没有壳，退回打包时的版本。 */
+const versionLabel = computed(() => props.currentVersion || '2.1.0')
+
+/** 一个按钮说清现状：空闲是「检查更新」，查到新版本就变成「可更新至 x.y.z」。 */
+const updateAction = computed(() => {
+  if (props.updateChecking) return { label: '正在检查…' }
+  if (props.offeredVersion) return { label: '可更新至 ' + props.offeredVersion }
+  return { label: '检查更新' }
+})
 
 const publishOptions: { id: OfficialPublishVisibility; label: string }[] = [
   { id: 'private', label: '私有' },
@@ -104,32 +115,32 @@ const colorModes: { id: ColorMode; label: string }[] = [
   { id: 'dark', label: '深色' },
 ]
 
+/** Header state line: what the two controls below currently resolve to. */
+const activeThemeLabel = computed(
+  () => themes.value.find((t) => t.id === prefs.value.theme)?.name ?? '默认',
+)
+const activeColorModeLabel = computed(
+  () => colorModes.find((m) => m.id === prefs.value.colorMode)?.label ?? '跟随系统',
+)
+
 function setPluginTabHost(pluginId: string, tabId: string, el: unknown): void {
   pluginTabHosts.value[pluginId + ':' + tabId] = (el as HTMLElement | null) ?? null
 }
 
 function scrollToPanel(id: string): void {
-  activePanel.value = id
   const el = document.getElementById(id)
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function onMainScroll(): void {
-  const root = mainScroll.value
-  if (!root) return
-  const marker = root.getBoundingClientRect().top + 140
-  let current: string = panelIds[0]
-  for (const id of panelIds) {
-    const el = document.getElementById(id)
-    if (el && el.getBoundingClientRect().top <= marker) current = id
-  }
-  activePanel.value = current
 }
 
 const hasVault = computed(() => Boolean(props.vault?.rootPath))
 const vaultSwatch = ref<VaultColorSwatch | null>(
   props.vault?.rootPath ? resolveVaultColor(props.vault.rootPath) : null,
 )
+/** Pending welcome colour is what a new vault starts with before one is open. */
+const pendingSwatchId = ref<string | null>(getPendingWelcomeColor()?.id ?? null)
+const activeSwatchId = computed(() => vaultSwatch.value?.id ?? pendingSwatchId.value)
+/** An empty plugin list means different things before and after the host starts. */
+const hostReady = ref(false)
 
 watch(
   () => props.vault?.rootPath,
@@ -139,8 +150,13 @@ watch(
 )
 
 function pickVaultColor(id: string) {
-  if (!props.vault?.rootPath) return
-  vaultSwatch.value = setVaultColor(props.vault.rootPath, id)
+  if (props.vault?.rootPath) {
+    vaultSwatch.value = setVaultColor(props.vault.rootPath, id)
+    return
+  }
+  // No vault open yet: remember the choice for the next one instead of ignoring it.
+  setPendingWelcomeColor(id)
+  pendingSwatchId.value = id
 }
 
 function refreshExtensionState() {
@@ -162,6 +178,7 @@ function refreshExtensionState() {
   }
   plugins.value = listPluginInfos()
   const host = getPluginHost()
+  hostReady.value = host !== null
   editors.value = host?.listEditorProviders() ?? []
   activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
   commands.value = listHostCommands()
@@ -186,7 +203,7 @@ async function loadCatalog() {
     catalogItems.value = list.items
     catalogSource.value = source
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    catalogMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     catalogBusy.value = false
   }
@@ -194,17 +211,18 @@ async function loadCatalog() {
 
 async function installCatalog(item: CatalogItem) {
   if (!hasVault.value) {
-    extensionMessage.value = '请先打开 Vault'
+    catalogMessage.value = '请先打开 Vault'
     return
   }
   extensionBusy.value = true
-  extensionMessage.value = ''
+  catalogMessage.value = ''
   try {
     await installFromCatalog(item)
     refreshExtensionState()
-    extensionMessage.value = `已从 catalog 安装 ${item.name}（${item.kind}）`
+    // The installed item now appears under 已安装扩展; the row keeps its own outcome.
+    catalogMessage.value = `已安装 ${item.name}`
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    catalogMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -217,7 +235,7 @@ async function commitLocal(next: AppearancePrefs) {
 }
 
 async function setTheme(themeId: string) {
-  extensionMessage.value = ''
+  themeError.value = null
   const th = getThemeHost()
   if (th) {
     await th.setActive(themeId)
@@ -239,16 +257,13 @@ async function setColorMode(colorMode: ColorMode) {
 
 async function toggleSafeMode() {
   extensionBusy.value = true
-  extensionMessage.value = ''
+  pluginMessage.value = ''
   try {
     const next = !safeMode.value
     await setSafeModeAndReload(next)
     refreshExtensionState()
-    extensionMessage.value = next
-      ? '已开启安全模式：社区插件跳过，主题回退内置'
-      : '已关闭安全模式'
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -257,16 +272,15 @@ async function toggleSafeMode() {
 async function chooseEditor(id: string) {
   const host = getPluginHost()
   if (!host) {
-    extensionMessage.value = '请先打开 Vault'
+    pluginMessage.value = '请先打开 Vault'
     return
   }
   extensionBusy.value = true
   try {
     host.setActiveEditor(id)
     refreshExtensionState()
-    extensionMessage.value = '已切换编辑器。回到笔记后生效。'
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -275,7 +289,7 @@ async function chooseEditor(id: string) {
 async function togglePlugin(id: string, enabled: boolean) {
   const host = getPluginHost()
   if (!host) {
-    extensionMessage.value = '请先打开 Vault'
+    pluginMessage.value = '请先打开 Vault'
     return
   }
   extensionBusy.value = true
@@ -283,7 +297,7 @@ async function togglePlugin(id: string, enabled: boolean) {
     await host.setEnabled(id, enabled)
     refreshExtensionState()
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -291,13 +305,12 @@ async function togglePlugin(id: string, enabled: boolean) {
 
 async function installSamples() {
   extensionBusy.value = true
-  extensionMessage.value = ''
+  pluginMessage.value = ''
   try {
     await ensureSampleExtensions()
     refreshExtensionState()
-    extensionMessage.value = '已安装示例：hello-world、safe-fetch-demo + Forest Ink 主题'
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -307,61 +320,54 @@ async function runCommand(cmd: HostCommand) {
   try {
     await cmd.run()
   } catch (error) {
-    extensionMessage.value = error instanceof Error ? error.message : String(error)
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   }
 }
 
 async function runBackup() {
   if (!props.vault?.rootPath) {
-    backupMessage.value = '请先打开 Vault'
+    backupError.value = '请先打开 Vault'
     return
   }
   backupBusy.value = true
-  backupMessage.value = ''
+  backupError.value = ''
+  backupResult.value = ''
   try {
     const result = await backupVaultToZip(props.vault.rootPath, {
       vaultName: props.vault.name,
     })
-    if (!result) {
-      backupMessage.value = '已取消保存'
-      return
+    if (result) {
+      backupResult.value = `已保存 ${result.fileCount} 个文件 · ${Math.round(result.bytes / 1024)} KiB · ${result.savedPath}`
     }
-    backupMessage.value = `已备份 ${result.fileCount} 个文件（${Math.round(result.bytes / 1024)} KiB）→ ${result.savedPath}。${BACKUP_NOT_SYNC_LINE}`
   } catch (error) {
-    backupMessage.value = error instanceof Error ? error.message : String(error)
+    backupError.value = error instanceof Error ? error.message : String(error)
   } finally {
     backupBusy.value = false
   }
 }
 
-function requestMigrationGuide() {
-  migrationMessage.value = ''
-  showMigrationConfirm.value = true
-}
-
-function confirmMigrationGuide() {
-  showMigrationConfirm.value = false
-  migrationAck.value = true
-  migrationMessage.value = `${MIGRATION_EXPLICIT_LINE} ${MIGRATION_STEPS_HELP}`
-}
-
-function cancelMigrationGuide() {
-  showMigrationConfirm.value = false
+/** The guide expands under the row that opens it; consequence stays visible while it does. */
+function toggleMigrationGuide() {
+  migrationOpen.value = !migrationOpen.value
 }
 
 function setPublishVisibility(visibility: OfficialPublishVisibility) {
   publishDraft.value = { ...publishDraft.value, visibility }
+  publishSaved.value = false
+}
+
+function onPublishTitleInput() {
+  publishSaved.value = false
 }
 
 function savePublishDraft() {
-  publishMessage.value = ''
+  publishError.value = ''
   try {
     assertOfficialPublishChannel(publishDraft.value.channel)
     publishDraft.value = saveOfficialPublishDraft(publishDraft.value)
-    publishMessage.value =
-      '已保存本机预览偏好（官方通道）。尚未创建公开站点；完整托管后仍不会对第三方插件开放 publish。'
+    publishSaved.value = true
   } catch (error) {
-    publishMessage.value = error instanceof Error ? error.message : String(error)
+    publishError.value = error instanceof Error ? error.message : String(error)
   }
 }
 
@@ -369,19 +375,15 @@ onMounted(() => {
   refreshExtensionState()
   void loadCatalog()
   publishDraft.value = loadOfficialPublishDraft()
-  void nextTick(() => {
-    mainScroll.value?.addEventListener('scroll', onMainScroll, { passive: true })
-    onMainScroll()
-  })
-})
-
-onUnmounted(() => {
-  mainScroll.value?.removeEventListener('scroll', onMainScroll)
 })
 watch(
   () => props.vault?.rootPath,
   () => refreshExtensionState(),
 )
+
+watch(publishDraft, () => {
+  publishSaved.value = false
+}, { deep: true })
 </script>
 
 <template>
@@ -389,191 +391,206 @@ watch(
     <aside class="settings-side">
       <div class="side-brand">
         <img :src="brandIcon" alt="">
-        <div><b>V5Notes</b><small>VAULT · 2.1.0</small></div>
+        <div><b>V5Notes</b></div>
       </div>
-      <div class="side-title"><h1 id="settings-title">设置</h1><span>08</span></div>
-      <p class="side-sub">本地优先 · 本机偏好</p>
+      <div class="side-title"><h1 id="settings-title">设置</h1></div>
 
       <nav class="side-nav" aria-label="设置分区">
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-account' }" @click="scrollToPanel('p-account')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-account')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>
-          账户<span class="n">01</span>
+          账户
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-backup' }" @click="scrollToPanel('p-backup')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-sync')">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+          同步
+        </button>
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-backup')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg>
-          备份与迁移<span class="n">02</span>
+          备份与迁移
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-publish' }" @click="scrollToPanel('p-publish')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-publish')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg>
-          官方发布 / 分享<span class="n">03</span>
+          官方发布 / 分享
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-appearance' }" @click="scrollToPanel('p-appearance')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-appearance')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg>
-          外观<span class="n">04</span>
+          外观
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-plugins' }" @click="scrollToPanel('p-plugins')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-plugins')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>
-          插件与安全<span class="n">05</span>
+          插件与安全
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-catalog' }" @click="scrollToPanel('p-catalog')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-catalog')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>
-          插件目录<span class="n">06</span>
+          插件目录
         </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-help' }" @click="scrollToPanel('p-help')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M6.4 6.2a1.7 1.7 0 0 1 3.3.6c0 1.1-1.7 1.4-1.7 2.4M8 11.5h.01"/></svg>
-          帮助 · 双产品<span class="n">07</span>
-        </button>
-        <button type="button" class="side-nav-item" :class="{ on: activePanel === 'p-about' }" @click="scrollToPanel('p-about')">
+        <button type="button" class="side-nav-item" @click="scrollToPanel('p-about')">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>
-          关于本机<span class="n">08</span>
+          关于本机
         </button>
       </nav>
 
-      <div class="side-sep"></div>
-      <p class="side-note">账号登录可选。未登录仍可建库、写笔记与搜索；同步只在登录后启用。</p>
-
       <div class="side-foot">
-        <span class="side-avatar">V</span>
+        <span class="side-avatar" aria-hidden="true">
+          <!-- Logged in: first letter, like the ribbon avatar. Signed out: stroke person, same weight as the nav icons. -->
+          <template v-if="account.loggedIn.value">
+            {{ (account.profile.value?.nickName || account.username.value || '已登录').slice(0, 1) }}
+          </template>
+          <svg v-else viewBox="0 0 16 16">
+            <circle cx="8" cy="5.5" r="2.25" />
+            <path d="M3.35 13.15v-.55a2.55 2.55 0 0 1 2.55-2.55h4.2a2.55 2.55 0 0 1 2.55 2.55v.55" />
+          </svg>
+        </span>
         <div>
-          <b>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b>
-          <span>{{ vault?.name || '未打开库' }} · {{ hasVault ? '本地编辑' : '本机模式' }}</span>
+          <b>{{ account.loggedIn.value ? (account.profile.value?.nickName || account.username.value || '已登录') : '未登录' }}</b>
+          <span>{{ vault?.name || '未打开库' }}</span>
         </div>
       </div>
     </aside>
 
     <div ref="mainScroll" class="settings-main">
       <div class="settings-inner">
-        <div class="content-meta">
-          <span>SETTINGS / 本机偏好</span>
-          <span class="live"><i></i>LOCAL FIRST · 无云端依赖</span>
-        </div>
-
-        <p class="lede">本地 Vault 优先。账号登录可选；插件与主题经 PluginHost / Theme API 代理，<em>非进程隔离</em>。</p>
-
         <ul class="status-strip" aria-label="当前状态">
           <li>
-            <span class="status-ico" aria-hidden="true">
-              <svg viewBox="0 0 16 16"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M8 7.2v3.2"/></svg>
-            </span>
-            <div class="status-copy">
-              <span>本地库</span>
-              <b><i class="g"></i>{{ vault?.name || '未打开库' }}</b>
-            </div>
+            <button type="button" class="status-chip" @click="scrollToPanel('p-account')">
+              <span class="status-ico" aria-hidden="true">
+                <svg viewBox="0 0 16 16"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M8 7.2v3.2"/></svg>
+              </span>
+              <span class="status-copy">
+                <span>本地库</span>
+                <b :title="vault?.name || '未打开库'"><i class="g"></i>{{ vault?.name || '未打开库' }}</b>
+              </span>
+            </button>
           </li>
           <li>
-            <span class="status-ico" aria-hidden="true">
-              <svg viewBox="0 0 16 16"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>
-            </span>
-            <div class="status-copy">
-              <span>账号</span>
-              <b><i :class="{ g: account.loggedIn.value }"></i>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b>
-            </div>
+            <button type="button" class="status-chip" @click="scrollToPanel('p-account')">
+              <span class="status-ico" aria-hidden="true">
+                <svg viewBox="0 0 16 16"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>
+              </span>
+              <span class="status-copy">
+                <span>账号</span>
+                <b><i :class="{ g: account.loggedIn.value }"></i>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b>
+              </span>
+            </button>
           </li>
           <li>
-            <span class="status-ico" aria-hidden="true">
-              <svg viewBox="0 0 16 16"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
-            </span>
-            <div class="status-copy">
-              <span>同步</span>
-              <b><i :class="{ g: account.loggedIn.value && hasVault }"></i>{{ account.loggedIn.value && hasVault ? '已连接' : '待登录' }}</b>
-            </div>
+            <button type="button" class="status-chip" @click="scrollToPanel('p-sync')">
+              <span class="status-ico" aria-hidden="true">
+                <svg viewBox="0 0 16 16"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+              </span>
+              <span class="status-copy">
+                <span>同步</span>
+                <b><i :class="{ g: account.loggedIn.value && hasVault }"></i>{{ account.loggedIn.value && hasVault ? '已连接' : '未连接' }}</b>
+              </span>
+            </button>
           </li>
           <li>
-            <span class="status-ico" :class="{ on: safeMode }" aria-hidden="true">
-              <svg viewBox="0 0 16 16"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg>
-            </span>
-            <div class="status-copy">
-              <span>安全模式</span>
-              <b><i :class="{ g: safeMode }"></i>{{ safeMode ? '开' : '关' }}</b>
-            </div>
+            <button
+              type="button"
+              class="status-chip"
+              role="switch"
+              :aria-checked="safeMode"
+              :disabled="extensionBusy"
+              @click="toggleSafeMode"
+            >
+              <span class="status-ico" :class="{ on: safeMode }" aria-hidden="true">
+                <svg viewBox="0 0 16 16"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg>
+              </span>
+              <span class="status-copy">
+                <span>安全模式</span>
+                <b><span class="status-switch" :class="{ on: safeMode }" aria-hidden="true"><span></span></span></b>
+              </span>
+            </button>
           </li>
         </ul>
 
         <div class="panel-stack">
           <section class="panel p-account" id="p-account" aria-labelledby="panel-account-title">
             <div class="p-head">
-              <span class="no">01</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg></span>
               <h3 id="panel-account-title">账户</h3>
-              <span class="state">官方服务器 · vault_client</span>
             </div>
             <div class="p-body">
-              <p class="p-lead">同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Vault 始终在本机文件夹。</p>
-              <AccountPanel :account="account" :vault="vault" :sync="sync" />
+              <AccountPanel :account="account" :vault="vault" :sync="sync" mode="account" />
+            </div>
+          </section>
+
+          <section class="panel p-sync" id="p-sync" aria-labelledby="panel-sync-title">
+            <div class="p-head">
+              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
+              <h3 id="panel-sync-title">同步</h3>
+            </div>
+            <div class="p-body">
+              <AccountPanel :account="account" :vault="vault" :sync="sync" mode="sync" />
             </div>
           </section>
 
           <section class="panel p-backup" id="p-backup" aria-labelledby="panel-backup-title">
             <div class="p-head">
-              <span class="no">02</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
               <h3 id="panel-backup-title">备份与迁移</h3>
-              <span class="state">非 Sync</span>
             </div>
             <div class="p-body">
-              <p class="p-lead">整库 zip 仅作备份与迁机，不是日常同步。日常 Sync 走文件级增量；请勿用 zip 覆盖当作 Sync。</p>
-              <div class="book-note">{{ BACKUP_SCOPE_HELP }}</div>
               <div class="book-actions">
-                <button class="book-action" type="button" :disabled="backupBusy || !hasVault" @click="runBackup">
+                <button class="book-action" type="button" :disabled="backupBusy || !hasVault" :title="!hasVault ? '打开库后可导出' : undefined" @click="runBackup">
                   <span class="book-action-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
                   <span class="book-action-copy">
                     <strong>{{ backupBusy ? '正在打包…' : '导出整库 zip' }}</strong>
-                    <span>仅备份 · 非 Sync · {{ vault?.name || '当前库' }}</span>
+                    <span v-if="vault?.name">{{ vault.name }}</span>
                   </span>
-                  <span class="book-action-go">EXPORT →</span>
+                  <span class="book-action-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8h7M7.2 5l3 3-3 3M12.8 4v8"/></svg></span>
                 </button>
-                <button class="book-action" type="button" @click="requestMigrationGuide">
+                <p v-if="backupResult" class="book-small" role="status">{{ backupResult }}</p>
+                <p v-if="backupError" class="book-small book-danger-text" role="alert">{{ backupError }}</p>
+
+                <button class="book-action" type="button" :class="{ open: migrationOpen }" :aria-expanded="migrationOpen" aria-controls="migration-guide" @click="toggleMigrationGuide">
                   <span class="book-action-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5.4h9.2M10 3.2l2.2 2.2L10 7.6M13 10.6H3.8M6 8.4l-2.2 2.2L6 12.8"/></svg></span>
                   <span class="book-action-copy">
-                    <strong>Cloud ↔ Vault 迁移说明</strong>
-                    <span>显式确认 · 不自动合并</span>
+                    <strong>Cloud ↔ Vault 迁移</strong>
+                    <span>{{ migrationOpen ? '隐去步骤' : '查看迁移步骤' }}</span>
                   </span>
-                  <span class="book-action-go">READ →</span>
+                  <span class="book-action-go book-action-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg></span>
                 </button>
+                <div v-if="migrationOpen" id="migration-guide" class="book-note">
+                  <p>{{ MIGRATION_EXPLICIT_LINE }}</p>
+                  <p>{{ MIGRATION_STEPS_HELP }}</p>
+                </div>
               </div>
-              <p v-if="!hasVault" class="book-small">打开 Vault 后可导出备份。</p>
-              <p v-if="backupMessage" class="book-small" role="status">{{ backupMessage }}</p>
-              <p v-if="migrationAck" class="book-small" role="status">{{ migrationMessage }}</p>
             </div>
           </section>
 
           <section class="panel p-publish" id="p-publish" aria-labelledby="panel-publish-title">
             <div class="p-head">
-              <span class="no">03</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
               <h3 id="panel-publish-title">官方发布 / 分享</h3>
-              <span class="state">预览</span>
             </div>
             <div class="p-body">
-              <p class="p-lead">站点发布与分享是 V5Notes 官方产品能力，不向社区第三方插件开放。插件无法申请 publish:*。</p>
-              <div class="book-note">{{ OFFICIAL_PUBLISH_STUB_HELP }}</div>
               <label class="book-field">
-                <span>站点标题（本机预览）</span>
+                <span>站点标题</span>
                 <input v-model="publishDraft.siteTitle" type="text" maxlength="100" placeholder="例如：公开读书笔记" autocomplete="off">
               </label>
               <div class="book-field-label">可见性</div>
-              <div class="book-seg book-seg--three" role="group" aria-label="可见性预览">
-                <button v-for="opt in publishOptions" :key="opt.id" type="button" :class="{ on: publishDraft.visibility === opt.id }" @click="setPublishVisibility(opt.id)">{{ opt.label }}</button>
+              <div class="book-seg book-seg--three" role="group" aria-label="可见性">
+                <button v-for="opt in publishOptions" :key="opt.id" type="button" :aria-pressed="publishDraft.visibility === opt.id" :class="{ on: publishDraft.visibility === opt.id }" @click="setPublishVisibility(opt.id)">{{ opt.label }}</button>
               </div>
               <div class="book-inline">
-                <button class="book-primary" type="button" @click="savePublishDraft">
+                <button class="book-primary" type="button" :class="{ saved: publishSaved }" @click="savePublishDraft">
                   <span class="book-primary-ico" aria-hidden="true">
-                    <svg viewBox="0 0 16 16"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg>
+                    <svg v-if="publishSaved" viewBox="0 0 16 16"><path d="m3.6 8.4 3 3 5.8-6.4"/></svg>
+                    <svg v-else viewBox="0 0 16 16"><path d="M3.6 2.6h7.2l1.6 1.6v9.2H3.6z"/><path d="M5.6 2.6v3.4h4.6V2.6M5.6 10.2h4.8"/></svg>
                   </span>
-                  保存官方通道预览
+                  {{ publishSaved ? '已保存' : '保存设置' }}
                 </button>
-                <span class="book-mono">channel=product · status=preview</span>
               </div>
-              <p v-if="publishMessage" class="book-small" role="status">{{ publishMessage }}</p>
+              <p v-if="publishError" class="book-small book-danger-text" role="alert">{{ publishError }}</p>
             </div>
           </section>
 
           <section class="panel p-appearance" id="p-appearance" aria-labelledby="panel-appearance-title">
             <div class="p-head">
-              <span class="no">04</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
               <h3 id="panel-appearance-title">外观</h3>
-              <span class="state">默认 · 跟随系统</span>
+              <span class="state">{{ activeThemeLabel }} · {{ activeColorModeLabel }}</span>
             </div>
             <div class="p-body">
               <p class="p-lead">内置主题始终可回退。社区主题需通过 CSS 变量校验；非法规则会回退默认并提示。</p>
@@ -591,25 +608,34 @@ watch(
                     <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
                   </div>
                   <div class="book-theme-name">{{ theme.name }}<span class="check">✓</span></div>
-                  <div class="book-theme-desc">{{ theme.description || (theme.builtin ? '内置' : '库内/示例主题') }}</div>
+                  <div v-if="theme.description" class="book-theme-desc">{{ theme.description }}</div>
                 </button>
               </div>
               <div class="book-row">
-                <div><strong>色模式</strong><p class="book-hint">跟随系统，或固定浅色 / 深色。</p></div>
+                <div class="book-row-copy">
+                  <strong>色模式</strong>
+                  <p class="book-hint">跟随系统，或固定浅色 / 深色</p>
+                </div>
                 <div class="book-seg" role="group" aria-label="色模式">
                   <button v-for="mode in colorModes" :key="mode.id" type="button" :class="{ on: prefs.colorMode === mode.id }" @click="setColorMode(mode.id)">{{ mode.label }}</button>
                 </div>
               </div>
-              <div v-if="hasVault && vaultSwatch" class="book-colors">
-                <div class="book-colors-head"><strong>当前库色</strong><span>{{ vaultSwatch.term }} · {{ vaultSwatch.name }}</span></div>
+              <div class="book-colors">
+                <div class="book-colors-head">
+                  <strong>{{ hasVault ? '当前库色' : '库色' }}</strong>
+                  <span>
+                    <template v-if="vaultSwatch">{{ vaultSwatch.term }} · {{ vaultSwatch.name }} — 写入本机偏好，侧栏顶条用它辨认多库</template>
+                    <template v-else>打开库后可选择；这里选的是新库的默认库色</template>
+                  </span>
+                </div>
                 <div class="book-swatches" role="group" aria-label="库色">
                   <button
                     v-for="swatch in VAULT_COLOR_PALETTE"
                     :key="swatch.id"
                     type="button"
                     class="book-swatch"
-                    :class="{ on: vaultSwatch.id === swatch.id }"
-                    :aria-pressed="vaultSwatch.id === swatch.id"
+                    :class="{ on: activeSwatchId === swatch.id }"
+                    :aria-pressed="activeSwatchId === swatch.id"
                     :title="swatch.term + ' · ' + swatch.name"
                     @click="pickVaultColor(swatch.id)"
                   >
@@ -624,22 +650,31 @@ watch(
 
           <section class="panel p-plugins" id="p-plugins" aria-labelledby="panel-plugins-title">
             <div class="p-head">
-              <span class="no">05</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg></span>
               <h3 id="panel-plugins-title">插件与安全</h3>
               <span class="state">安全模式：{{ safeMode ? '开' : '关' }}</span>
             </div>
             <div class="p-body">
-              <p class="p-lead">P1 威胁模型：同页 JS + 权限代理 + Safe Mode。Token 不对插件暴露；网络仅 network:safe（白名单）。</p>
               <div class="book-pref-row">
-                <div class="book-pref-copy"><strong>安全模式</strong><span>开启后仅加载核心插件 + 内置主题；社区扩展全部跳过。</span></div>
+                <div class="book-pref-copy">
+                  <strong>安全模式</strong>
+                  <span>{{ safeMode ? '已开启：仅核心插件与内置主题生效，社区扩展全部跳过。' : '开启后仅加载核心插件与内置主题，社区扩展全部跳过。' }}</span>
+                </div>
                 <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
               </div>
               <div class="book-subhead">
                 <strong>已安装扩展</strong>
-                <button class="book-ghost book-ghost--sm" type="button" :disabled="extensionBusy" @click="installSamples">安装示例扩展</button>
+                <button
+                  class="book-ghost book-ghost--sm"
+                  type="button"
+                  :disabled="extensionBusy || !hasVault"
+                  :title="!hasVault ? '打开库后可安装' : undefined"
+                  @click="installSamples"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+                  安装示例扩展
+                </button>
               </div>
-              <p v-if="!hasVault" class="book-small">打开 Vault 后可启用库内插件与示例主题。</p>
               <ul v-if="plugins.length" class="book-list">
                 <li v-for="p in plugins" :key="p.id" class="book-list-row">
                   <div>
@@ -650,10 +685,12 @@ watch(
                   <button class="book-text-btn" type="button" :disabled="extensionBusy || p.id === 'v5-editor' || (safeMode && !p.core)" @click="togglePlugin(p.id, p.status !== 'loaded')">{{ p.id === 'v5-editor' ? '始终启用' : p.status === 'loaded' ? '禁用' : '启用' }}</button>
                 </li>
               </ul>
-              <p v-if="hasVault && !plugins.length" class="book-small">暂无已安装扩展。</p>
+              <p v-if="!hostReady" class="book-small">插件宿主尚未启动：打开库后再回到这里。</p>
+              <p v-else-if="!hasVault" class="book-small">打开 Vault 后可启用库内插件与示例主题。</p>
+              <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
               <div v-if="editors.length" class="book-cmd-row">
-                <p class="book-mono">笔记编辑器</p>
-                <p class="book-small">同一时间只用一个。切换后回到笔记生效。预览和编辑仍复用当前实例。默认 V5 编辑器不能禁用；启用「纯文本」后可以换过去。</p>
+                <p class="book-sub">笔记编辑器</p>
+                <p class="book-small">同一时间只用一个，切换后回到笔记生效；预览和编辑仍复用当前实例。默认 V5 编辑器不可禁用。</p>
                 <button
                   v-for="ed in editors"
                   :key="ed.id"
@@ -668,35 +705,35 @@ watch(
                 </button>
               </div>
               <div v-if="commands.length" class="book-cmd-row">
-                <p class="book-mono">已注册命令</p>
+                <p class="book-sub">已注册命令</p>
                 <button v-for="cmd in commands" :key="cmd.pluginId + ':' + cmd.id" class="book-cmd" type="button" @click="runCommand(cmd)">
                   <strong>{{ cmd.name }}</strong><span>{{ cmd.pluginId }}:{{ cmd.id }}</span>
                 </button>
               </div>
               <div v-if="settingTabs.length" class="book-plugin-tabs">
-                <p class="book-mono">插件设置页（SettingTab）</p>
+                <p class="book-sub">插件设置</p>
                 <div v-for="tab in settingTabs" :key="tab.pluginId + ':' + tab.id" class="book-plugin-tab">
                   <strong>{{ tab.name }}</strong>
                   <div class="book-plugin-tab-host" :ref="el => setPluginTabHost(tab.pluginId, tab.id, el)"></div>
                 </div>
               </div>
-              <p v-if="extensionMessage" class="book-small" role="status">{{ extensionMessage }}</p>
+              <p v-if="pluginMessage" class="book-small book-danger-text" role="alert">{{ pluginMessage }}</p>
             </div>
           </section>
 
           <section class="panel p-catalog" id="p-catalog" aria-labelledby="panel-catalog-title">
             <div class="p-head">
-              <span class="no">06</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg></span>
               <h3 id="panel-catalog-title">插件目录</h3>
-              <span class="state">本地种子</span>
+              <button type="button" class="p-head-action" :disabled="catalogBusy" :aria-label="catalogBusy ? '刷新中' : '刷新目录'" :title="catalogBusy ? '刷新中' : '刷新目录'" @click="loadCatalog">
+                <svg viewBox="0 0 16 16" aria-hidden="true" :class="{ spinning: catalogBusy }"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+              </button>
             </div>
             <div class="p-body">
-              <p class="p-lead">/vault/v1/catalog/... 与文件 sync 协议解耦（catalogProtocolVersion 独立）。拒绝 publishing 标签；无第三方发布。</p>
-              <div class="book-catalog-head">
-                <span class="book-mono">来源：{{ catalogSource === 'server' ? '服务器' : '本地种子' }}</span>
-                <button class="book-text-btn" type="button" :disabled="catalogBusy" @click="loadCatalog">{{ catalogBusy ? '刷新中…' : '刷新目录' }}</button>
-              </div>
+              <p class="book-source">
+                <span class="book-source-label">来源</span>
+                {{ catalogSource === 'server' ? '服务器' : '本地种子' }}
+              </p>
               <div v-if="catalogItems.length" class="book-catalog-list">
                 <div v-for="item in catalogItems" :key="item.id" class="book-catalog-row">
                   <div>
@@ -707,62 +744,54 @@ watch(
                       <span v-if="item.networkAllowlist?.length" class="book-tag">allowlist: {{ item.networkAllowlist.join(', ') }}</span>
                     </div>
                   </div>
-                  <button class="book-ghost book-ghost--sm" type="button" :disabled="extensionBusy || !hasVault || safeMode" @click="installCatalog(item)">安装</button>
+                  <button
+                    class="book-ghost book-ghost--sm"
+                    type="button"
+                    :disabled="extensionBusy || !hasVault || safeMode"
+                    :title="safeMode ? '安全模式下不可安装' : undefined"
+                    @click="installCatalog(item)"
+                  >
+                    安装
+                  </button>
                 </div>
               </div>
-              <p v-if="extensionMessage" class="book-small" role="status">{{ extensionMessage }}</p>
-            </div>
-          </section>
-
-          <section class="panel p-help" id="p-help" aria-labelledby="panel-help-title">
-            <div class="p-head">
-              <span class="no">07</span>
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M6.4 6.2a1.7 1.7 0 0 1 3.3.6c0 1.1-1.7 1.4-1.7 2.4M8 11.5h.01"/></svg></span>
-              <h3 id="panel-help-title">帮助 · 双产品</h3>
-              <span class="state">两套空间</span>
-            </div>
-            <div class="p-body">
-              <p class="p-lead">两件产品共用一套账号，但笔记空间分开。登录同一账号不会自动合并两边内容。</p>
-              <div class="book-note book-note--accent">{{ DUAL_PRODUCT_LINE }}</div>
-              <div class="book-note">{{ DUAL_PRODUCT_HELP }}</div>
-              <dl class="book-meta">
-                <div><dt>本客户端</dt><dd>{{ PRODUCT_DISPLAY_NAME }}</dd></div>
-                <div><dt>并列产品</dt><dd>{{ CLOUD_PRODUCT_DISPLAY_NAME }}（不做 Vault 插件宿主）</dd></div>
-                <div><dt>边界</dt><dd>两套笔记空间，不静默双向同步</dd></div>
-              </dl>
+              <p v-if="catalogMessage" class="book-small" role="status">{{ catalogMessage }}</p>
             </div>
           </section>
 
           <section class="panel p-about" id="p-about" aria-labelledby="panel-about-title">
             <div class="p-head">
-              <span class="no">08</span>
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg></span>
               <h3 id="panel-about-title">关于本机</h3>
-              <span class="state">V5Notes Vault · 2.1.0</span>
             </div>
             <div class="p-body">
-              <p class="p-lead">安装信息与扩展边界。此页只读，不写入任何云端记录。</p>
               <dl class="book-meta book-meta--about">
-                <div><dt>产品</dt><dd>V5Notes Vault</dd></div>
+                <div><dt>版本</dt><dd>V5Notes Vault <code>{{ versionLabel }}</code></dd></div>
                 <div><dt>Bundle ID</dt><dd><code>xin.v5ai.v5notes.vault</code></dd></div>
                 <div><dt>Deep link</dt><dd><code>v5notes-vault://</code></dd></div>
-                <div><dt>扩展</dt><dd>Phase 8 · 官方发布 stub · 备份 zip · 双产品收尾</dd></div>
               </dl>
-              <div class="book-note">设置即时保存，仅写入本机偏好。账号密码不会被保存到本地；登录状态与库绑定分别存放。</div>
+              <div class="book-about-actions">
+                <button v-if="releaseNotesAvailable" class="book-ghost book-ghost--sm" type="button" @click="emit('show-release-notes')">
+                  本版更新说明
+                </button>
+                <button
+                  class="book-about-check"
+                  :class="{ 'is-offered': Boolean(offeredVersion) }"
+                  type="button"
+                  :disabled="updateChecking"
+                  :aria-busy="updateChecking"
+                  @click="emit('check-update')"
+                >
+                  <svg v-if="updateChecking" class="spinning" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+                  <svg v-else viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V2.8M5.2 5.6 8 2.8l2.8 2.8"/><path d="M3.2 11.2v1.6h9.6v-1.6"/></svg>
+                  {{ updateAction.label }}
+                </button>
+              </div>
             </div>
           </section>
         </div>
       </div>
     </div>
-
-    <ConfirmDialog
-      :open="showMigrationConfirm"
-      title="Cloud ↔ Vault 迁移"
-      :message="MIGRATION_EXPLICIT_LINE + ' 继续仅展示迁移步骤，不会改动任何笔记。'"
-      confirm-label="我明白，显示步骤"
-      @cancel="cancelMigrationGuide"
-      @confirm="confirmMigrationGuide"
-    />
   </section>
 </template>
 
@@ -823,14 +852,6 @@ watch(
   letter-spacing: -0.02em;
   font-weight: 700;
 }
-.side-brand small {
-  display: block;
-  margin-top: 2px;
-  font-family: var(--font-mono);
-  font-size: 7.5px;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-}
 
 .side-title {
   margin: 26px 6px 0;
@@ -844,17 +865,6 @@ watch(
   font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.03em;
-}
-.side-title span {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-.side-sub {
-  margin: 5px 6px 0;
-  font-size: 10.5px;
-  color: var(--muted);
 }
 
 .side-nav {
@@ -884,12 +894,6 @@ watch(
   stroke-linejoin: round;
   flex: none;
 }
-.side-nav-item .n {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  color: color-mix(in srgb, var(--muted) 72%, transparent);
-}
 .side-nav-item:hover {
   background: color-mix(in srgb, var(--panel) 65%, var(--surface));
   color: var(--ink);
@@ -899,19 +903,9 @@ watch(
   color: var(--accent);
   font-weight: 600;
 }
-.side-nav-item.on .n {
-  color: var(--accent);
-}
-
-.side-sep {
-  margin: 14px 9px;
-  border-top: 1px solid var(--line);
-}
-.side-note {
-  margin: 0 9px;
-  font-size: 9.5px;
-  line-height: 1.65;
-  color: var(--muted);
+/* Nav entries are jumps, not a tab set: the section is already visible. */
+.side-nav-item {
+  scroll-behavior: smooth;
 }
 .side-foot {
   margin-top: auto;
@@ -929,15 +923,28 @@ watch(
   display: grid;
   place-items: center;
   color: var(--accent);
-  font-size: 10px;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
   font-weight: 700;
+}
+
+/* Same stroke language as the settings nav and the ribbon gear. */
+.side-avatar svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .side-foot b {
   display: block;
   font-size: 10px;
   font-weight: 600;
 }
-.side-foot span {
+.side-foot > div > span {
   display: block;
   margin-top: 1px;
   font-family: var(--font-mono);
@@ -967,45 +974,6 @@ watch(
   margin: 0 auto;
 }
 
-.content-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.content-meta .live {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.content-meta .live i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.lede {
-  margin: 22px 0 0;
-  max-width: 620px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  line-height: 1.85;
-  letter-spacing: 0.005em;
-  color: var(--ink);
-}
-.lede em {
-  font-style: normal;
-  color: var(--muted);
-}
-
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1021,14 +989,33 @@ watch(
 }
 .status-strip li {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border-right: 1px solid var(--line);
   min-width: 0;
+  border-right: 1px solid var(--line);
 }
 .status-strip li:last-child {
   border-right: 0;
+}
+
+/* The strip is a set of jumps and one live toggle; each chip carries its own state. */
+.status-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  text-align: left;
+  border-radius: 0;
+  transition: background 0.14s ease;
+}
+.status-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.status-chip:disabled {
+  opacity: 0.6;
+}
+.status-chip:focus-visible {
+  outline-offset: -2px;
 }
 .status-ico {
   width: 28px;
@@ -1056,6 +1043,8 @@ watch(
 }
 .status-copy {
   min-width: 0;
+  display: grid;
+  gap: 3px;
 }
 .status-strip li .status-copy > span {
   display: block;
@@ -1067,7 +1056,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-top: 3px;
+  min-width: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
@@ -1085,6 +1074,33 @@ watch(
 .status-strip li i.g {
   background: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Compact switch that reads as the toggle it performs. */
+.status-switch {
+  position: relative;
+  width: 26px;
+  height: 15px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--line) 80%, var(--muted));
+  transition: background 0.16s ease;
+}
+.status-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 18%, transparent);
+  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.status-switch.on {
+  background: var(--accent);
+}
+.status-switch.on span {
+  transform: translateX(11px);
 }
 
 /* ---------- panels ---------- */
@@ -1119,13 +1135,15 @@ watch(
   gap: 9px;
   padding: 18px 22px 10px;
 }
-.p-head .no {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--vault);
-  letter-spacing: 0.02em;
-  order: 0;
+/* Panel lead sentence: explains the section once, before its controls. */
+.p-lead {
+  margin: 0 0 14px;
+  max-width: 680px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--muted);
 }
+
 .p-head .ico {
   width: 26px;
   height: 26px;
@@ -1155,11 +1173,50 @@ watch(
   color: var(--ink);
   order: 0;
 }
+/* Header action sits where the reading eye ends, on the same baseline as the title. */
+.p-head-action {
+  order: 2;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.p-head-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--accent);
+}
+.p-head-action svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-head-action svg.spinning {
+  animation: settings-spin 0.8s linear infinite;
+}
+@keyframes settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-head-action svg.spinning {
+    animation: none;
+  }
+}
+/* State line for the panel (current theme, colour mode, safe mode). */
 .p-head .state {
+  order: 2;
   font-size: 10.5px;
   color: var(--muted);
   white-space: nowrap;
-  order: 2;
 }
 .p-head::after {
   content: '';
@@ -1177,14 +1234,7 @@ watch(
 }
 
 .p-body {
-  padding: 0 22px 20px;
-}
-.p-lead {
-  margin: 0 0 14px;
-  max-width: 680px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--muted);
+  padding: 4px 22px 20px;
 }
 
 
@@ -1211,10 +1261,14 @@ watch(
   font-size: 10px;
   color: var(--ink);
 }
-.book-note--accent {
-  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
-  border-left-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+.book-note p {
+  margin: 0;
+}
+.book-note p + p {
+  margin-top: 6px;
+}
+.book-danger-text {
+  color: var(--danger);
 }
 
 .book-meta {
@@ -1363,6 +1417,7 @@ watch(
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   line-height: 1;
   border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
   border-radius: 5px;
@@ -1379,6 +1434,16 @@ watch(
   height: 28px;
   padding: 0 9px;
   font-size: 9.5px;
+}
+.book-ghost svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .book-ghost:disabled {
   opacity: 0.5;
@@ -1405,6 +1470,13 @@ watch(
   margin-top: 14px;
 }
 .book-mono {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--muted) 80%, transparent);
+}
+.book-sub {
+  margin: 0 0 6px;
   font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.02em;
@@ -1485,9 +1557,43 @@ watch(
   color: var(--muted);
 }
 .book-action-go {
-  font-family: var(--font-mono);
-  font-size: 8px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
   color: color-mix(in srgb, var(--muted) 76%, transparent);
+  transition: color 0.14s ease, transform 0.16s ease;
+}
+.book-action-go svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.book-action:hover:not(:disabled) .book-action-go {
+  color: var(--accent);
+}
+.book-action.open {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.book-action.open .book-action-chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+.book-action-copy span {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* The guide unfolds under the row that owns it, so cause and effect share one place. */
+.book-actions .book-note {
+  margin: 0 0 2px;
+  border-radius: 0 0 7px 7px;
+  border-top: 0;
 }
 
 /* ---------- appearance ---------- */
@@ -1644,6 +1750,16 @@ watch(
   font-size: 10.5px;
   font-weight: 600;
 }
+/* The row is a flex container: an inline-flex segment control would still take
+ * its auto width as a 100% percentage basis, so keep it at its content size.
+ * The bare child selector would end in the child scope without a parent, so
+ * the parent is written inside :where() to keep the scope attribute anchored. */
+.book-row:where(.book-row) > .book-seg {
+  flex: 0 0 auto;
+}
+.book-row-copy {
+  min-width: 0;
+}
 .book-hint {
   margin: 2px 0 0;
   font-size: 9px;
@@ -1660,14 +1776,19 @@ watch(
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .book-colors-head strong {
   font-size: 10.5px;
   font-weight: 600;
 }
 .book-colors-head span {
+  min-width: 0;
+  overflow: hidden;
   font-size: 9px;
   color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .book-swatches {
   display: grid;
@@ -1718,6 +1839,11 @@ watch(
   padding: 10px 0;
   border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+}
+.book-pref-copy {
+  /* Without this the copy is an inline box and the row grows to line-box height. */
+  display: block;
+  min-width: 0;
 }
 .book-pref-copy strong {
   display: block;
@@ -1891,8 +2017,69 @@ watch(
 }
 
 /* ---------- about ---------- */
+/* 先读完信息再决定动作：表格在上，检查更新收在右下角。 */
 .book-meta--about {
   margin-top: 0;
+}
+.book-about-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.book-about-check {
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+.book-about-check svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.book-about-check svg.spinning {
+  animation: settings-spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-about-check svg.spinning {
+    animation: none;
+  }
+}
+.book-about-check:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+/* 查到新版本时，按钮自己承担这次操作的主次。 */
+.book-about-check.is-offered {
+  border-color: color-mix(in srgb, var(--accent-hover) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
+  color: #fff;
+  font-weight: 600;
+}
+.book-about-check.is-offered:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+.book-about-check:disabled {
+  opacity: 0.6;
 }
 .book-meta--about + .book-note {
   margin-top: 14px;

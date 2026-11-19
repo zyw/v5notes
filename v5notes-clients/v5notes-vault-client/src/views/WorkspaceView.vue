@@ -3,15 +3,51 @@ import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } fr
 import { listMatches, type FindOptions, type OutlineEntry } from '@v5md/core'
 import type { EditorSession } from '@v5notes/vault-plugin-api'
 import brandIcon from '../assets/brand-icon.png'
+import AttachmentPickerDialog from '../components/AttachmentPickerDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import EditorModeDock from '../components/EditorModeDock.vue'
+import EditorPalette from '../components/EditorPalette.vue'
+import {
+  DEFAULT_FONT_SIZE,
+  buildEditorCommands,
+  modeChipLabel,
+  buildPluginCommands,
+  clampFontSize,
+  modeSwitchLabel,
+  type CommandActions,
+  type CommandContext,
+  type EditorCommand,
+  type EditorMode,
+  type ExportFormat,
+} from '../models/editorCommands'
+import { useEditorTheme } from '../editor/useEditorTheme'
+import {
+  EXPORT_HTML_THEME,
+  buildMarkdownDocument,
+  buildRenderedDocument,
+  exportFileName,
+  renderNotePdf,
+  renderNotePng,
+  rewriteImageSources,
+  snapshotRenderedHtml,
+} from '../vault/exportFile'
+import { saveExportFile, type FileFilter } from '../vault/fileSave'
 import NameDialog from '../components/NameDialog.vue'
+import MoveDialog, { type MoveTargetOption } from '../components/MoveDialog.vue'
 import TreeIcon from '../components/TreeIcon.vue'
 import { closeTreeMenu } from '../components/treeMenu'
 import VaultTree from '../components/VaultTree.vue'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
 import { APPEARANCE_REL } from '../vault/skeleton'
-import { saveImageToVault, vaultAssetUrl } from '../vault/attachments'
+import {
+  attachmentUrlText,
+  deleteVaultAttachment,
+  importImageFileToVault,
+  listVaultAttachments,
+  saveImageToVault,
+  vaultAssetUrl,
+  type VaultAttachment,
+} from '../vault/attachments'
 import { vaultSearch, type SearchHit } from '../vault/search'
 import { emptyTrash, listTrash, moveToTrash, restoreFromTrash, type TrashEntry } from '../vault/trash'
 import type { OpenedVault, VaultTreeNode } from '../vault/types'
@@ -28,6 +64,7 @@ import {
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
+  listHostCommands,
   startExtensionRuntime,
   stopExtensionRuntime,
 } from '../extension/runtime'
@@ -50,7 +87,9 @@ const tree = ref<VaultTreeNode[]>([])
 const selectedPath = ref<string | null>(null)
 const content = ref('')
 const savedContent = ref('')
-const editorMode = ref<'preview' | 'edit'>('preview')
+/** Preview is read-only; edit either renders the note or shows its Markdown source. */
+const editorMode = ref<EditorMode>('preview')
+const sourceMode = ref(false)
 const busy = ref(false)
 const status = ref('')
 const sidebarOpen = ref(true)
@@ -58,6 +97,28 @@ const SIDEBAR_WIDTH_KEY = 'v5notes.vault.sidebar-width.v1'
 const sidebarWidth = ref(readSidebarWidth())
 const resizingSidebar = ref(false)
 const externalNotice = ref<string | null>(null)
+/* ---------- 附件选择对话框（编辑器工具栏「图片」入口） ---------- */
+const attachmentPickerRef = ref<InstanceType<typeof AttachmentPickerDialog> | null>(null)
+const attachmentOpen = ref(false)
+const attachmentBusy = ref(false)
+const attachmentList = ref<VaultAttachment[]>([])
+/** Attachments the open note references — stale rows warn that a delete broke them. */
+const referencedAttachments = computed(() => {
+  const refs = new Set<string>()
+  const pattern = /!\[[^\]]*\]\(([^)\s]+)/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(content.value)) !== null) {
+    const raw = match[1]
+    if (!raw) continue
+    try {
+      const rel = decodeURIComponent(raw)
+      if (rel.startsWith('attachments/') || rel.startsWith('附件/')) refs.add(rel)
+    } catch {
+      /* leave malformed links untracked */
+    }
+  }
+  return refs
+})
 
 function clampSidebarWidth(width: number): number {
   return Math.max(220, Math.min(480, Math.round(width)))
@@ -228,10 +289,7 @@ const flatNotes = computed(() => {
 
 function toggleSidebarMenu() {
   sidebarMenuOpen.value = !sidebarMenuOpen.value
-  if (sidebarMenuOpen.value) {
-    commandOpen.value = false
-    closeTreeMenu()
-  }
+  if (sidebarMenuOpen.value) closeTreeMenu()
 }
 
 function chooseGroup(group: NoteGroup) {
@@ -271,9 +329,191 @@ const findOptions = computed<FindOptions>(() => ({
   regexp: useRegexp.value,
 }))
 const canReplace = computed(
-  () => editorMode.value === 'edit' && findHits.value.length > 0 && !busy.value,
+  () => editorMode.value !== 'preview' && findHits.value.length > 0 && !busy.value,
 )
-const commandOpen = ref(false)
+const paletteOpen = ref(false)
+const exporting = ref(false)
+const FONT_SIZE_KEY = 'v5notes.vault.editor-font-size.v1'
+const fontSize = ref(readFontSize())
+const { preference: editorThemePreference, theme: editorTheme, setPreference: setEditorThemePreference, syncAppScheme } = useEditorTheme()
+const pluginCommands = ref<Awaited<ReturnType<typeof listHostCommands>>>([])
+
+function readFontSize(): number {
+  try {
+    const raw = Number(localStorage.getItem(FONT_SIZE_KEY))
+    return Number.isFinite(raw) && raw > 0 ? clampFontSize(raw) : DEFAULT_FONT_SIZE
+  } catch {
+    return DEFAULT_FONT_SIZE
+  }
+}
+
+function applyFontSize(size: number): void {
+  fontSize.value = clampFontSize(size)
+  try {
+    localStorage.setItem(FONT_SIZE_KEY, String(fontSize.value))
+  } catch {
+    /* private mode: the size still applies for this session */
+  }
+}
+
+const commandContext = computed<CommandContext>(() => ({
+  mode: editorMode.value,
+  hasNote: Boolean(selectedPath.value),
+  dirty: dirty.value,
+  busy: busy.value,
+  sidebarOpen: sidebarOpen.value,
+  outlineOpen: outlineOpen.value,
+  outlineTab: outlineTab.value,
+  trashOpen: showTrash.value,
+  fontSize: fontSize.value,
+}))
+
+const commandActions: CommandActions = {
+  enterEdit: () => { void enterEdit() },
+  enterSource: () => { void enterSource() },
+  leaveEdit: () => { void leaveEdit() },
+  saveNote: () => { void saveCurrent() },
+  toggleSidebar: () => { sidebarOpen.value = !sidebarOpen.value },
+  toggleOutline: () => toggleOutlinePanel(),
+  toggleFind: () => toggleFindPanel(),
+  toggleTrash: () => { sidebarOpen.value = true; void toggleTrashPanel() },
+  openAttachments: () => { void openAttachmentDialog() },
+  changeFontSize: delta => applyFontSize(fontSize.value + delta),
+  exportNote: format => { void exportNote(format) },
+  copyMarkdown: () => { void copyNoteMarkdown() },
+  openSettings: () => emit('settings'),
+}
+
+const commands = computed<EditorCommand[]>(() =>
+  buildEditorCommands(commandActions).concat(buildPluginCommands(pluginCommands.value)),
+)
+
+function runEditorCommand(command: EditorCommand): void {
+  // Repeatable commands (font size) stay in the palette so they can be repeated.
+  if (!command.keepOpen) paletteOpen.value = false
+  Promise.resolve()
+    .then(() => command.run())
+    .catch(error => { status.value = error instanceof Error ? error.message : String(error) })
+}
+
+function toggleOutlinePanel(): void {
+  if (outlineOpen.value && outlineTab.value === 'outline') {
+    outlineOpen.value = false
+    return
+  }
+  outlineOpen.value = true
+  setOutlineTab('outline')
+}
+
+function toggleFindPanel(): void {
+  if (outlineOpen.value && outlineTab.value === 'find') {
+    outlineOpen.value = false
+    return
+  }
+  openFind()
+}
+
+function showModeToast(mode: EditorMode): void {
+  showToast(modeSwitchLabel(mode))
+}
+
+/** The vault has no server, so relative attachment links resolve locally. */
+function resolveExportAsset(source: string): string {
+  const match = /^(attachments|附件)\//.exec(source)
+  if (!match) return source
+  return new URL(`${match[1]}/${source.slice(match[0].length)}`, `${window.location.origin}/`).href
+}
+
+function exportFilters(format: ExportFormat): FileFilter[] {
+  if (format === 'image') return [{ name: 'PNG 图片', extensions: ['png'] }]
+  if (format === 'markdown') return [{ name: 'Markdown', extensions: ['md'] }]
+  if (format === 'html') return [{ name: 'HTML 网页', extensions: ['html'] }]
+  return [{ name: 'PDF', extensions: ['pdf'] }]
+}
+
+/**
+ * Export the open note. A dirty draft is saved first so the file matches the
+ * editor; a failed save cancels the export instead of shipping stale content.
+ */
+async function exportNote(format: ExportFormat): Promise<void> {
+  if (!selectedPath.value || exporting.value) return
+  exporting.value = true
+  status.value = ''
+  try {
+    if (dirty.value) {
+      const ok = await saveCurrent()
+      if (!ok || dirty.value) {
+        status.value = '保存失败，已取消导出'
+        return
+      }
+    }
+    if (!editorSession.value) await ensureEditorMounted()
+    // Source mode renders Markdown, not the note: rasterise from the formatted
+    // view so the export still shows the note the way it reads.
+    if (sourceMode.value && (format === 'pdf' || format === 'image')) {
+      sourceMode.value = false
+      syncEditorSurface()
+      await nextTick()
+      await new Promise(resolve => setTimeout(resolve, 60))
+    }
+    const markdown = editorSession.value?.getMarkdown() ?? content.value
+    const payload = {
+      name: noteTitle.value,
+      markdown,
+      html: rewriteImageSources(
+        snapshotRenderedHtml(editorSession.value?.getContentElement?.() ?? null),
+        resolveExportAsset,
+      ),
+    }
+    const fileName = exportFileName(noteTitle.value, format === 'markdown' ? 'md' : format === 'image' ? 'png' : format)
+    let result: 'saved' | 'canceled'
+    let missing = 0
+    let pages = 0
+    if (format === 'markdown') {
+      result = await saveExportFile(fileName, buildMarkdownDocument(payload), exportFilters(format))
+    } else if (format === 'html') {
+      result = await saveExportFile(
+        fileName,
+        buildRenderedDocument(payload.name, payload.html, EXPORT_HTML_THEME),
+        exportFilters(format),
+      )
+    } else {
+      // Rasterising needs the rendered note; images must settle first or the
+      // snapshot would carry empty boxes.
+      await nextTick()
+      await editorSession.value?.waitForImages?.()
+      const rendered = format === 'image'
+        ? await renderNotePng(payload.html, { resolveAsset: resolveExportAsset })
+        : await renderNotePdf(payload.html, { resolveAsset: resolveExportAsset })
+      missing = rendered.missingImages
+      pages = format === 'pdf' ? ('pages' in rendered ? Number(rendered.pages) : 0) : 0
+      result = await saveExportFile(
+        fileName,
+        new Uint8Array(await rendered.blob.arrayBuffer()),
+        exportFilters(format),
+      )
+    }
+    if (result === 'canceled') return
+    if (missing) status.value = `已导出 ${fileName}，${missing} 张外链图片未能嵌入`
+    else if (pages) status.value = `已导出 ${fileName}（${pages} 页）`
+    else status.value = `已导出 ${fileName}`
+  } catch (error) {
+    status.value = error instanceof Error ? error.message : '导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function copyNoteMarkdown(): Promise<void> {
+  try {
+    const markdown = editorSession.value?.getMarkdown() ?? content.value
+    await navigator.clipboard.writeText(markdown)
+    status.value = '已复制 Markdown'
+  } catch (error) {
+    status.value = `复制失败：${error instanceof Error ? error.message : String(error)}`
+  }
+}
+
 const toast = ref<string | null>(null)
 
 interface FindHitView {
@@ -302,6 +542,11 @@ const nameDialog = ref<{
   parentPath: string | null
   target: VaultTreeNode | null
   error: string | null
+} | null>(null)
+const moveDialog = ref<{
+  node: VaultTreeNode
+  error: string | null
+  submitting: boolean
 } | null>(null)
 const confirmDialog = ref<{
   mode: 'delete' | 'empty-trash' | 'close-dirty' | 'external-reload'
@@ -385,14 +630,14 @@ async function ensureEditorMounted() {
   const provider = getActiveEditorProvider()
   if (!provider) return
   if (editorSession.value && mountedEditorId === provider.id) {
-    editorSession.value.setEditable(editorMode.value === 'edit')
+    syncEditorSurface()
     return
   }
   destroyEditorSession()
   const rootPath = props.vault.rootPath
   const session = await provider.mount(el, {
     markdown: content.value,
-    editable: editorMode.value === 'edit',
+    editable: editorMode.value !== 'preview',
     locale: 'zh-CN',
     theme: 'paper',
     placeholder: '开始写作…',
@@ -411,6 +656,10 @@ async function ensureEditorMounted() {
         return ''
       }
     },
+    onPickImage: () => {
+      // Toolbar image button → the vault attachment picker, never the OS dialog.
+      void openAttachmentDialog()
+    },
     resolveVaultAsset: async (relativePath) => {
       try {
         if (!(await vaultFs.exists(rootPath, relativePath))) return ''
@@ -428,6 +677,108 @@ async function ensureEditorMounted() {
   }
   editorSession.value = session
   mountedEditorId = provider.id
+  syncEditorSurface()
+}
+
+/* ---------- 附件选择对话框 ---------- */
+
+async function refreshAttachments() {
+  try {
+    attachmentList.value = await listVaultAttachments(props.vault.rootPath)
+  } catch (error) {
+    emit('error', error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function openAttachmentDialog() {
+  if (attachmentOpen.value) return
+  attachmentOpen.value = true
+  closeTreeMenu()
+  await refreshAttachments()
+}
+
+function closeAttachmentDialog() {
+  attachmentOpen.value = false
+}
+
+async function onAttachmentLoadUrl(item: VaultAttachment) {
+  const picker = attachmentPickerRef.value
+  if (!picker) return
+  try {
+    const url = await vaultAssetUrl(props.vault.rootPath, item.rel)
+    picker.setPreview(item.rel, url)
+  } catch (error) {
+    picker.fail(`无法预览「${item.name}」：${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+async function onAttachmentInsert(item: VaultAttachment) {
+  if (!selectedPath.value) {
+    status.value = '请先打开一篇笔记再插入图片'
+    return
+  }
+  // The stored file is the source of truth — a missing image must not leave a
+  // dangling reference behind.
+  if (!(await vaultFs.exists(props.vault.rootPath, item.rel))) {
+    attachmentPickerRef.value?.fail(`「${item.name}」已不在附件目录中`)
+    await refreshAttachments()
+    return
+  }
+  const url = attachmentUrlText(item.rel)
+  const name = item.name.replace(/\.[^.]+$/, '')
+  if (editorMode.value === 'preview' && selectedPath.value) {
+    // No caret in preview: switch to edit so the image lands where the user
+    // was reading, not at a forced end-of-document position.
+    await enterEdit()
+  }
+  if (editorMode.value !== 'preview' && editorSession.value) {
+    // Focus returns to the caret inside insertImageUrl — no manual refocus.
+    editorSession.value.insertImage({ name, url })
+    attachmentOpen.value = false
+    return
+  }
+  status.value = '无法进入编辑模式，未插入图片'
+}
+
+async function onAttachmentRemove(item: VaultAttachment) {
+  const picker = attachmentPickerRef.value
+  attachmentBusy.value = true
+  try {
+    await deleteVaultAttachment(props.vault.rootPath, item.rel)
+    picker?.deleteDone(true)
+    status.value = `已移入回收站：${item.name}`
+  } catch (error) {
+    picker?.deleteDone(false, error instanceof Error ? error.message : String(error))
+  } finally {
+    attachmentBusy.value = false
+  }
+}
+
+async function onAttachmentImportFiles(files: File[]) {
+  const picker = attachmentPickerRef.value
+  attachmentBusy.value = true
+  const failures: string[] = []
+  try {
+    for (const file of files) {
+      try {
+        await importImageFileToVault(props.vault.rootPath, file)
+      } catch (error) {
+        failures.push(`${file.name}：${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  } finally {
+    attachmentBusy.value = false
+  }
+  await refreshAttachments()
+  // Imports only land in the list; inserting stays an explicit user action.
+  if (failures.length === files.length && failures.length) {
+    picker?.fail(failures.join('；'))
+    picker?.importDone(false)
+    return
+  }
+  if (failures.length) picker?.fail(`部分导入失败：${failures.join('；')}`)
+  picker?.importDone(true)
+  status.value = `已导入 ${files.length - failures.length} 张图片`
 }
 
 watch(content, (value) => {
@@ -438,8 +789,13 @@ watch(content, (value) => {
   }
   editorSession.value?.setMarkdown(value)
 })
-watch(editorMode, (mode) => {
-  editorSession.value?.setEditable(mode === 'edit')
+// Source mode is editable as well; only preview is read-only.
+watch(editorMode, () => {
+  syncEditorSurface()
+})
+// Theme changes reach the live editor instance; they never remount it.
+watch(editorTheme, (theme) => {
+  editorSession.value?.setTheme?.(theme)
 })
 watch(selectedPath, (path) => {
   if (!path) {
@@ -449,6 +805,16 @@ watch(selectedPath, (path) => {
   }
   void ensureEditorMounted()
 })
+// The note canvas mounts on demand; re-apply the body size once it exists.
+watch(editorMountEl, el => {
+  el?.style.setProperty('--note-font-size', `${fontSize.value}px`)
+})
+
+// Keep the plain-text fallback editor in step with the same setting: it inherits
+// from its container, so the shared variable is written there too.
+watch(fontSize, size => {
+  editorMountEl.value?.style.setProperty('--note-font-size', `${size}px`)
+}, { immediate: true })
 
 function focusOutline(start: number) {
   editorSession.value?.focusAt(start)
@@ -573,30 +939,9 @@ function closeSearch() {
   searchHits.value = []
 }
 
-function toggleCommand() {
-  commandOpen.value = !commandOpen.value
-  if (commandOpen.value) sidebarMenuOpen.value = false
-}
-
-function runCommand(command: string) {
-  commandOpen.value = false
-  if (command === 'new') createNoteRoot()
-  else if (command === 'save') void saveCurrent()
-  else if (command === 'mode') void (editorMode.value === 'preview' ? enterEdit() : leaveEdit())
-  else if (command === 'sidebar') sidebarOpen.value = !sidebarOpen.value
-  else if (command === 'outline') outlineOpen.value = !outlineOpen.value
-  else if (command === 'trash') {
-    sidebarOpen.value = true
-    void toggleTrashPanel()
-  }
-  else if (command === 'settings') emit('settings')
-}
-
 function onDocumentPointer(event: PointerEvent) {
-  if (!commandOpen.value && !sidebarMenuOpen.value) return
+  if (!sidebarMenuOpen.value) return
   const target = event.target instanceof Element ? event.target : null
-  if (target?.closest('.command-wrap') || target?.closest('.command-menu')) return
-  if (commandOpen.value) commandOpen.value = false
   if (sidebarMenuOpen.value) {
     if (target?.closest('.sidebar-menu') || target?.closest('.sidebar-menu-btn')) return
     sidebarMenuOpen.value = false
@@ -616,10 +961,15 @@ watch(status, value => {
   if (value && value !== '已保存') showToast(value)
 })
 
-watch([nameDialog, confirmDialog], () => {
-  if (nameDialog.value || confirmDialog.value) {
-    commandOpen.value = false
+// Closing a dialog returns the caret to the editor so typing continues.
+watch([nameDialog, moveDialog, confirmDialog, attachmentOpen], ([name, move, confirm, picker], previous) => {
+  if (name || move || confirm || picker) {
     closeTreeMenu()
+    return
+  }
+  const wasOpen = previous ? !!previous[0] || !!previous[1] || !!previous[2] || !!previous[3] : false
+  if (wasOpen && selectedPath.value && editorMode.value !== 'preview') {
+    void nextTick(() => editorSession.value?.focus())
   }
 })
 
@@ -650,7 +1000,6 @@ async function openNote(node: VaultTreeNode) {
     touchNoteRecency(node.path)
     outlineTab.value = 'outline'
     if (searchOpen.value) closeSearch()
-    commandOpen.value = false
     sidebarMenuOpen.value = false
     if (window.matchMedia('(max-width: 800px)').matches) sidebarOpen.value = false
   } catch (error) {
@@ -681,15 +1030,43 @@ async function saveCurrent(): Promise<boolean> {
 }
 
 async function enterEdit() {
-  editorMode.value = 'edit'
+  enterWritableMode('edit')
 }
 
+async function enterSource() {
+  enterWritableMode('source')
+}
+
+/**
+ * Put the live editor into one mode. Both surfaces being writable is what makes
+ * the switches work: source mode is editable too, and the editor reports its
+ * editable flag separately from its view.
+ */
+function syncEditorSurface(): void {
+  editorSession.value?.setEditable(editorMode.value !== 'preview')
+  editorSession.value?.setSourceMode?.(sourceMode.value)
+}
+
+/** Undo history and the Markdown model survive a mode switch: no remount. */
+function enterWritableMode(mode: Exclude<EditorMode, 'preview'>): void {
+  if (editorMode.value === mode) return
+  editorMode.value = mode
+  sourceMode.value = mode === 'source'
+  syncEditorSurface()
+  showModeToast(mode)
+}
+
+/** Preview only reports success once the save lands; a failure keeps edit mode. */
 async function leaveEdit() {
+  if (editorMode.value === 'preview') return
   if (dirty.value) {
     const ok = await saveCurrent()
     if (!ok) return
   }
   editorMode.value = 'preview'
+  sourceMode.value = false
+  syncEditorSurface()
+  showModeToast('preview')
 }
 
 function parentOf(path: string | null): string | null {
@@ -747,6 +1124,94 @@ function openDelete(node: VaultTreeNode) {
   }
 }
 
+/* ---------- 移动目录 / 笔记 ---------- */
+
+function parentDirOf(path: string): string {
+  const index = path.lastIndexOf('/')
+  return index >= 0 ? path.slice(0, index) : ''
+}
+
+function isUnder(path: string, ancestor: string): boolean {
+  return ancestor === '' || path === ancestor || path.startsWith(`${ancestor}/`)
+}
+
+/** Every directory in the vault, depth-first, so the picker mirrors the tree order. */
+const directoryOptions = computed<MoveTargetOption[]>(() => {
+  const out: MoveTargetOption[] = [{ path: '', label: '库根目录', depth: 0 }]
+  const walk = (nodes: VaultTreeNode[], depth: number) => {
+    for (const node of nodes) {
+      if (node.kind !== 'dir') continue
+      out.push({ path: node.path, label: node.name, depth })
+      walk(node.children ?? [], depth + 1)
+    }
+  }
+  walk(tree.value, 1)
+  return out
+})
+
+const moveTargets = computed<MoveTargetOption[]>(() => {
+  const node = moveDialog.value?.node
+  if (!node) return directoryOptions.value
+  const current = parentDirOf(node.path)
+  return directoryOptions.value.map(target => ({
+    ...target,
+    current: target.path === current,
+    blocked: node.kind === 'dir' && isUnder(target.path, node.path),
+  }))
+})
+
+function openMove(node: VaultTreeNode) {
+  closeTreeMenu()
+  moveDialog.value = { node, error: null, submitting: false }
+}
+
+async function submitMove(targetDir: string) {
+  const dialog = moveDialog.value
+  if (!dialog || dialog.submitting) return
+  const node = dialog.node
+  const fromDir = parentDirOf(node.path)
+  if (targetDir === fromDir || (node.kind === 'dir' && isUnder(targetDir, node.path))) {
+    moveDialog.value = null
+    return
+  }
+  const leaf = node.name
+  const toRel = targetDir ? `${targetDir}/${leaf}` : leaf
+  let destination: string
+  try {
+    destination = normalizeVaultPath(toRel).displayPath
+  } catch (error) {
+    dialog.error = error instanceof Error ? error.message : String(error)
+    return
+  }
+  dialog.submitting = true
+  busy.value = true
+  dialog.error = null
+  try {
+    if (dirty.value && isUnder(selectedPath.value ?? '', node.path)) {
+      const ok = await saveCurrent()
+      if (!ok) {
+        dialog.error = status.value || '移动前需要先保存当前笔记'
+        return
+      }
+    }
+    if (await vaultFs.exists(props.vault.rootPath, destination)) {
+      throw new VaultPathError(`目标目录中已有同名的${node.kind === 'dir' ? '目录' : '笔记'}`)
+    }
+    await vaultFs.rename(props.vault.rootPath, node.path, destination)
+    if (selectedPath.value && isUnder(selectedPath.value, node.path)) {
+      selectedPath.value = `${destination}${selectedPath.value.slice(node.path.length)}`
+    }
+    moveDialog.value = null
+    await refreshTree()
+    status.value = '已移动'
+  } catch (error) {
+    dialog.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    dialog.submitting = false
+    busy.value = false
+  }
+}
+
 async function submitName(raw: string) {
   if (!nameDialog.value) return
   const dialog = nameDialog.value
@@ -791,10 +1256,6 @@ async function submitName(raw: string) {
     }
 
     if (dialog.mode === 'rename' && dialog.target) {
-      if (dialog.target.virtual) {
-        // The attachments folder is auto-created on first insert; not renamable.
-        throw new VaultPathError('附件目录不可重命名')
-      }
       if (dirty.value && selectedPath.value === dialog.target.path) {
         const ok = await saveCurrent()
         if (!ok) return
@@ -833,11 +1294,6 @@ async function confirmAction() {
   busy.value = true
   try {
     if (dialog.mode === 'delete' && dialog.node) {
-      if (dialog.node.virtual) {
-        // Nothing on disk to remove; the row reappears on next refresh.
-        confirmDialog.value = null
-        return
-      }
       if (dirty.value && selectedPath.value === dialog.node.path) {
         // Discard or save? Destructive delete of current — clear dirty after trash.
       }
@@ -963,23 +1419,42 @@ async function persistAppearanceIntent(prefs: AppearancePrefs) {
 function onKeydown(event: KeyboardEvent) {
   const meta = event.metaKey || event.ctrlKey
   if (event.key === 'Escape') {
-    if (commandOpen.value) commandOpen.value = false
     if (sidebarMenuOpen.value) sidebarMenuOpen.value = false
     if (searchOpen.value) closeSearch()
   }
+  const modalBlocking = !!nameDialog.value || !!confirmDialog.value || attachmentOpen.value
   if (meta && event.key.toLowerCase() === 's') {
     event.preventDefault()
     void saveCurrent()
   }
-  if (meta && event.key.toLowerCase() === 'n') {
+  if (meta && event.key.toLowerCase() === 'n' && !modalBlocking) {
     event.preventDefault()
     openCreateNote(null)
   }
-  if (meta && event.key.toLowerCase() === 'k' && !nameDialog.value && !confirmDialog.value) {
+  if (meta && event.key.toLowerCase() === 'k' && !modalBlocking) {
     event.preventDefault()
-    commandOpen.value = !commandOpen.value
+    paletteOpen.value = !paletteOpen.value
+    return
   }
-  if (meta && event.key.toLowerCase() === 'f' && selectedPath.value && !nameDialog.value && !confirmDialog.value) {
+  // Editor mode shortcuts mirror the palette chips: ⌘E edit, ⌘2 source, ⌘R preview.
+  if (meta && !event.shiftKey && !event.altKey && selectedPath.value && !modalBlocking) {
+    if (event.key.toLowerCase() === 'e' || event.key === '1') {
+      event.preventDefault()
+      void enterEdit()
+      return
+    }
+    if (event.key === '2') {
+      event.preventDefault()
+      void enterSource()
+      return
+    }
+    if (event.key.toLowerCase() === 'r') {
+      event.preventDefault()
+      void leaveEdit()
+      return
+    }
+  }
+  if (meta && event.key.toLowerCase() === 'f' && selectedPath.value && !modalBlocking) {
     event.preventDefault()
     openFind()
   }
@@ -995,7 +1470,6 @@ watch(
     searchHits.value = []
     searchOpen.value = false
     showTrash.value = false
-    commandOpen.value = false
     sidebarMenuOpen.value = false
     outlineTab.value = 'outline'
     outlineEntries.value = []
@@ -1021,8 +1495,14 @@ async function setupWatcher() {
   }
 }
 
+// The shell writes data-color-mode on <html>; keep `auto` following it.
+const appearanceObserver = typeof MutationObserver === 'undefined'
+  ? null
+  : new MutationObserver(() => syncAppScheme())
+
 onMounted(async () => {
   window.addEventListener('keydown', onKeydown)
+  appearanceObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-color-mode'] })
   narrowQuery = window.matchMedia('(max-width: 800px)')
   if (narrowQuery.matches) sidebarOpen.value = false
   narrowQuery.addEventListener('change', onNarrowChange)
@@ -1051,6 +1531,7 @@ onMounted(async () => {
     })
     await startExtensionRuntime(props.vault.rootPath)
     refreshRibbons()
+    pluginCommands.value = listHostCommands()
     if (selectedPath.value) void ensureEditorMounted()
     const prefs = loadAppearancePrefs()
     applyAppearance(prefs)
@@ -1062,6 +1543,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  appearanceObserver?.disconnect()
   document.removeEventListener('pointerdown', onDocumentPointer, true)
   narrowQuery?.removeEventListener('change', onNarrowChange)
   narrowOutlineQuery?.removeEventListener('change', onNarrowOutlineChange)
@@ -1078,7 +1560,6 @@ onUnmounted(() => {
 })
 
 async function toggleTrashPanel() {
-  commandOpen.value = false
   sidebarMenuOpen.value = false
   searchOpen.value = false
   showTrash.value = !showTrash.value
@@ -1363,6 +1844,7 @@ defineExpose({
           @add-note="openCreateNote"
           @add-dir="openCreateDir"
           @rename="openRename"
+          @move="openMove"
           @remove="openDelete"
         />
         <div v-if="noteGroup === 'list' ? !flatNotes.length : !tree.length" class="tree-empty">
@@ -1410,7 +1892,11 @@ defineExpose({
       />
     </aside>
 
-    <section class="editor-pane" :class="{ editing: editorMode === 'edit' }">
+    <section
+      class="editor-pane"
+      :class="{ editing: editorMode !== 'preview' }"
+      :style="{ '--note-font-size': `${fontSize}px` }"
+    >
       <div class="editor-main">
         <header class="editor-toolbar">
           <button
@@ -1433,11 +1919,14 @@ defineExpose({
                 <path d="M1.8 8s2.3-4 6.2-4 6.2 4 6.2 4-2.3 4-6.2 4S1.8 8 1.8 8Z" />
                 <circle cx="8" cy="8" r="1.8" />
               </svg>
+              <svg v-else-if="editorMode === 'source'" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="m5.6 4.6-3 3.4 3 3.4M10.4 4.6l3 3.4-3 3.4" />
+              </svg>
               <svg v-else viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M3 12.7 4.2 9 11 2.2l2.5 2.5-6.8 6.8z" />
                 <path d="m9.6 3.8 2.4 2.4" />
               </svg>
-              {{ editorMode === 'preview' ? '预览中' : '编辑中' }}
+              {{ modeChipLabel(editorMode) }}
             </span>
             <span
               v-if="dirty && editorMode === 'preview'"
@@ -1461,60 +1950,27 @@ defineExpose({
               </button>
             </div>
 
-            <div class="command-wrap">
-              <button
-                type="button"
-                class="command-btn"
-                :aria-expanded="commandOpen"
-                aria-haspopup="menu"
-                @click.stop="toggleCommand"
-              >
-                命令 <kbd>{{ modKey }}K</kbd>
-              </button>
-              <div v-if="commandOpen" class="command-menu" role="menu" aria-label="工作区命令" @click.stop>
-                <button type="button" role="menuitem" @click="runCommand('new')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h5l3 3v8H4zM9 2.8v2.9h2.7M8 8.2v4M6 10.2h4" /></svg>
-                  新建笔记 <kbd>{{ modKey }}N</kbd>
-                </button>
-                <button type="button" role="menuitem" :disabled="!dirty || busy" @click="runCommand('save')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h8l2 2v8H3zM5 3v4h6V3M5 13V9h6v4" /></svg>
-                  保存 <kbd>{{ modKey }}S</kbd>
-                </button>
-                <button type="button" role="menuitem" @click="runCommand('mode')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path v-if="editorMode === 'preview'" d="M3 12.7 4.2 9 11 2.2l2.5 2.5-6.8 6.8z" />
-                    <path v-else d="m3.5 8.5 3 3 6-7" />
-                  </svg>
-                  {{ editorMode === 'preview' ? '进入编辑' : '完成编辑' }}
-                </button>
-                <div class="command-sep" role="separator" />
-                <button type="button" role="menuitem" @click="runCommand('sidebar')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10" rx="1.6" /><path d="M6.5 3v10" /></svg>
-                  {{ sidebarOpen ? '隐藏侧栏' : '显示侧栏' }}
-                </button>
-                <button v-if="selectedPath" type="button" role="menuitem" @click="runCommand('outline')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10" rx="1.6" /><path d="M9.5 3v10" /></svg>
-                  {{ outlineOpen ? '隐藏大纲' : '显示大纲' }}
-                </button>
-                <button type="button" role="menuitem" @click="runCommand('trash')">
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.5 5V3.5h3V5M4.8 5l.6 8.5h5.2l.6-8.5M6.8 7.2v4M9.2 7.2v4" /></svg>
-                  回收站
-                </button>
-                <button type="button" role="menuitem" @click="runCommand('settings')">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 1.72l-.06.4a2 2 0 0 1-1 1.4l-.7.4a2 2 0 0 1-1.72.2l-.38-.13a2 2 0 0 0-2.48.9l-.22.38a2 2 0 0 0 .43 2.55l.3.27a2 2 0 0 1 .66 1.6v.8a2 2 0 0 1-.66 1.6l-.3.27a2 2 0 0 0-.43 2.55l.22.38a2 2 0 0 0 2.48.9l.38-.13a2 2 0 0 1 1.72.2l.7.4a2 2 0 0 1 1 1.4l.06.4a2 2 0 0 0 2 1.72h.44a2 2 0 0 0 2-1.72l.06-.4a2 2 0 0 1 1-1.4l.7-.4a2 2 0 0 1 1.72-.2l.38.13a2 2 0 0 0 2.48-.9l.22-.38a2 2 0 0 0-.43-2.55l-.3-.27a2 2 0 0 1-.66-1.6v-.8a2 2 0 0 1 .66-1.6l.3-.27a2 2 0 0 0 .43-2.55l-.22-.38a2 2 0 0 0-2.48-.9l-.38.13a2 2 0 0 1-1.72-.2l-.7-.4a2 2 0 0 1-1-1.4l-.06-.4a2 2 0 0 0-2-1.72z"/><circle cx="12" cy="12" r="3"/></svg>
-                  设置
-                </button>
-              </div>
-            </div>
+            <button
+              type="button"
+              class="command-btn"
+              aria-haspopup="dialog"
+              :aria-expanded="paletteOpen"
+              :aria-label="`命令面板（${modKey}K）`"
+              :title="`命令面板（${modKey}K）`"
+              @click.stop="paletteOpen = true"
+            >
+              <svg class="command-btn-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4 4"/></svg>
+              命令 <kbd>{{ modKey }}K</kbd>
+            </button>
 
             <button
               v-if="selectedPath"
               type="button"
               class="toolbar-icon outline-toggle"
-              :aria-pressed="outlineOpen"
-              :title="outlineOpen ? '隐藏大纲' : '显示大纲'"
-              :aria-label="outlineOpen ? '隐藏大纲' : '显示大纲'"
-              @click="outlineOpen = !outlineOpen"
+              :aria-pressed="outlineOpen && outlineTab === 'outline'"
+              :title="outlineOpen && outlineTab === 'outline' ? '隐藏大纲' : '显示大纲'"
+              :aria-label="outlineOpen && outlineTab === 'outline' ? '隐藏大纲' : '显示大纲'"
+              @click="toggleOutlinePanel"
             >
               <svg viewBox="0 0 20 20" aria-hidden="true">
                 <rect x="2.8" y="3.8" width="14.4" height="12.4" rx="2.2" />
@@ -1555,8 +2011,9 @@ defineExpose({
         </div>
 
         <EditorModeDock
-          v-if="selectedPath && !commandOpen && !externalNotice"
-          :mode="editorMode"
+          v-if="selectedPath && !externalNotice"
+          :mode="editorMode === 'preview' ? 'preview' : 'edit'"
+          :source-mode="sourceMode"
           :dirty="dirty"
           :busy="busy"
           @edit="enterEdit"
@@ -1565,6 +2022,17 @@ defineExpose({
         />
 
         <p v-if="toast" class="workspace-toast" role="status">{{ toast }}</p>
+
+        <EditorPalette
+          :open="paletteOpen"
+          :commands="commands"
+          :context="commandContext"
+          :editor-theme="editorThemePreference"
+          :resolved-theme="editorTheme"
+          @close="paletteOpen = false"
+          @run="runEditorCommand"
+          @theme="setEditorThemePreference"
+        />
       </div>
 
       <aside v-show="outlineOpen && !!selectedPath" class="outline-sidebar" aria-label="大纲与查找">
@@ -1668,7 +2136,7 @@ defineExpose({
                     type="text"
                     placeholder="替换为"
                     aria-label="替换为"
-                    :disabled="editorMode !== 'edit'"
+                    :disabled="editorMode === 'preview'"
                   />
                   <button type="button" class="find-replace-action" :disabled="!canReplace" @click="replaceOne">
                     替换
@@ -1722,6 +2190,24 @@ defineExpose({
       @submit="submitName"
     />
 
+    <MoveDialog
+      :open="!!moveDialog"
+      :title="moveDialog?.node.kind === 'dir' ? '移动目录' : '移动笔记'"
+      :subject="
+        moveDialog
+          ? moveDialog.node.kind === 'dir'
+            ? moveDialog.node.name
+            : moveDialog.node.name.replace(/\.md$/i, '')
+          : ''
+      "
+      :targets="moveTargets"
+      :initial-path="moveDialog ? parentDirOf(moveDialog.node.path) : ''"
+      :busy="!!moveDialog?.submitting"
+      :error="moveDialog?.error"
+      @cancel="moveDialog = null"
+      @submit="submitMove"
+    />
+
     <ConfirmDialog
       :open="!!confirmDialog"
       :title="confirmDialog?.title || ''"
@@ -1737,6 +2223,20 @@ defineExpose({
       :busy="busy"
       @cancel="confirmDialog = null; pendingClose = false"
       @confirm="confirmAction"
+    />
+
+    <AttachmentPickerDialog
+      ref="attachmentPickerRef"
+      :is-open="attachmentOpen"
+      :busy="attachmentBusy"
+      :attachments="attachmentList"
+      :referenced="referencedAttachments"
+      @cancel="closeAttachmentDialog"
+      @insert="onAttachmentInsert"
+      @remove="onAttachmentRemove"
+      @import-files="onAttachmentImportFiles"
+      @load-url="onAttachmentLoadUrl"
+      @refresh="refreshAttachments"
     />
   </div>
 </template>

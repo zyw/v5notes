@@ -57,6 +57,13 @@ export function validateThemeCss(css: string): CssValidationResult {
     errors.push('禁止用 * 选择器隐藏全部 UI')
   }
 
+  // Theme CSS is injected on top of the shell, so every `:root` rule must be
+  // scoped to its own theme. A bare `:root` rule leaks its palette into every
+  // other theme, where switching then looks like it does nothing.
+  if (/(?:^|[},])\s*:root\s*(?=[,{])/i.test(body)) {
+    errors.push("以 :root 开头的规则必须限定到本主题，例如 :root[data-community-theme='<id>']")
+  }
+
   const definedVars = new Set<string>()
   const varDecl = /(--[a-zA-Z0-9-_]+)\s*:/g
   let m: RegExpExecArray | null

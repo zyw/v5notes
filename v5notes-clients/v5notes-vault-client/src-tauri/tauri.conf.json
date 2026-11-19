@@ -29,6 +29,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": "v1Compatible",
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -47,6 +48,15 @@
     },
     "fs": {
       "requireLiteralLeadingDot": false
+    },
+    "updater": {
+      "pubkey": "ZFc1MGNuVnpkR1ZrSUdOdmJXMWxiblE2SUcxcGJtbHphV2R1SUhCMVlteHBZeUJyWlhrNklERTFSRGMxUkVVM09VRkJSVEpDT1RNS1VsZFRWRXMyTm1FMU1UTllSbU5GTmpWVmNEWmhRamxSTkRaQ1RUTjVZM1J3WkVSdFJ6Wm5WMGxzZDFaeWFuVlhZMGxDU0hwMWJtb0s=",
+      "endpoints": [
+        "https://github.com/zyw/v5notes/releases/latest/download/vault-latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

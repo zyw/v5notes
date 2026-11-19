@@ -19,6 +19,7 @@ const emit = defineEmits<{
   addNote: [parent: VaultTreeNode | null]
   addDir: [parent: VaultTreeNode | null]
   rename: [node: VaultTreeNode]
+  move: [node: VaultTreeNode]
   remove: [node: VaultTreeNode]
 }>()
 
@@ -51,8 +52,24 @@ function activate(node: VaultTreeNode) {
   else if (node.kind === 'note') emit('open', node)
 }
 
-function openMenu(event: MouseEvent, node: VaultTreeNode) {
-  openTreeMenu(node.identityKey, event.currentTarget as HTMLElement)
+/** The row ⋯ button and the row context menu share one menu instance. */
+function openMenu(node: VaultTreeNode, anchor: EventTarget | null) {
+  if (!(anchor instanceof HTMLElement)) return
+  openTreeMenu(node.identityKey, anchor)
+}
+
+/** Right-click acts on the row it is over and opens that row's menu. */
+function onContextMenu(event: MouseEvent, node: VaultTreeNode) {
+  event.preventDefault()
+  if (node.kind === 'dir' && !expanded.value[node.path]) toggle(node.path)
+  openMenu(node, event.currentTarget)
+}
+
+function onKeydown(event: KeyboardEvent, node: VaultTreeNode) {
+  if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+    event.preventDefault()
+    openMenu(node, event.currentTarget)
+  }
 }
 
 function run(action: () => void) {
@@ -77,6 +94,8 @@ onBeforeUnmount(() => {
           file: node.kind === 'file',
         }"
         :style="{ '--depth': depth ?? 0 }"
+        tabindex="-1"
+        @contextmenu="onContextMenu($event, node)"
       >
         <button
           v-if="node.kind === 'dir'"
@@ -105,6 +124,7 @@ onBeforeUnmount(() => {
           class="tree-label"
           :title="node.path"
           @click="activate(node)"
+          @keydown="onKeydown($event, node)"
         >
           <TreeIcon
             :kind="node.kind === 'dir' ? 'folder' : 'note'"
@@ -123,7 +143,7 @@ onBeforeUnmount(() => {
           aria-haspopup="menu"
           :aria-label="`更多操作：${node.name}`"
           title="更多操作"
-          @click.stop="openMenu($event, node)"
+          @click.stop="openMenu(node, $event.currentTarget)"
         >
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <circle cx="3.6" cy="8" r="1.15" />
@@ -138,17 +158,10 @@ onBeforeUnmount(() => {
         class="tree-menu"
         :style="menuStyle"
         role="menu"
-        aria-label="笔记操作"
+        :aria-label="`${node.name}的操作`"
         @click.stop
       >
         <template v-if="node.kind === 'dir'">
-          <button type="button" role="menuitem" @click="run(() => emit('addNote', node))">
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 2.5h5l3 3v8H4z" />
-              <path d="M9 2.8v2.9h2.7M8 8.2v4M6 10.2h4" />
-            </svg>
-            新建笔记
-          </button>
           <button type="button" role="menuitem" @click="run(() => emit('addDir', node))">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M2 5.2h4l1 1.2h7v6.4H2z" />
@@ -156,8 +169,27 @@ onBeforeUnmount(() => {
             </svg>
             新建子目录
           </button>
+          <button type="button" role="menuitem" @click="run(() => emit('addNote', node))">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 2.5h5l3 3v8H4z" />
+              <path d="M9 2.8v2.9h2.7M6 10.2h4M8 8.2v4" />
+            </svg>
+            新建笔记
+          </button>
           <div class="tree-menu-sep" role="separator" />
         </template>
+        <button
+          v-if="node.kind === 'note'"
+          type="button"
+          role="menuitem"
+          @click="run(() => emit('open', node))"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 2.5h5l3 3v8H4z" />
+            <path d="M9 2.8v2.9h2.7M5.5 8.2h5M5.5 10.6h3.5" />
+          </svg>
+          打开
+        </button>
         <button type="button" role="menuitem" @click="run(() => emit('rename', node))">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M3 12.6 4.2 8.9 11 2.1l2.5 2.5-6.8 6.8z" />
@@ -165,6 +197,13 @@ onBeforeUnmount(() => {
           </svg>
           重命名
         </button>
+        <button type="button" role="menuitem" @click="run(() => emit('move', node))">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M1.5 8h7M6 5.5 8.5 8 6 10.5M10.5 3v10M13 6.2v3.6" />
+          </svg>
+          {{ node.kind === 'dir' ? '移动到…' : '移动到目录…' }}
+        </button>
+        <div class="tree-menu-sep" role="separator" />
         <button type="button" role="menuitem" class="is-danger" @click="run(() => emit('remove', node))">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M4 5h8l-.7 8.1H4.7zM6 5V3.4h4V5M3 5h10" />
@@ -183,6 +222,7 @@ onBeforeUnmount(() => {
         @add-note="emit('addNote', $event)"
         @add-dir="emit('addDir', $event)"
         @rename="emit('rename', $event)"
+        @move="emit('move', $event)"
         @remove="emit('remove', $event)"
       />
     </li>

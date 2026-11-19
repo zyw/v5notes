@@ -85,6 +85,8 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
     if (!name || HIDDEN_ROOT_SKIP.has(name)) continue
     // Skip vault metadata dir in the note tree (still exists on disk).
     if (!dirRel && name === V5NOTES_DIR) continue
+    // Attachment folder is managed implicitly by the editor; never listed.
+    if (!dirRel && toIdentityKey(name) === toIdentityKey(ATTACHMENT_DIR_REL)) continue
     if (entry.isSymlink) continue
 
     const rel = dirRel ? `${dirRel}/${name}` : name
@@ -123,19 +125,6 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
     if (a.kind !== 'dir' && b.kind === 'dir') return 1
     return a.name.localeCompare(b.name, 'zh')
   })
-
-  // Virtual `attachments/` row at the root so inserted images have a visible home.
-  if (!dirRel && !nodes.some(node => toIdentityKey(node.path) === toIdentityKey(ATTACHMENT_DIR_REL))) {
-    const virtual = normalizeVaultPath(ATTACHMENT_DIR_REL)
-    nodes.unshift({
-      path: virtual.displayPath,
-      identityKey: virtual.identityKey,
-      name: ATTACHMENT_DIR_REL,
-      kind: 'dir',
-      children: [],
-      virtual: true,
-    })
-  }
 
   // Reject case-only duplicates under the same parent (Linux-safe §6.2).
   const seen = new Set<string>()

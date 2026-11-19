@@ -1198,7 +1198,8 @@ code {
   font-size: 0.88rem;
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -1207,11 +1208,65 @@ code {
   background: #fff;
 }
 
+.field select {
+  width: 100%;
+  cursor: pointer;
+  color: var(--ink);
+}
+
 .modal-actions {
   margin-top: 18px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Dialog confirm/cancel: icon + label reads faster than a lone word. */
+.action-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 13px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
+  outline-offset: 2px;
+}
+
+.action-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.primary.action-btn {
+  box-shadow: 0 1px 2px rgba(36, 53, 44, 0.12);
+}
+
+.ghost.action-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink) 22%, var(--line));
+  background: color-mix(in srgb, var(--ink) 4%, var(--panel));
 }
 
 /* ============================================================
@@ -1451,6 +1506,40 @@ code {
 /* ============================================================
    Workspace · 对齐 Cloud 客户端的工作区（品牌栏 / 笔记树 / 编辑器 / 大纲）
    ============================================================ */
+
+/*
+ * The command palette is teleported to <body>, outside .workspace, so its
+ * surface tokens live on the root instead — the same values, one definition.
+ */
+body {
+  --ws-sidebar: color-mix(in srgb, var(--vault) 6%, #f5f6f1);
+  --ws-paper: #fffefa;
+  --ws-line: color-mix(in srgb, var(--vault) 9%, #e4e6df);
+  --ws-line-soft: color-mix(in srgb, var(--vault) 6%, #e6e8e1);
+  --ws-tree-text: #39473d;
+  --ws-tree-active-text: var(--vault-deep);
+  --ws-icon: #68776d;
+  --ws-heading: #718077;
+  --ws-muted: #8b978c;
+  --ws-foot-text: #526355;
+  --ws-foot-hover: #e9eee8;
+  --ws-popover-bg: #fffefa;
+}
+
+:root[data-color-mode='dark'] body {
+  --ws-sidebar: color-mix(in srgb, var(--vault) 8%, var(--sidebar-bg));
+  --ws-paper: var(--panel);
+  --ws-line: color-mix(in srgb, var(--vault) 10%, var(--line));
+  --ws-line-soft: color-mix(in srgb, var(--vault) 7%, transparent);
+  --ws-tree-text: var(--ink);
+  --ws-tree-active-text: var(--vault-deep);
+  --ws-icon: var(--muted);
+  --ws-heading: var(--muted);
+  --ws-muted: var(--muted);
+  --ws-foot-text: var(--ink);
+  --ws-foot-hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ws-popover-bg: var(--panel);
+}
 
 .workspace {
   --ws-sidebar: color-mix(in srgb, var(--vault) 6%, #f5f6f1);
@@ -2607,10 +2696,6 @@ code {
   color: var(--ws-icon-strong);
 }
 
-.command-wrap {
-  position: relative;
-}
-
 .command-btn {
   display: inline-flex;
   align-items: center;
@@ -2646,65 +2731,286 @@ code {
   font-size: 10px;
 }
 
-.command-menu {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 7px);
-  right: 0;
-  width: 220px;
-  display: grid;
-  gap: 1px;
-  padding: 5px;
-  border: 1px solid var(--ws-line);
-  border-radius: 10px;
-  background: var(--ws-popover-bg);
-  box-shadow: var(--ws-shadow);
-}
-
-.command-menu button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
-  border-radius: 6px;
-  color: var(--ws-foot-text);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  text-align: left;
-}
-
-.command-menu button:hover:not(:disabled) {
-  background: var(--ws-foot-hover);
-  color: var(--ws-icon-strong);
-}
-
-.command-menu button:disabled {
-  opacity: 0.45;
-}
-
-.command-menu button kbd {
-  margin-left: auto;
-  color: var(--ws-muted);
-  font: inherit;
-  font-size: 10px;
-}
-
-.command-menu svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+.command-btn-ic {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.55;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.command-sep {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--ws-line-soft);
+/* ---------- 命令面板（移植自 Cloud 客户端） ---------- */
+
+.palette-backdrop {
+  position: fixed;
+  z-index: 130;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding-top: 8vh;
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.palette {
+  width: min(620px, calc(100vw - 40px));
+  max-height: calc(92vh - 12px);
+  max-height: calc(92dvh - 12px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ws-line);
+  border-radius: 14px;
+  background: var(--ws-paper);
+  box-shadow: 0 30px 70px rgba(20, 36, 27, 0.3);
+  color: var(--ws-tree-text);
+  /* Shells/plugins may set their own size on #app; the panel keeps its own. */
+  font-size: 13px;
+}
+
+.palette-input {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ws-line-soft);
+  color: var(--ws-muted);
+}
+
+.palette-input .ic {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.palette-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ws-tree-active-text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  outline: none;
+}
+
+.palette-input kbd {
+  padding: 3px 5px;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  color: var(--ws-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.palette-state {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--ws-line-soft);
+  background: color-mix(in srgb, var(--ws-sidebar) 40%, var(--ws-paper));
+  color: var(--ws-heading);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  letter-spacing: .02em;
+}
+
+.palette-state strong {
+  color: var(--vault-deep);
+  font-weight: 600;
+}
+
+.palette-theme {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--ws-line-soft);
+  background: color-mix(in srgb, var(--ws-sidebar) 26%, var(--ws-paper));
+}
+
+.palette-theme-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ws-foot-text);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.palette-theme-label svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  fill: none;
+  stroke: var(--ws-icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.palette-theme-select {
+  min-width: 200px;
+  max-width: 60%;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--ws-line);
+  border-radius: 7px;
+  background-color: var(--ws-paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23708478' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 13px;
+  appearance: none;
+  color: var(--ws-tree-active-text);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+/* Export does not follow the editor theme yet; say so where the choice is made. */
+.palette-theme-note {
+  flex: 1 0 100%;
+  padding-left: 22px;
+  color: var(--ws-heading);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+}
+
+.palette-theme-select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
+  outline-offset: 1px;
+}
+
+.palette-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 4px 7px 6px;
+}
+
+.palette-group {
+  padding: 7px 10px 3px;
+  color: var(--ws-heading);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.palette-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  color: var(--ws-foot-text);
+  font-family: var(--font-ui);
+  text-align: left;
+}
+
+.palette-item:hover,
+.palette-item.is-active {
+  background: var(--ws-foot-hover);
+}
+
+.palette-item .ic {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: none;
+  stroke: var(--ws-icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.palette-item .pi-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.palette-item .pi-copy strong {
+  color: var(--ws-tree-active-text);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.palette-item .pi-copy span {
+  color: var(--ws-muted);
+  font-size: 10.5px;
+}
+
+.palette-item .pi-badge {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.palette-item .pi-badge.is-state {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+:root[data-color-mode='dark'] .palette-item .pi-badge.is-state {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent-hover);
+}
+
+.palette-item .pi-badge.is-meta {
+  color: var(--ws-heading);
+  letter-spacing: .01em;
+}
+
+.palette-item .pi-kbd {
+  margin-left: auto;
+  color: var(--ws-heading);
+  font-size: 11px;
+}
+
+.palette-empty {
+  margin: 28px 0;
+  color: var(--ws-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: center;
+}
+
+.palette-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--ws-line-soft);
+  color: var(--ws-heading);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
 }
 
 .outline-toggle {
@@ -2750,6 +3056,15 @@ code {
   display: flex;
   flex-direction: column;
   background: var(--ws-paper);
+  /* Body size from the command palette; only scales inline text, not code. */
+  font-size: var(--note-font-size, 17px);
+}
+
+/* Without a note the body is a bare slot; center its content like a sheet. */
+.editor-body:empty {
+  flex: none;
+  overflow: visible;
+  font-size: inherit;
 }
 
 .editor-body .vault-plain-editor {
@@ -2794,8 +3109,24 @@ code {
 
 .editor-body .v5md {
   background: var(--v5-bg);
-  font-size: 17px;
+  /* Body size comes from the command palette (--note-font-size on the pane). */
+  font-size: var(--note-font-size, 17px);
   line-height: 1.75;
+}
+
+/* Body size is a reading preference: the chrome around the text keeps its size. */
+.editor-body .v5md .v5-toolbar {
+  font-size: 15px;
+}
+
+/*
+ * Source mode keeps the line box consistent with the prose view: the note
+ * setting drives the line height, while the code itself is set at 82% of it so
+ * the monospace column stays balanced against the serif body.
+ */
+.editor-body .v5md.v5-source-mode {
+  font-size: calc(var(--note-font-size, 17px) * 0.82);
+  line-height: 1.9;
 }
 
 .editor-body .v5md .v5-outline {

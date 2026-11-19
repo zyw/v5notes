@@ -23,6 +23,8 @@
     "fs:allow-copy-file",
     "fs:allow-watch",
     "fs:allow-unwatch",
+    "updater:default",
+    "process:default",
     {
       "identifier": "fs:scope",
       "allow": [

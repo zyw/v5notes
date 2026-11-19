@@ -20,12 +20,16 @@ import { join } from '@tauri-apps/api/path'
 import { VAULT_JSON_REL } from '../vault/skeleton'
 import type { VaultJson } from '../models/vault'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   account: AccountState
   vault?: OpenedVault | null
   /** Global coordinator from App.vue; local engine only as a fallback. */
   sync?: SyncCoordinatorHandles | null
-}>()
+  /** 'account' shows identity only; 'sync' shows what acts on syncing. */
+  mode?: 'account' | 'sync'
+}>(), {
+  mode: 'account',
+})
 
 const serverBusy = ref(false)
 const serverError = ref('')
@@ -285,8 +289,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="settings-block account-panel" aria-labelledby="account-title">
-    <h2 id="account-title">账号</h2>
-    <p class="settings-help dual-product">{{ account.dualProductLine }}</p>
+    <h2 id="account-title">{{ props.mode === 'sync' ? '同步' : '账号' }}</h2>
 
     <div class="server-row" role="group" aria-label="服务器">
       <button
@@ -327,6 +330,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="account.loggedIn.value" class="account-card">
+      <template v-if="props.mode === 'account'">
       <div class="account-identity">
         <strong>{{ account.profile.value?.nickName || account.profile.value?.userName || account.username.value || '已登录' }}</strong>
         <span v-if="account.profile.value?.email">{{ account.profile.value.email }}</span>
@@ -358,14 +362,9 @@ onBeforeUnmount(() => {
           </div>
         </dl>
       </div>
+      </template>
 
-      <div class="sync-guide">
-        <h3>同步</h3>
-        <p class="settings-help tight">
-          仅登录后可绑定云端库。未打开本地库时无法同步；离线仍可本地编辑，失败项进入重试队列。
-          冲突会生成「冲突」副本，不会静默覆盖。附件（图片等）随库增量同步；超单文件上限会角标跳过。
-        </p>
-        <p v-if="!vault" class="settings-help tight muted">请先在欢迎页打开或创建本地库，再回来绑定同步。</p>
+      <div v-if="props.mode === 'sync'" class="sync-guide">
         <div class="login-actions">
           <button
             type="button"
@@ -411,7 +410,7 @@ onBeforeUnmount(() => {
         </ul>
       </div>
 
-      <div class="device-panel" aria-labelledby="devices-title">
+      <div v-if="props.mode === 'sync'" class="device-panel" aria-labelledby="devices-title">
         <h3 id="devices-title">同步设备</h3>
         <p class="settings-help tight">踢除闲置设备可释放绑定名额。踢除不会删除云端笔记内容。</p>
         <div class="login-actions">
@@ -445,18 +444,10 @@ onBeforeUnmount(() => {
         <p v-else-if="canSync && !devicesBusy" class="settings-help tight muted">暂无已绑定设备（先「绑定并同步」）。</p>
       </div>
 
-      <div class="version-stub" aria-labelledby="versions-title">
-        <h3 id="versions-title">版本历史</h3>
-        <p class="settings-help tight muted">
-          接口已预留（<code>GET …/files/versions</code>），当前返回空列表；完整保留策略后置。
-        </p>
-      </div>
-
-      <button type="button" class="danger" @click="onLogout">退出登录</button>
+      <button v-if="props.mode === 'account'" type="button" class="danger" @click="onLogout">退出登录</button>
     </div>
 
-    <form v-else class="login-form" @submit.prevent="onLogin">
-      <p class="settings-help tight">登录可选。未登录仍可纯本地建库、写笔记与搜索。</p>
+    <form v-else-if="props.mode === 'account'" class="login-form" @submit.prevent="onLogin">
 
       <label>
         <span>账号</span>
@@ -539,16 +530,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="sync-guide locked">
-        <h3>同步</h3>
-        <p class="settings-help tight">登录后可绑定当前本地库并增量同步。当前可继续本地编辑。</p>
-        <button type="button" class="ghost sync-locked-btn" disabled>
-          <span class="btn-ico" aria-hidden="true">
-            <svg viewBox="0 0 16 16"><rect x="3.4" y="7.2" width="9.2" height="6.2" rx="1.2"/><path d="M5.4 7.2V5.4a2.6 2.6 0 0 1 5.2 0v1.8"/><path d="M8 9.6v1.8"/></svg>
-          </span>
-          登录以启用同步
-        </button>
-      </div>
     </form>
+    <p v-else class="settings-help tight muted">登录后可绑定当前本地库并增量同步。</p>
   </section>
 </template>

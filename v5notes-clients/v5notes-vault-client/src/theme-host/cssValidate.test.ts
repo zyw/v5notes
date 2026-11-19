@@ -20,6 +20,15 @@ describe('validateThemeCss', () => {
     expect(r.errors.some((e) => /fixed/.test(e))).toBe(true)
   })
 
+  it('rejects a theme whose :root rules are not scoped to the theme id', () => {
+    // An unscoped :root palette stays applied after switching away, so every
+    // theme looks the same (the bug behind "点默认/Forest Ink 没变化").
+    const r = validateThemeCss(":root,\n:root[data-community-theme='forest-ink'] { --bg: #fff; --panel: #fff; --ink: #000; --muted: #777; --line: #ddd; --accent: #3d6b54; --accent-hover: #2f5441; --surface: #eee; --danger: #a00; --danger-bg: #fee; }")
+    expect(r.ok).toBe(false)
+    expect(r.errors.some(e => e.includes(':root'))).toBe(true)
+    expect(validateThemeCss(FOREST_INK_CSS).ok).toBe(true)
+  })
+
   it('rejects empty css', () => {
     expect(validateThemeCss('').ok).toBe(false)
   })

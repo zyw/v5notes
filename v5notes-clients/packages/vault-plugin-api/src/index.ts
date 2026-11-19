@@ -181,6 +181,14 @@ export interface EditorMountOptions {
   onReady?: () => void
 }
 
+/** A stored image the host offers for insertion (vault attachment manager). */
+export interface PickedImage {
+  /** Alt text shown in the inserted Markdown link. */
+  name: string
+  /** Markdown URL text — relative (`attachments/x.png`) or absolute. */
+  url: string
+}
+
 /**
  * One mounted note editor. The host toggles preview/edit via `setEditable`
  * and must not remount, so undo history stays on this instance.
@@ -189,12 +197,23 @@ export interface EditorSession {
   getMarkdown(): string
   setMarkdown(markdown: string): void
   setEditable(editable: boolean): void
+  /** Optional: swap between the rendered view and the Markdown source. */
+  setSourceMode?(enabled: boolean): void
+  isSourceMode?(): boolean
   focus(): void
   focusAt(offset: number): void
+  /** Insert an image at the caret; hosts may offer this after a pick dialog. */
+  insertImage(image: PickedImage): void
   getOutline(): EditorOutlineEntry[]
   selectFindMatch(from: number, to: number): void
   replaceNextMatch(query: string, replacement: string, options?: EditorFindOptions): EditorFindResult
   replaceAllMatches(query: string, replacement: string, options?: EditorFindOptions): EditorFindResult
+  /** Optional: switch the v5md theme without remounting the instance. */
+  setTheme?(theme: string): void
+  /** Optional: the rendered note body, for export snapshots. */
+  getContentElement?(): HTMLElement | null
+  /** Optional: resolve once visible images have loaded (or the wait times out). */
+  waitForImages?(timeoutMs?: number): Promise<void>
   destroy(): void
 }
 

@@ -14,6 +14,8 @@
     "@tauri-apps/plugin-deep-link": "^2.6.3",
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-fs": "^2.7.1",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "@v5md/core": "0.0.7",
     "@v5md/view": "0.0.7",
     "@v5md/vue": "0.0.7",

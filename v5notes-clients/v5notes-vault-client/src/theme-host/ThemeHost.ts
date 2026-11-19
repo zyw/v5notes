@@ -11,6 +11,8 @@ import { validateThemeCss } from './cssValidate'
 import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from './samples/forestInk'
 
 const STYLE_ID = 'v5-community-theme-style'
+
+export { STYLE_ID }
 const APP_VERSION = '2.1.0'
 
 export interface VaultThemePackage {
@@ -70,7 +72,7 @@ function clearInjectedStyle(): void {
   document.documentElement.removeAttribute('data-community-theme')
 }
 
-function injectCss(themeId: string, css: string): void {
+export function injectCss(themeId: string, css: string): void {
   if (typeof document === 'undefined') return
   clearInjectedStyle()
   const el = document.createElement('style')

@@ -3,6 +3,7 @@ import {
   type EditorFindResult,
   type EditorMountOptions,
   type EditorSession,
+  type PickedImage,
   type PluginManifest,
 } from '@v5notes/vault-plugin-api'
 
@@ -89,6 +90,15 @@ function mountPlainEditor(container: HTMLElement, options: EditorMountOptions): 
       textarea.focus()
       const pos = Math.max(0, Math.min(offset, textarea.value.length))
       textarea.setSelectionRange(pos, pos)
+    },
+    insertImage({ url, name }: PickedImage) {
+      const target = url.trim()
+      if (!target) return
+      const label = name.replace(/[[\]\r\n]/g, '').trim()
+      const pos = textarea.selectionStart ?? textarea.value.length
+      const next = `${textarea.value.slice(0, pos)}![${label}](${target})${textarea.value.slice(pos)}`
+      textarea.value = next
+      options.onChange(next)
     },
     getOutline: () => [],
     selectFindMatch(from: number, to: number) {

@@ -23,5 +23,9 @@ export default defineConfig({
   clearScreen: false,
   test: {
     environment: 'node',
+    // Vite 6 replaces CSS imports with empty strings in tests unless listed
+    // here; the note export inlines `?raw` editor and KaTeX styles into the
+    // exported file, so those imports must arrive intact.
+    css: { include: [/\.css/] },
   },
 })

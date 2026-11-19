@@ -1,0 +1,399 @@
+# 构建并上传 V5Notes Vault 桌面端安装包与更新包。
+#
+# 与 Cloud 的 publish-desktop.yml 分开：产品不同（V5Notes Vault vs V5Notes Cloud），
+# 清单文件名也不同：Cloud 用 latest.json，Vault 用 vault-latest.json。
+# 两者可以挂在同一个 Release 里，客户端各取各的地址，谁也不会盖掉谁。
+#
+# 平台：macOS Apple 芯片（必发）、Windows x64（必发）。Linux 不发布；
+# macOS Intel 暂不纳入（见 README「在线升级」）。
+#
+# 触发：
+#   push v<版本> tag —— 与 Cloud 的 publish-desktop.yml 并行，各自上传自己的包与清单；
+#   push vault-v* tag —— 只发 Vault，挂在独立 Release 上（不进 releases/latest）；
+#   Actions → Run workflow 手动指定 tag。
+#
+# 客户端固定拉 releases/latest/download/vault-latest.json，所以正式版应与 Cloud
+# 一起发在当前最新 Release 上，才能被已安装的 Vault 读到。
+#
+# 需要仓库 Secrets：
+#   VAULT_SIGNING_PRIVATE_KEY           更新包 minisign 私钥（必填，与 Cloud 的私钥分开）
+#   VAULT_SIGNING_PRIVATE_KEY_PASSWORD  私钥口令（无私钥口令可留空或不设）
+#
+# 可选（Apple / Windows 代码签名，未配置时仍可出包；macOS 为 ad-hoc）：
+#   APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY
+#   APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID
+#   WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD
+#
+# macOS 更新包默认叫 “V5Notes Vault.app.tar.gz”，收集时改名为
+#   vault_aarch64.app.tar.gz（及同名 .sig），以便 scripts/vault_latest_json.py 写入清单。
+
+name: Publish Vault desktop packages
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "vault-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "目标 tag（如 v2.2.0）；留空则由 Cloud 的 tauri.conf.json 版本推导"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-vault-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP_DIR: v5notes-clients/v5notes-vault-client
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Resolve tag and verify versions
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          APP_DIR: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+
+          tag=""
+          if [ "$EVENT_NAME" = "push" ]; then
+            tag="$REF_NAME"
+          elif [ -n "${INPUT_TAG:-}" ]; then
+            tag="$INPUT_TAG"
+          else
+            # 与 Cloud 共用 v<版本> Release，默认沿用 Cloud 的版本号。
+            version="$(python3 -c "import json; print(json.load(open('v5notes-clients/v5notes-client2/src-tauri/tauri.conf.json'))['version'])")"
+            tag="v${version}"
+            echo "未指定 tag，使用 Cloud tauri.conf.json 版本: $tag"
+          fi
+
+          case "$tag" in
+            v*) ;;
+            *)
+              echo "tag '$tag' 必须是 v<版本> 形式（与 Cloud 共用 Release）。" >&2
+              exit 1
+              ;;
+          esac
+
+          version="${tag#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "tag '$tag' 不是 v<主.次.修订> 形式。" >&2
+            exit 1
+          fi
+
+          python3 - "$tag" "$version" "$APP_DIR" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          tag, version, app = sys.argv[1], sys.argv[2], sys.argv[3]
+
+          conf = json.loads(pathlib.Path(f"{app}/src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
+          package = json.loads(pathlib.Path(f"{app}/package.json").read_text(encoding="utf-8"))
+          cargo = pathlib.Path(f"{app}/src-tauri/Cargo.toml").read_text(encoding="utf-8")
+          cargo_version = ""
+          in_package = False
+          for line in cargo.splitlines():
+              stripped = line.strip()
+              if stripped.startswith("[") and stripped.endswith("]"):
+                  in_package = stripped == "[package]"
+                  continue
+              if in_package and stripped.startswith("version"):
+                  cargo_version = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                  break
+
+          found = {
+              "tauri.conf.json": conf.get("version", ""),
+              "package.json": package.get("version", ""),
+              "Cargo.toml": cargo_version,
+          }
+          mismatched = [f"{name}={value}" for name, value in found.items() if value != version]
+          if mismatched:
+              print(
+                  f"tag {tag} 的版本是 {version}，与仓库不一致：{', '.join(mismatched)}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          print(f"版本核对通过：{version}")
+          PY
+
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check updater signing secret
+        env:
+          VAULT_SIGNING_PRIVATE_KEY: ${{ secrets.VAULT_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VAULT_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "缺少 Secret VAULT_SIGNING_PRIVATE_KEY，无法生成带 .sig 的更新包。" >&2
+            echo "在 Settings → Secrets and variables → Actions 中添加 Vault 的更新私钥。" >&2
+            exit 1
+          fi
+
+  build:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            rust_target: aarch64-apple-darwin
+            artifact_key: darwin-aarch64
+            updater_name: vault_aarch64.app.tar.gz
+          - platform: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            artifact_key: windows-x86_64
+            updater_name: ""
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.APP_DIR }}/src-tauri -> target
+          key: vault-${{ matrix.rust_target }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Import Windows code signing certificate
+        if: runner.os == 'Windows'
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:WINDOWS_CERTIFICATE)) {
+            Write-Host "未配置 WINDOWS_CERTIFICATE，跳过 Windows 代码签名证书导入。"
+            exit 0
+          }
+          New-Item -ItemType Directory -Force -Path certificate | Out-Null
+          Set-Content -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
+          certutil -decode certificate/tempCert.txt certificate/certificate.pfx
+          Remove-Item certificate/tempCert.txt
+          Import-PfxCertificate `
+            -FilePath certificate/certificate.pfx `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password (ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText)
+
+      - name: Build Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.VAULT_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.VAULT_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri -- build --target ${{ matrix.rust_target }}
+
+      - name: Collect release assets
+        shell: bash
+        env:
+          RUST_TARGET: ${{ matrix.rust_target }}
+          ARTIFACT_KEY: ${{ matrix.artifact_key }}
+          UPDATER_NAME: ${{ matrix.updater_name }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          out="${GITHUB_WORKSPACE}/vault-artifacts"
+          mkdir -p "$out"
+          bundle="src-tauri/target/${RUST_TARGET}/release/bundle"
+
+          if [[ "$ARTIFACT_KEY" == darwin-* ]]; then
+            src_tar="${bundle}/macos/V5Notes Vault.app.tar.gz"
+            if [[ ! -f "$src_tar" ]]; then
+              echo "找不到 macOS 更新包: $src_tar" >&2
+              find src-tauri/target/${RUST_TARGET}/release/bundle -type f -print >&2 || true
+              exit 1
+            fi
+            if [[ ! -f "${src_tar}.sig" ]]; then
+              echo "缺少 ${src_tar}.sig。确认 VAULT_SIGNING_PRIVATE_KEY 已配置且 createUpdaterArtifacts 已启用。" >&2
+              exit 1
+            fi
+            cp "$src_tar" "${out}/${UPDATER_NAME}"
+            cp "${src_tar}.sig" "${out}/${UPDATER_NAME}.sig"
+
+            shopt -s nullglob
+            for dmg in "${bundle}/dmg"/*.dmg; do
+              base="$(basename "$dmg")"
+              # 两台 macOS job 会产出同名 dmg；统一带架构后缀避免互相覆盖。
+              if [[ "$base" != *"aarch64"* && "$base" != *"x64"* && "$base" != *"x86_64"* ]]; then
+                base="${base%.dmg}_aarch64.dmg"
+              fi
+              cp "$dmg" "${out}/${base}"
+            done
+          else
+            shopt -s nullglob
+            for f in "${bundle}/nsis"/*; do
+              cp "$f" "${out}/$(basename "$f")"
+            done
+            for f in "${bundle}/msi"/*; do
+              cp "$f" "${out}/$(basename "$f")"
+            done
+            nsis_zip="${out}/V5Notes Vault_${VERSION}_x64-setup.nsis.zip"
+            if [[ ! -f "$nsis_zip" ]]; then
+              echo "找不到 Windows 更新包 V5Notes Vault_${VERSION}_x64-setup.nsis.zip" >&2
+              find "src-tauri/target/${RUST_TARGET}/release/bundle" -type f -print >&2 || true
+              exit 1
+            fi
+            if [[ ! -f "${nsis_zip}.sig" ]]; then
+              echo "缺少 V5Notes Vault_${VERSION}_x64-setup.nsis.zip.sig。" >&2
+              exit 1
+            fi
+          fi
+
+          echo "Collected:"
+          find "$out" -type f -print | sort
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vault-${{ matrix.artifact_key }}
+          path: vault-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: [resolve, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: vault-*
+          path: dist
+          merge-multiple: true
+
+      - name: List assets
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          find dist -type f -print | sort
+          test -f dist/vault_aarch64.app.tar.gz
+          test -f dist/vault_aarch64.app.tar.gz.sig
+          test -f "dist/V5Notes Vault_${VERSION}_x64-setup.nsis.zip"
+          test -f "dist/V5Notes Vault_${VERSION}_x64-setup.nsis.zip.sig"
+
+      - name: Prepare release notes and vault-latest.json
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          APP_DIR: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          notes="${APP_DIR}/releases/${VERSION}.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" release-notes.md
+          else
+            echo "警告: 没有 $notes，更新说明为空。" >&2
+            printf '' > release-notes.md
+          fi
+
+          # Release 尚未创建时没有 publishedAt，用当前 UTC，清单只要求 RFC3339。
+          published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          python3 "${APP_DIR}/scripts/vault_latest_json.py" \
+            --assets-dir dist \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file release-notes.md \
+            --pub-date "$published_at" \
+            --require darwin-aarch64,windows-x86_64 \
+            --out dist/vault-latest.json
+          echo '--- dist/vault-latest.json ---'
+          cat dist/vault-latest.json
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find dist -maxdepth 1 -type f -print | sort)
+          if ((${#files[@]} == 0)); then
+            echo "dist 里没有可上传的文件。" >&2
+            exit 1
+          fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在（通常是 Cloud 的），覆盖同名附件。"
+            gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            # 一次带齐附件再发布，避免 latest/download 读到空 Release。
+            gh release create "$TAG" "${files[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "${TAG#v}" \
+              --notes-file release-notes.md \
+              --target "$GITHUB_SHA"
+          fi
+          echo "已上传安装包、更新包与 vault-latest.json 到 Release $TAG"
+
+      - name: Verify feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          asset_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/vault-latest.json"
+          echo "校验附件地址: $asset_url"
+          curl -fsSL "$asset_url" -o /tmp/remote-vault-latest.json
+          if ! diff -u dist/vault-latest.json /tmp/remote-vault-latest.json; then
+            echo "线上附件与本地生成的清单不一致。" >&2
+            exit 1
+          fi
+          echo "Release 附件校验通过。"
+
+          # 客户端固定拉 releases/latest/download/vault-latest.json，只有最新正式 Release 的附件能被读到。
+          latest="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isPrerelease == false and .isDraft == false)][0].tagName')"
+          feed="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/vault-latest.json"
+          if [ "$latest" = "$TAG" ]; then
+            echo "校验客户端 feed: $feed"
+            curl -fsSL "$feed" -o /tmp/vault-feed.json
+            diff -u dist/vault-latest.json /tmp/vault-feed.json
+            echo "feed 校验通过，Vault 客户端可拉到 $TAG 的清单。"
+          else
+            echo "注意：${TAG} 不是当前最新正式 Release（最新为 ${latest}）。"
+            echo "$feed 仍指向 ${latest}；要让已安装客户端看到这个版本，请把 vault-latest.json 同步挂到 ${latest} 上。"
+          fi
