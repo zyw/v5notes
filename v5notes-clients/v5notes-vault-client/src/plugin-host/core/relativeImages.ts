@@ -78,7 +78,10 @@ export class RelativeImageRewriter {
         this.pending.delete(rel)
         const nodes = this.waiters.get(rel) ?? []
         this.waiters.delete(rel)
-        if (!url) return
+        if (!url) {
+          console.warn('[v5md] 无法解析库内图片:', rel)
+          return
+        }
         for (const node of nodes) {
           if (node.isConnected && attachmentRelFromImageUrl(node.getAttribute('src'))) node.src = url
         }

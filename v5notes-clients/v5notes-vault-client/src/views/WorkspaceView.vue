@@ -405,7 +405,9 @@ async function ensureEditorMounted() {
       try {
         return await saveImageToVault(rootPath, file)
       } catch (error) {
-        status.value = error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
+        status.value = message
+        emit('error', message)
         return ''
       }
     },

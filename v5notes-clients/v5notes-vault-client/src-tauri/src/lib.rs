@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
 #[tauri::command]
@@ -18,6 +19,11 @@ fn allow_vault_directory(app: tauri::AppHandle, path: String) -> Result<(), Stri
     let meta = root.join(".v5notes");
     app.fs_scope()
         .allow_directory(&meta, true)
+        .map_err(|e| e.to_string())?;
+    // The `asset:` protocol checks its own scope (separate from plugin-fs at
+    // runtime), so previews of `attachments/*` need the vault root allowed there too.
+    app.asset_protocol_scope()
+        .allow_directory(&root, true)
         .map_err(|e| e.to_string())?;
     Ok(())
 }
