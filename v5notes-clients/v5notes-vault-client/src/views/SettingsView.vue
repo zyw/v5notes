@@ -726,11 +726,18 @@ watch(publishDraft, () => {
                     <div class="book-mono">权限: {{ p.permissions.join(', ') || '（无）' }}</div>
                     <div v-if="p.error" class="book-danger">{{ p.error }}</div>
                   </div>
-                  <button class="book-text-btn" type="button" :disabled="extensionBusy || p.id === 'v5-editor' || (safeMode && !p.core)" @click="togglePlugin(p.id, p.status !== 'loaded')">{{ p.id === 'v5-editor' ? '始终启用' : p.status === 'loaded' ? '禁用' : '启用' }}</button>
+                  <button
+                    v-if="p.id !== 'v5-editor'"
+                    class="book-text-btn"
+                    type="button"
+                    :disabled="extensionBusy || !vaultBound || (safeMode && !p.core)"
+                    :title="!vaultBound ? '打开库后可启用' : undefined"
+                    @click="togglePlugin(p.id, p.status !== 'loaded')"
+                  >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
+                  <span v-else class="book-text-btn is-fixed">始终启用</span>
                 </li>
               </ul>
-              <p v-if="!hostReady" class="book-small">插件宿主尚未启动：打开库后再回到这里。</p>
-              <p v-else-if="!hasVault" class="book-small">打开 Vault 后可启用库内插件与示例主题。</p>
+              <p v-if="!hostReady" class="book-small">打开库后可启用库内扩展。</p>
               <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
               <div v-if="editors.length" class="book-cmd-row">
                 <p class="book-sub">笔记编辑器</p>
@@ -1506,6 +1513,11 @@ watch(publishDraft, () => {
 .book-text-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+/* Always-on row: a state, not an action — no link affordance. */
+.book-text-btn.is-fixed {
+  color: var(--muted);
+  border-bottom-color: transparent;
 }
 .book-inline {
   display: flex;
