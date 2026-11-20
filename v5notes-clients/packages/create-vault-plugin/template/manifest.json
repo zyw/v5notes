@@ -1,0 +1,12 @@
+{
+  "id": "{{ID}}",
+  "name": "{{NAME}}",
+  "kind": "plugin",
+  "version": "{{VERSION}}",
+  "minAppVersion": "{{MIN_APP_VERSION}}",
+  "description": "{{DESCRIPTION}}",
+  "author": "{{AUTHOR}}",
+  "permissions": {{PERMISSIONS_JSON}},
+  "tags": [],
+  "main": "main.js"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "vault-plugin-{{ID}}",
+  "version": "{{VERSION}}",
+  "private": true,
+  "type": "module",
+{{#DESCRIPTION}}  "description": "{{DESCRIPTION}}",
+{{/DESCRIPTION}}  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "install:app": "node scripts/install.mjs",
+    "dev": "node scripts/build.mjs && node scripts/install.mjs"
+  },
+  "devDependencies": {
+    "@v5notes/vault-plugin-api": "file:../packages/vault-plugin-api",
+    "esbuild": "^0.25.12"
+  }
+}

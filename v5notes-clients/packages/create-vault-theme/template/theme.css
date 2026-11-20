@@ -1,0 +1,60 @@
+/* {{NAME}}（{{ID}}）— 只写设计 token。
+ *
+ * 三条规则，都在宿主里校验过：
+ * 1. 每条规则都以 :root[data-community-theme='{{ID}}'] 开头；
+ *    未限定的 :root 在切换主题后仍然生效，切换看起来像没反应。
+ * 2. --vault 必须带 !important：应用把库色写成 <html> 的行内样式，行内样式优先于样式表。
+ * 3. 不要用 @import、远程 url()、position:fixed 或 * 选择器 —— 会被拒绝并回退到「默认」。
+ *
+ * 可改的 token：--bg --panel --ink --muted --line --accent --accent-hover
+ *              --surface --danger --danger-bg --bg-glow-a --bg-glow-b --vault
+ */
+:root[data-community-theme='{{ID}}'] {
+  --bg: {{LIGHT_BG}};
+  --panel: {{LIGHT_PANEL}};
+  --ink: {{LIGHT_INK}};
+  --muted: {{LIGHT_MUTED}};
+  --line: {{LIGHT_LINE}};
+  --accent: {{LIGHT_ACCENT}};
+  --accent-hover: {{LIGHT_ACCENT_HOVER}};
+  --surface: {{LIGHT_SURFACE}};
+  --danger: #8a3b2e;
+  --danger-bg: #f2e2dc;
+  --bg-glow-a: {{LIGHT_BG}};
+  --bg-glow-b: {{LIGHT_PANEL}};
+  --vault: {{LIGHT_ACCENT}} !important;
+}
+
+:root[data-community-theme='{{ID}}'][data-color-mode='dark'] {
+  --bg: {{DARK_BG}};
+  --panel: {{DARK_PANEL}};
+  --ink: {{DARK_INK}};
+  --muted: {{DARK_MUTED}};
+  --line: {{DARK_LINE}};
+  --accent: {{DARK_ACCENT}};
+  --accent-hover: {{DARK_ACCENT_HOVER}};
+  --surface: {{DARK_SURFACE}};
+  --danger: #e0a090;
+  --danger-bg: #3a2a2a;
+  --bg-glow-a: {{DARK_BG}};
+  --bg-glow-b: {{DARK_PANEL}};
+  --vault: {{DARK_ACCENT}} !important;
+}
+
+/* 明暗切换的安全网：应用同时写 data-color-preference（用户选择）与
+ * data-color-mode（解析结果）。只有选择时深色也必须生效。 */
+:root[data-community-theme='{{ID}}'][data-color-preference='dark']:not([data-color-mode='dark']) {
+  --bg: {{DARK_BG}};
+  --panel: {{DARK_PANEL}};
+  --ink: {{DARK_INK}};
+  --muted: {{DARK_MUTED}};
+  --line: {{DARK_LINE}};
+  --accent: {{DARK_ACCENT}};
+  --accent-hover: {{DARK_ACCENT_HOVER}};
+  --surface: {{DARK_SURFACE}};
+  --danger: #e0a090;
+  --danger-bg: #3a2a2a;
+  --bg-glow-a: {{DARK_BG}};
+  --bg-glow-b: {{DARK_PANEL}};
+  --vault: {{DARK_ACCENT}} !important;
+}

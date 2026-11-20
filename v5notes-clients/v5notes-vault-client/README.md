@@ -17,7 +17,7 @@
 | `deviceType` | `vault_client` |
 | 默认 `client_id` | `b8e4f02a5c3d7916f2a0b1d9e7c5f3a1` |
 
-依据：`docs/vault-client-design.md`（含插件系统、工程拍板与延期能力）。写插件看 **[`docs/vault-plugin-development.md`](../docs/vault-plugin-development.md)**。
+依据：`docs/vault-client-design.md`（含插件系统、工程拍板与延期能力）。写插件看 **[`docs/vault-plugin-development.md`](../docs/vault-plugin-development.md)**；生成插件用 **[`packages/create-vault-plugin`](../packages/create-vault-plugin/)**，生成主题用 **[`packages/create-vault-theme`](../packages/create-vault-theme/)**。
 
 ## 开发
 

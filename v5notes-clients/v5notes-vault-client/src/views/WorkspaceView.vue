@@ -979,6 +979,15 @@ async function refreshTree() {
   tree.value = await vaultFs.listTree(props.vault.rootPath)
 }
 
+function findTreeNode(nodes: VaultTreeNode[], identityKey: string): VaultTreeNode | null {
+  for (const node of nodes) {
+    if (node.identityKey === identityKey) return node
+    const hit = node.children ? findTreeNode(node.children, identityKey) : null
+    if (hit) return hit
+  }
+  return null
+}
+
 async function refreshTrash() {
   trashEntries.value = await listTrash(props.vault.rootPath)
 }
@@ -988,6 +997,15 @@ async function openNote(node: VaultTreeNode) {
   if (dirty.value) {
     const ok = await saveCurrent()
     if (!ok) return
+  }
+  // Plugin openFile() gets a path, not a tree node; a note written just now may
+  // not be listed yet, so re-read the tree before selecting it.
+  if (!findTreeNode(tree.value, node.identityKey)) {
+    await refreshTree()
+    if (!findTreeNode(tree.value, node.identityKey)) {
+      status.value = '笔记未在目录中找到'
+      return
+    }
   }
   busy.value = true
   status.value = ''
@@ -1520,11 +1538,21 @@ onMounted(async () => {
     setExtensionWorkspaceHandlers({
       getActivePath: () => selectedPath.value,
       openFile: async (path) => {
+        // Plugins may hand over a just-written path the tree has not listed yet;
+        // staging it keeps the sidebar in sync until the watcher catches up.
+        const { displayPath, identityKey } = normalizeVaultPath(path)
         const node: VaultTreeNode = {
-          path,
-          identityKey: path.toLowerCase(),
-          name: path.split('/').pop() || path,
+          path: displayPath,
+          identityKey,
+          name: displayPath.split('/').pop() || displayPath,
           kind: 'note',
+        }
+        const parent = displayPath.includes('/')
+          ? findTreeNode(tree.value, normalizeVaultPath(displayPath.slice(0, displayPath.lastIndexOf('/'))).identityKey)
+          : null
+        if (parent?.kind === 'dir') {
+          parent.children = [...(parent.children ?? []), node]
+          tree.value = [...tree.value]
         }
         await openNote(node)
         await refreshTree()

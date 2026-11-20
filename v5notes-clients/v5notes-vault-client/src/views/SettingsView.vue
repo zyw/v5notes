@@ -27,14 +27,13 @@ import { stripCssComments } from '../theme-host/cssValidate'
 import TOKENS_CSS from '../styles/tokens.css?raw'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
-import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
+import type { HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
 import { loadSafeMode } from '../plugin-host/safeMode'
 import {
   ensureSampleExtensions,
   getPluginHost,
   getThemeHost,
   installFromCatalog,
-  listHostCommands,
   listHostSettingTabs,
   listPluginInfos,
   setSafeModeAndReload,
@@ -92,7 +91,6 @@ const themes = ref<ThemeInfo[]>([])
 const plugins = ref<PluginRuntimeInfo[]>([])
 const editors = ref<HostEditorProvider[]>([])
 const activeEditorId = ref('v5-editor')
-const commands = ref<HostCommand[]>([])
 const settingTabs = ref<HostSettingTab[]>([])
 const catalogItems = ref<CatalogItem[]>([])
 const catalogSource = ref<'server' | 'bundled' | ''>('')
@@ -426,7 +424,6 @@ function refreshExtensionState() {
   hostReady.value = host !== null
   editors.value = host?.listEditorProviders() ?? []
   activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
-  commands.value = listHostCommands()
   settingTabs.value = listHostSettingTabs()
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
 }
@@ -630,14 +627,6 @@ async function installSamples() {
     pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
-  }
-}
-
-async function runCommand(cmd: HostCommand) {
-  try {
-    await cmd.run()
-  } catch (error) {
-    pluginMessage.value = error instanceof Error ? error.message : String(error)
   }
 }
 
@@ -947,12 +936,6 @@ watch(publishDraft, () => {
                     @click="chooseEditor(ed.id)"
                   >
                     <strong>{{ ed.name }}</strong><span>{{ ed.pluginId }}</span>
-                  </button>
-                </div>
-                <div v-if="commands.length" class="book-cmd-row">
-                  <p class="book-sub">已注册命令</p>
-                  <button v-for="cmd in commands" :key="cmd.pluginId + ':' + cmd.id" class="book-cmd" type="button" @click="runCommand(cmd)">
-                    <strong>{{ cmd.name }}</strong><span>{{ cmd.pluginId }}:{{ cmd.id }}</span>
                   </button>
                 </div>
                 <div v-if="settingTabs.length" class="book-plugin-tabs">

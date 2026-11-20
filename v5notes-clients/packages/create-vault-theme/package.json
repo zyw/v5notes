@@ -1,0 +1,24 @@
+{
+  "name": "@v5notes/create-vault-theme",
+  "version": "0.1.0",
+  "description": "Vault Client 主题脚手架：生成、校验、安装一个能被外观设置加载的主题包",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "create-vault-theme": "./bin/create-vault-theme.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "template",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "help": "node bin/create-vault-theme.js --help"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

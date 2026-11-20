@@ -1078,7 +1078,9 @@ export default class HelloWorldPlugin extends Plugin {
 
 ### 4.3 构建
 
-- 官方脚手架：`@v5notes/create-vault-plugin`（esbuild/rollup 打成 IIFE 或 ESM）。
+- 官方脚手架（均已落地）：
+  - `@v5notes/create-vault-plugin` — [`v5notes-clients/packages/create-vault-plugin/`](../v5notes-clients/packages/create-vault-plugin/)：生成 + esbuild 构建 + 安装到应用目录；产物改写为宿主要求的 CJS 导出形状。
+  - `@v5notes/create-vault-theme` — [`v5notes-clients/packages/create-vault-theme/`](../v5notes-clients/packages/create-vault-theme/)：按主色生成三段式受限 `theme.css`（浅色 / 深色 / 明暗安全网），校验 + 安装。
 - 依赖：仅允许 `import` `@v5notes/vault-plugin-api`（宿主注入，**不打包进 main.js**）；其它第三方必须打进 bundle。
 - 宿主用动态 `import()` / `new Function` 沙箱加载（见 §6），不跑未打包的多文件裸源码。
 

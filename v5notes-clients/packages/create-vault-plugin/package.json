@@ -1,0 +1,24 @@
+{
+  "name": "@v5notes/create-vault-plugin",
+  "version": "0.1.0",
+  "description": "Vault Client 插件脚手架：生成、构建、安装一个能被设置页加载的插件包",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "create-vault-plugin": "./bin/create-vault-plugin.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "template",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "help": "node bin/create-vault-plugin.js --help"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
