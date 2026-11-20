@@ -79,19 +79,50 @@ function saveOverrides(map: Record<string, string>): void {
   }
 }
 
-export function resolveVaultColor(rootPath: string): VaultColorSwatch {
-  const overrides = loadOverrides()
-  const overrideId = overrides[rootPath]
-  if (overrideId) {
-    const found = VAULT_COLOR_PALETTE.find(s => s.id === overrideId)
-    if (found) return found
-  }
+/** 库内的库色（.v5notes/appearance.json），打开库时由外壳填进来；换库时一起换。 */
+let vaultColorId: string | null = null
+
+export function findVaultSwatch(id: string | null | undefined): VaultColorSwatch | null {
+  if (!id) return null
+  return VAULT_COLOR_PALETTE.find(s => s.id === id) ?? null
+}
+
+/**
+ * 记下库内读到的库色。传入 undefined 表示库内还没有写过：
+ * 此时沿用本机的旧选择，下一次写盘时连同它一起迁进库。
+ */
+export function setVaultColorFromVault(id: string | null | undefined): void {
+  vaultColorId = findVaultSwatch(id)?.id ?? null
+}
+
+function localOverride(rootPath: string): VaultColorSwatch | null {
+  return findVaultSwatch(loadOverrides()[rootPath])
+}
+
+function fallbackSwatch(rootPath: string): VaultColorSwatch {
   const idx = hashPath(rootPath) % VAULT_COLOR_PALETTE.length
   return VAULT_COLOR_PALETTE[idx]!
 }
 
+/** Resolve order: 库内的库色 → 本机旧偏好 → 按路径哈希的默认色。 */
+export function resolveVaultColor(rootPath: string | null | undefined): VaultColorSwatch {
+  const fromVault = findVaultSwatch(vaultColorId)
+  if (fromVault) return fromVault
+  if (rootPath) {
+    const local = localOverride(rootPath)
+    if (local) return local
+    return fallbackSwatch(rootPath)
+  }
+  return VAULT_COLOR_PALETTE[0]!
+}
+
+/**
+ * 本机偏好只作回退：库色以库内文件为准，写盘由调用方通过 updateAppearanceFile 完成。
+ * 这里同时记下本机一份，供读不到库文件时（库被移动、离线扫描等）仍能显示。
+ */
 export function setVaultColor(rootPath: string, swatchId: string): VaultColorSwatch {
-  const swatch = VAULT_COLOR_PALETTE.find(s => s.id === swatchId) ?? VAULT_COLOR_PALETTE[0]!
+  const swatch = findVaultSwatch(swatchId) ?? VAULT_COLOR_PALETTE[0]!
+  vaultColorId = swatch.id
   const map = loadOverrides()
   map[rootPath] = swatch.id
   saveOverrides(map)

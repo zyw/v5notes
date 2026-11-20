@@ -9,6 +9,7 @@ import {
   resolveVaultColor,
   setPendingWelcomeColor,
   setVaultColor,
+  setVaultColorFromVault,
   vaultOnColor,
 } from './vaultColors'
 
@@ -92,5 +93,36 @@ describe('vaultColors', () => {
     const bound = commitPendingWelcomeColor('/tmp/new-vault')
     expect(bound.id).toBe('dongzhi')
     expect(resolveVaultColor('/tmp/new-vault').id).toBe('dongzhi')
+  })
+})
+describe('vault colour lives with the vault', () => {
+  beforeEach(() => {
+    store.clear()
+    styleMap.clear()
+    setVaultColorFromVault(null)
+  })
+
+  it('reads the colour recorded in the vault file first', () => {
+    setVaultColorFromVault('qiufen')
+    expect(resolveVaultColor('/tmp/whatever').id).toBe('qiufen')
+  })
+
+  it('falls back to the local pick when the vault file has no colour', () => {
+    setVaultColor('/tmp/vault', 'yushui')
+    setVaultColorFromVault(null)
+    expect(resolveVaultColor('/tmp/vault').id).toBe('yushui')
+  })
+
+  it('ignores an unknown swatch id instead of throwing', () => {
+    setVaultColorFromVault('not-a-swatch')
+    const fallback = resolveVaultColor('/tmp/vault')
+    expect(VAULT_COLOR_PALETTE.some(s => s.id === fallback.id)).toBe(true)
+  })
+
+  it('switches with the vault, not with the machine', () => {
+    setVaultColorFromVault('lichun')
+    expect(resolveVaultColor('/a').id).toBe('lichun')
+    setVaultColorFromVault('guyu')
+    expect(resolveVaultColor('/a').id).toBe('guyu')
   })
 })

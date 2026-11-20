@@ -25,6 +25,9 @@ export interface VaultThemePackage {
 }
 
 export interface ThemeHostDeps {
+  /** Merge one field into the vault appearance file without dropping the others. */
+  updateAppearanceFile?: (patch: { theme?: string; colorMode?: ColorMode }) => Promise<void>
+
   /** Theme choice and colour mode for the open vault. */
   readAppearanceFile?: () => Promise<Partial<AppearancePrefs> | null>
   writeAppearanceFile?: (prefs: AppearancePrefs) => Promise<void>
@@ -132,6 +135,23 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
     }
   }
 
+  /**
+   * Write only the theme fields, leaving the vault colour (and anything else the
+   * appearance file carries) where it is. Always a patch, never a replace.
+   */
+  async function persistPatch(patch: { theme?: string; colorMode?: ColorMode }): Promise<void> {
+    if (!deps.updateAppearanceFile) return
+    // The appearance file owns its own schemaVersion; a theme write must not carry one.
+    const body: { theme?: string; colorMode?: ColorMode } = {}
+    if (patch.theme !== undefined) body.theme = patch.theme
+    if (patch.colorMode !== undefined) body.colorMode = patch.colorMode
+    try {
+      await deps.updateAppearanceFile(body)
+    } catch {
+      /* best-effort: local prefs still hold the choice */
+    }
+  }
+
   async function applyThemeId(themeId: string, colorMode: ColorMode): Promise<void> {
     lastError = null
     const safe = deps.isSafeMode?.() ?? false
@@ -150,6 +170,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       const next: AppearancePrefs = { schemaVersion: 1, theme: themeId, colorMode }
       applyAppearance(next)
       await persist(next)
+      await persistPatch(next)
       return
     }
 
@@ -161,6 +182,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       const next: AppearancePrefs = { schemaVersion: 1, theme: 'default', colorMode }
       applyAppearance(next)
       await persist(next)
+      await persistPatch(next)
       return
     }
 
@@ -179,6 +201,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
     applyAppearance({ schemaVersion: 1, theme: 'default', colorMode })
     injectCss(themeId, pkg.css)
     await persist({ schemaVersion: 1, theme: themeId, colorMode })
+    await persistPatch({ theme: themeId, colorMode })
   }
 
   return {

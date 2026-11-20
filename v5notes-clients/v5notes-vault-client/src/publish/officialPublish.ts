@@ -27,7 +27,14 @@ export interface OfficialPublishDraft {
   updatedAt: string
 }
 
+/** Legacy single draft, shared by every vault. Read once so old users keep their title. */
 export const OFFICIAL_PUBLISH_STORAGE_KEY = 'v5notes-vault-official-publish-draft'
+
+/**
+ * Drafts are per vault: a site title and visibility describe one vault's site,
+ * so switching vaults in settings must not carry them across.
+ */
+export const OFFICIAL_PUBLISH_DRAFTS_KEY = 'v5notes-vault-official-publish-drafts.v1'
 
 export function defaultOfficialPublishDraft(now = new Date()): OfficialPublishDraft {
   return {
@@ -39,30 +46,60 @@ export function defaultOfficialPublishDraft(now = new Date()): OfficialPublishDr
   }
 }
 
+function readAllDrafts(store: Storage | null): Record<string, OfficialPublishDraft> {
+  if (!store) return {}
+  try {
+    const raw = store.getItem(OFFICIAL_PUBLISH_DRAFTS_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, OfficialPublishDraft>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeAllDrafts(store: Storage | null, drafts: Record<string, OfficialPublishDraft>): void {
+  try {
+    store?.setItem(OFFICIAL_PUBLISH_DRAFTS_KEY, JSON.stringify(drafts))
+  } catch {
+    /* quota or private mode: the in-memory draft still works for this session */
+  }
+}
+
+/** Without a vault there is no site to publish, so the draft is the empty default. */
 export function loadOfficialPublishDraft(
+  vaultRootPath: string | null | undefined,
   store: Storage | null = typeof localStorage !== 'undefined' ? localStorage : null,
 ): OfficialPublishDraft {
-  if (!store) return defaultOfficialPublishDraft()
+  if (!store || !vaultRootPath) return defaultOfficialPublishDraft()
+  const stored = readAllDrafts(store)[vaultRootPath]
+  if (stored) return normalizeDraft(stored)
+  // First run after the upgrade: the single legacy draft is copied into this
+  // vault, not moved, so no vault reads a title it never had and nothing is lost.
   try {
-    const raw = store.getItem(OFFICIAL_PUBLISH_STORAGE_KEY)
-    if (!raw) return defaultOfficialPublishDraft()
-    const parsed = JSON.parse(raw) as Partial<OfficialPublishDraft>
-    return {
-      channel: OFFICIAL_PUBLISH_CHANNEL,
-      siteTitle: typeof parsed.siteTitle === 'string' ? parsed.siteTitle.slice(0, 100) : '',
-      visibility:
-        parsed.visibility === 'public' || parsed.visibility === 'unlisted' || parsed.visibility === 'private'
-          ? parsed.visibility
-          : 'private',
-      status: OFFICIAL_PUBLISH_STUB_STATUS,
-      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
-    }
+    const legacy = store.getItem(OFFICIAL_PUBLISH_STORAGE_KEY)
+    if (legacy) return normalizeDraft(JSON.parse(legacy) as Partial<OfficialPublishDraft>)
   } catch {
-    return defaultOfficialPublishDraft()
+    /* unreadable legacy draft: start empty */
+  }
+  return defaultOfficialPublishDraft()
+}
+
+function normalizeDraft(parsed: Partial<OfficialPublishDraft>): OfficialPublishDraft {
+  return {
+    channel: OFFICIAL_PUBLISH_CHANNEL,
+    siteTitle: typeof parsed.siteTitle === 'string' ? parsed.siteTitle.slice(0, 100) : '',
+    visibility:
+      parsed.visibility === 'public' || parsed.visibility === 'unlisted' || parsed.visibility === 'private'
+        ? parsed.visibility
+        : 'private',
+    status: OFFICIAL_PUBLISH_STUB_STATUS,
+    updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
   }
 }
 
 export function saveOfficialPublishDraft(
+  vaultRootPath: string | null | undefined,
   draft: OfficialPublishDraft,
   store: Storage | null = typeof localStorage !== 'undefined' ? localStorage : null,
 ): OfficialPublishDraft {
@@ -73,7 +110,10 @@ export function saveOfficialPublishDraft(
     status: OFFICIAL_PUBLISH_STUB_STATUS,
     updatedAt: new Date().toISOString(),
   }
-  store?.setItem(OFFICIAL_PUBLISH_STORAGE_KEY, JSON.stringify(next))
+  if (!store || !vaultRootPath) return next
+  const drafts = readAllDrafts(store)
+  drafts[vaultRootPath] = next
+  writeAllDrafts(store, drafts)
   return next
 }
 

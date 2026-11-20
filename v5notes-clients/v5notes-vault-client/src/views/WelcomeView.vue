@@ -25,6 +25,7 @@ import {
   setVaultHidden,
 } from '../vault/recent'
 import { vaultWorkspace } from '../vault/workspace'
+import { updateAppearanceFile } from '../theme-host'
 
 const emit = defineEmits<{
   opened: [vault: OpenedVault]
@@ -82,7 +83,11 @@ function explain(errorValue: unknown): string {
 
 function afterOpened(vault: OpenedVault, options?: { bindPendingColor?: boolean }) {
   if (options?.bindPendingColor !== false) {
-    commitPendingWelcomeColor(vault.rootPath)
+    const swatch = commitPendingWelcomeColor(vault.rootPath)
+    // 新库从选好的色开始：写进库内文件，换台机器打开也是这个颜色。
+    void updateAppearanceFile(vault.rootPath, { vaultColor: swatch.id }).catch(() => {
+      /* 写不进去时仍保留本机回退 */
+    })
   }
   refreshRecent()
   emit('opened', vault)

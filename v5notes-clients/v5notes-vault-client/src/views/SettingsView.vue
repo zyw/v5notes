@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
 import brandIcon from '../assets/brand-icon.png'
 import type { AccountState } from '../account'
@@ -15,12 +15,12 @@ import {
 import {
   VAULT_COLOR_PALETTE,
   applyVaultColorForPath,
-  getPendingWelcomeColor,
   resolveVaultColor,
-  setPendingWelcomeColor,
   setVaultColor,
+  setVaultColorFromVault,
   type VaultColorSwatch,
 } from '../appearance/vaultColors'
+import { readAppearanceFile, updateAppearanceFile } from '../theme-host'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
 import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
@@ -36,7 +36,13 @@ import {
   setSafeModeAndReload,
   startExtensionRuntime,
 } from '../extension/runtime'
-import { decideRuntimeBoot } from './settingsRuntime'
+import {
+  buildSettingsVaultRows,
+  decideRuntimeBoot,
+  resolveInitialScope,
+  type SettingsScope,
+} from './settingsRuntime'
+import { hydrateVaultRegistry, listVaultRegistry } from '../vault/recent'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
   MIGRATION_EXPLICIT_LINE,
@@ -64,6 +70,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   'check-update': []
   'show-release-notes': []
+  /** Requests the vault picker; the shell owns opening a vault. */
+  'open-vault': []
+  /** Asks the shell to make this vault the open one. */
+  'switch-vault': [rootPath: string]
+  /** Requests the 所有库 registry panel; the shell owns opening a vault. */
+  'open-registry': []
 }>()
 
 const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
@@ -88,15 +100,139 @@ const backupResult = ref('')
 const backupError = ref('')
 /** Guide opens in place once acknowledged; no separate confirmation round-trip. */
 const migrationOpen = ref(false)
-const publishDraft = ref<OfficialPublishDraft>(loadOfficialPublishDraft())
+const publishDraft = ref<OfficialPublishDraft>(loadOfficialPublishDraft(props.vault?.rootPath))
 const publishSaved = ref(false)
 const publishError = ref('')
 
 
-const mainScroll = ref<HTMLElement | null>(null)
-
 /** 版本号来自壳；浏览器预览没有壳，退回打包时的版本。 */
 const versionLabel = computed(() => props.currentVersion || '2.1.0')
+
+/**
+ * 全局与库分开：库设置只针对当前打开的库，没有一个打开的库就不出现这一区。
+ * 页面本身记住用户停在哪一区，回到设置时接着看。
+ */
+const scope = ref<SettingsScope>(resolveInitialScope(Boolean(props.vault?.rootPath)))
+const registryRows = ref<{ rootPath: string; name: string }[]>([])
+const activeVaultRow = computed(() => {
+  const path = props.vault?.rootPath
+  if (!path) return null
+  return { rootPath: path, name: props.vault?.name || path }
+})
+const vaultRows = computed(() =>
+  buildSettingsVaultRows(
+    registryRows.value.filter((row) => row.rootPath !== props.vault?.rootPath),
+    activeVaultRow.value,
+  ),
+)
+const hasVault = computed(() => Boolean(props.vault?.rootPath))
+/** 库设置的四个页签；一次只看一块，页签和下面的卡片说同一件事。 */
+type VaultTab = 'colors' | 'sync' | 'backup' | 'publish'
+const vaultTab = ref<VaultTab>('colors')
+const vaultTabs: { id: VaultTab; label: string; title: string }[] = [
+  { id: 'colors', label: '库色', title: '库色' },
+  { id: 'sync', label: '同步', title: '同步' },
+  { id: 'backup', label: '备份与迁移', title: '备份与迁移' },
+  { id: 'publish', label: '发布', title: '官方发布 / 分享' },
+]
+watch(
+  () => props.vault?.rootPath,
+  () => {
+    vaultTab.value = 'colors'
+  },
+)
+
+const publishOptions: { id: OfficialPublishVisibility; label: string }[] = [
+  { id: 'private', label: '私有' },
+  { id: 'unlisted', label: '不公开链接' },
+  { id: 'public', label: '公开' },
+]
+
+/** 发布卡上的读数；在脚本里算，模板属性里不写箭头函数。 */
+const publishVisibilityLabel = computed(
+  () => publishOptions.find((option) => option.id === publishDraft.value.visibility)?.label ?? '私有',
+)
+
+/**
+ * 库色只属于当前库；没有库时为 null。
+ * 它以库内文件为准，读盘是异步的，所以这里必须是显式状态：
+ * 读盘和写入后都要同步更新，否则选中描边和读数不会跟着变。
+ */
+const vaultSwatch = ref<VaultColorSwatch | null>(null)
+const colorError = ref('')
+
+async function loadVaultColor(path: string | null | undefined): Promise<void> {
+  if (!path) {
+    vaultSwatch.value = null
+    return
+  }
+  try {
+    const stored = (await readAppearanceFile(path))?.vaultColor
+    if (path !== props.vault?.rootPath) return
+    setVaultColorFromVault(stored)
+  } catch {
+    /* 读不到就用本机回退 */
+  }
+  vaultSwatch.value = resolveVaultColor(path)
+}
+void loadVaultColor(props.vault?.rootPath)
+
+function showScope(next: SettingsScope): void {
+  scope.value = next
+}
+
+async function hydrateRows(): Promise<void> {
+  try {
+    const entries = await hydrateVaultRegistry()
+    registryRows.value = entries.map((entry) => ({
+      rootPath: entry.rootPath,
+      name: entry.name,
+    }))
+  } catch {
+    registryRows.value = listVaultRegistry().map((entry) => ({
+      rootPath: entry.rootPath,
+      name: entry.name,
+    }))
+  }
+}
+
+/**
+ * 库列表里点一个库 = 把它打开；打开后设置自动停在这个库的页面。
+ * 外壳负责真正打开（校验目录、注册最近库），这里只负责请求与忙碌态。
+ */
+const switchingTo = ref<string | null>(null)
+const switchError = ref('')
+
+function activateVault(row: { rootPath: string; active: boolean; missing?: boolean }) {
+  if (row.missing) return
+  if (row.active) {
+    showScope('vault')
+    return
+  }
+  switchError.value = ''
+  switchingTo.value = row.rootPath
+  emit('switch-vault', row.rootPath)
+}
+
+function clearSwitching(): void {
+  switchingTo.value = null
+}
+
+/** 外壳打开失败时把错误摆在列表里，不让点击看起来像没反应。 */
+function reportSwitchFailure(message: string): void {
+  switchingTo.value = null
+  switchError.value = message
+}
+
+defineExpose({ clearSwitching, reportSwitchFailure })
+
+/** 设置里只改当前库；没有打开的库时从这里去挑一个。 */
+function requestVault() {
+  emit('open-vault')
+}
+function requestRegistry() {
+  emit('open-registry')
+}
 
 /** 一个按钮说清现状：空闲是「检查更新」，查到新版本就变成「可更新至 x.y.z」。 */
 const updateAction = computed(() => {
@@ -104,12 +240,6 @@ const updateAction = computed(() => {
   if (props.offeredVersion) return { label: '可更新至 ' + props.offeredVersion }
   return { label: '检查更新' }
 })
-
-const publishOptions: { id: OfficialPublishVisibility; label: string }[] = [
-  { id: 'private', label: '私有' },
-  { id: 'unlisted', label: '不公开链接' },
-  { id: 'public', label: '公开' },
-]
 
 const colorModes: { id: ColorMode; label: string }[] = [
   { id: 'system', label: '跟随系统' },
@@ -129,36 +259,19 @@ function setPluginTabHost(pluginId: string, tabId: string, el: unknown): void {
   pluginTabHosts.value[pluginId + ':' + tabId] = (el as HTMLElement | null) ?? null
 }
 
-function scrollToPanel(id: string): void {
-  const el = document.getElementById(id)
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-const hasVault = computed(() => Boolean(props.vault?.rootPath))
-const vaultSwatch = ref<VaultColorSwatch | null>(
-  props.vault?.rootPath ? resolveVaultColor(props.vault.rootPath) : null,
-)
-/** Pending welcome colour is what a new vault starts with before one is open. */
-const pendingSwatchId = ref<string | null>(getPendingWelcomeColor()?.id ?? null)
-const activeSwatchId = computed(() => vaultSwatch.value?.id ?? pendingSwatchId.value)
 /** An empty plugin list means different things before and after the host starts. */
 const hostReady = ref(false)
 
-watch(
-  () => props.vault?.rootPath,
-  path => {
-    vaultSwatch.value = path ? applyVaultColorForPath(path) : null
-  },
-)
-
 function pickVaultColor(id: string) {
-  if (props.vault?.rootPath) {
-    vaultSwatch.value = setVaultColor(props.vault.rootPath, id)
-    return
-  }
-  // No vault open yet: remember the choice for the next one instead of ignoring it.
-  setPendingWelcomeColor(id)
-  pendingSwatchId.value = id
+  const path = props.vault?.rootPath
+  if (!path) return
+  // 先套到窗口上再落盘：两个函数都会同步 --vault，选完立刻可见。
+  applyVaultColorForPath(path)
+  vaultSwatch.value = setVaultColor(path, id)
+  // 库色跟着库走：写进库内的 .v5notes/appearance.json，换台机器打开仍是这个颜色。
+  void updateAppearanceFile(path, { vaultColor: vaultSwatch.value.id }).catch((error) => {
+    colorError.value = error instanceof Error ? error.message : String(error)
+  })
 }
 
 function refreshExtensionState() {
@@ -186,16 +299,6 @@ function refreshExtensionState() {
   commands.value = listHostCommands()
   settingTabs.value = listHostSettingTabs()
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
-  void nextTick(() => {
-    for (const tab of settingTabs.value) {
-      const key = `${tab.pluginId}:${tab.id}`
-      const el = pluginTabHosts.value[key]
-      if (el) {
-        el.innerHTML = ''
-        void tab.display(el)
-      }
-    }
-  })
 }
 
 async function loadCatalog() {
@@ -366,7 +469,7 @@ function savePublishDraft() {
   publishError.value = ''
   try {
     assertOfficialPublishChannel(publishDraft.value.channel)
-    publishDraft.value = saveOfficialPublishDraft(publishDraft.value)
+    publishDraft.value = saveOfficialPublishDraft(props.vault?.rootPath, publishDraft.value)
     publishSaved.value = true
   } catch (error) {
     publishError.value = error instanceof Error ? error.message : String(error)
@@ -389,16 +492,31 @@ async function ensureExtensionRuntime(): Promise<void> {
 }
 
 onMounted(async () => {
+  await hydrateRows()
   await ensureExtensionRuntime()
   refreshExtensionState()
   void loadCatalog()
-  publishDraft.value = loadOfficialPublishDraft()
 })
 watch(
   () => props.vault?.rootPath,
-  async () => {
+  async (path) => {
+    // A vault section without a vault would be a guess; follow the page that exists.
+    if (path) scope.value = 'vault'
+    else if (scope.value === 'vault') scope.value = 'global'
     await ensureExtensionRuntime()
     refreshExtensionState()
+    await hydrateRows()
+    // 换库完成：列表退出忙碌态，错误清空。
+    switchingTo.value = null
+    switchError.value = ''
+    // Vault colour belongs to the vault too; its file may name a colour the
+    // local fallback did not know about.
+    colorError.value = ''
+    await loadVaultColor(path)
+    // Drafts belong to a vault: opening another one shows its own site title.
+    publishDraft.value = loadOfficialPublishDraft(path)
+    publishSaved.value = false
+    publishError.value = ''
   },
 )
 
@@ -409,153 +527,379 @@ watch(publishDraft, () => {
 
 <template>
   <section class="settings-workspace" aria-labelledby="settings-title">
-    <aside class="settings-side">
+    <aside class="settings-side" aria-label="设置">
       <div class="side-brand">
         <img :src="brandIcon" alt="">
         <div><b>V5Notes</b></div>
       </div>
       <div class="side-title"><h1 id="settings-title">设置</h1></div>
 
-      <nav class="side-nav" aria-label="设置分区">
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-account')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>
-          账户
+      <div class="side-group">
+        <button type="button" class="side-group-head" :class="{ on: scope === 'global' }" :aria-expanded="scope === 'global'" @click="showScope('global')">
+          全局设置<span class="side-group-note">所有库</span>
         </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-sync')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
-          同步
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-backup')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg>
-          备份与迁移
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-publish')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg>
-          官方发布 / 分享
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-appearance')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg>
-          外观
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-plugins')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>
-          插件与安全
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-catalog')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>
-          插件目录
-        </button>
-        <button type="button" class="side-nav-item" @click="scrollToPanel('p-about')">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>
-          关于本机
-        </button>
-      </nav>
+        <div v-show="scope === 'global'" class="side-items" role="group" aria-label="全局设置">
+          <button type="button" class="side-nav-item" :class="{ on: scope === 'global' }" @click="scope = 'global'"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>账户</button>
+          <a class="side-nav-item" href="#g-appearance"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg>主题与明暗</a>
+          <a class="side-nav-item" href="#g-plugins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>插件与安全</a>
+          <a class="side-nav-item" href="#g-security"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg>安全模式</a>
+          <a class="side-nav-item" href="#g-catalog"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>插件目录</a>
+          <a class="side-nav-item" href="#g-about"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>关于本机</a>
+        </div>
+      </div>
+
+      <div v-if="vaultRows.length" class="side-group">
+        <p class="side-group-label">库列表</p>
+        <div class="side-vaults">
+          <button
+            v-for="row in vaultRows"
+            :key="row.rootPath"
+            type="button"
+            class="side-vault"
+            :class="{ active: row.active, missing: row.missing, switching: row.rootPath === switchingTo }"
+            :disabled="row.missing || switchingTo !== null"
+            :aria-current="row.active && scope === 'vault' ? 'page' : undefined"
+            :title="row.rootPath"
+            @click="activateVault(row)"
+          >
+            <span class="side-vault-bar" :style="{ background: resolveVaultColor(row.rootPath).color }" aria-hidden="true"></span>
+            <span class="side-vault-copy">
+              <b>{{ row.name }}</b>
+              <span v-if="row.missing">文件夹不在</span>
+              <span v-else-if="row.rootPath === switchingTo">打开中…</span>
+            </span>
+            <span v-if="row.active" class="side-vault-go" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></span>
+          </button>
+        </div>
+        <p v-if="switchError" class="side-vaults-note side-vaults-error" role="alert">{{ switchError }}</p>
+      </div>
 
       <div class="side-foot">
-        <span class="side-avatar" aria-hidden="true">
-          <!-- Logged in: first letter, like the ribbon avatar. Signed out: stroke person, same weight as the nav icons. -->
-          <template v-if="account.loggedIn.value">
-            {{ (account.profile.value?.nickName || account.username.value || '已登录').slice(0, 1) }}
-          </template>
-          <svg v-else viewBox="0 0 16 16">
-            <circle cx="8" cy="5.5" r="2.25" />
-            <path d="M3.35 13.15v-.55a2.55 2.55 0 0 1 2.55-2.55h4.2a2.55 2.55 0 0 1 2.55 2.55v.55" />
-          </svg>
-        </span>
-        <div>
-          <b>{{ account.loggedIn.value ? (account.profile.value?.nickName || account.username.value || '已登录') : '未登录' }}</b>
-          <span>{{ vault?.name || '未打开库' }}</span>
-        </div>
+        <button type="button" class="side-vault-action" @click="requestVault"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>打开库…</button>
+        <button type="button" class="side-vault-action" @click="requestRegistry">所有库</button>
       </div>
     </aside>
 
-    <div ref="mainScroll" class="settings-main">
+    <div class="settings-main">
       <div class="settings-inner">
-        <ul class="status-strip" aria-label="当前状态">
-          <li>
-            <button type="button" class="status-chip" @click="scrollToPanel('p-account')">
-              <span class="status-ico" aria-hidden="true">
-                <svg viewBox="0 0 16 16"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M8 7.2v3.2"/></svg>
+        <!-- ========== 全局设置 ========== -->
+        <div v-if="scope === 'global'" class="global-page">
+          <ul class="status-strip" aria-label="当前状态">
+            <li>
+              <span class="status-chip">
+                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg></span>
+                <span class="status-copy"><span>账号</span><b><i :class="{ g: account.loggedIn.value }"></i>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b></span>
               </span>
-              <span class="status-copy">
-                <span>本地库</span>
-                <b :title="vault?.name || '未打开库'"><i class="g"></i>{{ vault?.name || '未打开库' }}</b>
+            </li>
+            <li>
+              <span class="status-chip">
+                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg></span>
+                <span class="status-copy"><span>扩展</span><b>{{ plugins.length ? plugins.length + ' 个已安装' : '未安装' }}</b></span>
               </span>
-            </button>
-          </li>
-          <li>
-            <button type="button" class="status-chip" @click="scrollToPanel('p-account')">
-              <span class="status-ico" aria-hidden="true">
-                <svg viewBox="0 0 16 16"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>
+            </li>
+            <li>
+              <span class="status-chip">
+                <span class="status-ico" aria-hidden="true" :class="{ on: safeMode }"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg></span>
+                <span class="status-copy"><span>安全模式</span><b>{{ safeMode ? '开' : '关' }}</b></span>
               </span>
-              <span class="status-copy">
-                <span>账号</span>
-                <b><i :class="{ g: account.loggedIn.value }"></i>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b>
-              </span>
-            </button>
-          </li>
-          <li>
-            <button type="button" class="status-chip" @click="scrollToPanel('p-sync')">
-              <span class="status-ico" aria-hidden="true">
-                <svg viewBox="0 0 16 16"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
-              </span>
-              <span class="status-copy">
-                <span>同步</span>
-                <b><i :class="{ g: account.loggedIn.value && hasVault }"></i>{{ account.loggedIn.value && hasVault ? '已连接' : '未连接' }}</b>
-              </span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="status-chip"
-              role="switch"
-              :aria-checked="safeMode"
-              :disabled="extensionBusy"
-              @click="toggleSafeMode"
-            >
-              <span class="status-ico" :class="{ on: safeMode }" aria-hidden="true">
-                <svg viewBox="0 0 16 16"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg>
-              </span>
-              <span class="status-copy">
-                <span>安全模式</span>
-                <b><span class="status-switch" :class="{ on: safeMode }" aria-hidden="true"><span></span></span></b>
-              </span>
-            </button>
-          </li>
-        </ul>
+            </li>
+            <li>
+              <button type="button" class="status-chip" @click="requestVault">
+                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M3.2 5.2 8 7.8l4.8-2.6M8 7.8v5.6"/></svg></span>
+                <span class="status-copy"><span>库</span><b>{{ vaultRows.length }} 个{{ vault?.name ? ' · ' + vault.name : '' }}</b></span>
+              </button>
+            </li>
+          </ul>
 
-        <div class="panel-stack">
-          <section class="panel p-account" id="p-account" aria-labelledby="panel-account-title">
+          <div class="panel-stack">
+            <section class="panel" id="g-account" aria-labelledby="g-account-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg></span>
+                <h3 id="g-account-title">账户</h3>
+              </div>
+              <div class="p-body">
+                <AccountPanel :account="account" :vault="vault" :sync="sync" mode="account" />
+              </div>
+            </section>
+
+            <section class="panel" id="g-appearance" aria-labelledby="g-appearance-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg></span>
+                <h3 id="g-appearance-title">主题与明暗</h3>
+                <span class="state">{{ activeThemeLabel }} · {{ activeColorModeLabel }}</span>
+              </div>
+              <div class="p-body">
+                <div class="book-theme-grid" role="group" aria-label="主题">
+                  <button
+                    v-for="theme in themes"
+                    :key="theme.id"
+                    class="book-theme"
+                    type="button"
+                    :class="{ on: prefs.theme === theme.id }"
+                    :disabled="safeMode && !theme.builtin"
+                    @click="setTheme(theme.id)"
+                  >
+                    <div class="book-theme-preview" :class="{ dusk: theme.id === 'dusk', community: theme.id !== 'default' && theme.id !== 'dusk' }">
+                      <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
+                    </div>
+                    <div class="book-theme-name">{{ theme.name }}<span class="check">✓</span></div>
+                    <div v-if="theme.description" class="book-theme-desc">{{ theme.description }}</div>
+                  </button>
+                </div>
+                <div class="book-row">
+                  <div class="book-row-copy">
+                    <strong>色模式</strong>
+                    <p class="book-hint">跟随系统，或固定浅色 / 深色</p>
+                  </div>
+                  <div class="book-seg" role="group" aria-label="色模式">
+                    <button v-for="mode in colorModes" :key="mode.id" type="button" :class="{ on: prefs.colorMode === mode.id }" @click="setColorMode(mode.id)">{{ mode.label }}</button>
+                  </div>
+                </div>
+                <p v-if="themeError" class="book-small" role="status">{{ themeError }}</p>
+              </div>
+            </section>
+
+            <section class="panel" id="g-plugins" aria-labelledby="g-plugins-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg></span>
+                <h3 id="g-plugins-title">插件与安全</h3>
+              </div>
+              <div class="p-body">
+                <div class="book-subhead">
+                  <strong>已安装扩展</strong>
+                  <button class="book-ghost book-ghost--sm" type="button" :disabled="extensionBusy" @click="installSamples">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+                    安装示例扩展
+                  </button>
+                </div>
+                <ul v-if="plugins.length" class="book-list">
+                  <li v-for="p in plugins" :key="p.id" class="book-list-row">
+                    <div>
+                      <strong>{{ p.name }}</strong><span class="book-muted"> · {{ p.id }} · {{ p.core ? '核心' : '本地' }} · {{ p.status }}</span>
+                      <div class="book-mono">权限: {{ p.permissions.join(', ') || '（无）' }}</div>
+                      <div v-if="p.error" class="book-danger">{{ p.error }}</div>
+                    </div>
+                    <button
+                      v-if="p.id !== 'v5-editor'"
+                      class="book-text-btn"
+                      type="button"
+                      :disabled="extensionBusy || (safeMode && !p.core)"
+                      @click="togglePlugin(p.id, p.status !== 'loaded')"
+                    >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
+                    <span v-else class="book-text-btn is-fixed">始终启用</span>
+                  </li>
+                </ul>
+                <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
+                <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
+                <div v-if="editors.length" class="book-cmd-row">
+                  <p class="book-sub">笔记编辑器</p>
+                  <p class="book-small">同一时间只用一个，切换后回到笔记生效；预览和编辑仍复用当前实例。默认 V5 编辑器不可禁用。</p>
+                  <button
+                    v-for="ed in editors"
+                    :key="ed.id"
+                    class="book-cmd"
+                    :class="{ 'is-on': ed.id === activeEditorId }"
+                    type="button"
+                    :aria-pressed="ed.id === activeEditorId"
+                    :disabled="extensionBusy"
+                    @click="chooseEditor(ed.id)"
+                  >
+                    <strong>{{ ed.name }}</strong><span>{{ ed.pluginId }}</span>
+                  </button>
+                </div>
+                <div v-if="commands.length" class="book-cmd-row">
+                  <p class="book-sub">已注册命令</p>
+                  <button v-for="cmd in commands" :key="cmd.pluginId + ':' + cmd.id" class="book-cmd" type="button" @click="runCommand(cmd)">
+                    <strong>{{ cmd.name }}</strong><span>{{ cmd.pluginId }}:{{ cmd.id }}</span>
+                  </button>
+                </div>
+                <div v-if="settingTabs.length" class="book-plugin-tabs">
+                  <p class="book-sub">插件设置</p>
+                  <div v-for="tab in settingTabs" :key="tab.pluginId + ':' + tab.id" class="book-plugin-tab">
+                    <strong>{{ tab.name }}</strong>
+                    <div class="book-plugin-tab-host" :ref="el => setPluginTabHost(tab.pluginId, tab.id, el)"></div>
+                  </div>
+                </div>
+                <p v-if="pluginMessage" class="book-small book-danger-text" role="alert">{{ pluginMessage }}</p>
+              </div>
+            </section>
+
+            <section class="panel" id="g-security" aria-labelledby="g-security-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg></span>
+                <h3 id="g-security-title">安全模式</h3>
+                <span class="state">{{ safeMode ? '开' : '关' }}</span>
+              </div>
+              <div class="p-body">
+                <div class="book-pref-row">
+                  <div class="book-pref-copy">
+                    <strong>安全模式</strong>
+                    <span>{{ safeMode ? '已开启：仅核心插件与内置主题生效，社区扩展全部跳过。' : '开启后仅加载核心插件与内置主题，社区扩展全部跳过。对所有库生效。' }}</span>
+                  </div>
+                  <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel" id="g-catalog" aria-labelledby="g-catalog-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg></span>
+                <h3 id="g-catalog-title">插件目录</h3>
+                <span class="state">{{ catalogSource === 'server' ? '服务器' : '本地种子' }}</span>
+                <button type="button" class="p-head-action" :disabled="catalogBusy" :aria-label="catalogBusy ? '刷新中' : '刷新目录'" :title="catalogBusy ? '刷新中' : '刷新目录'" @click="loadCatalog">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" :class="{ spinning: catalogBusy }"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+                </button>
+              </div>
+              <div class="p-body">
+                <div v-if="catalogItems.length" class="book-catalog-list">
+                  <div v-for="item in catalogItems" :key="item.id" class="book-catalog-row">
+                    <div>
+                      <strong>{{ item.name }}</strong><span class="book-mono"> · {{ item.kind }} · {{ item.version }}</span>
+                      <p>{{ item.description }}</p>
+                      <div class="book-tags">
+                        <span v-for="tag in item.tags || []" :key="tag" class="book-tag">{{ tag }}</span>
+                        <span v-if="item.networkAllowlist?.length" class="book-tag">allowlist: {{ item.networkAllowlist.join(', ') }}</span>
+                      </div>
+                    </div>
+                    <button
+                      class="book-ghost book-ghost--sm"
+                      type="button"
+                      :disabled="extensionBusy || safeMode || !hasVault"
+                      :title="safeMode ? '安全模式下不可安装' : (!hasVault ? '选择库后返回这里安装' : undefined)"
+                      @click="installCatalog(item)"
+                    >
+                      安装
+                    </button>
+                  </div>
+                </div>
+                <p v-if="!hasVault" class="book-small">安装需要先打开一个库，装好后所有库共用。</p>
+                <p v-if="catalogMessage" class="book-small" role="status">{{ catalogMessage }}</p>
+              </div>
+            </section>
+
+            <section class="panel" id="g-about" aria-labelledby="g-about-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg></span>
+                <h3 id="g-about-title">关于本机</h3>
+              </div>
+              <div class="p-body">
+                <dl class="book-meta book-meta--about">
+                  <div><dt>版本</dt><dd>V5Notes Vault <code>{{ versionLabel }}</code></dd></div>
+                  <div><dt>Bundle ID</dt><dd><code>xin.v5ai.v5notes.vault</code></dd></div>
+                  <div><dt>Deep link</dt><dd><code>v5notes-vault://</code></dd></div>
+                </dl>
+                <div class="book-about-actions">
+                  <button v-if="releaseNotesAvailable" class="book-ghost book-ghost--sm" type="button" @click="emit('show-release-notes')">
+                    本版更新说明
+                  </button>
+                  <button
+                    class="book-about-check"
+                    :class="{ 'is-offered': Boolean(offeredVersion) }"
+                    type="button"
+                    :disabled="updateChecking"
+                    :aria-busy="updateChecking"
+                    @click="emit('check-update')"
+                  >
+                    <svg v-if="updateChecking" class="spinning" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+                    <svg v-else viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V2.8M5.2 5.6 8 2.8l2.8 2.8"/><path d="M3.2 11.2v1.6h9.6v-1.6"/></svg>
+                    {{ updateAction.label }}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ========== 库设置：当前打开的库 ========== -->
+        <div v-else-if="vault" class="vault-page">
+          <header class="vault-head">
+            <span class="vault-head-bar" :style="{ background: vaultSwatch?.color || 'var(--vault)' }" aria-hidden="true"></span>
+            <div class="vault-head-copy">
+              <h2>{{ vault.name }}</h2>
+              <span :title="vault.rootPath">{{ vault.rootPath }}</span>
+            </div>
+            <nav class="vault-tabs" role="tablist" aria-label="库设置">
+              <button
+                v-for="tab in vaultTabs"
+                :key="tab.id"
+                type="button"
+                role="tab"
+                :id="'vtab-' + tab.id"
+                :aria-selected="vaultTab === tab.id"
+                :aria-controls="`vpanel-${tab.id}`"
+                :class="{ on: vaultTab === tab.id }"
+                @click="vaultTab = tab.id"
+              >{{ tab.label }}</button>
+            </nav>
+          </header>
+
+          <!-- 四块卡是这一库的状态摘要，点哪块就展开哪块；页签只是同一件事的第二个入口。 -->
+          <div class="vault-tiles">
+            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'colors' }" :aria-pressed="vaultTab === 'colors'" @click="vaultTab = 'colors'">
+              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
+              <span class="vault-tile-copy"><b>库色</b><span>{{ vaultSwatch ? vaultSwatch.term + ' · ' + vaultSwatch.name : '' }}</span></span>
+            </button>
+            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'sync' }" :aria-pressed="vaultTab === 'sync'" @click="vaultTab = 'sync'">
+              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
+              <span class="vault-tile-copy"><b>同步</b><span>{{ account.loggedIn.value ? '已登录' : '未登录' }}</span></span>
+            </button>
+            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'backup' }" :aria-pressed="vaultTab === 'backup'" @click="vaultTab = 'backup'">
+              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
+              <span class="vault-tile-copy"><b>备份与迁移</b><span>{{ backupResult ? '已导出' : '未导出' }}</span></span>
+            </button>
+            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'publish' }" :aria-pressed="vaultTab === 'publish'" @click="vaultTab = 'publish'">
+              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
+              <span class="vault-tile-copy"><b>发布</b><span>{{ publishVisibilityLabel }}</span></span>
+            </button>
+          </div>
+
+          <section v-show="vaultTab === 'colors'" id="vpanel-colors" class="panel" role="tabpanel" aria-labelledby="vtab-colors">
             <div class="p-head">
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg></span>
-              <h3 id="panel-account-title">账户</h3>
+              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
+              <h3>库色</h3>
+              <span class="state">{{ vaultSwatch ? vaultSwatch.term + ' · ' + vaultSwatch.name : '' }}</span>
             </div>
             <div class="p-body">
-              <AccountPanel :account="account" :vault="vault" :sync="sync" mode="account" />
+              <div class="book-swatches" role="group" aria-label="库色">
+                <button
+                  v-for="swatch in VAULT_COLOR_PALETTE"
+                  :key="swatch.id"
+                  type="button"
+                  class="book-swatch"
+                  :class="{ on: vaultSwatch?.id === swatch.id }"
+                  :aria-pressed="vaultSwatch?.id === swatch.id"
+                  :title="swatch.term + ' · ' + swatch.name"
+                  @click="pickVaultColor(swatch.id)"
+                >
+                  <span class="book-swatch-bar" :style="{ background: swatch.color }"></span>
+                  <span class="book-swatch-label"><b>{{ swatch.term }}</b><br>{{ swatch.name }}</span>
+                </button>
+              </div>
+              <p class="book-small">侧栏与窗口标题用它辨认这个库；随库保存，换台机器打开仍是这个颜色。</p>
+              <p v-if="colorError" class="book-small book-danger-text" role="alert">{{ colorError }}</p>
             </div>
           </section>
 
-          <section class="panel p-sync" id="p-sync" aria-labelledby="panel-sync-title">
+          <section v-show="vaultTab === 'sync'" id="vpanel-sync" class="panel" role="tabpanel" aria-labelledby="vtab-sync">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
-              <h3 id="panel-sync-title">同步</h3>
+              <h3>同步</h3>
               <span v-if="account.useOfficialServer.value" class="state">官方服务器</span>
-              <span v-else class="state" :title="account.server.value">{{ account.server.value.replace(/^https?:\/\//, '') }}</span>
+              <span v-else-if="account.server.value" class="state" :title="account.server.value">{{ account.server.value.replace(/^https?:\/\//, '') }}</span>
             </div>
             <div class="p-body">
               <AccountPanel :account="account" :vault="vault" :sync="sync" mode="sync" subject="同步" hide-server />
             </div>
           </section>
 
-          <section class="panel p-backup" id="p-backup" aria-labelledby="panel-backup-title">
+          <section v-show="vaultTab === 'backup'" id="vpanel-backup" class="panel" role="tabpanel" aria-labelledby="vtab-backup">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
-              <h3 id="panel-backup-title">备份与迁移</h3>
+              <h3>备份与迁移</h3>
             </div>
             <div class="p-body">
               <div class="book-actions">
-                <button class="book-action" type="button" :disabled="backupBusy || !hasVault" :title="!hasVault ? '打开库后可导出' : undefined" @click="runBackup">
+                <button class="book-action" type="button" :disabled="backupBusy" @click="runBackup">
                   <span class="book-action-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
                   <span class="book-action-copy">
                     <strong>{{ backupBusy ? '正在打包…' : '导出整库 zip' }}</strong>
@@ -582,15 +926,15 @@ watch(publishDraft, () => {
             </div>
           </section>
 
-          <section class="panel p-publish" id="p-publish" aria-labelledby="panel-publish-title">
+          <section v-show="vaultTab === 'publish'" id="vpanel-publish" class="panel" role="tabpanel" aria-labelledby="vtab-publish">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
-              <h3 id="panel-publish-title">官方发布 / 分享</h3>
+              <h3>官方发布 / 分享</h3>
             </div>
             <div class="p-body">
               <label class="book-field">
                 <span>站点标题</span>
-                <input v-model="publishDraft.siteTitle" type="text" maxlength="100" placeholder="例如：公开读书笔记" autocomplete="off">
+                <input v-model="publishDraft.siteTitle" type="text" maxlength="100" placeholder="例如：公开读书笔记" autocomplete="off" @input="onPublishTitleInput">
               </label>
               <div class="book-field-label">可见性</div>
               <div class="book-seg book-seg--three" role="group" aria-label="可见性">
@@ -608,221 +952,18 @@ watch(publishDraft, () => {
               <p v-if="publishError" class="book-small book-danger-text" role="alert">{{ publishError }}</p>
             </div>
           </section>
+        </div>
 
-          <section class="panel p-appearance" id="p-appearance" aria-labelledby="panel-appearance-title">
-            <div class="p-head">
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
-              <h3 id="panel-appearance-title">外观</h3>
-              <span class="state">{{ activeThemeLabel }} · {{ activeColorModeLabel }}</span>
-            </div>
-            <div class="p-body">
-              <p class="p-lead">内置主题始终可回退。社区主题需通过 CSS 变量校验；非法规则会回退默认并提示。</p>
-              <div class="book-theme-grid" role="group" aria-label="主题">
-                <button
-                  v-for="theme in themes"
-                  :key="theme.id"
-                  class="book-theme"
-                  type="button"
-                  :class="{ on: prefs.theme === theme.id }"
-                  :disabled="safeMode && !theme.builtin"
-                  @click="setTheme(theme.id)"
-                >
-                  <div class="book-theme-preview" :class="{ dusk: theme.id === 'dusk', community: theme.id !== 'default' && theme.id !== 'dusk' }">
-                    <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
-                  </div>
-                  <div class="book-theme-name">{{ theme.name }}<span class="check">✓</span></div>
-                  <div v-if="theme.description" class="book-theme-desc">{{ theme.description }}</div>
-                </button>
-              </div>
-              <div class="book-row">
-                <div class="book-row-copy">
-                  <strong>色模式</strong>
-                  <p class="book-hint">跟随系统，或固定浅色 / 深色</p>
-                </div>
-                <div class="book-seg" role="group" aria-label="色模式">
-                  <button v-for="mode in colorModes" :key="mode.id" type="button" :class="{ on: prefs.colorMode === mode.id }" @click="setColorMode(mode.id)">{{ mode.label }}</button>
-                </div>
-              </div>
-              <div class="book-colors">
-                <div class="book-colors-head">
-                  <strong>{{ hasVault ? '当前库色' : '库色' }}</strong>
-                  <span>
-                    <template v-if="vaultSwatch">{{ vaultSwatch.term }} · {{ vaultSwatch.name }} — 写入本机偏好，侧栏顶条用它辨认多库</template>
-                    <template v-else>打开库后可选择；这里选的是新库的默认库色</template>
-                  </span>
-                </div>
-                <div class="book-swatches" role="group" aria-label="库色">
-                  <button
-                    v-for="swatch in VAULT_COLOR_PALETTE"
-                    :key="swatch.id"
-                    type="button"
-                    class="book-swatch"
-                    :class="{ on: activeSwatchId === swatch.id }"
-                    :aria-pressed="activeSwatchId === swatch.id"
-                    :title="swatch.term + ' · ' + swatch.name"
-                    @click="pickVaultColor(swatch.id)"
-                  >
-                    <span class="book-swatch-bar" :style="{ background: swatch.color }"></span>
-                    <span class="book-swatch-label"><b>{{ swatch.term }}</b><br>{{ swatch.name }}</span>
-                  </button>
-                </div>
-              </div>
-              <p v-if="themeError" class="book-small" role="status">{{ themeError }}</p>
-            </div>
-          </section>
-
-          <section class="panel p-plugins" id="p-plugins" aria-labelledby="panel-plugins-title">
-            <div class="p-head">
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg></span>
-              <h3 id="panel-plugins-title">插件与安全</h3>
-              <span class="state">安全模式：{{ safeMode ? '开' : '关' }}</span>
-            </div>
-            <div class="p-body">
-              <div class="book-pref-row">
-                <div class="book-pref-copy">
-                  <strong>安全模式</strong>
-                  <span>{{ safeMode ? '已开启：仅核心插件与内置主题生效，社区扩展全部跳过。' : '开启后仅加载核心插件与内置主题，社区扩展全部跳过。' }}</span>
-                </div>
-                <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
-              </div>
-              <div class="book-subhead">
-                <strong>已安装扩展</strong>
-                <button
-                  class="book-ghost book-ghost--sm"
-                  type="button"
-                  :disabled="extensionBusy"
-                  @click="installSamples"
-                >
-                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-                  安装示例扩展
-                </button>
-              </div>
-              <ul v-if="plugins.length" class="book-list">
-                <li v-for="p in plugins" :key="p.id" class="book-list-row">
-                  <div>
-                    <strong>{{ p.name }}</strong><span class="book-muted"> · {{ p.id }} · {{ p.core ? '核心' : '本地' }} · {{ p.status }}</span>
-                    <div class="book-mono">权限: {{ p.permissions.join(', ') || '（无）' }}</div>
-                    <div v-if="p.error" class="book-danger">{{ p.error }}</div>
-                  </div>
-                  <button
-                    v-if="p.id !== 'v5-editor'"
-                    class="book-text-btn"
-                    type="button"
-                    :disabled="extensionBusy || (safeMode && !p.core)"
-                    @click="togglePlugin(p.id, p.status !== 'loaded')"
-                  >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
-                  <span v-else class="book-text-btn is-fixed">始终启用</span>
-                </li>
-              </ul>
-              <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
-              <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
-              <div v-if="editors.length" class="book-cmd-row">
-                <p class="book-sub">笔记编辑器</p>
-                <p class="book-small">同一时间只用一个，切换后回到笔记生效；预览和编辑仍复用当前实例。默认 V5 编辑器不可禁用。</p>
-                <button
-                  v-for="ed in editors"
-                  :key="ed.id"
-                  class="book-cmd"
-                  :class="{ 'is-on': ed.id === activeEditorId }"
-                  type="button"
-                  :aria-pressed="ed.id === activeEditorId"
-                  :disabled="extensionBusy"
-                  @click="chooseEditor(ed.id)"
-                >
-                  <strong>{{ ed.name }}</strong><span>{{ ed.pluginId }}</span>
-                </button>
-              </div>
-              <div v-if="commands.length" class="book-cmd-row">
-                <p class="book-sub">已注册命令</p>
-                <button v-for="cmd in commands" :key="cmd.pluginId + ':' + cmd.id" class="book-cmd" type="button" @click="runCommand(cmd)">
-                  <strong>{{ cmd.name }}</strong><span>{{ cmd.pluginId }}:{{ cmd.id }}</span>
-                </button>
-              </div>
-              <div v-if="settingTabs.length" class="book-plugin-tabs">
-                <p class="book-sub">插件设置</p>
-                <div v-for="tab in settingTabs" :key="tab.pluginId + ':' + tab.id" class="book-plugin-tab">
-                  <strong>{{ tab.name }}</strong>
-                  <div class="book-plugin-tab-host" :ref="el => setPluginTabHost(tab.pluginId, tab.id, el)"></div>
-                </div>
-              </div>
-              <p v-if="pluginMessage" class="book-small book-danger-text" role="alert">{{ pluginMessage }}</p>
-            </div>
-          </section>
-
-          <section class="panel p-catalog" id="p-catalog" aria-labelledby="panel-catalog-title">
-            <div class="p-head">
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg></span>
-              <h3 id="panel-catalog-title">插件目录</h3>
-              <button type="button" class="p-head-action" :disabled="catalogBusy" :aria-label="catalogBusy ? '刷新中' : '刷新目录'" :title="catalogBusy ? '刷新中' : '刷新目录'" @click="loadCatalog">
-                <svg viewBox="0 0 16 16" aria-hidden="true" :class="{ spinning: catalogBusy }"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
-              </button>
-            </div>
-            <div class="p-body">
-              <p class="book-source">
-                <span class="book-source-label">来源</span>
-                {{ catalogSource === 'server' ? '服务器' : '本地种子' }}
-              </p>
-              <div v-if="catalogItems.length" class="book-catalog-list">
-                <div v-for="item in catalogItems" :key="item.id" class="book-catalog-row">
-                  <div>
-                    <strong>{{ item.name }}</strong><span class="book-mono"> · {{ item.kind }} · {{ item.version }}</span>
-                    <p>{{ item.description }}</p>
-                    <div class="book-tags">
-                      <span v-for="tag in item.tags || []" :key="tag" class="book-tag">{{ tag }}</span>
-                      <span v-if="item.networkAllowlist?.length" class="book-tag">allowlist: {{ item.networkAllowlist.join(', ') }}</span>
-                    </div>
-                  </div>
-                  <button
-                    class="book-ghost book-ghost--sm"
-                    type="button"
-                    :disabled="extensionBusy || safeMode"
-                    :title="safeMode ? '安全模式下不可安装' : undefined"
-                    @click="installCatalog(item)"
-                  >
-                    安装
-                  </button>
-                </div>
-              </div>
-              <p v-if="catalogMessage" class="book-small" role="status">{{ catalogMessage }}</p>
-            </div>
-          </section>
-
-          <section class="panel p-about" id="p-about" aria-labelledby="panel-about-title">
-            <div class="p-head">
-              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg></span>
-              <h3 id="panel-about-title">关于本机</h3>
-            </div>
-            <div class="p-body">
-              <dl class="book-meta book-meta--about">
-                <div><dt>版本</dt><dd>V5Notes Vault <code>{{ versionLabel }}</code></dd></div>
-                <div><dt>Bundle ID</dt><dd><code>xin.v5ai.v5notes.vault</code></dd></div>
-                <div><dt>Deep link</dt><dd><code>v5notes-vault://</code></dd></div>
-              </dl>
-              <div class="book-about-actions">
-                <button v-if="releaseNotesAvailable" class="book-ghost book-ghost--sm" type="button" @click="emit('show-release-notes')">
-                  本版更新说明
-                </button>
-                <button
-                  class="book-about-check"
-                  :class="{ 'is-offered': Boolean(offeredVersion) }"
-                  type="button"
-                  :disabled="updateChecking"
-                  :aria-busy="updateChecking"
-                  @click="emit('check-update')"
-                >
-                  <svg v-if="updateChecking" class="spinning" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
-                  <svg v-else viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V2.8M5.2 5.6 8 2.8l2.8 2.8"/><path d="M3.2 11.2v1.6h9.6v-1.6"/></svg>
-                  {{ updateAction.label }}
-                </button>
-              </div>
-            </div>
-          </section>
+        <!-- 没有打开的库就不出现库页：只能停在全局，入口在左栏底部。 -->
+        <div v-else class="vault-empty">
+          <span class="vault-empty-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M3.2 5.2 8 7.8l4.8-2.6M8 7.8v5.6"/></svg></span>
+          <p class="vault-empty-copy">还没打开库</p>
+          <button type="button" class="side-vault-action" @click="requestVault"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>打开库…</button>
         </div>
       </div>
     </div>
   </section>
 </template>
-
 <style scoped>
 /* ============================================================
    Settings · dir-6 layout
@@ -900,27 +1041,62 @@ watch(publishDraft, () => {
   display: grid;
   gap: 2px;
 }
+/* ---------- sidebar: 全局设置 + 每个库 ---------- */
+.side-group { margin-top: 22px; display: grid; gap: 2px; }
+.side-group:first-of-type { margin-top: 18px; }
+.side-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 9px 6px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+}
+.side-group-head:hover { color: var(--accent); }
+.side-group-note,
+.side-group-label + .side-vaults-note {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+.side-group-note { margin-left: auto; }
+.side-group-label {
+  margin: 0 0 6px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.side-items { display: grid; gap: 2px; }
+/* 组内的锚点沿用同一套行，只是不是当前页 */
 .side-nav-item {
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 32px;
+  height: 30px;
   padding: 0 9px;
   border-radius: 7px;
   color: var(--muted);
   text-align: left;
   font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
   transition: background 0.14s ease, color 0.14s ease;
 }
+/* 图标按行高固定，否则 SVG 会按默认 300×150 撑满整栏 */
 .side-nav-item svg {
   width: 14px;
   height: 14px;
+  flex: none;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
-  flex: none;
 }
 .side-nav-item:hover {
   background: color-mix(in srgb, var(--panel) 65%, var(--surface));
@@ -931,100 +1107,649 @@ watch(publishDraft, () => {
   color: var(--accent);
   font-weight: 600;
 }
-/* Nav entries are jumps, not a tab set: the section is already visible. */
-.side-nav-item {
-  scroll-behavior: smooth;
-}
-.side-foot {
-  margin-top: auto;
-  padding: 10px 8px 0;
-  border-top: 1px solid var(--line);
+a.side-nav-item:visited { color: var(--muted); }
+
+.side-vaults { display: grid; gap: 3px; }
+.side-vault {
   display: flex;
   align-items: center;
   gap: 9px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-align: left;
+  transition: background 0.14s ease, border-color 0.14s ease;
 }
-.side-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
-  display: grid;
-  place-items: center;
+.side-vault:hover:not(:disabled) { background: color-mix(in srgb, var(--panel) 70%, var(--surface)); }
+.side-vault.active {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+.side-vault.missing { opacity: 0.5; cursor: default; }
+.side-vault-bar { width: 5px; height: 20px; border-radius: 2px; flex: none; }
+.side-vault-copy { min-width: 0; flex: 1; }
+.side-vault-copy b {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-vault.active .side-vault-copy b { font-weight: 600; }
+.side-vault-copy span {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+}
+.side-vault-go { width: 12px; height: 12px; color: var(--accent); flex: none; }
+.side-vault-go svg { width: 12px; height: 12px; display: block; }
+.side-vaults-note { margin: 4px 9px 0; font-size: 8.5px; color: color-mix(in srgb, var(--muted) 82%, transparent); }
+
+/* 库的入口常驻左栏底部：设置里换库从这里走，而不是猜一个库出来 */
+.side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 6px;
+}
+.side-vault-action {
+  height: 28px;
+  padding: 0 10px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.side-vault-action:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
   color: var(--accent);
-  font-family: var(--font-ui);
-  font-size: 0.72rem;
-  font-weight: 700;
+}
+.side-vault-action svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* Same stroke language as the settings nav and the ribbon gear. */
-.side-avatar svg {
-  width: 15px;
-  height: 15px;
+/* ---------- 库设置页 ---------- */
+/* 库设置页：库名 + 路径在左、页签靠右，下面一条四块状态卡，一次只展开一块 */
+.vault-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-content: start;
+  /* 设计图里库页占满整栏；设置页本身再宽也不把它缩成一条居中窄条 */
+  width: 100%;
+  max-width: none;
+}
+.vault-page > * { min-width: 0; }
+/* 打开库页时，内层不再按全局的 860px 收窄 */
+.settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
+.vault-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 设计图里库名、四块卡、面板左边缘垂直对齐，所以头部不再加左右内缩 */
+  padding: 0;
+  min-width: 0;
+}
+.vault-head-bar { width: 8px; height: 40px; border-radius: 3px; flex: none; }
+.vault-head-copy { min-width: 0; flex: 1; }
+.vault-head-copy h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-head-copy span {
   display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--muted);  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-tabs {
+  flex: none;
+  display: inline-flex;
+  margin-left: auto;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  /* 设计图里这组按钮有一块浅砂底，和纸白背景明确分开 */
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.vault-tabs button {
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+.vault-tabs button:hover:not(.on) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+}
+.vault-tabs button.on {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 10%, transparent);
+}
+
+.vault-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.vault-tile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, #fff 6%), var(--panel));
+  text-align: left;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.vault-tile:hover:not(.on) { border-color: color-mix(in srgb, var(--muted) 48%, var(--line)); }
+.vault-tile.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.vault-tile-ico {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--accent);
+}
+.vault-tile-ico svg {
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.side-foot b {
+.vault-tile-copy { min-width: 0; }
+.vault-tile-copy b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.vault-tile-copy span {
   display: block;
-  font-size: 10px;
-  font-weight: 600;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.side-foot > div > span {
-  display: block;
-  margin-top: 1px;
-  font-family: var(--font-mono);
-  font-size: 7.5px;
+.vault-page .panel { scroll-margin-top: 16px; }
+.vault-page :deep(.account-panel) { margin: 0; }
+
+.vault-empty { display: grid; place-items: center; gap: 12px; padding: 80px 0; }
+.vault-empty-copy { margin: 0; font-size: 12px; color: var(--muted); }
+.vault-empty .side-vault-action { flex: 0 0 auto; padding: 0 14px; }
+
+/* ---------- 内容区共享部件 ---------- */
+.book-small { margin: 10px 0 0; font-size: 10px; line-height: 1.6; color: var(--muted); }
+.book-small:empty { display: none; }
+.book-muted { color: var(--muted); }
+.book-danger { margin-top: 4px; color: var(--danger); font-size: 9.5px; }
+.book-danger-text { color: var(--danger); }
+.book-mono { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 88%, transparent); }
+.book-sub { margin: 0 0 6px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 88%, transparent); }
+.book-note {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--muted) 48%, var(--line));
+  background: color-mix(in srgb, var(--panel) 72%, var(--surface));
+  font-size: 11px;
+  line-height: 1.65;
   color: var(--muted);
 }
+.book-note p { margin: 0; }
+.book-note p + p { margin-top: 6px; }
+.book-meta { margin: 0; display: grid; border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent); }
+.book-meta > div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  font-size: 11px;
+}
+.book-meta dt { color: color-mix(in srgb, var(--muted) 82%, transparent); }
+.book-meta dd { margin: 0; color: var(--ink); }
+.book-meta code { font-family: var(--font-mono); font-size: 10px; color: var(--ink); }
+.book-field { display: grid; gap: 5px; margin-top: 14px; }
+.book-field > span, .book-field-label { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
+.book-field-label { display: block; margin: 13px 0 7px; }
+.book-field input, .book-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 12px;
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 5%, transparent);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.book-field input::placeholder { color: color-mix(in srgb, var(--muted) 65%, transparent); }
+.book-field input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
 
-/* ---------- main ---------- */
+.book-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; background: color-mix(in srgb, var(--surface) 60%, var(--panel)); }
+.book-seg button { height: 27px; padding: 0 10px; border-radius: 4px; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.book-seg button.on { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, #000 8%, transparent); }
+.book-seg--three { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+.book-seg--three button { height: 30px; font-size: 11px; }
+.book-inline { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.book-primary {
+  height: 34px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--accent-hover) 55%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 16%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+.settings-workspace button.book-primary { color: #fff; }
+.settings-workspace button.book-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 80%, #fff 20%), var(--accent-hover));
+  transform: translateY(-0.5px);
+}
+.book-primary-ico { width: 16px; height: 16px; display: inline-grid; place-items: center; flex: none; }
+.book-primary-ico svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.book-ghost {
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.book-ghost:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-ghost--sm { height: 26px; padding: 0 9px; font-size: 10px; }
+.book-ghost:disabled { opacity: 0.5; cursor: default; }
+.book-ghost svg { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.book-text-btn { font-size: 10px; color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); padding-bottom: 1px; white-space: nowrap; }
+.book-text-btn:hover:not(:disabled) { border-color: var(--accent); }
+.book-text-btn:disabled { opacity: 0.45; cursor: default; }
+.book-text-btn.is-fixed { color: var(--muted); border-bottom-color: transparent; }
+
+.book-actions { display: grid; gap: 8px; }
+.book-action {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: left;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.book-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-action:disabled { opacity: 0.5; cursor: default; }
+.book-action.open { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.book-action-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 60%, var(--panel));
+  color: var(--accent);
+}
+.book-action-icon svg, .book-action-go svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.book-action-copy strong { display: block; font-size: 11px; font-weight: 600; color: var(--ink); }
+.book-action-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-action-go {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--muted) 76%, transparent);
+  transition: color 0.14s ease, transform 0.16s ease;
+}
+.book-action:hover:not(:disabled) .book-action-go { color: var(--accent); }
+.book-action.open .book-action-chevron { transform: rotate(90deg); color: var(--accent); }
+.book-actions .book-note { margin: 0; border-radius: 0 0 8px 8px; border-top: 0; }
+.book-subhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.book-subhead strong { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
+.book-pref-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.book-pref-copy { display: block; min-width: 0; }
+.book-pref-copy strong { display: block; font-size: 11px; font-weight: 600; }
+.book-pref-copy span { display: block; margin-top: 2px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+
+.book-switch {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  flex: 0 0 34px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--line) 80%, var(--muted));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 10%, transparent);
+  transition: background 0.16s ease;
+}
+.book-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 18%, transparent);
+  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.book-switch.on { background: var(--accent); }
+.book-switch.on span { transform: translateX(15px); }
+.book-switch:disabled { opacity: 0.5; cursor: default; }
+.book-list { list-style: none; margin: 6px 0 0; padding: 0; }
+.book-list-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
+.book-list-row strong { font-size: 11px; font-weight: 600; }
+.book-cmd-row { margin-top: 12px; }
+.book-cmd { padding: 6px 8px; margin: 0 5px 5px 0; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 6px; background: var(--panel); text-align: left; }
+.book-cmd.is-on { border-color: var(--accent); }
+.book-cmd strong { display: block; font-size: 10px; font-weight: 600; }
+.book-cmd span { display: block; margin-top: 1px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+.book-plugin-tabs { margin-top: 12px; }
+.book-plugin-tab { padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
+.book-plugin-tab strong { font-size: 10px; font-weight: 600; }
+.book-plugin-tab-host { margin-top: 6px; font-size: 10px; color: var(--muted); }
+.book-catalog-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
+.book-catalog-row strong { font-size: 11px; font-weight: 600; }
+.book-catalog-row p { margin: 4px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.book-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.book-tag { padding: 1px 4px; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 3px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+
+.book-about-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.book-about-check {
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.book-about-check:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-about-check.is-offered {
+  border-color: color-mix(in srgb, var(--accent-hover) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
+  color: #fff;
+  font-weight: 600;
+}
+.book-about-check:disabled { opacity: 0.6; }
+.book-about-check svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.book-about-check svg.spinning { animation: settings-spin 0.9s linear infinite; }
+.book-swatches { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.book-swatch { min-width: 0; display: grid; gap: 5px; justify-items: center; background: transparent; }
+.book-swatch-bar {
+  width: 100%;
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, #000 8%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+  transition: transform 0.14s ease;
+}
+.book-swatch:hover .book-swatch-bar { transform: translateY(-2px); }
+.book-swatch.on .book-swatch-bar { box-shadow: 0 0 0 1px var(--panel), 0 0 0 2px var(--ink); }
+.book-swatch-label { font-size: 9px; line-height: 1.35; text-align: center; color: var(--muted); }
+.book-swatch-label b { font-weight: 600; color: var(--ink); }
+
+.book-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.book-theme {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: left;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.book-theme:hover:not(:disabled) { border-color: color-mix(in srgb, var(--muted) 55%, var(--line)); }
+.book-theme.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.book-theme:disabled { opacity: 0.55; cursor: default; }
+.book-theme-preview {
+  position: relative;
+  height: 58px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  background: var(--bg);
+}
+.book-theme-preview.dusk { background: #252b24; border-color: #3b4239; }
+.book-theme-preview.community { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+.book-theme-preview .rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: color-mix(in srgb, var(--panel) 80%, var(--surface));
+}
+.book-theme-preview.dusk .rail { background: #1c211c; }
+.book-theme-preview .bar {
+  position: absolute;
+  left: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--line) 88%, transparent);
+}
+.book-theme-preview .b1 { top: 13px; width: 42%; background: var(--accent); }
+.book-theme-preview .b2 { top: 21px; width: 55%; }
+.book-theme-preview .b3 { top: 29px; width: 33%; }
+.book-theme-preview .dot { position: absolute; left: 16px; bottom: 9px; width: 23px; height: 4px; background: var(--vault); }
+.book-theme-preview.dusk .dot { background: #c4a882; }
+.book-theme-preview .page {
+  position: absolute;
+  right: 8px;
+  top: 9px;
+  width: 26px;
+  height: 39px;
+  border-radius: 2px;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+}
+.book-theme-preview.dusk .page { background: #222b24; border-color: #3b4239; }
+.book-theme-preview .page::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 8px;
+  height: 2px;
+  background: color-mix(in srgb, var(--line) 88%, transparent);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--line) 76%, transparent);
+}
+.book-theme-preview.dusk .page::before { background: #485242; box-shadow: 0 5px 0 #3e4739; }
+.book-theme-name {
+  display: flex;
+  align-items: center;
+  padding: 5px 2px 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.book-theme-name .check {
+  margin-left: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  font-size: 7px;
+}
+.book-theme.on .book-theme-name .check { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.book-theme-desc { padding: 0 2px 1px; font-size: 9px; line-height: 1.4; color: var(--muted); }
+.book-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+}
+.book-row strong { font-size: 11.5px; font-weight: 600; }
+.book-row:where(.book-row) > .book-seg { flex: 0 0 auto; }
+.book-row-copy { min-width: 0; }
+.book-hint { margin: 2px 0 0; font-size: 10px; color: var(--muted); }
+
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1120px) {
+  .settings-workspace { grid-template-columns: 210px minmax(0, 1fr); }
+  .settings-main { padding: 26px 26px 54px; }
+  /* 设计图里四块卡始终一排；窗口变窄只压缩留白，不折成两行 */
+  .vault-tiles { gap: 8px; }
+  .vault-tile { padding: 11px 12px; gap: 9px; }
+}
+@media (max-width: 860px) {
+  .settings-workspace { display: block; height: 100%; overflow: auto; }
+  .settings-side { height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .settings-main { overflow: visible; padding: 22px 20px 50px; }
+  .settings-inner { width: 100%; }
+  .settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
+  .status-strip { grid-template-columns: 1fr 1fr; }
+  .status-strip li:nth-child(2) { border-right: 0; }
+  .status-strip li:nth-child(1),
+  .status-strip li:nth-child(2) { border-bottom: 1px solid var(--line); }
+  .p-head { padding: 15px 16px 9px; }
+  .p-head .state { display: none; }
+  .p-body { padding: 0 16px 16px; }
+  .book-theme-grid { grid-template-columns: 1fr; }
+  .book-swatches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vault-head { flex-wrap: wrap; }
+  .vault-tabs { width: 100%; overflow-x: auto; }
+  .vault-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-workspace :deep(.account-panel .login-form) { grid-template-columns: 1fr; }
+}
+/* 库列表在切换中：当前行压暗等待，避免连点 */
+.side-vault.switching { opacity: 0.6; cursor: progress; }
+.side-vaults-error { color: var(--danger); }
+
+/* ---------- 主栏 ---------- */
 .settings-main {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 32px 40px 64px;
+  padding: 30px 40px 64px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
 }
-.settings-main::-webkit-scrollbar {
-  width: 6px;
-}
+.settings-main::-webkit-scrollbar { width: 6px; }
 .settings-main::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--muted) 42%, transparent);
   border-radius: 3px;
 }
-.settings-inner {
-  width: min(820px, 100%);
-  margin: 0 auto;
-}
+.settings-inner { width: min(860px, 100%); margin: 0 auto; }
+.global-page { display: grid; gap: 20px; }
+.panel-stack { display: flex; flex-direction: column; gap: 18px; }
 
+/* 全局页状态条：四格读数，点击去对应面板 */
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 18px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, #fff 12%), var(--panel));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, #fff 12%), var(--panel));
   overflow: hidden;
   box-shadow: 0 1px 0 color-mix(in srgb, #fff 55%, transparent) inset;
 }
-.status-strip li {
-  display: flex;
-  min-width: 0;
-  border-right: 1px solid var(--line);
-}
-.status-strip li:last-child {
-  border-right: 0;
-}
-
-/* The strip is a set of jumps and one live toggle; each chip carries its own state. */
+.status-strip li { display: flex; min-width: 0; border-right: 1px solid var(--line); }
+.status-strip li:last-child { border-right: 0; }
 .status-chip {
   flex: 1 1 auto;
   min-width: 0;
@@ -1036,15 +1761,8 @@ watch(publishDraft, () => {
   border-radius: 0;
   transition: background 0.14s ease;
 }
-.status-chip:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-.status-chip:disabled {
-  opacity: 0.6;
-}
-.status-chip:focus-visible {
-  outline-offset: -2px;
-}
+button.status-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.status-chip:focus-visible { outline-offset: -2px; }
 .status-ico {
   width: 28px;
   height: 28px;
@@ -1069,18 +1787,9 @@ watch(publishDraft, () => {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.status-copy {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-.status-strip li .status-copy > span {
-  display: block;
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.status-strip li b {
+.status-copy { min-width: 0; display: grid; gap: 3px; }
+.status-copy > span { display: block; font-size: 9.5px; letter-spacing: 0.06em; color: var(--muted); }
+.status-copy b {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1092,86 +1801,31 @@ watch(publishDraft, () => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.status-strip li i {
+.status-copy i {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--muted) 62%, transparent);
   flex: none;
 }
-.status-strip li i.g {
+.status-copy i.g {
   background: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-/* Compact switch that reads as the toggle it performs. */
-.status-switch {
-  position: relative;
-  width: 26px;
-  height: 15px;
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--line) 80%, var(--muted));
-  transition: background 0.16s ease;
-}
-.status-switch span {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--panel);
-  box-shadow: 0 1px 2px color-mix(in srgb, #000 18%, transparent);
-  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.status-switch.on {
-  background: var(--accent);
-}
-.status-switch.on span {
-  transform: translateX(11px);
-}
 
-/* ---------- panels ---------- */
-.panel-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 22px;
-}
-
+/* ---------- 面板 ---------- */
 .panel {
   position: relative;
   width: 100%;
-  padding: 0;
   min-width: 0;
   border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
   border-radius: 15px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--panel) 92%, #fff 8%),
-    var(--panel)
-  );
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
-    0 10px 24px color-mix(in srgb, #000 5%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, #fff 8%), var(--panel));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent), 0 10px 24px color-mix(in srgb, #000 5%, transparent);
   scroll-margin-top: 20px;
 }
-
-.p-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 18px 22px 10px;
-}
-/* Panel lead sentence: explains the section once, before its controls. */
-.p-lead {
-  margin: 0 0 14px;
-  max-width: 680px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--muted);
-}
-
+.p-head { display: flex; align-items: center; gap: 9px; padding: 18px 22px 10px; }
 .p-head .ico {
   width: 26px;
   height: 26px;
@@ -1181,7 +1835,6 @@ watch(publishDraft, () => {
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
   color: var(--accent);
   flex: none;
-  order: 0;
 }
 .p-head .ico svg {
   width: 14px;
@@ -1199,11 +1852,17 @@ watch(publishDraft, () => {
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--ink);
-  order: 0;
 }
-/* Header action sits where the reading eye ends, on the same baseline as the title. */
+.p-head .state { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.p-head::after {
+  content: '';
+  flex: 1 1 auto;
+  min-width: 14px;
+  height: 1px;
+  margin: 0 4px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--line)), transparent);
+}
 .p-head-action {
-  order: 2;
   width: 28px;
   height: 28px;
   flex: none;
@@ -1226,945 +1885,10 @@ watch(publishDraft, () => {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.p-head-action svg.spinning {
-  animation: settings-spin 0.8s linear infinite;
-}
-@keyframes settings-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .p-head-action svg.spinning {
-    animation: none;
-  }
-}
-/* State line for the panel (current theme, colour mode, safe mode). */
-.p-head .state {
-  order: 2;
-  font-size: 10.5px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.p-head::after {
-  content: '';
-  flex: 1 1 auto;
-  min-width: 14px;
-  height: 1px;
-  margin: 0 4px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent) 16%, var(--line)),
-    color-mix(in srgb, var(--accent) 7%, var(--line)) 70%,
-    transparent
-  );
-  order: 1;
-}
-
-.p-body {
-  padding: 4px 22px 20px;
-}
-
-
-/* ---------- shared chapter content ---------- */
-.book-note {
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-left: 2px solid color-mix(in srgb, var(--muted) 48%, var(--line));
-  background: color-mix(in srgb, var(--panel) 72%, var(--surface));
-  font-size: 11.5px;
-  line-height: 1.65;
-  color: var(--muted);
-}
-.book-note + .book-note {
-  margin-top: 8px;
-}
-.book-note b {
-  color: var(--ink);
-  font-weight: 600;
-}
-.book-note code,
-.book-meta code {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink);
-}
-.book-note p {
-  margin: 0;
-}
-.book-note p + p {
-  margin-top: 6px;
-}
-.book-danger-text {
-  color: var(--danger);
-}
-
-.book-meta {
-  margin: 14px 0 0;
-  display: grid;
-  border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
-}
-.book-meta > div {
-  display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
-  font-size: 11.5px;
-}
-.book-meta dt {
-  color: color-mix(in srgb, var(--muted) 82%, transparent);
-}
-.book-meta dd {
-  margin: 0;
-  color: var(--ink);
-}
-
-.book-field {
-  display: grid;
-  gap: 5px;
-  margin-top: 14px;
-}
-.book-field > span,
-.book-field-label {
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-.book-field-label {
-  display: block;
-  margin: 13px 0 7px;
-}
-.book-field input,
-.book-input {
-  width: 100%;
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 5px;
-  background: var(--panel);
-  color: var(--ink);
-  font-size: 12px;
-  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 5%, transparent);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-.book-field input::placeholder {
-  color: color-mix(in srgb, var(--muted) 65%, transparent);
-}
-.book-field input:focus {
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
-  outline: none;
-}
-
-.book-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--surface) 60%, var(--panel));
-}
-.book-seg button {
-  height: 27px;
-  padding: 0 10px;
-  border-radius: 4px;
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.book-seg button.on {
-  background: var(--panel);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: 0 1px 2px color-mix(in srgb, #000 8%, transparent);
-}
-.book-seg--three {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  width: 100%;
-}
-.book-seg--three button {
-  height: 32px;
-  font-size: 10.5px;
-}
-
-.book-primary {
-  height: 36px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  line-height: 1;
-  border: 1px solid color-mix(in srgb, var(--accent-hover) 55%, transparent);
-  border-radius: 8px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  box-shadow:
-    0 1px 2px color-mix(in srgb, #000 16%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
-  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
-}
-.settings-workspace button.book-primary {
-  color: #fff;
-}
-.book-primary-ico {
-  width: 16px;
-  height: 16px;
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-}
-.book-primary-ico svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.book-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 80%, #fff 20%), var(--accent-hover));
-  box-shadow:
-    0 2px 6px color-mix(in srgb, var(--accent) 28%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
-  transform: translateY(-0.5px);
-}
-.book-primary:disabled {
-  opacity: 0.5;
-  cursor: default;
-  transform: none;
-}
-.book-ghost {
-  height: 30px;
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  line-height: 1;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 5px;
-  background: var(--panel);
-  color: var(--ink);
-  font-size: 10px;
-  font-weight: 500;
-}
-.book-ghost:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
-  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
-}
-.book-ghost--sm {
-  height: 28px;
-  padding: 0 9px;
-  font-size: 9.5px;
-}
-.book-ghost svg {
-  width: 12px;
-  height: 12px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.book-ghost:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.book-text-btn {
-  font-size: 9px;
-  color: var(--accent);
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  padding-bottom: 1px;
-  white-space: nowrap;
-}
-.book-text-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-.book-text-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-/* Always-on row: a state, not an action — no link affordance. */
-.book-text-btn.is-fixed {
-  color: var(--muted);
-  border-bottom-color: transparent;
-}
-.book-inline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-}
-.book-mono {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--muted) 80%, transparent);
-}
-.book-sub {
-  margin: 0 0 6px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--muted) 80%, transparent);
-}
-.book-small {
-  margin: 10px 0 0;
-  font-size: 9.5px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-.book-small:empty {
-  display: none;
-}
-.book-muted {
-  color: var(--muted);
-}
-.book-danger {
-  margin-top: 4px;
-  color: var(--danger);
-  font-size: 9.5px;
-}
-
-/* ---------- backup ---------- */
-.book-actions {
-  display: grid;
-  gap: 8px;
-  margin-top: 13px;
-}
-.book-action {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 10px;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 7px;
-  background: var(--panel);
-  text-align: left;
-  transition: border-color 0.14s ease, background 0.14s ease;
-}
-.book-action:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
-  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
-}
-.book-action:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.book-action-icon {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--surface) 60%, var(--panel));
-  color: var(--accent);
-}
-.book-action-icon svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.book-action-copy strong {
-  display: block;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.book-action-copy span {
-  display: block;
-  margin-top: 2px;
-  font-size: 9px;
-  color: var(--muted);
-}
-.book-action-go {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  color: color-mix(in srgb, var(--muted) 76%, transparent);
-  transition: color 0.14s ease, transform 0.16s ease;
-}
-.book-action-go svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.book-action:hover:not(:disabled) .book-action-go {
-  color: var(--accent);
-}
-.book-action.open {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-}
-.book-action.open .book-action-chevron {
-  transform: rotate(90deg);
-  color: var(--accent);
-}
-.book-action-copy span {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-/* The guide unfolds under the row that owns it, so cause and effect share one place. */
-.book-actions .book-note {
-  margin: 0 0 2px;
-  border-radius: 0 0 7px 7px;
-  border-top: 0;
-}
-
-/* ---------- appearance ---------- */
-.book-theme-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-.book-theme {
-  min-width: 0;
-  padding: 7px;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 7px;
-  background: var(--panel);
-  text-align: left;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-.book-theme:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
-}
-.book-theme.on {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
-}
-.book-theme:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-.book-theme-preview {
-  position: relative;
-  height: 58px;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
-  background: var(--bg);
-}
-.book-theme-preview.dusk {
-  background: #252b24;
-  border-color: #3b4239;
-}
-.book-theme-preview.community {
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
-}
-.book-theme-preview .rail {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 8px;
-  background: color-mix(in srgb, var(--panel) 80%, var(--surface));
-}
-.book-theme-preview.dusk .rail {
-  background: #1c211c;
-}
-.book-theme-preview .bar {
-  position: absolute;
-  left: 16px;
-  height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--line) 88%, transparent);
-}
-.book-theme-preview .b1 {
-  top: 13px;
-  width: 42%;
-  background: var(--accent);
-}
-.book-theme-preview .b2 {
-  top: 21px;
-  width: 55%;
-}
-.book-theme-preview .b3 {
-  top: 29px;
-  width: 33%;
-}
-.book-theme-preview .dot {
-  position: absolute;
-  left: 16px;
-  bottom: 9px;
-  width: 23px;
-  height: 4px;
-  border-radius: 1px;
-  background: var(--vault);
-}
-.book-theme-preview.dusk .dot {
-  background: #c4a882;
-}
-.book-theme-preview .page {
-  position: absolute;
-  right: 8px;
-  top: 9px;
-  width: 26px;
-  height: 39px;
-  border-radius: 2px;
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
-}
-.book-theme-preview.dusk .page {
-  background: #222b24;
-  border-color: #3b4239;
-}
-.book-theme-preview .page::before {
-  content: '';
-  position: absolute;
-  left: 5px;
-  right: 5px;
-  top: 8px;
-  height: 2px;
-  background: color-mix(in srgb, var(--line) 88%, transparent);
-  box-shadow: 0 5px 0 color-mix(in srgb, var(--line) 76%, transparent);
-}
-.book-theme-preview.dusk .page::before {
-  background: #485242;
-  box-shadow: 0 5px 0 #3e4739;
-}
-.book-theme-name {
-  display: flex;
-  align-items: center;
-  padding: 5px 2px 1px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.book-theme-name .check {
-  margin-left: auto;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  display: grid;
-  place-items: center;
-  color: transparent;
-  font-size: 6px;
-}
-.book-theme.on .book-theme-name .check {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--panel);
-}
-.book-theme-desc {
-  padding: 0 2px 1px;
-  font-size: 8.5px;
-  line-height: 1.35;
-  color: var(--muted);
-}
-
-.book-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 13px;
-  padding-top: 12px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-}
-.book-row strong {
-  font-size: 10.5px;
-  font-weight: 600;
-}
-/* The row is a flex container: an inline-flex segment control would still take
- * its auto width as a 100% percentage basis, so keep it at its content size.
- * The bare child selector would end in the child scope without a parent, so
- * the parent is written inside :where() to keep the scope attribute anchored. */
-.book-row:where(.book-row) > .book-seg {
-  flex: 0 0 auto;
-}
-.book-row-copy {
-  min-width: 0;
-}
-.book-hint {
-  margin: 2px 0 0;
-  font-size: 9px;
-  color: var(--muted);
-}
-
-.book-colors {
-  margin-top: 13px;
-  padding-top: 12px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-}
-.book-colors-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.book-colors-head strong {
-  font-size: 10.5px;
-  font-weight: 600;
-}
-.book-colors-head span {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 9px;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.book-swatches {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 7px;
-  margin-top: 9px;
-}
-.book-swatch {
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  justify-items: center;
-  background: transparent;
-}
-.book-swatch-bar {
-  width: 100%;
-  height: 34px;
-  border-radius: 2px;
-  border: 1px solid color-mix(in srgb, #000 8%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
-  transition: transform 0.14s ease;
-}
-.book-swatch:hover .book-swatch-bar {
-  transform: translateY(-2px);
-}
-.book-swatch.on .book-swatch-bar {
-  box-shadow:
-    0 0 0 1px var(--panel),
-    0 0 0 2px var(--ink);
-}
-.book-swatch-label {
-  font-size: 8px;
-  line-height: 1.3;
-  text-align: center;
-  color: var(--muted);
-}
-.book-swatch-label b {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-/* ---------- plugins ---------- */
-.book-pref-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-}
-.book-pref-copy {
-  /* Without this the copy is an inline box and the row grows to line-box height. */
-  display: block;
-  min-width: 0;
-}
-.book-pref-copy strong {
-  display: block;
-  font-size: 10.5px;
-  font-weight: 600;
-}
-.book-pref-copy span {
-  display: block;
-  margin-top: 2px;
-  font-size: 9px;
-  line-height: 1.45;
-  color: var(--muted);
-}
-.book-switch {
-  position: relative;
-  width: 34px;
-  height: 19px;
-  flex: 0 0 34px;
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--line) 80%, var(--muted));
-  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 10%, transparent);
-  transition: background 0.16s ease;
-}
-.book-switch span {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: var(--panel);
-  box-shadow: 0 1px 2px color-mix(in srgb, #000 18%, transparent);
-  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.book-switch.on {
-  background: var(--accent);
-}
-.book-switch.on span {
-  transform: translateX(15px);
-}
-.book-switch:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.book-subhead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 13px;
-}
-.book-subhead strong {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.book-list {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-}
-.book-list-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-}
-.book-list-row strong {
-  font-size: 10px;
-  font-weight: 600;
-}
-.book-list-row .book-mono {
-  margin-top: 3px;
-}
-
-.book-cmd-row {
-  margin-top: 12px;
-}
-.book-cmd-row > .book-mono {
-  margin: 0 0 6px;
-}
-.book-cmd {
-  padding: 6px 8px;
-  margin: 0 5px 5px 0;
-  border: 1px solid color-mix(in srgb, var(--line) 90%, transparent);
-  border-radius: 5px;
-  background: var(--panel);
-  text-align: left;
-}
-.book-cmd.is-on {
-  border-color: var(--accent);
-}
-.book-cmd strong {
-  display: block;
-  font-size: 9px;
-  font-weight: 600;
-}
-.book-cmd span {
-  display: block;
-  margin-top: 1px;
-  font-family: var(--font-mono);
-  font-size: 7.5px;
-  color: var(--muted);
-}
-
-.book-plugin-tabs {
-  margin-top: 12px;
-}
-.book-plugin-tabs > .book-mono {
-  margin: 0 0 6px;
-}
-.book-plugin-tab {
-  padding: 8px 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-}
-.book-plugin-tab strong {
-  font-size: 9.5px;
-  font-weight: 600;
-}
-.book-plugin-tab-host {
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--muted);
-}
-
-/* ---------- catalog ---------- */
-.book-catalog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-}
-.book-catalog-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  padding: 10px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-}
-.book-catalog-row strong {
-  font-size: 10.5px;
-  font-weight: 600;
-}
-.book-catalog-row p {
-  margin: 4px 0 0;
-  font-size: 9px;
-  line-height: 1.45;
-  color: var(--muted);
-}
-.book-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 5px;
-}
-.book-tag {
-  padding: 1px 4px;
-  border: 1px solid color-mix(in srgb, var(--line) 90%, transparent);
-  border-radius: 3px;
-  font-family: var(--font-mono);
-  font-size: 7px;
-  color: var(--muted);
-}
-
-/* ---------- about ---------- */
-/* 先读完信息再决定动作：表格在上，检查更新收在右下角。 */
-.book-meta--about {
-  margin-top: 0;
-}
-.book-about-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.book-about-check {
-  height: 30px;
-  padding: 0 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  line-height: 1;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--ink);
-  font-size: 10.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
-}
-.book-about-check svg {
-  width: 13px;
-  height: 13px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.book-about-check svg.spinning {
-  animation: settings-spin 0.9s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .book-about-check svg.spinning {
-    animation: none;
-  }
-}
-.book-about-check:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
-  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
-}
-/* 查到新版本时，按钮自己承担这次操作的主次。 */
-.book-about-check.is-offered {
-  border-color: color-mix(in srgb, var(--accent-hover) 55%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
-  color: #fff;
-  font-weight: 600;
-}
-.book-about-check.is-offered:hover:not(:disabled) {
-  border-color: var(--accent-hover);
-  background: var(--accent-hover);
-}
-.book-about-check:disabled {
-  opacity: 0.6;
-}
-.book-meta--about + .book-note {
-  margin-top: 14px;
-}
-
-/* ---------- footer ---------- */
-.book-right-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-  flex: none;
-}
-.book-pager {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  color: var(--muted);
-}
-.book-pager button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 27px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
-  border-radius: 4px;
-  color: var(--muted);
-  font-size: 8.5px;
-}
-.book-pager button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
-  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
-}
-.book-pager button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.book-pager .num {
-  margin: 0 3px;
-  font-size: 8.5px;
-  color: var(--muted);
-}
-.book-pager .num b {
-  font-weight: 600;
-  color: var(--ink);
-}
+.p-head-action svg.spinning { animation: settings-spin 0.8s linear infinite; }
+@keyframes settings-spin { to { transform: rotate(360deg); } }
+.p-body { padding: 4px 22px 20px; }
+.p-body:deep(.account-panel) { margin: 0; }
 
 
 /* ---------- AccountPanel embedded in the book ---------- */
@@ -2448,76 +2172,5 @@ watch(publishDraft, () => {
   background: color-mix(in srgb, var(--surface) 70%, var(--panel));
   color: color-mix(in srgb, var(--muted) 80%, var(--ink));
 }
-
-
-/* ---------- responsive ---------- */
-@media (max-width: 1120px) {
-  .settings-workspace {
-    grid-template-columns: 208px minmax(0, 1fr);
-  }
-  .settings-main {
-    padding: 26px 24px 54px;
-  }
-  .side-title h1 {
-    font-size: 22px;
-  }
-}
-
-@media (max-width: 860px) {
-  .settings-workspace {
-    display: block;
-    height: 100%;
-    min-height: 0;
-    overflow: auto;
-  }
-  .settings-side {
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .side-nav {
-    grid-template-columns: 1fr 1fr;
-    gap: 2px 8px;
-  }
-  .side-sep,
-  .side-note,
-  .side-foot {
-    display: none;
-  }
-  .settings-main {
-    overflow: visible;
-    padding: 24px 20px 50px;
-  }
-  .settings-inner {
-    width: 100%;
-  }
-  .status-strip {
-    grid-template-columns: 1fr 1fr;
-  }
-  .status-strip li:nth-child(2) {
-    border-right: 0;
-  }
-  .status-strip li:nth-child(1),
-  .status-strip li:nth-child(2) {
-    border-bottom: 1px solid var(--line);
-  }
-  .p-head {
-    padding: 15px 16px 9px;
-  }
-  .p-head .state {
-    display: none;
-  }
-  .p-body {
-    padding: 0 16px 16px;
-  }
-  .book-theme-grid {
-    grid-template-columns: 1fr;
-  }
-  .book-swatches {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .settings-workspace :deep(.account-panel .login-form) {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
+

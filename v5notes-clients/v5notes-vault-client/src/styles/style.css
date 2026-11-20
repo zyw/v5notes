@@ -1076,6 +1076,9 @@ code {
 
 .shell.is-settings .main-fill {
   overflow: hidden;
+  /* Settings owns its own scroll column; the page fills the shell instead of
+     shrinking to its content (otherwise grid rows collapse and text runs together). */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .app-banner {

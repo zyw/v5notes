@@ -5,6 +5,7 @@ export {
   OFFICIAL_PUBLISH_STUB_STATUS,
   OFFICIAL_PUBLISH_STUB_HELP,
   OFFICIAL_PUBLISH_STORAGE_KEY,
+  OFFICIAL_PUBLISH_DRAFTS_KEY,
   defaultOfficialPublishDraft,
   loadOfficialPublishDraft,
   saveOfficialPublishDraft,

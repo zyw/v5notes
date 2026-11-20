@@ -45,3 +45,31 @@ describe('ThemeHost', () => {
     expect(document.getElementById('v5-community-theme-style')).toBeNull()
   })
 })
+describe('ThemeHost keeps the rest of the vault appearance', () => {
+  afterEach(() => saveAppearancePrefs(defaultAppearance()))
+
+  it('writes theme changes as a patch, never replacing the vault colour', async () => {
+    const patches: { theme?: string; colorMode?: string }[] = []
+    const host = createThemeHost({
+      isSafeMode: () => false,
+      updateAppearanceFile: async (patch) => {
+        patches.push(patch as { theme?: string; colorMode?: string })
+      },
+    })
+    await host.start()
+    await host.setActive('dusk')
+    expect(patches.at(-1)).toEqual({ theme: 'dusk', colorMode: 'system' })
+  })
+
+  it('still applies a theme when the patch cannot be written', async () => {
+    const host = createThemeHost({
+      isSafeMode: () => false,
+      updateAppearanceFile: async () => {
+        throw new Error('disk full')
+      },
+    })
+    await host.start()
+    await host.setActive('dusk')
+    expect(host.getActive()).toBe('dusk')
+  })
+})
