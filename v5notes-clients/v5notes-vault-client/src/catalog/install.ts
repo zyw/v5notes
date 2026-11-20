@@ -1,7 +1,5 @@
-import { join } from '@tauri-apps/api/path'
-import { mkdir, writeTextFile } from '@tauri-apps/plugin-fs'
 import { parseManifestJson } from '../plugin-host/manifest'
-import { PLUGINS_DIR_REL, THEMES_DIR_REL } from '../vault/skeleton'
+import { extensionPath, getAppStore } from '../extension/appStorage'
 import { fetchCatalogPackage } from './api'
 import { assertCatalogItemInstallable } from './rejectPublishing'
 import type { CatalogItem, CatalogPackage } from './types'
@@ -13,19 +11,20 @@ export interface InstallResult {
   source: 'server' | 'bundled'
 }
 
-/** Install a catalog entry into the open vault (local files only). */
+/**
+ * Install a catalog entry into the app's extension folder (local files only).
+ * Extensions are shared by every vault, so no vault path is involved.
+ */
 export async function installCatalogItem(
-  rootPath: string,
   item: CatalogItem,
   options?: { server?: string; transport?: typeof fetch; allowBundledFallback?: boolean },
 ): Promise<InstallResult> {
   assertCatalogItemInstallable(item)
   const { pkg, source } = await fetchCatalogPackage(item.id, options)
-  return installCatalogPackage(rootPath, pkg, source)
+  return installCatalogPackage(pkg, source)
 }
 
 export async function installCatalogPackage(
-  rootPath: string,
   pkg: CatalogPackage,
   source: 'server' | 'bundled' = 'bundled',
 ): Promise<InstallResult> {
@@ -40,19 +39,20 @@ export async function installCatalogPackage(
     permissions: manifest.permissions,
   })
   if (manifest.id !== pkg.id) {
-    throw new Error(`包 id ${pkg.id} 与 manifest.id ${manifest.id} 不一致`)
+    throw new Error('包 id ' + pkg.id + ' 与 manifest.id ' + manifest.id + ' 不一致')
   }
 
-  const baseRel = manifest.kind === 'theme' ? THEMES_DIR_REL : PLUGINS_DIR_REL
-  const dir = await join(rootPath, baseRel, manifest.id)
-  await mkdir(dir, { recursive: true })
+  const baseDir = manifest.kind === 'theme' ? 'themes' : 'plugins'
+  const store = getAppStore()
+  const dir = await extensionPath([baseDir, manifest.id])
+  await store.mkdir(dir)
 
   for (const [name, content] of Object.entries(pkg.files)) {
     if (!name || name.includes('..') || name.includes('/') || name.includes('\\')) {
-      throw new Error(`非法包内文件名: ${name}`)
+      throw new Error('非法包内文件名: ' + name)
     }
-    const text = content.endsWith('\n') ? content : `${content}\n`
-    await writeTextFile(await join(dir, name), text)
+    const text = content.endsWith('\n') ? content : content + '\n'
+    await store.writeText(dir + '/' + name, text)
   }
 
   return {

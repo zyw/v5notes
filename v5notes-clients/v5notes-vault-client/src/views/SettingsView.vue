@@ -27,7 +27,6 @@ import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo
 import { loadSafeMode } from '../plugin-host/safeMode'
 import {
   ensureSampleExtensions,
-  getExtensionRuntimeRoot,
   getPluginHost,
   getThemeHost,
   installFromCatalog,
@@ -36,10 +35,8 @@ import {
   listPluginInfos,
   setSafeModeAndReload,
   startExtensionRuntime,
-  stopExtensionRuntime,
 } from '../extension/runtime'
 import { decideRuntimeBoot } from './settingsRuntime'
-import { listCorePluginsWithoutVault } from '../extension/corePlugins'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
   MIGRATION_EXPLICIT_LINE,
@@ -146,8 +143,6 @@ const pendingSwatchId = ref<string | null>(getPendingWelcomeColor()?.id ?? null)
 const activeSwatchId = computed(() => vaultSwatch.value?.id ?? pendingSwatchId.value)
 /** An empty plugin list means different things before and after the host starts. */
 const hostReady = ref(false)
-/** Plugin state lives in the vault that is open; show the registry alone otherwise. */
-const vaultBound = ref(false)
 
 watch(
   () => props.vault?.rootPath,
@@ -184,10 +179,8 @@ function refreshExtensionState() {
     themeError.value = null
   }
   const host = getPluginHost()
-  // Without a vault there is no host; the core registry still describes what is installed.
-  plugins.value = host ? listPluginInfos() : listCorePluginsWithoutVault()
+  plugins.value = listPluginInfos()
   hostReady.value = host !== null
-  vaultBound.value = Boolean(host && props.vault?.rootPath)
   editors.value = host?.listEditorProviders() ?? []
   activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
   commands.value = listHostCommands()
@@ -381,29 +374,15 @@ function savePublishDraft() {
 }
 
 async function ensureExtensionRuntime(): Promise<void> {
-  // The plugin host lives with the workspace. Opening settings from the welcome
-  // screen (or before the workspace mounted) would otherwise show an empty
-  // plugin list forever, because the list is read from the host in memory.
-  const rootPath = props.vault?.rootPath
-  const decision = decideRuntimeBoot({
-    rootPath,
-    hostPresent: getPluginHost() !== null,
-    hostRoot: getExtensionRuntimeRoot(),
-  })
-  if (decision !== 'start' && decision !== 'restart') return
+  // Extensions are app-level: installed add-ons and their on/off state are the
+  // same in every vault, and settings must list them before a vault is open.
+  const decision = decideRuntimeBoot({ hostPresent: getPluginHost() !== null })
+  if (decision === 'reuse') return
   extensionBusy.value = true
-  // Running hosts may hold editor instances the page rendered; say so instead of
-  // quietly turning them off again when a start fails halfway.
-  let releasedRenderedHost = false
   try {
-    if (decision === 'restart') {
-      releasedRenderedHost = true
-      await stopExtensionRuntime()
-    }
-    await startExtensionRuntime(rootPath as string)
+    await startExtensionRuntime(props.vault?.rootPath ?? null)
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error)
-    pluginMessage.value = releasedRenderedHost ? `插件宿主未能重新启动：${reason}。回到工作区后再回到这里。` : reason
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
     extensionBusy.value = false
   }
@@ -711,8 +690,7 @@ watch(publishDraft, () => {
                 <button
                   class="book-ghost book-ghost--sm"
                   type="button"
-                  :disabled="extensionBusy || !hasVault"
-                  :title="!hasVault ? '打开库后可安装' : undefined"
+                  :disabled="extensionBusy"
                   @click="installSamples"
                 >
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
@@ -730,14 +708,13 @@ watch(publishDraft, () => {
                     v-if="p.id !== 'v5-editor'"
                     class="book-text-btn"
                     type="button"
-                    :disabled="extensionBusy || !vaultBound || (safeMode && !p.core)"
-                    :title="!vaultBound ? '打开库后可启用' : undefined"
+                    :disabled="extensionBusy || (safeMode && !p.core)"
                     @click="togglePlugin(p.id, p.status !== 'loaded')"
                   >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
                   <span v-else class="book-text-btn is-fixed">始终启用</span>
                 </li>
               </ul>
-              <p v-if="!hostReady" class="book-small">打开库后可启用库内扩展。</p>
+              <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
               <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
               <div v-if="editors.length" class="book-cmd-row">
                 <p class="book-sub">笔记编辑器</p>
@@ -798,7 +775,7 @@ watch(publishDraft, () => {
                   <button
                     class="book-ghost book-ghost--sm"
                     type="button"
-                    :disabled="extensionBusy || !hasVault || safeMode"
+                    :disabled="extensionBusy || safeMode"
                     :title="safeMode ? '安全模式下不可安装' : undefined"
                     @click="installCatalog(item)"
                   >

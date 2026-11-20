@@ -5,19 +5,15 @@
 
 export type SyncFilterDecision =
   | { sync: true; reason: 'user-content' | 'intent-config' }
-  | { sync: false; reason: 'never' | 'code-binary-default-off' | 'unlisted-v5notes' | 'syncignore' }
+  | { sync: false; reason: 'never' | 'unlisted-v5notes' | 'syncignore' }
 
-const INTENT_CONFIG_EXACT = new Set([
-  '.v5notes/appearance.json',
-  '.v5notes/plugins/community-plugins.json',
-  '.v5notes/themes/community-themes.json',
-])
+const INTENT_CONFIG_EXACT = new Set(['.v5notes/appearance.json'])
 
-const INTENT_DATA_RE = /^\.v5notes\/(plugins|themes)\/[^/]+\/data\.json$/i
-
-/** Plugin/theme code binaries — default sync off (each device installs itself). */
-const CODE_BINARY_RE =
-  /^\.v5notes\/(plugins|themes)\/[^/]+\/(main\.js|styles\.css|manifest\.json|theme\.css)$/i
+/**
+ * Plugin settings that describe this vault's notes sync with the vault.
+ * Package code lives in the app, so plugin/theme binaries never reach a vault.
+ */
+const VAULT_PLUGIN_DATA_RE = /^\.v5notes\/plugins\/[^/]+\/data\.json$/i
 
 const NEVER_EXACT = new Set([
   '.v5notes/sync-state.json',
@@ -56,12 +52,8 @@ export function classifySyncPath(relativePath: string): SyncFilterDecision {
     return { sync: false, reason: 'never' }
   }
 
-  if (INTENT_CONFIG_EXACT.has(lower) || INTENT_DATA_RE.test(lower)) {
+  if (INTENT_CONFIG_EXACT.has(lower) || VAULT_PLUGIN_DATA_RE.test(lower)) {
     return { sync: true, reason: 'intent-config' }
-  }
-
-  if (CODE_BINARY_RE.test(lower)) {
-    return { sync: false, reason: 'code-binary-default-off' }
   }
 
   if (lower.startsWith('.v5notes/')) {

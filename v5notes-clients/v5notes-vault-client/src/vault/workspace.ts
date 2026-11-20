@@ -14,18 +14,12 @@ import {
 import {
   APPEARANCE_REL,
   buildAppearanceJson,
-  buildCommunityPluginsJson,
-  buildCommunityThemesJson,
   buildEmptySyncState,
   buildVaultJson,
   buildWelcomeNoteMarkdown,
-  COMMUNITY_PLUGINS_REL,
-  COMMUNITY_THEMES_REL,
   DEFAULT_SYNCIGNORE,
-  PLUGINS_DIR_REL,
   SYNC_STATE_REL,
   SYNCIGNORE_REL,
-  THEMES_DIR_REL,
   TRASH_DIR_REL,
   V5NOTES_DIR,
   VAULT_JSON_REL,
@@ -42,16 +36,12 @@ async function ensureSkeleton(rootPath: string, vaultName: string, options?: { w
   const v5 = await join(rootPath, V5NOTES_DIR)
   await mkdir(v5, { recursive: true })
   await mkdir(await join(rootPath, TRASH_DIR_REL), { recursive: true })
-  await mkdir(await join(rootPath, PLUGINS_DIR_REL), { recursive: true })
-  await mkdir(await join(rootPath, THEMES_DIR_REL), { recursive: true })
 
   const config = buildVaultJson(vaultName)
   await writeJson(await join(rootPath, VAULT_JSON_REL), config)
   await writeTextFile(await join(rootPath, SYNCIGNORE_REL), DEFAULT_SYNCIGNORE)
   await writeJson(await join(rootPath, APPEARANCE_REL), buildAppearanceJson())
   await writeJson(await join(rootPath, SYNC_STATE_REL), buildEmptySyncState())
-  await writeJson(await join(rootPath, COMMUNITY_PLUGINS_REL), buildCommunityPluginsJson())
-  await writeJson(await join(rootPath, COMMUNITY_THEMES_REL), buildCommunityThemesJson())
 
   if (options?.welcomeNote !== false) {
     await vaultFs.writeText(rootPath, WELCOME_NOTE_REL, buildWelcomeNoteMarkdown(vaultName))

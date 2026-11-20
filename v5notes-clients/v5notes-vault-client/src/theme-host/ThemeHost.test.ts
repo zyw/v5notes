@@ -12,7 +12,7 @@ describe('ThemeHost', () => {
 
   it('falls back when CSS is invalid', async () => {
     const host = createThemeHost({
-      listVaultThemes: async () => [
+      listInstalledThemes: async () => [
         {
           id: 'bad-theme',
           name: 'Bad',

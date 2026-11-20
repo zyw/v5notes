@@ -28,6 +28,16 @@ export type ForbiddenPermission =
 
 export type PluginKind = 'plugin' | 'theme'
 
+/**
+ * Where a plugin's own settings belong.
+ *
+ * - 'vault'  (default) follows the notes of the vault that is open: per-vault
+ *   templates, last opened note, anything naming content that lives here.
+ * - 'global' follows the app: one copy shared by every vault, e.g. how the
+ *   plugin itself behaves or a user-configured endpoint.
+ */
+export type PluginDataScope = 'global' | 'vault'
+
 export interface PluginManifest {
   id: string
   name: string
@@ -245,7 +255,7 @@ export abstract class Plugin {
     /* optional */
   }
 
-  /** Optional: first enable in this vault (not every open). */
+  /** Optional: first enable on this machine (not every open, not per vault). */
   onUserEnable?(): void | Promise<void>
 
   register(disposer: Disposer): void {
@@ -312,11 +322,13 @@ export abstract class Plugin {
     }
   }
 
-  async loadData<T = unknown>(): Promise<T | null> {
+  /** Settings for the open vault. Null when nothing is saved or no vault is open. */
+  async loadData<T = unknown>(_scope: PluginDataScope = 'vault'): Promise<T | null> {
     throw new Error('loadData is provided by the host')
   }
 
-  async saveData(_data: unknown): Promise<void> {
+  /** Saved per vault by default; pass 'global' for app-wide settings. */
+  async saveData(_data: unknown, _scope: PluginDataScope = 'vault'): Promise<void> {
     throw new Error('saveData is provided by the host')
   }
 }

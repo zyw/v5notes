@@ -220,11 +220,10 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 | 路径 / 类别 | Sync | 说明 |
 |---|---|---|
 | 用户 `.md` / 附件（库根下非点目录） | **默认同步开** | 正文真相 |
-| `.v5notes/appearance.json` | **默认同步开** | 当前主题 / 色模式意图 |
-| `.v5notes/plugins/community-plugins.json` | **默认同步开** | 启用列表与版本钉扎意图 |
-| `.v5notes/themes/community-themes.json` | **默认同步开** | 已装主题意图 |
-| `.v5notes/plugins/*/data.json`、`.v5notes/themes/*/data.json` | **默认同步开** | 插件/主题设置意图 |
-| `.v5notes/plugins/*/main.js`、`styles.css`、主题 `theme.css` 等代码二进制 | **默认同步关** | 各端自装；仅同步启用/选中意图 |
+| `.v5notes/appearance.json` | **默认同步开** | 当前主题 / 色模式意图（每库各自） |
+| `.v5notes/plugins/*/data.json` | **默认同步开** | 插件**库**设置意图（描述本库笔记） |
+| 插件代码、主题包、启用列表 | **不在库内** | 装在应用目录 `extensions/`，天然不进库同步（§插件 3.1） |
+| 插件**全局**设置 `extensions/plugins/*/data.json` | **不在库内** | 应用级数据，不属于任何库 |
 | `.v5notes/sync-state.json` | **永不同步** | 本机 cursor / baseRev / dirty / 设备视角 |
 | `.v5notes/index.sqlite`（及 FTS 旁路文件） | **永不同步** | 可重建索引 |
 | `.v5notes/vault.json` 中的本地设备字段（`deviceId`、本机路径书签、本地 salt 缓存等） | **永不同步** | 可同步的仅限显式列出的绑定元数据（如 `cloudVaultId`）；实现须字段级白名单，默认拒绝 |
@@ -730,7 +729,7 @@ Phase 0 脚手架/冻结
 - [ ] 包：`@v5notes/vault-plugin-api`（含 `ThemeApi`）  
 - [ ] `PluginHost`：`manifest` + `onload`/`onunload`；权限代理；Safe Mode  
 - [ ] P1 能力：`addCommand`、`loadData`/`saveData`、启用 UI；`vault:read/write`、`ui:commands`  
-- [ ] **Theme API（P1b）**：`.v5notes/themes`、`appearance.json`、`theme.css` 校验与回退、设置「外观」  
+- [ ] **Theme API（P1b）**：应用目录 `extensions/themes`、`appearance.json`（每库）、`theme.css` 校验与回退、设置「外观」  
 - [ ] 官方核心插件起步：日记、模板（吃自己的狗粮）  
 - [ ] **不**做第三方发布 API；**不**开放无限制 `network`  
 
@@ -875,9 +874,10 @@ Phase 0 脚手架/冻结
 | 宿主应用 | `v5notes-vault-client` |
 | 插件 API 包 | `@v5notes/vault-plugin-api`（含 `ThemeApi`） |
 | 宿主运行时 | `PluginHost` + `ThemeHost` |
-| 库内功能插件目录 | `.v5notes/plugins/<plugin-id>/` |
-| 库内主题目录 | `.v5notes/themes/<theme-id>/` |
-| 社区缓存（可选） | 应用数据下 `installed-plugins/`、`installed-themes/` |
+| 全局功能插件目录 | 应用配置目录 `extensions/plugins/<plugin-id>/` |
+| 全局主题目录 | 应用配置目录 `extensions/themes/<theme-id>/` |
+| 启用列表（全局） | 应用配置目录 `extensions/community-plugins.json` |
+| 库级插件设置 | `.v5notes/plugins/<plugin-id>/data.json` |
 
 ---
 
@@ -889,7 +889,7 @@ Phase 0 脚手架/冻结
 - **主题为一等品类**：经稳定 **Theme API** 安装/切换外观（不仅是「随便塞一段 CSS」）。
 - 开发者体验贴近 Obsidian：清单 + 打包入口 + `onload` / `onunload`，降低迁移与学习成本。
 - **能力分级**：插件默认只能碰公开 API；网络仅开放**安全只读/白名单**类能力；危险能力（任意路径、Shell）默认不开放。
-- 插件配置随库走（可同步），与「本机安装的社区包」可分离。
+- **插件是全局的**：装一次，所有库通用；启用状态也全机一份。插件设置分两层——全局设置跟随应用，库设置跟随库（见 §3）。
 
 ### 1.2 非目标（首期）
 
@@ -923,44 +923,47 @@ Phase 0 脚手架/冻结
 
 ### 3.1 布局
 
+**插件与主题装在应用层**，不放在库里。库只保留属于它自己的那一层设置。
+
 ```
-MyVault/
+~/Library/Application Support/xin.v5ai.v5notes.vault/     # 应用配置目录
+  extensions/
+    community-plugins.json      # 启用列表（全局一份）
+    plugins/
+      hello-world/
+        manifest.json           # kind: "plugin"（默认）
+        main.js
+        styles.css              # 可选：插件局部样式
+        data.json               # 插件「全局」设置
+    themes/
+      forest-ink/
+        manifest.json           # kind: "theme"
+        theme.css               # 必需：仅写约定 CSS 变量 / 允许选择器
+        theme.json              # 可选：色板、亮暗变体元数据
+  recent-vaults.json
+  vault-registry.json
+```
+
+```
+MyVault/                        # 库，只装内容与库级偏好
   .v5notes/
     vault.json
-    appearance.json               # 当前 themeId、色模式偏好（可同步）
+    appearance.json             # 当前 themeId、色模式偏好（每库各自，可同步）
     plugins/
-      community-plugins.json      # 启用列表、版本钉扎（可同步）
       hello-world/
-        manifest.json             # kind: "plugin"（默认）
-        main.js
-        styles.css                # 可选：插件局部样式（非全局主题）
-        data.json
-    themes/
-      community-themes.json       # 已装主题列表（可同步意图）
-      forest-ink/
-        manifest.json             # kind: "theme"
-        theme.css                 # 必需：仅写约定 CSS 变量 / 允许选择器
-        theme.json                # 可选：色板、亮暗变体元数据
-        main.js                   # 可选：仅 Theme 设置控件，无网络/写库默认权限
+        data.json               # 插件「库」设置：描述本库笔记的配置
     index.sqlite
     sync-state.json
   工作/
     ...
 ```
 
-应用数据（不随库同步的安装缓存，可选）：
-
-```
-~/Library/Application Support/v5notes-vault-client/
-  plugin-store-cache/
-  installed-plugins/
-  installed-themes/
-```
+**为什么插件全局：** 插件是产品的一部分，不是某个库的附属物；按库存放会让「换台机器打开同一个同步库 → 启用记录在、代码不在」成为常态。库色（立春/寒露）与当前主题选择仍按库保留，因为它们描述的是「我怎么看这个库」。
 
 ### 3.2 启用语义
 
-- **安装** ≠ **启用**：下载/拷贝到 `plugins/<id>` 后，仍需在「插件」设置中打开。
-- `community-plugins.json` 示例：
+- **安装** ≠ **启用**：拷到 `extensions/plugins/<id>` 后，仍需在「插件与安全」设置中打开。
+- `community-plugins.json`（全局一份）示例：
 
 ```json
 {
@@ -971,8 +974,9 @@ MyVault/
 }
 ```
 
-- 打开库时：`PluginHost` 读启用列表 → 校验 `manifest` → 按依赖顺序加载 → 失败则禁用并写入错误日志，不阻断开库。
-- **主题**与功能插件分目录、分清单；同一时间仅 **一个** 社区/自选主题生效（可叠加官方「基础壳」变量）；切换走 `app.theme`（§5.6）。
+- **启动时**（不必先打开库）：`PluginHost` 读启用列表 → 校验 `manifest` → 按 id 字典序加载 → 失败则标记 `failed` 并记录错误，不影响其余插件与启动。
+- **切换库**：宿主不重启，只把 `vault` 适配器指向新库；插件已注册的命令、视图、编辑器保持不变。
+- **主题**与功能插件分目录、分清单；同一时间仅 **一个** 社区/自选主题生效（可叠加官方「基础壳」变量）；切换走 `app.theme`（§5.6）。装了哪些主题是全局的，当前选哪个是每库各自的（`appearance.json`）。
 
 ### 3.3 同步
 
@@ -980,13 +984,15 @@ MyVault/
 
 | 路径 | 是否进 Vault Sync |
 |---|---|
-| `plugins/*/data.json`、`community-plugins.json` | **默认同步开**（设置跟库） |
-| `appearance.json`、`themes/community-themes.json`、`themes/*/data.json` | **默认同步开**（当前主题意图） |
-| `plugins/*/main.js`、`themes/*/theme.css` 等代码 | **默认同步关闭**（各端自装）；仅同步「启用/选中意图」 |
+| `.v5notes/plugins/*/data.json`（插件**库**设置） | **默认同步开**（描述本库笔记的配置） |
+| `.v5notes/appearance.json`（当前主题、色模式） | **默认同步开**（当前主题意图） |
+| `.v5notes/plugins/*/main.js`、`manifest.json`、`community-plugins.json` | **不在库内**——插件装在应用目录，天然不进库同步 |
 | `sync-state.json`、`index.sqlite`、`vault.json` 设备字段、`.v5notes/trash/**` | **永不同步**（见主设计 §6.4） |
 | 官方核心插件与内置主题 | 随 App 发版，不放库内 |
 
-文档需提示：多设备启用同一社区插件/主题时，各端需自行安装对应版本；仅同步「启用意图」。
+**插件全局设置**（`extensions/plugins/<id>/data.json`）在应用目录，不属于任何库，**不参与库同步**。
+
+文档需提示：插件代码是全局的、不随库同步；多设备需各自安装插件，但同一库的插件库设置会随库同步。
 
 ---
 
@@ -1068,7 +1074,7 @@ export default class HelloWorldPlugin extends Plugin {
 1. **必须** `export default` 继承 `Plugin` 的类（与 Obsidian 一致，降低心智切换）。
 2. 所有 `register*` / `add*` 在 `onunload` 时由宿主统一拆除；插件应调用 `this.register(disposer)` 挂自有清理。
 3. 禁止插件顶层副作用；逻辑放进 `onload`。
-4. **`onUserEnable`（可选）：** 用户在设置中**首次**将该插件从关闭打到开启时调用一次（每个库、每个 `plugin id` 至多一次，直到卸载/清除启用记录）。用于迁移旧 `data.json`、展示权限说明、一次性引导。**不是**每次开库的钩子——每次开库仍走 `onload`；关闭走 `onunload`。未实现该方法则跳过。主题包若带 `main.js`，对等可选用，语义相同。
+4. **`onUserEnable`（可选）：** 用户在设置中**首次**将该插件从关闭打到开启时调用一次（**全机**每个 `plugin id` 至多一次，不按库区分，直到卸载/清除启用记录）。用于迁移旧数据、展示权限说明、一次性引导。**不是**每次启动的钩子——每次启动仍走 `onload`；关闭走 `onunload`。未实现该方法则跳过。主题包若带 `main.js`，对等可选用，语义相同。
 
 ### 4.3 构建
 
@@ -1131,9 +1137,25 @@ PluginHost
 - 预览/编辑切换只调用 `EditorSession.setEditable`，**不得卸载再挂载**，以便保留撤销历史。换笔记可以 `setMarkdown`，换 provider 才销毁旧会话。
 - 安全模式仍加载核心编辑器；若当前选中的社区编辑器被跳过，回退到 `v5-editor`。
 
-### 5.5 设置
+### 5.5 设置（两层）
 
-- `loadData()` / `saveData()` → `.v5notes/plugins/<id>/data.json`（主题可选 `.v5notes/themes/<id>/data.json`）。
+插件设置按归属分两层，用 `scope` 显式选择：
+
+| scope | 位置 | 语义 |
+|---|---|---|
+| `'vault'`（**默认**） | `<库>/.v5notes/plugins/<id>/data.json` | 描述本库笔记的配置：上次打开的笔记、本库模板目录、本库统计缓存 |
+| `'global'` | `<应用配置目录>/extensions/plugins/<id>/data.json` | 跟库无关的配置：界面密度、面板折叠、用户自配接口 |
+
+```ts
+const vaultPrefs = await this.loadData()               // 默认 'vault'
+await this.saveData({ templateDir: '模板' })           // 默认 'vault'
+const appPrefs = await this.loadData('global')
+await this.saveData({ density: 'compact' }, 'global')
+```
+
+- 默认 `'vault'`：插件设置多数与库内容绑定，默认落库层更安全；要跨库共享必须显式声明。
+- **没有库时**：`loadData()` 返回 `null`，`saveData()` 抛「打开库后可保存库内设置」；全局层任何时候可读写。
+- `PluginHost` 需保证两层互不串：写进全局层的数据从库层读出来必须是 `null`。
 - `addSettingTab`：在设置「插件」分区挂 Vue/自定义 DOM 容器（宿主提供 `SettingTab` 挂载点）。
 
 ### 5.6 Theme API（一等品类）
@@ -1177,10 +1199,12 @@ PluginHost
 
 ### 6.1 加载顺序
 
-1. 应用内置主题（fallback）→ 再应用用户选中主题（`appearance.json`）。
+1. 应用内置主题（fallback）→ 再应用当前库选中的主题（`appearance.json`，无库时用默认）。
 2. 内置核心插件（官方，随 App）。
-3. 库内已启用社区/本地**功能插件**（按 `id` 字典序；显式 `dependencies` 字段后期再加）。
+3. 应用目录下已启用的社区/本地**功能插件**（按 `id` 字典序；显式 `dependencies` 字段后期再加）。
 4. 单个失败：捕获、标记 `failed`、其余继续；主题 CSS 校验失败则回退内置主题并提示。
+
+宿主在应用启动/打开设置时即可加载，**不要求先打开库**；没有库时 `vault` 适配器返回空列表、读写抛「打开库后可读写笔记」。
 
 ### 6.2 隔离策略与威胁模型（诚实边界）
 
@@ -1263,9 +1287,11 @@ await instance.onload()
 | 类型 | 存放 | 更新 | 示例 |
 |---|---|---|---|
 | 核心功能插件 | App 内置 | 随客户端发版 | 反向链接、日记、模板、大纲增强 |
-| 社区功能插件 | `.v5notes/plugins` | 市场 / 手动安装 | 日历、看板、安全联网工具、编辑增强 |
-| **主题（一等）** | `.v5notes/themes` | 市场「主题」分区 / 手动安装 | 色板与排版主题；经 Theme API 切换 |
+| 社区功能插件 | 应用目录 `extensions/plugins` | 市场 / 手动安装 | 日历、看板、安全联网工具、编辑增强 |
+| **主题（一等）** | 应用目录 `extensions/themes` | 市场「主题」分区 / 手动安装 | 色板与排版主题；经 Theme API 切换 |
 | 官方发布 / Sync | 产品功能，非社区插件 | 随客户端 / 套餐 | Publish、Vault Sync |
+
+除核心插件外均为**全局安装**；库只影响「当前选中的主题」与插件的库级设置。
 
 核心功能插件同样走 `Plugin` 基类。主题走 `kind: "theme"` + Theme API。
 
@@ -1347,7 +1373,7 @@ v5notes-clients/packages/
 |---|---|---|
 | P0 API 草案 | Phase 0 / 6 启动前 | `@v5notes/vault-plugin-api`（含 ThemeApi）、CSS 变量契约、权限表、示例文档 |
 | P1 宿主最小闭环 | **Phase 6** | `PluginHost`、命令/`data.json`、权限代理、Safe Mode |
-| P1b Theme 一等 | **Phase 6** | `.v5notes/themes`、`appearance.json`、校验与回退、外观设置 |
+| P1b Theme 一等 | **Phase 6** | `extensions/themes`、`appearance.json`、校验与回退、外观设置 |
 | P2 扩展面 | **Phase 7** | 视图/编辑器扩展、MetadataCache、`network:safe` |
 | P3 分发 | **Phase 7** | 本地安装、catalog（plugin/theme）、拒绝 publishing 标签 |
 | P4 核心与官方增值 | **Phase 6–8** | 日记/模板/反向链接；官方 Publish 仅产品通道 |
@@ -1385,7 +1411,7 @@ v5notes-clients/packages/
 | 网络 | 仅 **`network:safe`**（白名单）；禁止无限制联网与静默全库外传 |
 | 发布 | **不对第三方开放**；官方产品能力另做 |
 | 安全 | **权限声明 + 宿主代理**（P1 非进程隔离）；无任意 fs/shell/publish；token 不对插件暴露 |
-| 代码同步 | 默认同步启用意图、`data.json`、`appearance.json`；不同步二进制；永不同步项见主设计 §6.4 |
+| 归属 | 插件代码、主题包、启用状态为**全局**（应用目录）；插件设置分**全局**与**库**两层，库层随库同步（§3.3、§5.5） |
 | 市场 | catalog 分插件/主题；**协议版本独立于**文件 sync；可同进程旁路或 CDN |
 | 与云端客户端 | `v5notes-client2` 首期不引入同一套第三方插件 |
 

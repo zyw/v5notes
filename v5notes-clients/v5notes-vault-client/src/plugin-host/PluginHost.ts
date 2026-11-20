@@ -2,6 +2,7 @@ import {
   Plugin,
   type EditorProviderSpec,
   type PluginCommand,
+  type PluginDataScope,
   type PluginManifest,
   type RibbonIconSpec,
   type SettingTabSpec,
@@ -84,8 +85,8 @@ export interface PluginHostDeps {
   theme: ThemeApi
   readCommunityPlugins: () => Promise<CommunityPluginsFile>
   writeCommunityPlugins: (file: CommunityPluginsFile) => Promise<void>
-  loadPluginData: (pluginId: string) => Promise<unknown>
-  savePluginData: (pluginId: string, data: unknown) => Promise<void>
+  loadPluginData: (scope: PluginDataScope, pluginId: string) => Promise<unknown>
+  savePluginData: (scope: PluginDataScope, pluginId: string, data: unknown) => Promise<void>
   listVaultPlugins: () => Promise<VaultPluginPackage[]>
   onNotice?: (message: string) => void
 }

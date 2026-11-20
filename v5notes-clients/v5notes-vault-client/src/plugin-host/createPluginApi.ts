@@ -2,6 +2,7 @@ import {
   Plugin,
   type App,
   type PluginCommand,
+  type PluginDataScope,
   type PluginManifest,
   type RibbonIconSpec,
   type SettingTabSpec,
@@ -20,9 +21,12 @@ export interface PluginHostHooks {
   theme: ThemeApi
   getEnabledIds: () => string[]
   isSafeMode: () => boolean
-  /** Persist plugin data.json — never tokens. */
-  loadData: (pluginId: string) => Promise<unknown>
-  saveData: (pluginId: string, data: unknown) => Promise<void>
+  /**
+   * Plugin settings in two tiers — never tokens.
+   * 'global' follows the app, 'vault' follows the notes of the open vault.
+   */
+  loadData: (scope: PluginDataScope, pluginId: string) => Promise<unknown>
+  saveData: (scope: PluginDataScope, pluginId: string, data: unknown) => Promise<void>
   /** Register command with host (namespaced). */
   registerCommand: (pluginId: string, command: PluginCommand) => void
   registerRibbon?: (pluginId: string, spec: RibbonIconSpec) => void
@@ -122,12 +126,13 @@ export function attachDataMethods(
   hooks: PluginHostHooks,
   pluginId: string,
 ): void {
-  instance.loadData = async <T = unknown>() => {
-    const data = await hooks.loadData(pluginId)
+  // Defaults to the vault tier: settings usually describe this vault's notes.
+  instance.loadData = async <T = unknown>(scope: PluginDataScope = 'vault') => {
+    const data = await hooks.loadData(scope, pluginId)
     return (data as T) ?? null
   }
-  instance.saveData = async (data: unknown) => {
-    await hooks.saveData(pluginId, data)
+  instance.saveData = async (data: unknown, scope: PluginDataScope = 'vault') => {
+    await hooks.saveData(scope, pluginId, data)
   }
 
   const originalAdd = instance.addCommand.bind(instance)

@@ -24,16 +24,7 @@ export {
 } from './permissions'
 export { safeNetworkRequest, hostMatchesAllowlist, validateAllowlist } from './networkSafe'
 export { loadSafeMode, saveSafeMode, SAFE_MODE_STORAGE_KEY } from './safeMode'
-export {
-  createVaultAdapter,
-  createWorkspaceApi,
-  readCommunityPluginsFile,
-  writeCommunityPluginsFile,
-  loadPluginDataFile,
-  savePluginDataFile,
-  listVaultPluginPackages,
-  writeSamplePlugin,
-} from './vaultBridge'
+export { createVaultAdapter, createWorkspaceApi } from './vaultBridge'
 export { DAILY_NOTES_MANIFEST } from './core/dailyNotes'
 export { TEMPLATES_MANIFEST } from './core/templates'
 export { V5_EDITOR_ID, V5_EDITOR_MANIFEST } from './core/v5Editor'

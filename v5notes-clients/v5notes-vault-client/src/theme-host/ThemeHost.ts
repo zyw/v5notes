@@ -25,11 +25,11 @@ export interface VaultThemePackage {
 }
 
 export interface ThemeHostDeps {
-  /** Read appearance.json from vault when available. */
+  /** Theme choice and colour mode for the open vault. */
   readAppearanceFile?: () => Promise<Partial<AppearancePrefs> | null>
   writeAppearanceFile?: (prefs: AppearancePrefs) => Promise<void>
-  /** Discover themes under `.v5notes/themes/<id>/`. */
-  listVaultThemes?: () => Promise<VaultThemePackage[]>
+  /** Themes installed in the app; the same set for every vault. */
+  listInstalledThemes?: () => Promise<VaultThemePackage[]>
   onNotice?: (message: string) => void
   isSafeMode?: () => boolean
 }
@@ -85,16 +85,16 @@ export function injectCss(themeId: string, css: string): void {
 
 export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
   let prefs = loadAppearancePrefs()
-  let vaultThemes: VaultThemePackage[] = []
+  let installedThemes: VaultThemePackage[] = []
   let lastError: string | null = null
   const sampleCache = new Map(bundledSamples().map((t) => [t.id, t]))
 
-  async function refreshVaultThemes(): Promise<void> {
-    vaultThemes = deps.listVaultThemes ? await deps.listVaultThemes() : []
+  async function refreshInstalledThemes(): Promise<void> {
+    installedThemes = deps.listInstalledThemes ? await deps.listInstalledThemes() : []
   }
 
   function resolvePackage(id: string): VaultThemePackage | null {
-    return vaultThemes.find((t) => t.id === id) || sampleCache.get(id) || null
+    return installedThemes.find((t) => t.id === id) || sampleCache.get(id) || null
   }
 
   function list(): ThemeInfo[] {
@@ -104,7 +104,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       seen.add(b.id)
       out.push(b)
     }
-    for (const t of [...vaultThemes, ...sampleCache.values()]) {
+    for (const t of [...installedThemes, ...sampleCache.values()]) {
       if (seen.has(t.id)) continue
       seen.add(t.id)
       out.push({
@@ -114,7 +114,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
         description: t.description,
         author: t.author,
         builtin: false,
-        source: vaultThemes.some((v) => v.id === t.id) ? 'vault' : 'core',
+        source: installedThemes.some((v) => v.id === t.id) ? 'vault' : 'core',
       })
     }
     return out
@@ -183,7 +183,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
 
   return {
     async start() {
-      await refreshVaultThemes()
+      await refreshInstalledThemes()
       if (deps.readAppearanceFile) {
         try {
           const file = await deps.readAppearanceFile()
@@ -208,7 +208,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       return prefs.theme
     },
     async setActive(id: string) {
-      await refreshVaultThemes()
+      await refreshInstalledThemes()
       await applyThemeId(id, prefs.colorMode)
     },
     async setColorMode(mode: ColorMode) {

@@ -8,7 +8,7 @@ import WorkspaceView from './views/WorkspaceView.vue'
 import type { OpenedVault } from './vault/types'
 import { applyAppearance, loadAppearancePrefs } from './appearance/themes'
 import { applyVaultColorForPath } from './appearance/vaultColors'
-import { stopExtensionRuntime } from './extension/runtime'
+import { attachExtensionRuntimeVault } from './extension/runtime'
 import UpdateDialog from './components/UpdateDialog.vue'
 import { useAppUpdate } from './update'
 
@@ -46,7 +46,8 @@ function onOpened(opened: OpenedVault) {
 }
 
 function closeVault() {
-  void stopExtensionRuntime()
+  // Extensions are app-level: closing a vault only unbinds the data source.
+  attachExtensionRuntimeVault(null)
   vault.value = null
   workspaceDirty.value = false
   page.value = 'welcome'

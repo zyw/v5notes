@@ -17,7 +17,7 @@
 | `deviceType` | `vault_client` |
 | 默认 `client_id` | `b8e4f02a5c3d7916f2a0b1d9e7c5f3a1` |
 
-依据：`docs/vault-client-design.md`（含插件系统、工程拍板与延期能力）。
+依据：`docs/vault-client-design.md`（含插件系统、工程拍板与延期能力）。写插件看 **[`docs/vault-plugin-development.md`](../docs/vault-plugin-development.md)**。
 
 ## 开发
 
@@ -103,6 +103,12 @@ python3 scripts/vault_latest_json.py \
 - Cloud ↔ Vault **显式迁移说明**（确认后展示步骤，不自动合并）
 - 帮助区双产品全文案；Cloud 并行轨登录/设置/资料页同步一句边界说明
 - **不做**完整站点托管后端；**不**把 Vault 插件宿主引入 Cloud
+
+### 插件与主题的归属
+
+插件代码、主题包、启用状态是**全局**的，装在应用配置目录 `extensions/` 下，装一次所有库通用；没打开库也能加载和启用。
+
+插件设置分两层：`loadData()` / `saveData()` 默认落**库层**（`<库>/.v5notes/plugins/<id>/data.json`，随库同步），显式传 `'global'` 才落**全局层**。库色与当前主题选择仍按库保存。
 
 ## Phase 7（已落地）
 

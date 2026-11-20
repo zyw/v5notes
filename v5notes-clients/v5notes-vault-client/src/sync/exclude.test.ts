@@ -18,13 +18,23 @@ describe('§6.4 hard exclude table', () => {
 
   it('syncs intent configs and user markdown', () => {
     expect(shouldSyncPath('.v5notes/appearance.json')).toBe(true)
-    expect(shouldSyncPath('.v5notes/plugins/community-plugins.json')).toBe(true)
-    expect(shouldSyncPath('.v5notes/plugins/diary/data.json')).toBe(true)
     expect(shouldSyncPath('工作/周报.md')).toBe(true)
   })
 
-  it('defaults plugin binaries off and unlisted .v5notes off', () => {
-    expect(classifySyncPath('.v5notes/plugins/diary/main.js').reason).toBe('code-binary-default-off')
+  it('syncs vault-tier plugin settings with the vault that owns them', () => {
+    expect(classifySyncPath('.v5notes/plugins/templates/data.json')).toEqual({
+      sync: true,
+      reason: 'intent-config',
+    })
+  })
+
+  it('never syncs plugin code or install lists: extensions are app-level', () => {
+    expect(classifySyncPath('.v5notes/plugins/hello-world/main.js').sync).toBe(false)
+    expect(classifySyncPath('.v5notes/plugins/community-plugins.json').sync).toBe(false)
+    expect(classifySyncPath('.v5notes/themes/ink/theme.css').reason).toBe('unlisted-v5notes')
+  })
+
+  it('unlisted .v5notes stays local', () => {
     expect(classifySyncPath('.v5notes/cache/x').reason).toBe('unlisted-v5notes')
   })
 

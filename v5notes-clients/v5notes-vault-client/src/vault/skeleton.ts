@@ -7,10 +7,8 @@ export const SYNCIGNORE_REL = `${V5NOTES_DIR}/syncignore`
 export const APPEARANCE_REL = `${V5NOTES_DIR}/appearance.json`
 export const SYNC_STATE_REL = `${V5NOTES_DIR}/sync-state.json`
 export const TRASH_DIR_REL = `${V5NOTES_DIR}/trash`
-export const PLUGINS_DIR_REL = `${V5NOTES_DIR}/plugins`
-export const THEMES_DIR_REL = `${V5NOTES_DIR}/themes`
-export const COMMUNITY_PLUGINS_REL = `${PLUGINS_DIR_REL}/community-plugins.json`
-export const COMMUNITY_THEMES_REL = `${THEMES_DIR_REL}/community-themes.json`
+// Extensions are app-level (see extension/appStorage); a vault no longer holds
+// plugin or theme packages.
 export const WELCOME_NOTE_REL = '欢迎.md'
 
 export const DEFAULT_SYNCIGNORE = `# V5Notes Vault default syncignore (user content only; §6.4 hard table still wins)
@@ -53,20 +51,6 @@ export function buildAppearanceJson(): { schemaVersion: 1; theme: string; colorM
 
 export function buildEmptySyncState(): { schemaVersion: 1; files: Record<string, never> } {
   return { schemaVersion: 1, files: {} }
-}
-
-/** Design §3.2 — enable list + optional version pins (sync intent). */
-export function buildCommunityPluginsJson(): {
-  schemaVersion: 1
-  enabled: string[]
-  versions: Record<string, string>
-  userEnableSeen: Record<string, boolean>
-} {
-  return { schemaVersion: 1, enabled: [], versions: {}, userEnableSeen: {} }
-}
-
-export function buildCommunityThemesJson(): { schemaVersion: 1; installed: string[] } {
-  return { schemaVersion: 1, installed: [] }
 }
 
 export function buildWelcomeNoteMarkdown(vaultName: string): string {

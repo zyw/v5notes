@@ -64,9 +64,10 @@ import {
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
+  attachExtensionRuntimeVault,
+  getPluginHost,
   listHostCommands,
   startExtensionRuntime,
-  stopExtensionRuntime,
 } from '../extension/runtime'
 import type { HostRibbon } from '../plugin-host'
 import { join } from '@tauri-apps/api/path'
@@ -1529,7 +1530,9 @@ onMounted(async () => {
         await refreshTree()
       },
     })
-    await startExtensionRuntime(props.vault.rootPath)
+    // Extensions stay running across vaults; only the vault they read changes.
+    attachExtensionRuntimeVault(props.vault.rootPath)
+    if (!getPluginHost()) await startExtensionRuntime(props.vault.rootPath)
     refreshRibbons()
     pluginCommands.value = listHostCommands()
     if (selectedPath.value) void ensureEditorMounted()
@@ -1555,7 +1558,8 @@ onUnmounted(() => {
   if (findTimer) clearTimeout(findTimer)
   if (toastTimer) clearTimeout(toastTimer)
   destroyEditorSession()
-  void stopExtensionRuntime()
+  // The app-level extension host outlives this vault view.
+  attachExtensionRuntimeVault(null)
   emit('dirtyChange', false)
 })
 
