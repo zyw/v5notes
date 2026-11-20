@@ -1218,58 +1218,86 @@ code {
 }
 
 .modal-actions {
-  margin-top: 18px;
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-/* Dialog confirm/cancel: icon + label reads faster than a lone word. */
+/*
+ * Dialog confirms/cancels: compact pill buttons with a small icon + label,
+ * so the action row reads as one quiet surface instead of competing with
+ * the title and field.
+ */
+.modal-actions .primary,
+.modal-actions .ghost,
+.modal-actions .danger,
 .action-btn {
-  min-height: 34px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 0 13px;
-  border-radius: var(--radius-md);
+  padding: 0 12px;
+  border-radius: 999px;
   font-family: var(--font-ui);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
+  line-height: 1.2;
   letter-spacing: 0.01em;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
 }
 
-.action-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+.modal-actions .primary,
+.modal-actions .danger {
+  box-shadow: 0 1px 2px rgba(36, 53, 44, 0.14);
 }
 
-.action-btn:active:not(:disabled) {
-  transform: translateY(0);
+/* Ghost secondary action: hairline border so it recedes next to the fill. */
+.modal-actions .ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
 }
 
+.modal-actions .ghost:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink) 22%, var(--line));
+  background: color-mix(in srgb, var(--ink) 4%, var(--panel));
+  color: var(--ink);
+}
+
+.modal-actions .primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 2px 6px rgba(36, 53, 44, 0.18);
+}
+
+.modal-actions .danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+  box-shadow: 0 2px 6px rgba(36, 53, 44, 0.18);
+}
+
+.modal-actions button:focus-visible,
 .action-btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
   outline-offset: 2px;
 }
 
+/* Button icons inherit the label's muted/solid color contrast. */
 .action-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.primary.action-btn {
-  box-shadow: 0 1px 2px rgba(36, 53, 44, 0.12);
-}
-
-.ghost.action-btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--ink) 22%, var(--line));
-  background: color-mix(in srgb, var(--ink) 4%, var(--panel));
+:root[data-color-mode='dark'] .modal-actions .primary,
+:root[data-color-mode='dark'] .modal-actions .danger {
+  color: #10231b;
 }
 
 /* ============================================================

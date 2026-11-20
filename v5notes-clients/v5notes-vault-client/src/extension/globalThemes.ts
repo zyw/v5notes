@@ -1,6 +1,7 @@
 import { parseManifestJson } from '../plugin-host/manifest'
 import type { VaultThemePackage } from '../theme-host/ThemeHost'
 import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from '../theme-host/samples/forestInk'
+import { WANQING_CSS, WANQING_MANIFEST } from '../theme-host/samples/wanqing'
 import { extensionPath, getAppStore } from './appStorage'
 
 const THEMES_DIR = 'themes'
@@ -37,18 +38,41 @@ export async function listGlobalThemes(): Promise<VaultThemePackage[]> {
   return out
 }
 
-/** Install the bundled Forest Ink sample into the app theme folder. */
-export async function installGlobalForestInkSample(): Promise<void> {
+/** Write one bundled sample package into the app theme folder. */
+async function installSampleTheme(
+  manifest: {
+    id: string
+    name: string
+    version: string
+    description?: string
+    author?: string
+    kind: string
+    minAppVersion?: string
+    permissions?: readonly string[]
+    theme?: string
+    themeMeta?: string
+  },
+  css: string,
+  accent: string,
+): Promise<void> {
   const store = getAppStore()
-  const dir = await extensionPath([THEMES_DIR, FOREST_INK_MANIFEST.id])
+  const dir = await extensionPath([THEMES_DIR, manifest.id])
   await store.mkdir(dir)
-  await store.writeText(dir + '/manifest.json', JSON.stringify(FOREST_INK_MANIFEST, null, 2) + '\n')
-  await store.writeText(
-    dir + '/theme.css',
-    FOREST_INK_CSS.endsWith('\n') ? FOREST_INK_CSS : FOREST_INK_CSS + '\n',
-  )
+  await store.writeText(dir + '/manifest.json', JSON.stringify(manifest, null, 2) + '\n')
+  await store.writeText(dir + '/theme.css', css.endsWith('\n') ? css : css + '\n')
   await store.writeText(
     dir + '/theme.json',
-    JSON.stringify({ modes: ['light', 'dark'], accent: '#3d6b54' }, null, 2) + '\n',
+    JSON.stringify({ modes: ['light', 'dark'], accent }, null, 2) + '\n',
   )
+}
+
+/** Install the bundled sample themes into the app theme folder. */
+export async function installGlobalSampleThemes(): Promise<void> {
+  await installSampleTheme(FOREST_INK_MANIFEST, FOREST_INK_CSS, '#3d6b54')
+  await installSampleTheme(WANQING_MANIFEST, WANQING_CSS, '#4a5a86')
+}
+
+/** @deprecated kept for callers that only install Forest Ink. */
+export async function installGlobalForestInkSample(): Promise<void> {
+  await installSampleTheme(FOREST_INK_MANIFEST, FOREST_INK_CSS, '#3d6b54')
 }

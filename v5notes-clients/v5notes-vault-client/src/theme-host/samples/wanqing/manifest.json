@@ -1,0 +1,14 @@
+{
+  "id": "wanqing",
+  "name": "晚晴",
+  "kind": "theme",
+  "version": "1.0.0",
+  "minAppVersion": "0.1.0",
+  "description": "暖纸底 + 靛蓝强调，深色为夜蓝",
+  "author": "v5notes",
+  "permissions": [
+    "ui:theme"
+  ],
+  "theme": "theme.css",
+  "themeMeta": "theme.json"
+}

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { appDataDir, join } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
+import { readDir, stat } from '@tauri-apps/plugin-fs'
 import { mkdir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { VaultJson } from '../models/vault'
 import { normalizeVaultName, resolveCreateVaultRoot, VaultPathError } from '../path/identity'
@@ -99,10 +100,82 @@ async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
   return opened
 }
 
+/**
+ * Read a vault's settings without treating it as "worked on": the settings page
+ * uses this to show another vault's page. Recency and registry order are left
+ * untouched, so the list does not reshuffle every time someone looks at it.
+ */
+async function readVaultForSettings(rootPath: string): Promise<OpenedVault> {
+  if (!(await vaultFs.exists(rootPath))) {
+    throw new VaultPathError('库路径不存在或不可访问（可能已移动）')
+  }
+  if (!(await vaultFs.exists(rootPath, VAULT_JSON_REL))) {
+    throw new VaultPathError('所选文件夹不是 Vault（缺少 .v5notes/vault.json）')
+  }
+  const config = await readVaultConfig(rootPath)
+  return {
+    rootPath,
+    name: config.name || (await vaultRootName(rootPath)),
+    config,
+  }
+}
+
 /** Verify a registry entry's folder still holds a readable vault.json. */
 export interface VaultProbeResult {
   ok: boolean
   name?: string
+}
+
+
+const NOTE_MTIME_SKIP = new Set(['.git', 'node_modules'])
+const NOTE_MTIME_MAX_DEPTH = 6
+const NOTE_MTIME_MAX_FILES = 400
+
+/**
+ * When did this vault's notes last change? Walks note files (newest first per
+ * directory) instead of the whole tree, so the settings list can order vaults
+ * by real activity without a heavy scan of large folders.
+ */
+async function newestNoteMtime(rootPath: string): Promise<number | null> {
+  let newest: number | null = null
+  let visited = 0
+
+  async function walk(dirAbs: string, depth: number): Promise<void> {
+    if (depth > NOTE_MTIME_MAX_DEPTH || visited >= NOTE_MTIME_MAX_FILES) return
+    let entries: Awaited<ReturnType<typeof readDir>>
+    try {
+      entries = await readDir(dirAbs)
+    } catch {
+      return
+    }
+    const candidates: { name: string; isDirectory: boolean; abs: string }[] = []
+    for (const entry of entries) {
+      if (!entry.name || NOTE_MTIME_SKIP.has(entry.name)) continue
+      if (depth === 0 && entry.name === V5NOTES_DIR) continue
+      if (entry.isSymlink) continue
+      candidates.push({ name: entry.name, isDirectory: entry.isDirectory, abs: `${dirAbs}/${entry.name}` })
+    }
+    for (const item of candidates) {
+      if (visited >= NOTE_MTIME_MAX_FILES) return
+      if (item.isDirectory) {
+        await walk(item.abs, depth + 1)
+        continue
+      }
+      if (!item.name.toLowerCase().endsWith('.md')) continue
+      visited += 1
+      try {
+        const info = await stat(item.abs)
+        const mtime = info.mtime ? new Date(info.mtime).getTime() : Number.NaN
+        if (Number.isFinite(mtime) && (newest === null || mtime > newest)) newest = mtime
+      } catch {
+        /* unreadable file: skip */
+      }
+    }
+  }
+
+  if (!(await vaultFs.exists(rootPath))) return null
+  await walk(rootPath, 0)
+  return newest
 }
 
 async function probeVaultRoot(rootPath: string): Promise<VaultProbeResult> {
@@ -123,6 +196,10 @@ export interface VaultWorkspace {
   pickAndOpenVault(): Promise<OpenedVault | null>
   openDefaultVault(): Promise<OpenedVault>
   openRecent(rootPath: string): Promise<OpenedVault>
+  /** Open a vault's settings page without touching recency or registry order. */
+  openForSettings(rootPath: string): Promise<OpenedVault>
+  /** Newest note change time (epoch ms), or null when the folder is gone. */
+  lastNoteChange(rootPath: string): Promise<number | null>
   listRecent(): RecentVaultEntry[]
   forgetRecent(rootPath: string): void
   /** Check whether a registered root still holds a valid vault on disk. */
@@ -207,6 +284,14 @@ export const vaultWorkspace: VaultWorkspace = {
 
   async openRecent(rootPath: string) {
     return openExistingRoot(rootPath)
+  },
+
+  async openForSettings(rootPath: string) {
+    return readVaultForSettings(rootPath)
+  },
+
+  lastNoteChange(rootPath: string) {
+    return newestNoteMtime(rootPath)
   },
 
   listRecent() {

@@ -32,7 +32,7 @@ import {
   writeGlobalCommunityPlugins,
   writeGlobalPluginPackage,
 } from './globalPlugins'
-import { installGlobalForestInkSample, listGlobalThemes } from './globalThemes'
+import { installGlobalSampleThemes, listGlobalThemes } from './globalThemes'
 import { readPluginData, writePluginData } from './pluginData'
 
 let pluginHost: PluginHost | null = null
@@ -122,9 +122,10 @@ export async function startExtensionRuntime(rootPath: string | null): Promise<vo
     await pluginHost.start()
   }
 
-  // If Safe Mode flipped theme, re-apply.
+  // Safe Mode was on before start(): re-apply the current choice so the host
+  // knows to skip community code. The theme itself (内置默认 / 暮色 / 明暗) stays.
   if (pluginHost.isSafeMode()) {
-    await themeHost.setActive('default')
+    await themeHost.setActive(themeHost.getActive())
   }
 }
 
@@ -206,7 +207,7 @@ export async function ensureSampleExtensions(): Promise<void> {
     manifestJson: JSON.stringify(SAFE_FETCH_MANIFEST, null, 2),
     mainJs: SAFE_FETCH_MAIN_JS,
   })
-  await installGlobalForestInkSample()
+  await installGlobalSampleThemes()
   if (!pluginHost || !themeHost) return
   await pluginHost.setEnabled(SAMPLE_EXTENSION_ID, true)
   await pluginHost.setEnabled(SAFE_FETCH_MANIFEST.id, true)
@@ -227,19 +228,22 @@ export async function installFromCatalog(item: CatalogItem): Promise<void> {
   }
 }
 
+/**
+ * Safe Mode blocks community plugins and community themes; it must not change
+ * the user's builtin theme or 明暗. The host stops injecting community CSS while
+ * the flag is on and re-applies the same theme choice when it goes off.
+ */
 export async function setSafeModeAndReload(enabled: boolean): Promise<void> {
+  saveSafeMode(enabled)
   if (!pluginHost || !themeHost) {
-    // Still persist preference without vault.
-    saveSafeMode(enabled)
-    if (enabled) {
-      const host = createThemeHost({ isSafeMode: () => true })
-      await host.setActive('default')
-    }
+    // Theme host is not running (no vault): still reflect the shell choice.
+    const host = createThemeHost({ isSafeMode: () => enabled })
+    await host.setActive(host.getActive())
     return
   }
   await pluginHost.setSafeMode(enabled)
   if (enabled) {
-    await themeHost.setActive('default')
+    await themeHost.setActive(themeHost.getActive())
   } else {
     await themeHost.start()
   }

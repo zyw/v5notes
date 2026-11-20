@@ -1,12 +1,14 @@
 {
   "id": "forest-ink",
-  "name": "Forest Ink",
+  "name": "林墨",
   "kind": "theme",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "minAppVersion": "0.1.0",
-  "description": "Muted green vault theme (Phase 6 sample)",
+  "description": "冷绿纸底 + 墨绿强调，深色为林间夜色",
   "author": "v5notes",
-  "permissions": ["ui:theme"],
+  "permissions": [
+    "ui:theme"
+  ],
   "theme": "theme.css",
   "themeMeta": "theme.json"
 }

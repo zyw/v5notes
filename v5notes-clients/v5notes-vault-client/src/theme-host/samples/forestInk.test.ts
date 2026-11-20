@@ -12,7 +12,7 @@ describe('Forest Ink sample theme', () => {
   })
 
   it('themes the vault identity colours as well as the shell tokens', () => {
-    expect(FOREST_INK_CSS).toContain('--vault: #3d6b54')
-    expect(FOREST_INK_CSS).toContain('--vault: #6fad8e')
+    expect(FOREST_INK_CSS).toContain('--vault: #3d6b54 !important')
+    expect(FOREST_INK_CSS).toContain('--vault: #6fad8e !important')
   })
 })

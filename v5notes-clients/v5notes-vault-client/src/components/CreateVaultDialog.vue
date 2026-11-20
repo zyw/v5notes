@@ -69,8 +69,16 @@ function submit() {
       </label>
       <p v-if="error" class="field-error" role="alert">{{ error }}</p>
       <div class="modal-actions">
-        <button type="button" class="ghost" :disabled="busy" @click="emit('cancel')">取消</button>
-        <button type="button" class="primary" :disabled="busy" @click="submit">
+        <button type="button" class="ghost action-btn" :disabled="busy" @click="emit('cancel')">
+          <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m4.2 4.2 7.6 7.6M11.8 8.7v3.1H8.7" />
+          </svg>
+          取消
+        </button>
+        <button type="button" class="primary action-btn" :disabled="busy" @click="submit">
+          <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M1.5 8h13M6 3.5h6a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z" />
+          </svg>
           {{ busy ? '创建中…' : '选择父目录并创建' }}
         </button>
       </div>

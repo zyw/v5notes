@@ -79,8 +79,12 @@ function saveOverrides(map: Record<string, string>): void {
   }
 }
 
-/** 库内的库色（.v5notes/appearance.json），打开库时由外壳填进来；换库时一起换。 */
-let vaultColorId: string | null = null
+/**
+ * 每个库在库内文件（.v5notes/appearance.json）里读到的库色。
+ * 必须按库分开记：库列表一次列出所有库，公用一个「当前库色」会让
+ * 其它库的色条跟着当前库变色。
+ */
+const vaultColorByPath = new Map<string, string>()
 
 export function findVaultSwatch(id: string | null | undefined): VaultColorSwatch | null {
   if (!id) return null
@@ -88,11 +92,21 @@ export function findVaultSwatch(id: string | null | undefined): VaultColorSwatch
 }
 
 /**
- * 记下库内读到的库色。传入 undefined 表示库内还没有写过：
+ * 记下某个库的库内库色。传入 undefined 表示库内还没有写过：
  * 此时沿用本机的旧选择，下一次写盘时连同它一起迁进库。
  */
-export function setVaultColorFromVault(id: string | null | undefined): void {
-  vaultColorId = findVaultSwatch(id)?.id ?? null
+export function setVaultColorFromVault(
+  id: string | null | undefined,
+  rootPath?: string | null,
+): void {
+  const swatch = findVaultSwatch(id)
+  if (!rootPath) return
+  if (swatch) vaultColorByPath.set(rootPath, swatch.id)
+  else vaultColorByPath.delete(rootPath)
+}
+
+function vaultColorFor(rootPath: string): VaultColorSwatch | null {
+  return findVaultSwatch(vaultColorByPath.get(rootPath))
 }
 
 function localOverride(rootPath: string): VaultColorSwatch | null {
@@ -104,11 +118,11 @@ function fallbackSwatch(rootPath: string): VaultColorSwatch {
   return VAULT_COLOR_PALETTE[idx]!
 }
 
-/** Resolve order: 库内的库色 → 本机旧偏好 → 按路径哈希的默认色。 */
+/** Resolve order: 该库在库内的库色 → 本机旧偏好 → 按路径哈希的默认色。 */
 export function resolveVaultColor(rootPath: string | null | undefined): VaultColorSwatch {
-  const fromVault = findVaultSwatch(vaultColorId)
-  if (fromVault) return fromVault
   if (rootPath) {
+    const fromVault = vaultColorFor(rootPath)
+    if (fromVault) return fromVault
     const local = localOverride(rootPath)
     if (local) return local
     return fallbackSwatch(rootPath)
@@ -122,7 +136,7 @@ export function resolveVaultColor(rootPath: string | null | undefined): VaultCol
  */
 export function setVaultColor(rootPath: string, swatchId: string): VaultColorSwatch {
   const swatch = findVaultSwatch(swatchId) ?? VAULT_COLOR_PALETTE[0]!
-  vaultColorId = swatch.id
+  vaultColorByPath.set(rootPath, swatch.id)
   const map = loadOverrides()
   map[rootPath] = swatch.id
   saveOverrides(map)

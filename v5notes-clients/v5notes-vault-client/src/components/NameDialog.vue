@@ -74,8 +74,16 @@ function submit() {
       </label>
       <p v-if="error" class="field-error" role="alert">{{ error }}</p>
       <div class="modal-actions">
-        <button type="button" class="ghost" :disabled="busy" @click="emit('cancel')">取消</button>
-        <button type="button" class="primary" :disabled="busy" @click="submit">
+        <button type="button" class="ghost action-btn" :disabled="busy" @click="emit('cancel')">
+          <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m4.2 4.2 7.6 7.6M11.8 8.7v3.1H8.7" />
+          </svg>
+          取消
+        </button>
+        <button type="button" class="primary action-btn" :disabled="busy" @click="submit">
+          <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m3.5 8.4 3 3 6-6.4" />
+          </svg>
           {{ submitLabel || '确定' }}
         </button>
       </div>

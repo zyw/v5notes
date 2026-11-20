@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import { useAccount } from './account'
 import { useSyncCoordinator } from './sync'
@@ -35,6 +35,22 @@ const account = useAccount()
 // settings panel, so navigating away never stops syncing (Phase 5).
 const sync = useSyncCoordinator(account)
 
+/**
+ * 设置页当前正在看哪个库。它可以是没在工作区打开的那个库：
+ * 看某个库的设置不等于进入它，所以不碰最近列表、不碰工作区状态。
+ */
+const settingsVault = ref<OpenedVault | null>(null)
+const settingsVaultHandles = computed<OpenedVault | null>(() =>
+  page.value === 'settings' ? settingsVault.value : null,
+)
+watch(page, (next) => {
+  if (next !== 'settings') {
+    settingsVault.value = null
+    return
+  }
+  if (!settingsVault.value) settingsVault.value = vault.value
+})
+
 watch(
   () => vault.value?.rootPath,
   async path => {
@@ -48,7 +64,7 @@ watch(
       }
     }
     if (path !== vault.value?.rootPath) return
-    setVaultColorFromVault(stored)
+    setVaultColorFromVault(stored, path)
     applyVaultColorForPath(path)
     // The list is still "which library am I editing", so follow the open vault.
     sync.vault.value = vault.value
@@ -65,7 +81,10 @@ async function openVaultFromSettings() {
   }
   try {
     const opened = await vaultWorkspace.pickAndOpenVault()
-    if (opened) onOpened(opened)
+    if (opened) {
+      settingsVault.value = opened
+      onOpened(opened)
+    }
   } catch (error) {
     banner.value = error instanceof Error ? error.message : String(error)
   }
@@ -82,12 +101,26 @@ async function switchVaultFromSettings(rootPath: string) {
     }
   }
   try {
-    const opened = await vaultWorkspace.openRecent(rootPath)
-    onOpened(opened)
-    page.value = 'settings'
+    // 设置页里换库只是换「正在看哪个库的设置」，不是进工作台：
+    // 不刷新最近顺序、不打乱库列表，也不改变当前工作区里的库。
+    const opened = await vaultWorkspace.openForSettings(rootPath)
+    settingsVault.value = opened
+    sync.vault.value = opened
   } catch (error) {
     settings?.reportSwitchFailure(error instanceof Error ? error.message : String(error))
   }
+}
+
+
+
+/** 设置页里删掉了当前这个库的记录：工作区也退出它，回到库列表。 */
+function onVaultDeletedFromSettings(rootPath: string) {
+  if (vault.value?.rootPath === rootPath) {
+    closeVault()
+    return
+  }
+  settingsVault.value = null
+  void goWelcomeList()
 }
 
 /** 设置页里的「所有库」：回到库的列表，在那里挑一个。 */
@@ -257,7 +290,7 @@ onUnmounted(() => {
           v-else
           ref="settingsRef"
           :account="account"
-          :vault="vault"
+          :vault="settingsVaultHandles"
           :sync="sync"
           :current-version="currentVersion"
           :update-checking="updateChecking"
@@ -268,6 +301,7 @@ onUnmounted(() => {
           @open-vault="openVaultFromSettings"
           @open-registry="showAllVaults"
           @switch-vault="switchVaultFromSettings"
+          @delete-vault="onVaultDeletedFromSettings"
         />
       </main>
     </div>

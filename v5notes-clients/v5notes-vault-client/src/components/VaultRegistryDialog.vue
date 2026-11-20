@@ -277,7 +277,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </div>
 
           <div class="modal-actions">
-            <button type="button" class="ghost" @click="emit('cancel')">关闭</button>
+            <button type="button" class="ghost action-btn" @click="emit('cancel')">
+              <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="m4.2 4.2 7.6 7.6M11.8 8.7v3.1H8.7" />
+              </svg>
+              关闭
+            </button>
           </div>
         </template>
 
@@ -287,7 +292,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <p class="modal-lede">递归查找含 <code>.v5notes/vault.json</code> 的文件夹（深度 ≤3，自动跳过 node_modules、隐藏目录等）。</p>
           <div class="vr-progress" role="progressbar" aria-label="扫描进度"><i /></div>
           <div class="modal-actions">
-            <button type="button" class="ghost" @click="cancelScan">取消</button>
+            <button type="button" class="ghost action-btn" @click="cancelScan">
+              <svg class="action-icon" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="m4.2 4.2 7.6 7.6M11.8 8.7v3.1H8.7" />
+              </svg>
+              取消
+            </button>
           </div>
         </template>
 

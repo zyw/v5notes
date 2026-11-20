@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
 import brandIcon from '../assets/brand-icon.png'
 import type { AccountState } from '../account'
@@ -21,6 +21,10 @@ import {
   type VaultColorSwatch,
 } from '../appearance/vaultColors'
 import { readAppearanceFile, updateAppearanceFile } from '../theme-host'
+import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from '../theme-host/samples/forestInk'
+import { WANQING_CSS, WANQING_MANIFEST } from '../theme-host/samples/wanqing'
+import { stripCssComments } from '../theme-host/cssValidate'
+import TOKENS_CSS from '../styles/tokens.css?raw'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
 import type { HostCommand, HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
@@ -42,7 +46,9 @@ import {
   resolveInitialScope,
   type SettingsScope,
 } from './settingsRuntime'
-import { hydrateVaultRegistry, listVaultRegistry } from '../vault/recent'
+import { hydrateVaultRegistry, listVaultRegistry, removeRecentVault, unregisterVault } from '../vault/recent'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import { vaultWorkspace } from '../vault/workspace'
 import { fetchCatalogList, type CatalogItem } from '../catalog'
 import {
   MIGRATION_EXPLICIT_LINE,
@@ -74,6 +80,8 @@ const emit = defineEmits<{
   'open-vault': []
   /** Asks the shell to make this vault the open one. */
   'switch-vault': [rootPath: string]
+  /** The vault record was removed; the shell decides what to show next. */
+  'delete-vault': [rootPath: string]
   /** Requests the 所有库 registry panel; the shell owns opening a vault. */
   'open-registry': []
 }>()
@@ -113,45 +121,30 @@ const versionLabel = computed(() => props.currentVersion || '2.1.0')
  * 页面本身记住用户停在哪一区，回到设置时接着看。
  */
 const scope = ref<SettingsScope>(resolveInitialScope(Boolean(props.vault?.rootPath)))
-const registryRows = ref<{ rootPath: string; name: string }[]>([])
+const registryRows = ref<
+  { rootPath: string; name: string; updatedAt?: number | null; registeredAt?: string }[]
+>([])
 const activeVaultRow = computed(() => {
   const path = props.vault?.rootPath
   if (!path) return null
   return { rootPath: path, name: props.vault?.name || path }
 })
+
+/**
+ * 列表顺序是一次快照：进入设置时排好，之后只看「谁是当前库」把标记挪过去。
+ * 不能把当前库从数组里摘出来再拼到末尾——那样每点一个库，它都会跳到最前面。
+ */
+const orderedVaults = ref<{ rootPath: string; name: string }[]>([])
 const vaultRows = computed(() =>
-  buildSettingsVaultRows(
-    registryRows.value.filter((row) => row.rootPath !== props.vault?.rootPath),
-    activeVaultRow.value,
-  ),
+  buildSettingsVaultRows(orderedVaults.value, activeVaultRow.value),
 )
 const hasVault = computed(() => Boolean(props.vault?.rootPath))
-/** 库设置的四个页签；一次只看一块，页签和下面的卡片说同一件事。 */
-type VaultTab = 'colors' | 'sync' | 'backup' | 'publish'
-const vaultTab = ref<VaultTab>('colors')
-const vaultTabs: { id: VaultTab; label: string; title: string }[] = [
-  { id: 'colors', label: '库色', title: '库色' },
-  { id: 'sync', label: '同步', title: '同步' },
-  { id: 'backup', label: '备份与迁移', title: '备份与迁移' },
-  { id: 'publish', label: '发布', title: '官方发布 / 分享' },
-]
-watch(
-  () => props.vault?.rootPath,
-  () => {
-    vaultTab.value = 'colors'
-  },
-)
 
 const publishOptions: { id: OfficialPublishVisibility; label: string }[] = [
   { id: 'private', label: '私有' },
   { id: 'unlisted', label: '不公开链接' },
   { id: 'public', label: '公开' },
 ]
-
-/** 发布卡上的读数；在脚本里算，模板属性里不写箭头函数。 */
-const publishVisibilityLabel = computed(
-  () => publishOptions.find((option) => option.id === publishDraft.value.visibility)?.label ?? '私有',
-)
 
 /**
  * 库色只属于当前库；没有库时为 null。
@@ -169,7 +162,7 @@ async function loadVaultColor(path: string | null | undefined): Promise<void> {
   try {
     const stored = (await readAppearanceFile(path))?.vaultColor
     if (path !== props.vault?.rootPath) return
-    setVaultColorFromVault(stored)
+    setVaultColorFromVault(stored, path)
   } catch {
     /* 读不到就用本机回退 */
   }
@@ -177,31 +170,106 @@ async function loadVaultColor(path: string | null | undefined): Promise<void> {
 }
 void loadVaultColor(props.vault?.rootPath)
 
+/**
+ * 库列表的色条按「每个库自己的库色」画，所以每个库都要读一次库内文件。
+ * 读完把结果记进 vaultColors 的按库缓存，再戳一下版本号让模板重算。
+ */
+const colorRowVersion = ref(0)
+
+async function loadListedVaultColors(paths: string[]): Promise<void> {
+  await Promise.all(
+    paths.map(async (path) => {
+      try {
+        const stored = (await readAppearanceFile(path))?.vaultColor
+        setVaultColorFromVault(stored, path)
+      } catch {
+        /* 读不到就用本机回退 */
+      }
+    }),
+  )
+  colorRowVersion.value += 1
+}
+
+/** Sidebar stripes read this so a color change or a fresh disk read repaints them. */
+function rowColor(path: string): string {
+  void colorRowVersion.value
+  return resolveVaultColor(path).color
+}
+
 function showScope(next: SettingsScope): void {
   scope.value = next
 }
 
+/**
+ * 每次打开设置时按「库内容最近修改」排一次序；进入后顺序固定，
+ * 看设置不等于改库，列表不能在眼前跳动。
+ */
+const rowsOrdered = ref(false)
+
+onMounted(() => {
+  // 重新进入设置时再算一次先后，所以每次都要重置。
+  rowsOrdered.value = false
+})
+
 async function hydrateRows(): Promise<void> {
+  let entries: { rootPath: string; name: string; openedAt?: string }[]
   try {
-    const entries = await hydrateVaultRegistry()
-    registryRows.value = entries.map((entry) => ({
-      rootPath: entry.rootPath,
-      name: entry.name,
-    }))
+    entries = await hydrateVaultRegistry()
   } catch {
-    registryRows.value = listVaultRegistry().map((entry) => ({
-      rootPath: entry.rootPath,
-      name: entry.name,
-    }))
+    entries = listVaultRegistry()
   }
+  registryRows.value = entries.map((entry) => ({
+    rootPath: entry.rootPath,
+    name: entry.name,
+    registeredAt: entry.openedAt,
+  }))
+  if (rowsOrdered.value) {
+    // 顺序已定：只更新名字，不重排。
+    orderedVaults.value = orderedVaults.value.map((row) => {
+      const fresh = entries.find((entry) => entry.rootPath === row.rootPath)
+      return fresh && fresh.name !== row.name ? { ...row, name: fresh.name } : row
+    })
+    void loadListedVaultColors(orderedVaults.value.map((row) => row.rootPath))
+    return
+  }
+
+  const withModified = await Promise.all(
+    entries.map(async (entry) => {
+      let updatedAt: number | null = null
+      try {
+        updatedAt = await vaultWorkspace.lastNoteChange(entry.rootPath)
+      } catch {
+        updatedAt = null
+      }
+      return { rootPath: entry.rootPath, name: entry.name, registeredAt: entry.openedAt, updatedAt }
+    }),
+  )
+  registryRows.value = withModified
+  // 快照：此后不再随当前库变化。
+  orderedVaults.value = buildSettingsVaultRows(withModified, null).map(({ rootPath, name }) => ({
+    rootPath,
+    name,
+  }))
+  rowsOrdered.value = true
+  void loadListedVaultColors(orderedVaults.value.map((row) => row.rootPath))
 }
 
 /**
  * 库列表里点一个库 = 把它打开；打开后设置自动停在这个库的页面。
  * 外壳负责真正打开（校验目录、注册最近库），这里只负责请求与忙碌态。
  */
+/** 全局区默认展开；收起与否只看用户自己点了什么。 */
+const globalOpen = ref(true)
+
 const switchingTo = ref<string | null>(null)
 const switchError = ref('')
+
+let switchTimer: ReturnType<typeof setTimeout> | null = null
+
+function stopSwitchTimer(): void {
+  if (switchTimer) clearTimeout(switchTimer)
+  switchTimer = null
+}
 
 function activateVault(row: { rootPath: string; active: boolean; missing?: boolean }) {
   if (row.missing) return
@@ -212,19 +280,63 @@ function activateVault(row: { rootPath: string; active: boolean; missing?: boole
   switchError.value = ''
   switchingTo.value = row.rootPath
   emit('switch-vault', row.rootPath)
+  // 外壳一定会回话（成功时库变化、失败时 reportSwitchFailure）；
+  // 万一两者都没来，也不能让列表永远锁在忙碌态。
+  stopSwitchTimer()
+  switchTimer = setTimeout(() => {
+    switchingTo.value = null
+  }, 15000)
 }
 
+onBeforeUnmount(stopSwitchTimer)
+
 function clearSwitching(): void {
+  stopSwitchTimer()
   switchingTo.value = null
 }
 
 /** 外壳打开失败时把错误摆在列表里，不让点击看起来像没反应。 */
 function reportSwitchFailure(message: string): void {
+  stopSwitchTimer()
   switchingTo.value = null
   switchError.value = message
 }
 
 defineExpose({ clearSwitching, reportSwitchFailure })
+
+/**
+ * 删除库 = 从这台机器上删掉这条库记录，不碰磁盘上的笔记。
+ * 不可逆的是「记录」，所以要说清楚，并给一次确认。
+ */
+const deleteOpen = ref(false)
+const deleteBusy = ref(false)
+const deleteError = ref('')
+
+function askDeleteVault(): void {
+  deleteError.value = ''
+  deleteOpen.value = true
+}
+
+function confirmDeleteVault(): void {
+  const path = props.vault?.rootPath
+  if (!path) {
+    deleteOpen.value = false
+    return
+  }
+  deleteBusy.value = true
+  try {
+    unregisterVault(path)
+    removeRecentVault(path)
+    // 列表离开这个库；外壳负责把工作区从它上面摘下来。
+    orderedVaults.value = orderedVaults.value.filter((row) => row.rootPath !== path)
+    deleteOpen.value = false
+    emit('delete-vault', path)
+  } catch (error) {
+    deleteError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    deleteBusy.value = false
+  }
+}
 
 /** 设置里只改当前库；没有打开的库时从这里去挑一个。 */
 function requestVault() {
@@ -248,9 +360,10 @@ const colorModes: { id: ColorMode; label: string }[] = [
 ]
 
 /** Header state line: what the two controls below currently resolve to. */
-const activeThemeLabel = computed(
-  () => themes.value.find((t) => t.id === prefs.value.theme)?.name ?? '默认',
-)
+const activeThemeLabel = computed(() => {
+  const theme = themes.value.find((t) => t.id === prefs.value.theme)
+  return theme ? themeLabel(theme) : '默认'
+})
 const activeColorModeLabel = computed(
   () => colorModes.find((m) => m.id === prefs.value.colorMode)?.label ?? '跟随系统',
 )
@@ -262,12 +375,29 @@ function setPluginTabHost(pluginId: string, tabId: string, el: unknown): void {
 /** An empty plugin list means different things before and after the host starts. */
 const hostReady = ref(false)
 
+/**
+ * Row state is a dot + one word. Raw status ids ('skipped-safe-mode') were noise
+ * next to the name; the dot carries enabled/disabled/failed at a glance.
+ */
+function pluginStatus(plugin: PluginRuntimeInfo): { label: string; tone: string } {
+  if (plugin.status === 'loaded') return { label: '已启用', tone: 'on' }
+  if (plugin.status === 'failed') return { label: '加载失败', tone: 'off' }
+  if (plugin.status === 'skipped-safe-mode') return { label: '安全模式跳过', tone: 'off' }
+  return { label: '已停用', tone: 'off' }
+}
+
+function permissionSummary(plugin: PluginRuntimeInfo): string {
+  return plugin.permissions.length ? plugin.permissions.join(' · ') : '无'
+}
+
 function pickVaultColor(id: string) {
   const path = props.vault?.rootPath
   if (!path) return
   // 先套到窗口上再落盘：两个函数都会同步 --vault，选完立刻可见。
   applyVaultColorForPath(path)
   vaultSwatch.value = setVaultColor(path, id)
+  // 列表里这个库的色条跟着走：setVaultColor 已按库记下，这里只需让模板重算。
+  colorRowVersion.value += 1
   // 库色跟着库走：写进库内的 .v5notes/appearance.json，换台机器打开仍是这个颜色。
   void updateAppearanceFile(path, { vaultColor: vaultSwatch.value.id }).catch((error) => {
     colorError.value = error instanceof Error ? error.message : String(error)
@@ -337,6 +467,88 @@ async function commitLocal(next: AppearancePrefs) {
   prefs.value = next
   saveAppearancePrefs(next)
   applyAppearance(next)
+}
+
+/**
+ * Theme card previews: each card shows its own palette instead of the colours
+ * currently on screen. Without this every card looked the same, and switching
+ * 明暗 gave no feedback about what a theme would look like in the dark.
+ */
+const PREVIEW_BUILTIN_THEMES: Record<string, string> = { default: TOKENS_CSS, dusk: TOKENS_CSS }
+
+/**
+ * Sample themes ship with English ids but Chinese display names; the card shows
+ * the package's own name/description instead of a hard-coded English label.
+ */
+const SAMPLE_THEME_META: Record<string, { name: string; description: string }> = {
+  [FOREST_INK_MANIFEST.id]: {
+    name: FOREST_INK_MANIFEST.name,
+    description: FOREST_INK_MANIFEST.description,
+  },
+  [WANQING_MANIFEST.id]: {
+    name: WANQING_MANIFEST.name,
+    description: WANQING_MANIFEST.description,
+  },
+}
+
+function themeLabel(theme: ThemeInfo): string {
+  return SAMPLE_THEME_META[theme.id]?.name ?? theme.name
+}
+
+function themeDescription(theme: ThemeInfo): string | undefined {
+  return SAMPLE_THEME_META[theme.id]?.description ?? theme.description
+}
+const PREVIEW_SAMPLE_THEMES: Record<string, string> = {
+  'forest-ink': FOREST_INK_CSS,
+  wanqing: WANQING_CSS,
+}
+
+function parseCssTokens(css: string, selector: string): Record<string, string> {
+  const re = new RegExp(
+    selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}',
+  )
+  const block = re.exec(stripCssComments(css))?.[1] ?? ''
+  const out: Record<string, string> = {}
+  for (const m of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]!] = m[2]!.trim()
+  return out
+}
+
+function builtinPalette(themeId: string, dark: boolean): Record<string, string> {
+  // tokens.css spells light as "[data-color-mode='light'], :not([data-color-mode])";
+  // the light block also carries the theme's shared fonts and radii.
+  const light = parseCssTokens(TOKENS_CSS, `:root[data-theme='${themeId}'][data-color-mode='light']`)
+  const darkBlock = parseCssTokens(TOKENS_CSS, `:root[data-theme='${themeId}'][data-color-mode='dark']`)
+  if (!dark) return Object.keys(light).length ? light : darkBlock
+  return { ...(Object.keys(light).length ? light : darkBlock), ...darkBlock }
+}
+
+function previewPalette(themeId: string, dark: boolean): Record<string, string> {
+  if (PREVIEW_BUILTIN_THEMES[themeId]) return builtinPalette(themeId, dark)
+  const css = PREVIEW_SAMPLE_THEMES[themeId]
+  if (!css) return builtinPalette('default', dark)
+  const scoped = `:root[data-community-theme='${themeId}']`
+  const base = parseCssTokens(css, scoped)
+  if (!dark) return base
+  // A sample's dark palette lives under the same scope plus [data-color-mode='dark'].
+  return { ...base, ...parseCssTokens(css, `${scoped}[data-color-mode='dark']`) }
+}
+
+/** Preview follows the resolved appearance, so toggling 深色 updates every card. */
+const previewDark = computed(() => {
+  if (prefs.value.colorMode === 'dark') return true
+  if (prefs.value.colorMode === 'light') return false
+  return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches)
+})
+
+function themePreviewStyle(themeId: string): Record<string, string> {
+  const p = previewPalette(themeId, previewDark.value)
+  return {
+    '--pv-bg': p['--bg'] ?? '#f3efe4',
+    '--pv-panel': p['--panel'] ?? '#fbf7ee',
+    '--pv-line': p['--line'] ?? '#d8d0c4',
+    '--pv-accent': p['--accent'] ?? '#2f5b48',
+    '--pv-surface': p['--surface'] ?? '#ebe4d4',
+  }
 }
 
 async function setTheme(themeId: string) {
@@ -505,8 +717,10 @@ watch(
     else if (scope.value === 'vault') scope.value = 'global'
     await ensureExtensionRuntime()
     refreshExtensionState()
+    // 只刷新名字等元数据；顺序已经在进入设置时定住了。
     await hydrateRows()
     // 换库完成：列表退出忙碌态，错误清空。
+    stopSwitchTimer()
     switchingTo.value = null
     switchError.value = ''
     // Vault colour belongs to the vault too; its file may name a colour the
@@ -535,10 +749,19 @@ watch(publishDraft, () => {
       <div class="side-title"><h1 id="settings-title">设置</h1></div>
 
       <div class="side-group">
-        <button type="button" class="side-group-head" :class="{ on: scope === 'global' }" :aria-expanded="scope === 'global'" @click="showScope('global')">
+        <!-- 展开/收起是读者自己的选择，不跟着「正在看库设置」变 -->
+        <button
+          type="button"
+          class="side-group-head"
+          :class="{ on: scope === 'global' }"
+          :aria-expanded="globalOpen"
+          aria-controls="side-global-items"
+          @click="globalOpen = !globalOpen"
+        >
           全局设置<span class="side-group-note">所有库</span>
+          <span class="side-group-chevron" :class="{ open: globalOpen }" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg></span>
         </button>
-        <div v-show="scope === 'global'" class="side-items" role="group" aria-label="全局设置">
+        <div v-show="globalOpen" id="side-global-items" class="side-items" role="group" aria-label="全局设置">
           <button type="button" class="side-nav-item" :class="{ on: scope === 'global' }" @click="scope = 'global'"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>账户</button>
           <a class="side-nav-item" href="#g-appearance"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg>主题与明暗</a>
           <a class="side-nav-item" href="#g-plugins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>插件与安全</a>
@@ -562,13 +785,15 @@ watch(publishDraft, () => {
             :title="row.rootPath"
             @click="activateVault(row)"
           >
-            <span class="side-vault-bar" :style="{ background: resolveVaultColor(row.rootPath).color }" aria-hidden="true"></span>
+            <span class="side-vault-bar" :style="{ background: rowColor(row.rootPath) }" aria-hidden="true"></span>
             <span class="side-vault-copy">
               <b>{{ row.name }}</b>
               <span v-if="row.missing">文件夹不在</span>
-              <span v-else-if="row.rootPath === switchingTo">打开中…</span>
             </span>
             <span v-if="row.active" class="side-vault-go" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></span>
+            <!-- 打开中只多一个行尾小转圈：不占行高，列表不会因为换库而跳动 -->
+            <span v-else-if="row.rootPath === switchingTo" class="side-vault-spin" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6"/></svg></span>
+            <span class="side-vault-status" role="status">{{ row.rootPath === switchingTo ? '打开中' : '' }}</span>
           </button>
         </div>
         <p v-if="switchError" class="side-vaults-note side-vaults-error" role="alert">{{ switchError }}</p>
@@ -639,11 +864,16 @@ watch(publishDraft, () => {
                     :disabled="safeMode && !theme.builtin"
                     @click="setTheme(theme.id)"
                   >
-                    <div class="book-theme-preview" :class="{ dusk: theme.id === 'dusk', community: theme.id !== 'default' && theme.id !== 'dusk' }">
+                    <div
+                      class="book-theme-preview"
+                      :style="themePreviewStyle(theme.id)"
+                      :data-mode="previewDark ? 'dark' : 'light'"
+                      aria-hidden="true"
+                    >
                       <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
                     </div>
-                    <div class="book-theme-name">{{ theme.name }}<span class="check">✓</span></div>
-                    <div v-if="theme.description" class="book-theme-desc">{{ theme.description }}</div>
+                    <div class="book-theme-name">{{ themeLabel(theme) }}<span class="check">✓</span></div>
+                    <div v-if="themeDescription(theme)" class="book-theme-desc">{{ themeDescription(theme) }}</div>
                   </button>
                 </div>
                 <div class="book-row">
@@ -674,19 +904,31 @@ watch(publishDraft, () => {
                 </div>
                 <ul v-if="plugins.length" class="book-list">
                   <li v-for="p in plugins" :key="p.id" class="book-list-row">
-                    <div>
-                      <strong>{{ p.name }}</strong><span class="book-muted"> · {{ p.id }} · {{ p.core ? '核心' : '本地' }} · {{ p.status }}</span>
-                      <div class="book-mono">权限: {{ p.permissions.join(', ') || '（无）' }}</div>
+                    <div class="book-plugin-main">
+                      <div class="book-plugin-line">
+                        <strong>{{ p.name }}</strong>
+                        <span class="book-plugin-state" :class="pluginStatus(p).tone">
+                          <i aria-hidden="true"></i>{{ pluginStatus(p).label }}
+                        </span>
+                      </div>
+                      <div class="book-plugin-meta">
+                        <code>{{ p.id }}</code>
+                        <span>{{ p.core ? '核心' : '本地' }}</span>
+                      </div>
+                      <div class="book-plugin-perms">
+                        <span class="book-plugin-perm">{{ permissionSummary(p) }}</span>
+                      </div>
                       <div v-if="p.error" class="book-danger">{{ p.error }}</div>
                     </div>
                     <button
                       v-if="p.id !== 'v5-editor'"
-                      class="book-text-btn"
+                      class="book-row-btn"
+                      :class="{ on: p.status !== 'loaded' }"
                       type="button"
                       :disabled="extensionBusy || (safeMode && !p.core)"
                       @click="togglePlugin(p.id, p.status !== 'loaded')"
                     >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
-                    <span v-else class="book-text-btn is-fixed">始终启用</span>
+                    <span v-else class="book-plugin-fixed">始终启用</span>
                   </li>
                 </ul>
                 <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
@@ -734,7 +976,7 @@ watch(publishDraft, () => {
                 <div class="book-pref-row">
                   <div class="book-pref-copy">
                     <strong>安全模式</strong>
-                    <span>{{ safeMode ? '已开启：仅核心插件与内置主题生效，社区扩展全部跳过。' : '开启后仅加载核心插件与内置主题，社区扩展全部跳过。对所有库生效。' }}</span>
+                    <span>{{ safeMode ? '已开启：只加载核心插件，社区扩展暂停；默认 / 暮色与明暗照常生效。' : '只加载核心插件，社区扩展与社区主题暂停；默认 / 暮色与明暗不受影响。对所有库生效。' }}</span>
                   </div>
                   <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
                 </div>
@@ -818,45 +1060,14 @@ watch(publishDraft, () => {
               <h2>{{ vault.name }}</h2>
               <span :title="vault.rootPath">{{ vault.rootPath }}</span>
             </div>
-            <nav class="vault-tabs" role="tablist" aria-label="库设置">
-              <button
-                v-for="tab in vaultTabs"
-                :key="tab.id"
-                type="button"
-                role="tab"
-                :id="'vtab-' + tab.id"
-                :aria-selected="vaultTab === tab.id"
-                :aria-controls="`vpanel-${tab.id}`"
-                :class="{ on: vaultTab === tab.id }"
-                @click="vaultTab = tab.id"
-              >{{ tab.label }}</button>
-            </nav>
+
           </header>
 
-          <!-- 四块卡是这一库的状态摘要，点哪块就展开哪块；页签只是同一件事的第二个入口。 -->
-          <div class="vault-tiles">
-            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'colors' }" :aria-pressed="vaultTab === 'colors'" @click="vaultTab = 'colors'">
-              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
-              <span class="vault-tile-copy"><b>库色</b><span>{{ vaultSwatch ? vaultSwatch.term + ' · ' + vaultSwatch.name : '' }}</span></span>
-            </button>
-            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'sync' }" :aria-pressed="vaultTab === 'sync'" @click="vaultTab = 'sync'">
-              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
-              <span class="vault-tile-copy"><b>同步</b><span>{{ account.loggedIn.value ? '已登录' : '未登录' }}</span></span>
-            </button>
-            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'backup' }" :aria-pressed="vaultTab === 'backup'" @click="vaultTab = 'backup'">
-              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
-              <span class="vault-tile-copy"><b>备份与迁移</b><span>{{ backupResult ? '已导出' : '未导出' }}</span></span>
-            </button>
-            <button type="button" class="vault-tile" :class="{ on: vaultTab === 'publish' }" :aria-pressed="vaultTab === 'publish'" @click="vaultTab = 'publish'">
-              <span class="vault-tile-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
-              <span class="vault-tile-copy"><b>发布</b><span>{{ publishVisibilityLabel }}</span></span>
-            </button>
-          </div>
 
-          <section v-show="vaultTab === 'colors'" id="vpanel-colors" class="panel" role="tabpanel" aria-labelledby="vtab-colors">
+          <section id="v-colors" class="panel" aria-labelledby="v-colors-title">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></span>
-              <h3>库色</h3>
+              <h3 id="v-colors-title">库色</h3>
               <span class="state">{{ vaultSwatch ? vaultSwatch.term + ' · ' + vaultSwatch.name : '' }}</span>
             </div>
             <div class="p-body">
@@ -880,10 +1091,10 @@ watch(publishDraft, () => {
             </div>
           </section>
 
-          <section v-show="vaultTab === 'sync'" id="vpanel-sync" class="panel" role="tabpanel" aria-labelledby="vtab-sync">
+          <section id="v-sync" class="panel" aria-labelledby="v-sync-title">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg></span>
-              <h3>同步</h3>
+              <h3 id="v-sync-title">同步</h3>
               <span v-if="account.useOfficialServer.value" class="state">官方服务器</span>
               <span v-else-if="account.server.value" class="state" :title="account.server.value">{{ account.server.value.replace(/^https?:\/\//, '') }}</span>
             </div>
@@ -892,10 +1103,10 @@ watch(publishDraft, () => {
             </div>
           </section>
 
-          <section v-show="vaultTab === 'backup'" id="vpanel-backup" class="panel" role="tabpanel" aria-labelledby="vtab-backup">
+          <section id="v-backup" class="panel" aria-labelledby="v-backup-title">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.6 7.2 8 9.6l2.4-2.4M3 12.4h10"/></svg></span>
-              <h3>备份与迁移</h3>
+              <h3 id="v-backup-title">备份与迁移</h3>
             </div>
             <div class="p-body">
               <div class="book-actions">
@@ -926,10 +1137,10 @@ watch(publishDraft, () => {
             </div>
           </section>
 
-          <section v-show="vaultTab === 'publish'" id="vpanel-publish" class="panel" role="tabpanel" aria-labelledby="vtab-publish">
+          <section id="v-publish" class="panel" aria-labelledby="v-publish-title">
             <div class="p-head">
               <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
-              <h3>官方发布 / 分享</h3>
+              <h3 id="v-publish-title">官方发布 / 分享</h3>
             </div>
             <div class="p-body">
               <label class="book-field">
@@ -952,6 +1163,29 @@ watch(publishDraft, () => {
               <p v-if="publishError" class="book-small book-danger-text" role="alert">{{ publishError }}</p>
             </div>
           </section>
+
+          <!-- 删除放在最底部：先读完这个库的全部设置，再决定是否删除 -->
+          <section class="panel panel-danger" aria-labelledby="v-delete-title">
+            <div class="p-head">
+              <span class="ico ico-danger"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.4 4.6V3.2h3.2v1.4M4.4 4.6l.6 8h6l.6-8"/></svg></span>
+              <h3 id="v-delete-title">删除库</h3>
+              <span class="state">{{ vault.name }}</span>
+            </div>
+            <div class="p-body">
+              <div class="pref-row">
+                <div class="pref-copy">
+                  <strong>从这台机器上移除「{{ vault.name }}」</strong>
+                  <span>{{ vault.rootPath }}</span>
+                </div>
+                <button type="button" class="book-danger-btn" :disabled="deleteBusy" @click="askDeleteVault">
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.4 4.6V3.2h3.2v1.4M4.4 4.6l.6 8h6l.6-8"/></svg>
+                  删除库
+                </button>
+              </div>
+              <p class="book-small">只删除这里的库记录；文件夹和笔记原样保留，之后仍可从「所有库」重新打开。</p>
+              <p v-if="deleteError" class="book-small book-danger-text" role="alert">{{ deleteError }}</p>
+            </div>
+          </section>
         </div>
 
         <!-- 没有打开的库就不出现库页：只能停在全局，入口在左栏底部。 -->
@@ -962,6 +1196,17 @@ watch(publishDraft, () => {
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      :title="`删除「${vault?.name ?? ''}」？`"
+      :message="`将在这台机器上移除这个库的记录，不再出现在库列表和最近打开里。文件夹 ${vault?.rootPath ?? ''} 中的笔记不会被删除或改动。`"
+      confirm-label="删除记录"
+      danger
+      :busy="deleteBusy"
+      @cancel="deleteOpen = false"
+      @confirm="confirmDeleteVault"
+    />
   </section>
 </template>
 <style scoped>
@@ -1053,8 +1298,34 @@ watch(publishDraft, () => {
   font-size: 11px;
   font-weight: 600;
   text-align: left;
+  transition: color 0.14s ease;
 }
 .side-group-head:hover { color: var(--accent); }
+.side-group-chevron {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  align-self: center;
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  transition: transform 0.16s ease, color 0.14s ease;
+}
+.side-group-chevron svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.side-group-chevron.open { transform: rotate(90deg); }
+.side-group-head:hover .side-group-chevron { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .side-group-chevron { transition: none; }
+}
 .side-group-note,
 .side-group-label + .side-vaults-note {
   font-family: var(--font-mono);
@@ -1063,7 +1334,7 @@ watch(publishDraft, () => {
   letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--muted) 82%, transparent);
 }
-.side-group-note { margin-left: auto; }
+.side-group-note { margin-left: 2px; }
 .side-group-label {
   margin: 0 0 6px;
   padding: 0 9px;
@@ -1111,6 +1382,7 @@ a.side-nav-item:visited { color: var(--muted); }
 
 .side-vaults { display: grid; gap: 3px; }
 .side-vault {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1148,6 +1420,30 @@ a.side-nav-item:visited { color: var(--muted); }
 }
 .side-vault-go { width: 12px; height: 12px; color: var(--accent); flex: none; }
 .side-vault-go svg { width: 12px; height: 12px; display: block; }
+/* 与右侧箭头同尺寸，切换时只换图标，不改变行的宽高 */
+.side-vault-spin { width: 12px; height: 12px; color: var(--accent); flex: none; }
+.side-vault-spin svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 26 10;
+  animation: settings-spin 0.8s linear infinite;
+}
+.side-vault-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-vault-spin svg { animation-duration: 1.8s; }
+}
 .side-vaults-note { margin: 4px 9px 0; font-size: 8.5px; color: color-mix(in srgb, var(--muted) 82%, transparent); }
 
 /* 库的入口常驻左栏底部：设置里换库从这里走，而不是猜一个库出来 */
@@ -1188,13 +1484,94 @@ a.side-nav-item:visited { color: var(--muted); }
 }
 
 /* ---------- 库设置页 ---------- */
+/* ---------- 库设置：与全局设置同构，一页铺开 ---------- */
+/* 库名与路径作为这一页的头，下面的面板按「库色 → 同步 → 备份 → 发布 → 删除」纵向排列 */
+.vault-page .panel-stack { display: flex; flex-direction: column; gap: 18px; }
+
+/* 偏好行：左侧标题与说明，右侧控件 */
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pref-copy { min-width: 0; }
+.pref-copy strong { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink); }
+.pref-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 危险区：只在「删除库」那块上用朱砂色，不污染其他面板 */
+.panel-danger { border-color: color-mix(in srgb, var(--danger) 34%, var(--line)); }
+.panel-danger .ico-danger {
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+}
+/* 警示动作：静止态就是警告色填充，一眼看出这是破坏性操作；
+   悬停时再压暗一档。深色模式下 danger 是浅色，文字改用深色保证对比度。
+   选择器必须带上 .settings-workspace：上面 .settings-workspace button
+   { color: inherit } 的优先级（0,2,0）会盖掉单独的 .book-danger-btn（0,1,0），
+   否则白字被继承的墨色顶掉。 */
+.settings-workspace button.book-danger-btn {
+  height: 32px;
+  padding: 0 13px;
+  gap: 6px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--danger);
+  border-radius: 7px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+/* 图标与文字同色，尺寸跟按钮字号走 */
+.book-danger-btn svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.book-danger-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 86%, #000);
+  border-color: color-mix(in srgb, var(--danger) 86%, #000);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--danger) 32%, transparent);
+}
+.book-danger-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--danger) 52%, transparent);
+  outline-offset: 2px;
+}
+/* 深色模式下 --danger 是浅朱砂，纯白字几乎看不清：这里改用深色字。 */
+:root[data-color-mode='dark'] .settings-workspace button.book-danger-btn {
+  color: #1c1512;
+}
+:root[data-color-mode='dark'] .book-danger-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 80%, #000);
+  border-color: color-mix(in srgb, var(--danger) 80%, #000);
+}
+.book-danger-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
 /* 库设置页：库名 + 路径在左、页签靠右，下面一条四块状态卡，一次只展开一块 */
+/* 库页占满整栏：设置页本身再宽，也不把它缩成一条居中窄条。
+   纵向排列，与全局设置一致：库色 → 同步 → 备份与迁移 → 发布 → 删除库。 */
 .vault-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  align-content: start;
-  /* 设计图里库页占满整栏；设置页本身再宽也不把它缩成一条居中窄条 */
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   width: 100%;
   max-width: none;
 }
@@ -1518,9 +1895,145 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-switch.on { background: var(--accent); }
 .book-switch.on span { transform: translateX(15px); }
 .book-switch:disabled { opacity: 0.5; cursor: default; }
-.book-list { list-style: none; margin: 6px 0 0; padding: 0; }
-.book-list-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
-.book-list-row strong { font-size: 11px; font-weight: 600; }
+/*
+ * Plugin list: a name-first row. Title and row action sit on one line; the id,
+ * 核心/本地 origin and permission scopes are quiet supporting text below, so the
+ * list scans as names instead of a wall of monospace.
+ */
+.book-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.book-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 10px;
+  margin: 0 -10px;
+  border-radius: 8px;
+  transition: background 0.14s ease;
+}
+.book-list-row + .book-list-row {
+  position: relative;
+}
+.book-list-row + .book-list-row::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--line) 62%, transparent);
+}
+.book-list-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.book-plugin-main { min-width: 0; flex: 1; }
+.book-plugin-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.book-plugin-line strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink);
+}
+.book-plugin-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.book-plugin-state i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.book-plugin-state.on { color: var(--accent); }
+.book-plugin-state.on i { background: var(--accent); }
+.book-plugin-state.off { color: var(--muted); }
+.book-plugin-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.book-plugin-meta code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-plugin-meta span {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 65%, var(--panel));
+  color: color-mix(in srgb, var(--muted) 92%, var(--ink));
+}
+.book-plugin-perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.book-plugin-perm {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.6;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  color: color-mix(in srgb, var(--muted) 92%, transparent);
+  white-space: nowrap;
+}
+.book-row-btn {
+  flex: none;
+  height: 24px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.book-row-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
+  color: var(--ink);
+}
+/* 「启用」是这一行唯一的可执行动作，按主操作处理；「禁用」保持安静的次要样式。 */
+.book-row-btn.on {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  background: var(--accent);
+  color: #fffefa;
+}
+:root[data-color-mode='dark'] .book-row-btn.on { color: #10231b; }
+.book-row-btn.on:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+.book-row-btn:disabled { opacity: 0.5; cursor: default; }
+.book-plugin-fixed { flex: none; font-size: 10px; color: color-mix(in srgb, var(--muted) 85%, transparent); }
 .book-cmd-row { margin-top: 12px; }
 .book-cmd { padding: 6px 8px; margin: 0 5px 5px 0; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 6px; background: var(--panel); text-align: left; }
 .book-cmd.is-on { border-color: var(--accent); }
@@ -1597,35 +2110,37 @@ a.side-nav-item:visited { color: var(--muted); }
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .book-theme:disabled { opacity: 0.55; cursor: default; }
+/*
+ * Each card paints from its own theme tokens (--pv-*, set inline from the
+ * theme's light/dark palette), never from the colours currently on screen —
+ * otherwise every card looked identical and 明暗 gave no visible feedback.
+ */
 .book-theme-preview {
   position: relative;
   height: 58px;
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
-  background: var(--bg);
+  border: 1px solid var(--pv-line);
+  background: var(--pv-bg);
 }
-.book-theme-preview.dusk { background: #252b24; border-color: #3b4239; }
-.book-theme-preview.community { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
 .book-theme-preview .rail {
   position: absolute;
   inset: 0 auto 0 0;
   width: 8px;
-  background: color-mix(in srgb, var(--panel) 80%, var(--surface));
+  background: var(--pv-surface);
+  border-right: 1px solid var(--pv-line);
 }
-.book-theme-preview.dusk .rail { background: #1c211c; }
 .book-theme-preview .bar {
   position: absolute;
   left: 16px;
   height: 3px;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--line) 88%, transparent);
+  background: var(--pv-line);
 }
-.book-theme-preview .b1 { top: 13px; width: 42%; background: var(--accent); }
+.book-theme-preview .b1 { top: 13px; width: 42%; background: var(--pv-accent); }
 .book-theme-preview .b2 { top: 21px; width: 55%; }
 .book-theme-preview .b3 { top: 29px; width: 33%; }
-.book-theme-preview .dot { position: absolute; left: 16px; bottom: 9px; width: 23px; height: 4px; background: var(--vault); }
-.book-theme-preview.dusk .dot { background: #c4a882; }
+.book-theme-preview .dot { position: absolute; left: 16px; bottom: 9px; width: 23px; height: 4px; border-radius: 2px; background: var(--pv-accent); }
 .book-theme-preview .page {
   position: absolute;
   right: 8px;
@@ -1633,10 +2148,9 @@ a.side-nav-item:visited { color: var(--muted); }
   width: 26px;
   height: 39px;
   border-radius: 2px;
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  background: var(--pv-panel);
+  border: 1px solid var(--pv-line);
 }
-.book-theme-preview.dusk .page { background: #222b24; border-color: #3b4239; }
 .book-theme-preview .page::before {
   content: '';
   position: absolute;
@@ -1644,10 +2158,9 @@ a.side-nav-item:visited { color: var(--muted); }
   right: 5px;
   top: 8px;
   height: 2px;
-  background: color-mix(in srgb, var(--line) 88%, transparent);
-  box-shadow: 0 5px 0 color-mix(in srgb, var(--line) 76%, transparent);
+  background: var(--pv-line);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--pv-line) 70%, transparent);
 }
-.book-theme-preview.dusk .page::before { background: #485242; box-shadow: 0 5px 0 #3e4739; }
 .book-theme-name {
   display: flex;
   align-items: center;

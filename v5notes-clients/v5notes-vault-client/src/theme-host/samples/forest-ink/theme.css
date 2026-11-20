@@ -15,8 +15,10 @@
   --danger-bg: #f3e4e0;
   --bg-glow-a: #d2e2d8;
   --bg-glow-b: #e3eee6;
-  /* Vault identity strip/colours belong to the theme as well. */
-  --vault: #3d6b54;
+  /* Vault identity strip/colours belong to the theme as well. The app writes
+   * the chosen vault colour as an INLINE --vault on <html>, and inline styles
+   * beat any stylesheet — only !important lets the theme colour win. */
+  --vault: #3d6b54 !important;
 }
 
 :root[data-community-theme='forest-ink'][data-color-mode='dark'] {
@@ -32,5 +34,25 @@
   --danger-bg: #3a2a26;
   --bg-glow-a: #1a241e;
   --bg-glow-b: #15201a;
-  --vault: #6fad8e;
+  --vault: #6fad8e !important;
+}
+
+/* Safety net for the 明暗 switch: the shell writes data-color-preference (the
+ * user's choice) alongside data-color-mode (the resolved value). If only the
+ * choice is present, dark must still apply; without this, picking 深色 could
+ * leave a community theme stuck on its light palette. */
+:root[data-community-theme='forest-ink'][data-color-preference='dark']:not([data-color-mode='dark']) {
+  --bg: #141c17;
+  --panel: #1c2620;
+  --ink: #e2eee6;
+  --muted: #8fa498;
+  --line: #2e3c34;
+  --accent: #6fad8e;
+  --accent-hover: #8bc4a6;
+  --surface: #243028;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --bg-glow-a: #1a241e;
+  --bg-glow-b: #15201a;
+  --vault: #6fad8e !important;
 }

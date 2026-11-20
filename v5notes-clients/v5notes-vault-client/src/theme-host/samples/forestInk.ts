@@ -1,52 +1,18 @@
-/** Bundled Forest Ink sample (also mirrored under samples/forest-ink/ for install-to-vault). */
+/** Bundled Forest Ink sample (also mirrored under samples/forest-ink/ for install-to-vault).
+ * Keep FOREST_INK_CSS byte-identical to samples/forest-ink/theme.css. */
+import css from './forest-ink/theme.css?raw'
 
 export const FOREST_INK_MANIFEST = {
   id: 'forest-ink',
-  name: 'Forest Ink',
+  name: '林墨',
   kind: 'theme' as const,
-  version: '1.0.0',
+  version: '1.2.0',
   minAppVersion: '0.1.0',
-  description: 'Muted green vault theme (Phase 6 sample)',
+  description: '冷绿纸底 + 墨绿强调，深色为林间夜色',
   author: 'v5notes',
   permissions: ['ui:theme'] as const,
   theme: 'theme.css',
   themeMeta: 'theme.json',
 }
 
-export const FOREST_INK_CSS = `/* Forest Ink — sample first-class theme (Phase 6). Only design tokens.
- * Every rule is scoped to this theme: an unscoped :root rule would keep the
- * palette applied after switching to another theme, because injected theme CSS
- * is overlaid on top of the shell tokens. */
-:root[data-community-theme='forest-ink'] {
-  --bg: #e8f0ea;
-  --panel: #f7fbf8;
-  --ink: #1e3328;
-  --muted: #5f7568;
-  --line: #c5d4ca;
-  --accent: #3d6b54;
-  --accent-hover: #2f5441;
-  --surface: #dce8e0;
-  --danger: #8a3b2e;
-  --danger-bg: #f3e4e0;
-  --bg-glow-a: #d2e2d8;
-  --bg-glow-b: #e3eee6;
-  /* Vault identity strip/colours belong to the theme as well. */
-  --vault: #3d6b54;
-}
-
-:root[data-community-theme='forest-ink'][data-color-mode='dark'] {
-  --bg: #141c17;
-  --panel: #1c2620;
-  --ink: #e2eee6;
-  --muted: #8fa498;
-  --line: #2e3c34;
-  --accent: #6fad8e;
-  --accent-hover: #8bc4a6;
-  --surface: #243028;
-  --danger: #e0a090;
-  --danger-bg: #3a2a26;
-  --bg-glow-a: #1a241e;
-  --bg-glow-b: #15201a;
-  --vault: #6fad8e;
-}
-`
+export const FOREST_INK_CSS = css

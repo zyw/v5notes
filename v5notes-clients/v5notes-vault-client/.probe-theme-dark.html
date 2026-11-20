@@ -1,0 +1,1560 @@
+<!doctype html><html data-community-theme="forest-ink" data-color-mode="dark" style="--vault:#8a3b2e;--vault-on:#fffefa"><head><meta charset="utf-8"><style>
+/**
+ * Design token contract (Phase 2).
+ * ThemeHost (Phase 6) may override these variables after validation.
+ *
+ * Required keys for community themes:
+ * --bg --panel --ink --muted --line --accent --accent-hover --surface --danger --danger-bg
+ *
+ * Direction A+B (2026-11-15): warm paper / solar-term identity (--vault) + family muted green accent.
+ */
+
+:root,
+:root[data-theme='default'][data-color-mode='light'],
+:root[data-theme='default']:not([data-color-mode]) {
+  --bg: #f3efe4;
+  --panel: #fbf7ee;
+  --ink: #2a2924;
+  --muted: #7a7368;
+  --line: #d8d0c4;
+  --accent: #2f5b48;
+  --accent-hover: #244636;
+  --surface: #ebe4d4;
+  --danger: #8a3b2e;
+  --danger-bg: #f0e0da;
+  --vault: #8a3b2e;
+  --bg-glow-a: #e8e2d4;
+  --bg-glow-b: #efe9db;
+  --rail: #efe9db;
+  --sidebar-bg: #efe9db;
+  --font-display: 'Noto Serif SC', 'Songti SC', 'Iowan Old Style', 'Palatino Linotype', serif;
+  --font-ui: 'DM Sans', 'PingFang SC', sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --sidebar-width: 286px;
+  --ribbon-width: 44px;
+}
+
+:root[data-theme='default'][data-color-mode='dark'] {
+  --bg: #1a221c;
+  --panel: #222b24;
+  --ink: #e6eee8;
+  --muted: #9aab9f;
+  --line: #344038;
+  --accent: #7fb59a;
+  --accent-hover: #9dccb4;
+  --surface: #2a342e;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --vault: #c4a882;
+  --bg-glow-a: #243028;
+  --bg-glow-b: #1e2822;
+  --rail: #1e2822;
+  --sidebar-bg: #1e2822;
+}
+
+:root[data-theme='dusk'][data-color-mode='light'],
+:root[data-theme='dusk']:not([data-color-mode='dark']) {
+  --bg: #ece7df;
+  --panel: #f7f3ec;
+  --ink: #2c2924;
+  --muted: #7a7368;
+  --line: #d8d0c4;
+  --accent: #5c4a32;
+  --accent-hover: #473828;
+  --surface: #e5dfd4;
+  --danger: #8a3b2e;
+  --danger-bg: #f0e0da;
+  --vault: #8a3b2e;
+  --bg-glow-a: #e0d8cc;
+  --bg-glow-b: #ebe4d8;
+  --rail: #e5dfd4;
+  --sidebar-bg: #e5dfd4;
+}
+
+:root[data-theme='dusk'][data-color-mode='dark'] {
+  --bg: #17140f;
+  --panel: #211d17;
+  --ink: #f0e8dc;
+  --muted: #a89c8c;
+  --line: #3a342c;
+  --accent: #c4a882;
+  --accent-hover: #d8c09a;
+  --surface: #2a251e;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --vault: #c4a882;
+  --bg-glow-a: #241f18;
+  --bg-glow-b: #1c1812;
+  --rail: #1c1812;
+  --sidebar-bg: #1c1812;
+}
+
+/*
+ * Vault identity tones. --vault (and --vault-on) are written per open vault;
+ * these derivations let surfaces carry the identity without repainting the app.
+ * Keep the vault color as an accent: wash/tint for regions, deep for text,
+ * solid for the identity strip and the primary document action.
+ */
+:root {
+  --vault-on: #fffefa;
+  --vault-deep: color-mix(in srgb, var(--vault) 50%, var(--ink));
+  --vault-strong: color-mix(in srgb, var(--vault) 88%, var(--ink));
+}
+:root {
+  font-family: var(--font-display);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 500px at 10% -10%, var(--bg-glow-a) 0%, transparent 55%),
+    radial-gradient(900px 420px at 100% 0%, var(--bg-glow-b) 0%, transparent 50%),
+    var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  /* One scrollbar look for every scroll container (shell, tree, editor, settings, dialogs). */
+  --scrollbar-size: 10px;
+  --scrollbar-thumb: color-mix(in srgb, var(--ink) 24%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--ink) 42%, transparent);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+* { box-sizing: border-box; }
+
+html,
+body { height: 100%; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  /* The shell owns scrolling; the ribbon and shell chrome never scroll away. */
+  overflow: hidden;
+}
+
+/* Unified thin pill scrollbar — the same style in every scroller. */
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: var(--scrollbar-thumb);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-thumb-active);
+}
+
+/* Firefox fallback (the app ships in a WebKit/Blink WebView). */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+button { font: inherit; cursor: pointer; border: 0; color: inherit; background: transparent; }
+button:disabled { cursor: default; opacity: 0.55; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.danger {
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: #fff;
+  background: var(--danger);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.danger-text { color: var(--danger) !important; }
+                  <span class="book-action-copy">
+                    <strong>{{ backupBusy ? '正在打包…' : '导出整库 zip' }}</strong>
+                    <span v-if="vault?.name">{{ vault.name }}</span>
+                  </span>
+                  <span class="book-action-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8h7M7.2 5l3 3-3 3M12.8 4v8"/></svg></span>
+                </button>
+                <p v-if="backupResult" class="book-small" role="status">{{ backupResult }}</p>
+                <p v-if="backupError" class="book-small book-danger-text" role="alert">{{ backupError }}</p>
+
+                <button class="book-action" type="button" :class="{ open: migrationOpen }" :aria-expanded="migrationOpen" aria-controls="migration-guide" @click="toggleMigrationGuide">
+                  <span class="book-action-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5.4h9.2M10 3.2l2.2 2.2L10 7.6M13 10.6H3.8M6 8.4l-2.2 2.2L6 12.8"/></svg></span>
+                  <span class="book-action-copy">
+                    <strong>Cloud ↔ Vault 迁移</strong>
+                    <span>{{ migrationOpen ? '隐去步骤' : '查看迁移步骤' }}</span>
+                  </span>
+                  <span class="book-action-go book-action-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg></span>
+                </button>
+                <div v-if="migrationOpen" id="migration-guide" class="book-note">
+                  <p>{{ MIGRATION_EXPLICIT_LINE }}</p>
+                  <p>{{ MIGRATION_STEPS_HELP }}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="v-publish" class="panel" aria-labelledby="v-publish-title">
+            <div class="p-head">
+              <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 9.4V3.2M5.8 5.4 8 3.2l2.2 2.2M3 11.4h10"/></svg></span>
+              <h3 id="v-publish-title">官方发布 / 分享</h3>
+            </div>
+            <div class="p-body">
+              <label class="book-field">
+                <span>站点标题</span>
+                <input v-model="publishDraft.siteTitle" type="text" maxlength="100" placeholder="例如：公开读书笔记" autocomplete="off" @input="onPublishTitleInput">
+              </label>
+              <div class="book-field-label">可见性</div>
+              <div class="book-seg book-seg--three" role="group" aria-label="可见性">
+                <button v-for="opt in publishOptions" :key="opt.id" type="button" :aria-pressed="publishDraft.visibility === opt.id" :class="{ on: publishDraft.visibility === opt.id }" @click="setPublishVisibility(opt.id)">{{ opt.label }}</button>
+              </div>
+              <div class="book-inline">
+                <button class="book-primary" type="button" :class="{ saved: publishSaved }" @click="savePublishDraft">
+                  <span class="book-primary-ico" aria-hidden="true">
+                    <svg v-if="publishSaved" viewBox="0 0 16 16"><path d="m3.6 8.4 3 3 5.8-6.4"/></svg>
+                    <svg v-else viewBox="0 0 16 16"><path d="M3.6 2.6h7.2l1.6 1.6v9.2H3.6z"/><path d="M5.6 2.6v3.4h4.6V2.6M5.6 10.2h4.8"/></svg>
+                  </span>
+                  {{ publishSaved ? '已保存' : '保存设置' }}
+                </button>
+              </div>
+              <p v-if="publishError" class="book-small book-danger-text" role="alert">{{ publishError }}</p>
+            </div>
+          </section>
+
+          <!-- 删除放在最底部：先读完这个库的全部设置，再决定是否删除 -->
+          <section class="panel panel-danger" aria-labelledby="v-delete-title">
+            <div class="p-head">
+              <span class="ico ico-danger"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.4 4.6V3.2h3.2v1.4M4.4 4.6l.6 8h6l.6-8"/></svg></span>
+              <h3 id="v-delete-title">删除库</h3>
+              <span class="state">{{ vault.name }}</span>
+            </div>
+            <div class="p-body">
+              <div class="pref-row">
+                <div class="pref-copy">
+                  <strong>从这台机器上移除「{{ vault.name }}」</strong>
+                  <span>{{ vault.rootPath }}</span>
+                </div>
+                <button type="button" class="book-danger-btn" :disabled="deleteBusy" @click="askDeleteVault">删除库…</button>
+              </div>
+              <p class="book-small">只删除这里的库记录；文件夹和笔记原样保留，之后仍可从「所有库」重新打开。</p>
+              <p v-if="deleteError" class="book-small book-danger-text" role="alert">{{ deleteError }}</p>
+            </div>
+          </section>
+        </div>
+
+        <!-- 没有打开的库就不出现库页：只能停在全局，入口在左栏底部。 -->
+        <div v-else class="vault-empty">
+          <span class="vault-empty-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M3.2 5.2 8 7.8l4.8-2.6M8 7.8v5.6"/></svg></span>
+          <p class="vault-empty-copy">还没打开库</p>
+          <button type="button" class="side-vault-action" @click="requestVault"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>打开库…</button>
+        </div>
+      </div>
+    </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      :title="`删除「${vault?.name ?? ''}」？`"
+      :message="`将在这台机器上移除这个库的记录，不再出现在库列表和最近打开里。文件夹 ${vault?.rootPath ?? ''} 中的笔记不会被删除或改动。`"
+      confirm-label="删除记录"
+      danger
+      :busy="deleteBusy"
+      @cancel="deleteOpen = false"
+      @confirm="confirmDeleteVault"
+    />
+  </section>
+</template>
+<style scoped>
+/* ============================================================
+   Settings · dir-6 layout
+   02 sidebar + 01 single-column content + 02 panels.
+   ============================================================ */
+
+.settings-workspace {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+.settings-workspace button,
+.settings-workspace input {
+  font-family: inherit;
+  color: inherit;
+}
+
+.settings-workspace button:focus-visible,
+.settings-workspace input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- sidebar ---------- */
+.settings-side {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px 18px;
+  background: color-mix(in srgb, var(--panel) 60%, var(--bg));
+  border-right: 1px solid var(--line);
+}
+
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 6px;
+}
+.side-brand img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.side-brand b {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.side-title {
+  margin: 26px 6px 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.side-title h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.side-nav {
+  margin-top: 18px;
+  display: grid;
+  gap: 2px;
+}
+/* ---------- sidebar: 全局设置 + 每个库 ---------- */
+.side-group { margin-top: 22px; display: grid; gap: 2px; }
+.side-group:first-of-type { margin-top: 18px; }
+.side-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 9px 6px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  transition: color 0.14s ease;
+}
+.side-group-head:hover { color: var(--accent); }
+.side-group-chevron {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  align-self: center;
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  transition: transform 0.16s ease, color 0.14s ease;
+}
+.side-group-chevron svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.side-group-chevron.open { transform: rotate(90deg); }
+.side-group-head:hover .side-group-chevron { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .side-group-chevron { transition: none; }
+}
+.side-group-note,
+.side-group-label + .side-vaults-note {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+.side-group-note { margin-left: 2px; }
+.side-group-label {
+  margin: 0 0 6px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.side-items { display: grid; gap: 2px; }
+/* 组内的锚点沿用同一套行，只是不是当前页 */
+.side-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 7px;
+  color: var(--muted);
+  text-align: left;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+/* 图标按行高固定，否则 SVG 会按默认 300×150 撑满整栏 */
+.side-nav-item svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.side-nav-item:hover {
+  background: color-mix(in srgb, var(--panel) 65%, var(--surface));
+  color: var(--ink);
+}
+.side-nav-item.on {
+  background: color-mix(in srgb, var(--accent) 11%, var(--panel));
+  color: var(--accent);
+  font-weight: 600;
+}
+a.side-nav-item:visited { color: var(--muted); }
+
+.side-vaults { display: grid; gap: 3px; }
+.side-vault {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-align: left;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+.side-vault:hover:not(:disabled) { background: color-mix(in srgb, var(--panel) 70%, var(--surface)); }
+.side-vault.active {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+.side-vault.missing { opacity: 0.5; cursor: default; }
+.side-vault-bar { width: 5px; height: 20px; border-radius: 2px; flex: none; }
+.side-vault-copy { min-width: 0; flex: 1; }
+.side-vault-copy b {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-vault.active .side-vault-copy b { font-weight: 600; }
+.side-vault-copy span {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+}
+.side-vault-go { width: 12px; height: 12px; color: var(--accent); flex: none; }
+.side-vault-go svg { width: 12px; height: 12px; display: block; }
+.side-vaults-note { margin: 4px 9px 0; font-size: 8.5px; color: color-mix(in srgb, var(--muted) 82%, transparent); }
+
+/* 库的入口常驻左栏底部：设置里换库从这里走，而不是猜一个库出来 */
+.side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 6px;
+}
+.side-vault-action {
+  height: 28px;
+  padding: 0 10px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.side-vault-action:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  color: var(--accent);
+}
+.side-vault-action svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- 库设置页 ---------- */
+/* ---------- 库设置：与全局设置同构，一页铺开 ---------- */
+/* 库名与路径作为这一页的头，下面的面板按「库色 → 同步 → 备份 → 发布 → 删除」纵向排列 */
+.vault-page .panel-stack { display: flex; flex-direction: column; gap: 18px; }
+
+/* 偏好行：左侧标题与说明，右侧控件 */
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pref-copy { min-width: 0; }
+.pref-copy strong { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink); }
+.pref-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 危险区：只在「删除库」那块上用朱砂色，不污染其他面板 */
+.panel-danger { border-color: color-mix(in srgb, var(--danger) 34%, var(--line)); }
+.panel-danger .ico-danger {
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+}
+.book-danger-btn {
+  height: 32px;
+  padding: 0 13px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+.book-danger-btn:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--panel);
+}
+.book-danger-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* 库设置页：库名 + 路径在左、页签靠右，下面一条四块状态卡，一次只展开一块 */
+/* 库页占满整栏：设置页本身再宽，也不把它缩成一条居中窄条。
+   纵向排列，与全局设置一致：库色 → 同步 → 备份与迁移 → 发布 → 删除库。 */
+.vault-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: none;
+}
+.vault-page > * { min-width: 0; }
+/* 打开库页时，内层不再按全局的 860px 收窄 */
+.settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
+.vault-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 设计图里库名、四块卡、面板左边缘垂直对齐，所以头部不再加左右内缩 */
+  padding: 0;
+  min-width: 0;
+}
+.vault-head-bar { width: 8px; height: 40px; border-radius: 3px; flex: none; }
+.vault-head-copy { min-width: 0; flex: 1; }
+.vault-head-copy h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-head-copy span {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--muted);  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-tabs {
+  flex: none;
+  display: inline-flex;
+  margin-left: auto;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  /* 设计图里这组按钮有一块浅砂底，和纸白背景明确分开 */
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.vault-tabs button {
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+.vault-tabs button:hover:not(.on) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+}
+.vault-tabs button.on {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 10%, transparent);
+}
+
+.vault-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.vault-tile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, #fff 6%), var(--panel));
+  text-align: left;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.vault-tile:hover:not(.on) { border-color: color-mix(in srgb, var(--muted) 48%, var(--line)); }
+.vault-tile.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.vault-tile-ico {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--accent);
+}
+.vault-tile-ico svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.vault-tile-copy { min-width: 0; }
+.vault-tile-copy b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.vault-tile-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-page .panel { scroll-margin-top: 16px; }
+.vault-page :deep(.account-panel) { margin: 0; }
+
+.vault-empty { display: grid; place-items: center; gap: 12px; padding: 80px 0; }
+.vault-empty-copy { margin: 0; font-size: 12px; color: var(--muted); }
+.vault-empty .side-vault-action { flex: 0 0 auto; padding: 0 14px; }
+
+/* ---------- 内容区共享部件 ---------- */
+.book-small { margin: 10px 0 0; font-size: 10px; line-height: 1.6; color: var(--muted); }
+.book-small:empty { display: none; }
+.book-muted { color: var(--muted); }
+.book-danger { margin-top: 4px; color: var(--danger); font-size: 9.5px; }
+.book-danger-text { color: var(--danger); }
+.book-mono { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 88%, transparent); }
+.book-sub { margin: 0 0 6px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em; color: color-mix(in srgb, var(--muted) 88%, transparent); }
+.book-note {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--muted) 48%, var(--line));
+  background: color-mix(in srgb, var(--panel) 72%, var(--surface));
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.book-note p { margin: 0; }
+.book-note p + p { margin-top: 6px; }
+.book-meta { margin: 0; display: grid; border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent); }
+.book-meta > div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  font-size: 11px;
+}
+.book-meta dt { color: color-mix(in srgb, var(--muted) 82%, transparent); }
+.book-meta dd { margin: 0; color: var(--ink); }
+.book-meta code { font-family: var(--font-mono); font-size: 10px; color: var(--ink); }
+.book-field { display: grid; gap: 5px; margin-top: 14px; }
+.book-field > span, .book-field-label { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
+.book-field-label { display: block; margin: 13px 0 7px; }
+.book-field input, .book-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 12px;
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 5%, transparent);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.book-field input::placeholder { color: color-mix(in srgb, var(--muted) 65%, transparent); }
+.book-field input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
+
+.book-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; background: color-mix(in srgb, var(--surface) 60%, var(--panel)); }
+.book-seg button { height: 27px; padding: 0 10px; border-radius: 4px; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.book-seg button.on { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, #000 8%, transparent); }
+.book-seg--three { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+.book-seg--three button { height: 30px; font-size: 11px; }
+.book-inline { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.book-primary {
+  height: 34px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--accent-hover) 55%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 16%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+.settings-workspace button.book-primary { color: #fff; }
+.settings-workspace button.book-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 80%, #fff 20%), var(--accent-hover));
+  transform: translateY(-0.5px);
+}
+.book-primary-ico { width: 16px; height: 16px; display: inline-grid; place-items: center; flex: none; }
+.book-primary-ico svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.book-ghost {
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.book-ghost:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-ghost--sm { height: 26px; padding: 0 9px; font-size: 10px; }
+.book-ghost:disabled { opacity: 0.5; cursor: default; }
+.book-ghost svg { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.book-text-btn { font-size: 10px; color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); padding-bottom: 1px; white-space: nowrap; }
+.book-text-btn:hover:not(:disabled) { border-color: var(--accent); }
+.book-text-btn:disabled { opacity: 0.45; cursor: default; }
+.book-text-btn.is-fixed { color: var(--muted); border-bottom-color: transparent; }
+
+.book-actions { display: grid; gap: 8px; }
+.book-action {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: left;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.book-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-action:disabled { opacity: 0.5; cursor: default; }
+.book-action.open { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.book-action-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 60%, var(--panel));
+  color: var(--accent);
+}
+.book-action-icon svg, .book-action-go svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.book-action-copy strong { display: block; font-size: 11px; font-weight: 600; color: var(--ink); }
+.book-action-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-action-go {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--muted) 76%, transparent);
+  transition: color 0.14s ease, transform 0.16s ease;
+}
+.book-action:hover:not(:disabled) .book-action-go { color: var(--accent); }
+.book-action.open .book-action-chevron { transform: rotate(90deg); color: var(--accent); }
+.book-actions .book-note { margin: 0; border-radius: 0 0 8px 8px; border-top: 0; }
+.book-subhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.book-subhead strong { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
+.book-pref-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.book-pref-copy { display: block; min-width: 0; }
+.book-pref-copy strong { display: block; font-size: 11px; font-weight: 600; }
+.book-pref-copy span { display: block; margin-top: 2px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+
+.book-switch {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  flex: 0 0 34px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--line) 80%, var(--muted));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 10%, transparent);
+  transition: background 0.16s ease;
+}
+.book-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 18%, transparent);
+  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.book-switch.on { background: var(--accent); }
+.book-switch.on span { transform: translateX(15px); }
+.book-switch:disabled { opacity: 0.5; cursor: default; }
+/*
+ * Plugin list: a name-first row. Title and row action sit on one line; the id,
+ * 核心/本地 origin and permission scopes are quiet supporting text below, so the
+ * list scans as names instead of a wall of monospace.
+ */
+.book-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.book-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 10px;
+  margin: 0 -10px;
+  border-radius: 8px;
+  transition: background 0.14s ease;
+}
+.book-list-row + .book-list-row {
+  position: relative;
+}
+.book-list-row + .book-list-row::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--line) 62%, transparent);
+}
+.book-list-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.book-plugin-main { min-width: 0; flex: 1; }
+.book-plugin-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.book-plugin-line strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink);
+}
+.book-plugin-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.book-plugin-state i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.book-plugin-state.on { color: var(--accent); }
+.book-plugin-state.on i { background: var(--accent); }
+.book-plugin-state.off { color: var(--muted); }
+.book-plugin-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.book-plugin-meta code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-plugin-meta span {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 65%, var(--panel));
+  color: color-mix(in srgb, var(--muted) 92%, var(--ink));
+}
+.book-plugin-perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.book-plugin-perm {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.6;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  color: color-mix(in srgb, var(--muted) 92%, transparent);
+  white-space: nowrap;
+}
+.book-row-btn {
+  flex: none;
+  height: 24px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.book-row-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 55%, var(--line));
+  color: var(--ink);
+}
+/* 「启用」是这一行唯一的可执行动作，按主操作处理；「禁用」保持安静的次要样式。 */
+.book-row-btn.on {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  background: var(--accent);
+  color: #fffefa;
+}
+:root[data-color-mode='dark'] .book-row-btn.on { color: #10231b; }
+.book-row-btn.on:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+.book-row-btn:disabled { opacity: 0.5; cursor: default; }
+.book-plugin-fixed { flex: none; font-size: 10px; color: color-mix(in srgb, var(--muted) 85%, transparent); }
+.book-cmd-row { margin-top: 12px; }
+.book-cmd { padding: 6px 8px; margin: 0 5px 5px 0; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 6px; background: var(--panel); text-align: left; }
+.book-cmd.is-on { border-color: var(--accent); }
+.book-cmd strong { display: block; font-size: 10px; font-weight: 600; }
+.book-cmd span { display: block; margin-top: 1px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+.book-plugin-tabs { margin-top: 12px; }
+.book-plugin-tab { padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
+.book-plugin-tab strong { font-size: 10px; font-weight: 600; }
+.book-plugin-tab-host { margin-top: 6px; font-size: 10px; color: var(--muted); }
+.book-catalog-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
+.book-catalog-row strong { font-size: 11px; font-weight: 600; }
+.book-catalog-row p { margin: 4px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.book-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.book-tag { padding: 1px 4px; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 3px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+
+.book-about-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.book-about-check {
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.book-about-check:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, var(--surface));
+}
+.book-about-check.is-offered {
+  border-color: color-mix(in srgb, var(--accent-hover) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent));
+  color: #fff;
+  font-weight: 600;
+}
+.book-about-check:disabled { opacity: 0.6; }
+.book-about-check svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.book-about-check svg.spinning { animation: settings-spin 0.9s linear infinite; }
+.book-swatches { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.book-swatch { min-width: 0; display: grid; gap: 5px; justify-items: center; background: transparent; }
+.book-swatch-bar {
+  width: 100%;
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, #000 8%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+  transition: transform 0.14s ease;
+}
+.book-swatch:hover .book-swatch-bar { transform: translateY(-2px); }
+.book-swatch.on .book-swatch-bar { box-shadow: 0 0 0 1px var(--panel), 0 0 0 2px var(--ink); }
+.book-swatch-label { font-size: 9px; line-height: 1.35; text-align: center; color: var(--muted); }
+.book-swatch-label b { font-weight: 600; color: var(--ink); }
+
+.book-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.book-theme {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: left;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.book-theme:hover:not(:disabled) { border-color: color-mix(in srgb, var(--muted) 55%, var(--line)); }
+.book-theme.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.book-theme:disabled { opacity: 0.55; cursor: default; }
+/*
+ * Each card paints from its own theme tokens (--pv-*, set inline from the
+ * theme's light/dark palette), never from the colours currently on screen —
+ * otherwise every card looked identical and 明暗 gave no visible feedback.
+ */
+.book-theme-preview {
+  position: relative;
+  height: 58px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--pv-line);
+  background: var(--pv-bg);
+}
+.book-theme-preview .rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: var(--pv-surface);
+  border-right: 1px solid var(--pv-line);
+}
+.book-theme-preview .bar {
+  position: absolute;
+  left: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pv-line);
+}
+.book-theme-preview .b1 { top: 13px; width: 42%; background: var(--pv-accent); }
+.book-theme-preview .b2 { top: 21px; width: 55%; }
+.book-theme-preview .b3 { top: 29px; width: 33%; }
+.book-theme-preview .dot { position: absolute; left: 16px; bottom: 9px; width: 23px; height: 4px; border-radius: 2px; background: var(--pv-accent); }
+.book-theme-preview .page {
+  position: absolute;
+  right: 8px;
+  top: 9px;
+  width: 26px;
+  height: 39px;
+  border-radius: 2px;
+  background: var(--pv-panel);
+  border: 1px solid var(--pv-line);
+}
+.book-theme-preview .page::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 8px;
+  height: 2px;
+  background: var(--pv-line);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--pv-line) 70%, transparent);
+}
+.book-theme-name {
+  display: flex;
+  align-items: center;
+  padding: 5px 2px 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.book-theme-name .check {
+  margin-left: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  font-size: 7px;
+}
+.book-theme.on .book-theme-name .check { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.book-theme-desc { padding: 0 2px 1px; font-size: 9px; line-height: 1.4; color: var(--muted); }
+.book-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+}
+.book-row strong { font-size: 11.5px; font-weight: 600; }
+.book-row:where(.book-row) > .book-seg { flex: 0 0 auto; }
+.book-row-copy { min-width: 0; }
+.book-hint { margin: 2px 0 0; font-size: 10px; color: var(--muted); }
+
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1120px) {
+  .settings-workspace { grid-template-columns: 210px minmax(0, 1fr); }
+  .settings-main { padding: 26px 26px 54px; }
+  /* 设计图里四块卡始终一排；窗口变窄只压缩留白，不折成两行 */
+  .vault-tiles { gap: 8px; }
+  .vault-tile { padding: 11px 12px; gap: 9px; }
+}
+@media (max-width: 860px) {
+  .settings-workspace { display: block; height: 100%; overflow: auto; }
+  .settings-side { height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .settings-main { overflow: visible; padding: 22px 20px 50px; }
+  .settings-inner { width: 100%; }
+  .settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
+  .status-strip { grid-template-columns: 1fr 1fr; }
+  .status-strip li:nth-child(2) { border-right: 0; }
+  .status-strip li:nth-child(1),
+  .status-strip li:nth-child(2) { border-bottom: 1px solid var(--line); }
+  .p-head { padding: 15px 16px 9px; }
+  .p-head .state { display: none; }
+  .p-body { padding: 0 16px 16px; }
+  .book-theme-grid { grid-template-columns: 1fr; }
+  .book-swatches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vault-head { flex-wrap: wrap; }
+  .vault-tabs { width: 100%; overflow-x: auto; }
+  .vault-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-workspace :deep(.account-panel .login-form) { grid-template-columns: 1fr; }
+}
+/* 库列表在切换中：当前行压暗等待，避免连点 */
+.side-vault.switching { opacity: 0.6; cursor: progress; }
+.side-vaults-error { color: var(--danger); }
+
+/* ---------- 主栏 ---------- */
+.settings-main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 30px 40px 64px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
+}
+.settings-main::-webkit-scrollbar { width: 6px; }
+.settings-main::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  border-radius: 3px;
+}
+.settings-inner { width: min(860px, 100%); margin: 0 auto; }
+.global-page { display: grid; gap: 20px; }
+.panel-stack { display: flex; flex-direction: column; gap: 18px; }
+
+/* 全局页状态条：四格读数，点击去对应面板 */
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, #fff 12%), var(--panel));
+  overflow: hidden;
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 55%, transparent) inset;
+}
+.status-strip li { display: flex; min-width: 0; border-right: 1px solid var(--line); }
+.status-strip li:last-child { border-right: 0; }
+.status-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  text-align: left;
+  border-radius: 0;
+  transition: background 0.14s ease;
+}
+button.status-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.status-chip:focus-visible { outline-offset: -2px; }
+.status-ico {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, var(--panel));
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.status-ico.on {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+}
+.status-ico svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.status-copy { min-width: 0; display: grid; gap: 3px; }
+.status-copy > span { display: block; font-size: 9.5px; letter-spacing: 0.06em; color: var(--muted); }
+.status-copy b {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-copy i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 62%, transparent);
+  flex: none;
+}
+.status-copy i.g {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+
+/* ---------- 面板 ---------- */
+.panel {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 15px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, #fff 8%), var(--panel));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent), 0 10px 24px color-mix(in srgb, #000 5%, transparent);
+  scroll-margin-top: 20px;
+}
+.p-head { display: flex; align-items: center; gap: 9px; padding: 18px 22px 10px; }
+.p-head .ico {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--accent);
+  flex: none;
+}
+.p-head .ico svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.p-head .state { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.p-head::after {
+  content: '';
+  flex: 1 1 auto;
+  min-width: 14px;
+  height: 1px;
+  margin: 0 4px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--line)), transparent);
+}
+.p-head-action {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.p-head-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--accent);
+}
+.p-head-action svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-head-action svg.spinning { animation: settings-spin 0.8s linear infinite; }
+@keyframes settings-spin { to { transform: rotate(360deg); } }
+.p-body { padding: 4px 22px 20px; }
+.p-body:deep(.account-panel) { margin: 0; }
+
+
+/* ---------- AccountPanel embedded in the book ---------- */
+.settings-workspace :deep(.account-panel) {
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+.settings-workspace :deep(.account-panel > h2),
+.settings-workspace :deep(.account-panel > .settings-help.dual-product) {
+  display: none;
+}
+.settings-workspace :deep(.account-panel .settings-help) {
+  font-size: 11.5px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.settings-workspace :deep(.account-panel .server-row) {
+  margin-bottom: 14px;
+}
+.settings-workspace :deep(.account-panel .choice) {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel);
+  border-color: color-mix(in srgb, var(--line) 92%, transparent);
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+.settings-workspace :deep(.account-panel .choice strong) {
+  font-size: 11px;
+}
+.settings-workspace :deep(.account-panel .choice span) {
+  font-size: 9.5px;
+}
+.settings-workspace :deep(.account-panel .btn-ico) {
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.settings-workspace :deep(.account-panel .btn-ico svg) {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.settings-workspace :deep(.account-panel .social-ico svg) {
+  fill: currentColor;
+  stroke: none;
+}
+.settings-workspace :deep(.account-panel .social-gitee .social-ico svg) {
+  width: 15px;
+  height: 15px;
+}
+.settings-workspace :deep(.account-panel .custom-server input),
+.settings-workspace :deep(.account-panel .login-form input) {
+  min-height: 34px;
+  font-size: 12px;
+  border-radius: 5px;
+}
+.settings-workspace :deep(.account-panel .login-form) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+.settings-workspace :deep(.account-panel .login-form > .settings-help),
+.settings-workspace :deep(.account-panel .login-form > .inline-error),
+.settings-workspace :deep(.account-panel .login-form > .login-actions),
+.settings-workspace :deep(.account-panel .login-form > .social-block),
+.settings-workspace :deep(.account-panel .login-form > .social-row),
+.settings-workspace :deep(.account-panel .login-form > .sync-guide) {
+  grid-column: 1 / -1;
+}
+.settings-workspace :deep(.account-panel .password-field input) {
+  padding-right: 38px;
+}
+.settings-workspace :deep(.account-panel .password-toggle) {
+  width: 26px;
+  height: 26px;
+  right: 5px;
+}
+.settings-workspace :deep(.account-panel .password-toggle svg) {
+  width: 14px;
+  height: 14px;
+}
+.settings-workspace :deep(.account-panel .auth-sep) {
+  margin: 4px 0 8px;
+  font-size: 10px;
+}
+.settings-workspace :deep(.account-panel .login-form label) {
+  font-size: 10.5px;
+}
+.settings-workspace :deep(.account-panel .login-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* Third-party sign-in reads as another way in beside the primary button;
+   the rule marks where its own block used to start. */
+.settings-workspace :deep(.account-panel .login-actions .auth-sep) {
+  margin: 0 0 0 4px;
+  display: block;
+}
+.settings-workspace :deep(.account-panel .login-actions .auth-sep span) {
+/* probe: theme + mode + inline vault colour, exactly as the app applies them */
+:root[data-community-theme='forest-ink'] { --bg:#e8f0ea; --panel:#f7fbf8; --ink:#1e3328; --muted:#5f7568; --line:#c5d4ca; --accent:#3d6b54; --accent-hover:#2f5441; --surface:#dce8e0; --danger:#8a3b2e; --danger-bg:#f3e4e0; --vault:#3d6b54 !important; }
+:root[data-community-theme='forest-ink'][data-color-mode='dark'] { --bg:#141c17; --panel:#1c2620; --ink:#e2eee6; --muted:#8fa498; --line:#2e3c34; --accent:#6fad8e; --accent-hover:#8bc4a6; --surface:#243028; --danger:#e0a090; --danger-bg:#3a2a26; --vault:#6fad8e !important; }
+html{color-scheme:light}
+body{margin:0;font-family:var(--font-ui);background:var(--bg);color:var(--ink)}
+.probe{padding:18px 24px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:150px}
+.card b{display:block;font-size:13px;margin-bottom:6px}
+.sw{height:26px;border-radius:6px;background:var(--accent)}
+.duo{display:flex;gap:8px;margin-top:8px}
+.duo i{width:40px;height:20px;border-radius:4px;display:block}
+</style></head><body>
+<div class="probe">
+  <div class="card"><b>默认(dark tokens) · 深色</b><div class="sw"></div><div class="duo"><i style="background:var(--bg)"></i><i style="background:var(--surface)"></i></div></div>
+  <div class="card"><b>暮色 · 浅色</b><div class="sw" style="background:#5c4a32"></div></div>
+  <div class="card"><b>Forest Ink · 浅色</b><div class="sw"></div><div class="duo"><i style="background:var(--bg)"></i><i style="background:var(--surface)"></i></div></div>
+  <div class="card"><b>晚晴 · 浅色</b><div class="sw" style="background:#4a5a86"></div></div>
+</div>
+</body></html>

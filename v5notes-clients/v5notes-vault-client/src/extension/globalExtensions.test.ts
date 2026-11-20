@@ -7,7 +7,7 @@ import {
   writeGlobalCommunityPlugins,
   writeGlobalPluginPackage,
 } from './globalPlugins'
-import { installGlobalForestInkSample, listGlobalThemes } from './globalThemes'
+import { installGlobalSampleThemes, listGlobalThemes } from './globalThemes'
 import { installCatalogPackage } from '../catalog'
 
 const ROOT = '/cfg/extensions'
@@ -77,11 +77,11 @@ describe('app-level extension storage', () => {
     expect((await listGlobalPluginPackages()).map(p => p.id)).toEqual(['hello-world'])
   })
 
-  it('installs the bundled theme app-wide', async () => {
+  it('installs the bundled themes app-wide', async () => {
     seed()
-    await installGlobalForestInkSample()
+    await installGlobalSampleThemes()
     const themes = await listGlobalThemes()
-    expect(themes.map(t => t.id)).toContain('forest-ink')
+    expect(themes.map(t => t.id)).toEqual(expect.arrayContaining(['forest-ink', 'wanqing']))
   })
 
   it('returns an empty list instead of throwing when nothing is installed', async () => {

@@ -96,33 +96,55 @@ describe('vaultColors', () => {
   })
 })
 describe('vault colour lives with the vault', () => {
+  const A = '/tmp/vault-a'
+  const B = '/tmp/vault-b'
+
   beforeEach(() => {
     store.clear()
     styleMap.clear()
-    setVaultColorFromVault(null)
+    setVaultColorFromVault(null, A)
+    setVaultColorFromVault(null, B)
   })
 
-  it('reads the colour recorded in the vault file first', () => {
-    setVaultColorFromVault('qiufen')
-    expect(resolveVaultColor('/tmp/whatever').id).toBe('qiufen')
+  it('reads the colour recorded in that vault file first', () => {
+    setVaultColorFromVault('qiufen', A)
+    expect(resolveVaultColor(A).id).toBe('qiufen')
+  })
+
+  it('keeps each vault on its own colour', () => {
+    setVaultColorFromVault('lichun', A)
+    setVaultColorFromVault('guyu', B)
+    expect(resolveVaultColor(A).id).toBe('lichun')
+    expect(resolveVaultColor(B).id).toBe('guyu')
+  })
+
+  it('repaints only the vault whose colour changed', () => {
+    setVaultColorFromVault('lichun', A)
+    setVaultColorFromVault('guyu', B)
+    // Changing A must not leak into B's stripe.
+    setVaultColor(A, 'dongzhi')
+    expect(resolveVaultColor(A).id).toBe('dongzhi')
+    expect(resolveVaultColor(B).id).toBe('guyu')
   })
 
   it('falls back to the local pick when the vault file has no colour', () => {
-    setVaultColor('/tmp/vault', 'yushui')
-    setVaultColorFromVault(null)
-    expect(resolveVaultColor('/tmp/vault').id).toBe('yushui')
+    setVaultColor(B, 'yushui')
+    setVaultColorFromVault(null, B)
+    expect(resolveVaultColor(B).id).toBe('yushui')
+    expect(resolveVaultColor(A).id).not.toBe('yushui')
   })
 
   it('ignores an unknown swatch id instead of throwing', () => {
-    setVaultColorFromVault('not-a-swatch')
-    const fallback = resolveVaultColor('/tmp/vault')
+    setVaultColorFromVault('not-a-swatch', A)
+    const fallback = resolveVaultColor(A)
     expect(VAULT_COLOR_PALETTE.some(s => s.id === fallback.id)).toBe(true)
   })
 
-  it('switches with the vault, not with the machine', () => {
-    setVaultColorFromVault('lichun')
-    expect(resolveVaultColor('/a').id).toBe('lichun')
-    setVaultColorFromVault('guyu')
-    expect(resolveVaultColor('/a').id).toBe('guyu')
+  it('clearing one vault does not clear another', () => {
+    setVaultColorFromVault('lichun', A)
+    setVaultColorFromVault('guyu', B)
+    setVaultColorFromVault(null, A)
+    expect(resolveVaultColor(A).id).not.toBe('lichun')
+    expect(resolveVaultColor(B).id).toBe('guyu')
   })
 })

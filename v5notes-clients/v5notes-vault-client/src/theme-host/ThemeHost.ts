@@ -2,13 +2,16 @@ import type { ThemeApi, ThemeInfo } from '@v5notes/vault-plugin-api'
 import {
   applyAppearance,
   BUILTIN_THEMES,
+  isBuiltinThemeId,
   loadAppearancePrefs,
   saveAppearancePrefs,
   type AppearancePrefs,
+  type BuiltinThemeId,
   type ColorMode,
 } from '../appearance/themes'
 import { validateThemeCss } from './cssValidate'
 import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from './samples/forestInk'
+import { WANQING_CSS, WANQING_MANIFEST } from './samples/wanqing'
 
 const STYLE_ID = 'v5-community-theme-style'
 
@@ -65,6 +68,14 @@ function bundledSamples(): VaultThemePackage[] {
       description: FOREST_INK_MANIFEST.description,
       author: FOREST_INK_MANIFEST.author,
       css: FOREST_INK_CSS,
+    },
+    {
+      id: WANQING_MANIFEST.id,
+      name: WANQING_MANIFEST.name,
+      version: WANQING_MANIFEST.version,
+      description: WANQING_MANIFEST.description,
+      author: WANQING_MANIFEST.author,
+      css: WANQING_CSS,
     },
   ]
 }
@@ -154,11 +165,18 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
 
   async function applyThemeId(themeId: string, colorMode: ColorMode): Promise<void> {
     lastError = null
-    const safe = deps.isSafeMode?.() ?? false
 
-    if (safe) {
+    if (deps.isSafeMode?.() ?? false) {
+      // Safe Mode only skips community code. The builtin theme (默认 / 暮色) and
+      // 明暗 are shell settings, not plugin code, so both stay as chosen; only
+      // community CSS is withheld. Nothing is persisted here, so the stored
+      // theme is still the user's own choice when Safe Mode goes off.
+      const next: AppearancePrefs = {
+        schemaVersion: 1,
+        theme: isBuiltinThemeId(themeId) ? themeId : 'default',
+        colorMode,
+      }
       clearInjectedStyle()
-      const next: AppearancePrefs = { schemaVersion: 1, theme: 'default', colorMode }
       applyAppearance(next)
       prefs = next
       return
@@ -207,21 +225,24 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
   return {
     async start() {
       await refreshInstalledThemes()
+      // readAppearanceFile returns BOTH fields or neither, so it can never tell
+      // us "no preference yet". Fill each missing field from the stored choice
+      // (localStorage) — otherwise restarting the host (e.g. leaving Safe Mode)
+      // silently resets 明暗 to 跟随系统 and the blocked theme to 默认.
+      const stored = loadAppearancePrefs()
+      let theme = stored.theme
+      let colorMode = stored.colorMode
       if (deps.readAppearanceFile) {
         try {
           const file = await deps.readAppearanceFile()
-          if (file?.theme || file?.colorMode) {
-            prefs = {
-              schemaVersion: 1,
-              theme: (file.theme as AppearancePrefs['theme']) || prefs.theme,
-              colorMode: (file.colorMode as ColorMode) || prefs.colorMode,
-            }
-          }
+          if (file && file.theme) theme = file.theme as AppearancePrefs['theme']
+          if (file && file.colorMode) colorMode = file.colorMode
         } catch {
           /* ignore */
         }
       }
-      await applyThemeId(prefs.theme, prefs.colorMode)
+      prefs = { schemaVersion: 1, theme, colorMode }
+      await applyThemeId(theme, colorMode)
     },
     stop() {
       clearInjectedStyle()
