@@ -25,6 +25,8 @@ export const EDITOR_THEME_IDS = [
   'dracula',
   'solarized-light',
   'solarized-dark',
+  'catppuccin-latte',
+  'rose-pine-dawn',
 ] as const satisfies readonly ThemeId[]
 
 /** Built-in v5md themes that declare color-scheme: dark. */
@@ -48,6 +50,8 @@ export const EDITOR_THEME_LABELS: Record<ThemeId, string> = {
   dracula: 'Dracula',
   'solarized-light': 'Solarized Light',
   'solarized-dark': 'Solarized Dark',
+  'catppuccin-latte': 'Catppuccin Latte',
+  'rose-pine-dawn': 'Rosé Pine Dawn',
 }
 
 export function isEditorThemePreference(value: unknown): value is EditorThemePreference {

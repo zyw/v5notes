@@ -129,6 +129,6 @@ python3 scripts/vault_latest_json.py \
 
 ## @v5md 编辑器
 
-依赖与 Cloud（`v5notes-client2`）相同，来自 npm：`@v5md/core|view|vue@0.0.7`。
+依赖与 Cloud（`v5notes-client2`）相同，来自 npm：`@v5md/core|view|vue@0.0.8`。
 
 开发时可设置 `V5MD_LOCAL_ROOT=/绝对路径/v5md npm run dev`（或 `npm run build`）指向本地 v5md 构建产物；未设置时使用 npm 锁定版本。

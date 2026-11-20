@@ -101,6 +101,8 @@ export const EDITOR_THEME_LABELS: Record<string, string> = {
   dracula: 'Dracula',
   'solarized-light': 'Solarized Light',
   'solarized-dark': 'Solarized Dark',
+  'catppuccin-latte': 'Catppuccin Latte',
+  'rose-pine-dawn': 'Rosé Pine Dawn',
 }
 
 export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
