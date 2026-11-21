@@ -1,6 +1,10 @@
 export {
   createPluginHost,
   CORE_REGISTRY,
+  ACTIVE_EDITOR_STORAGE_KEY,
+  ACTIVE_EDITORS_STORAGE_KEY,
+  readLegacyEditorId,
+  type HostEditorKind,
   parseCommunityPlugins,
   emptyCommunityPlugins,
   type PluginHost,

@@ -14,6 +14,7 @@ import type {
   HostSettingTab,
   HostView,
   HostEditorProvider,
+  HostEditorKind,
 } from '../plugin-host'
 import {
   CORE_REGISTRY,
@@ -192,8 +193,13 @@ export function listEditorProviders(): HostEditorProvider[] {
   return pluginHost?.listEditorProviders() ?? []
 }
 
-export function getActiveEditorProvider(): HostEditorProvider | null {
-  return pluginHost?.getActiveEditor() ?? null
+export function getActiveEditorProvider(docKind?: string): HostEditorProvider | null {
+  return pluginHost?.getActiveEditor(docKind) ?? null
+}
+
+/** One row per document kind backed by a loaded editor provider. */
+export function listEditorKinds(): HostEditorKind[] {
+  return pluginHost?.listEditorKinds() ?? []
 }
 
 /** Write an installed package, then enable a plugin or reload the theme host. */

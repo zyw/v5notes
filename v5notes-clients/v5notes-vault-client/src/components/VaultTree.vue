@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import TreeIcon from './TreeIcon.vue'
 import { activeTreeMenu, closeTreeMenu, openTreeMenu } from './treeMenu'
+import { displayNameOf, type DocKindSpec } from '../vault/docKinds'
 import type { VaultTreeNode } from '../vault/types'
 
 withDefaults(
@@ -10,13 +11,15 @@ withDefaults(
     selectedPath: string | null
     depth?: number
     showHint?: boolean
+    /** Document kinds with a live editor; the dir menu lists one create entry per kind. */
+    kinds?: DocKindSpec[]
   }>(),
-  { showHint: false },
+  { showHint: false, kinds: () => [] },
 )
 
 const emit = defineEmits<{
   open: [node: VaultTreeNode]
-  addNote: [parent: VaultTreeNode | null]
+  addNote: [payload: { parent: VaultTreeNode | null; docKind?: string }]
   addDir: [parent: VaultTreeNode | null]
   rename: [node: VaultTreeNode]
   move: [node: VaultTreeNode]
@@ -130,7 +133,7 @@ onBeforeUnmount(() => {
             :kind="node.kind === 'dir' ? 'folder' : 'note'"
             :open="node.kind === 'dir' && hasChildren(node) && isExpanded(node.path)"
           />
-          <span class="tree-name">{{ node.name.replace(/\.md$/i, '') }}</span>
+          <span class="tree-name">{{ displayNameOf(node.name) }}</span>
           <span v-if="showHint && node.kind === 'note' && hintFor(node.path)" class="tree-hint">
             {{ hintFor(node.path) }}
           </span>
@@ -169,7 +172,26 @@ onBeforeUnmount(() => {
             </svg>
             新建子目录
           </button>
-          <button type="button" role="menuitem" @click="run(() => emit('addNote', node))">
+          <template v-for="kind in kinds" :key="kind.id">
+            <button
+              v-if="kinds.length > 1"
+              type="button"
+              role="menuitem"
+              @click="run(() => emit('addNote', { parent: node, docKind: kind.id }))"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 2.5h5l3 3v8H4z" />
+                <path d="M9 2.8v2.9h2.7M6 10.2h4M8 8.2v4" />
+              </svg>
+              {{ kind.newLabel }}
+            </button>
+          </template>
+          <button
+            v-if="kinds.length <= 1"
+            type="button"
+            role="menuitem"
+            @click="run(() => emit('addNote', { parent: node, docKind: kinds[0]?.id }))"
+          >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M4 2.5h5l3 3v8H4z" />
               <path d="M9 2.8v2.9h2.7M6 10.2h4M8 8.2v4" />
@@ -218,6 +240,7 @@ onBeforeUnmount(() => {
         :selected-path="selectedPath"
         :depth="(depth ?? 0) + 1"
         :show-hint="showHint"
+        :kinds="kinds"
         @open="emit('open', $event)"
         @add-note="emit('addNote', $event)"
         @add-dir="emit('addDir', $event)"

@@ -11,12 +11,15 @@ import {
 describe('attachments', () => {
   it('classifies note/asset/config', () => {
     expect(classifyFileKind('笔记.md')).toBe('note')
+    expect(classifyFileKind('草稿.txt')).toBe('note')
+    expect(classifyFileKind('DRAFT.TXT')).toBe('note')
     expect(classifyFileKind('附件/图.png')).toBe('asset')
     expect(classifyFileKind('.v5notes/appearance.json')).toBe('config')
   })
 
   it('prefers text for md/json and binary for png', () => {
     expect(prefersTextBody('a.md')).toBe(true)
+    expect(prefersTextBody('草稿.txt')).toBe(true)
     expect(prefersTextBody('x.json')).toBe(true)
     expect(prefersTextBody('图.png')).toBe(false)
   })

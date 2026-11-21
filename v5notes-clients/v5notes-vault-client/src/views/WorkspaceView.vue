@@ -38,6 +38,14 @@ import TreeIcon from '../components/TreeIcon.vue'
 import { closeTreeMenu } from '../components/treeMenu'
 import VaultTree from '../components/VaultTree.vue'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
+import {
+  DOC_KINDS,
+  MARKDOWN_KIND,
+  displayNameOf,
+  docKindById,
+  initialContentFor,
+  docKindOfPath,
+} from '../vault/docKinds'
 import { APPEARANCE_REL } from '../vault/skeleton'
 import {
   attachmentUrlText,
@@ -61,6 +69,7 @@ import {
 import { applyVaultColorForPath, resolveVaultColor, type VaultColorSwatch } from '../appearance/vaultColors'
 import {
   getActiveEditorProvider,
+  listEditorKinds,
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
@@ -307,6 +316,16 @@ function createFromSidebar(mode: 'note' | 'dir') {
   else openCreateDir(null)
 }
 
+function onTreeAddNote(payload: { parent: VaultTreeNode | null; docKind?: string }) {
+  openCreateNote(payload.parent, payload.docKind ?? creatableKinds.value[0]?.id ?? MARKDOWN_KIND)
+}
+
+function createFromSidebarKind(docKind: string) {
+  sidebarMenuOpen.value = false
+  createMenuOpen.value = false
+  openCreateNote(null, docKind)
+}
+
 const editorMountEl = ref<HTMLElement | null>(null)
 const editorSession = shallowRef<EditorSession | null>(null)
 let mountedEditorId: string | null = null
@@ -543,6 +562,8 @@ const nameDialog = ref<{
   parentPath: string | null
   target: VaultTreeNode | null
   error: string | null
+  /** Note kind being created; only meaningful when mode is 'note'. */
+  docKind?: string
 } | null>(null)
 const moveDialog = ref<{
   node: VaultTreeNode
@@ -562,7 +583,7 @@ const vaultInitial = computed(() => (props.vault.name || 'V').slice(0, 1).toUppe
 const noteTitle = computed(() => {
   if (!selectedPath.value) return ''
   const name = selectedPath.value.split('/').pop() ?? selectedPath.value
-  return name.replace(/\.md$/i, '')
+  return displayNameOf(name)
 })
 const modKey = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'
 
@@ -628,7 +649,7 @@ async function ensureEditorMounted() {
     destroyEditorSession()
     return
   }
-  const provider = getActiveEditorProvider()
+  const provider = getActiveEditorProvider(docKindOfPath(path)?.id)
   if (!provider) return
   if (editorSession.value && mountedEditorId === provider.id) {
     syncEditorSurface()
@@ -941,12 +962,13 @@ function closeSearch() {
 }
 
 function onDocumentPointer(event: PointerEvent) {
-  if (!sidebarMenuOpen.value) return
   const target = event.target instanceof Element ? event.target : null
-  if (sidebarMenuOpen.value) {
-    if (target?.closest('.sidebar-menu') || target?.closest('.sidebar-menu-btn')) return
-    sidebarMenuOpen.value = false
+  if (createMenuOpen.value && !target?.closest('.create-menu')) {
+    createMenuOpen.value = false
   }
+  if (!sidebarMenuOpen.value) return
+  if (target?.closest('.sidebar-menu') || target?.closest('.sidebar-menu-btn')) return
+  sidebarMenuOpen.value = false
 }
 
 function showToast(message: string) {
@@ -1100,13 +1122,14 @@ function formatDeletedAt(value: string): string {
     : date.toLocaleString('zh-CN', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function openCreateNote(parent: VaultTreeNode | null) {
+function openCreateNote(parent: VaultTreeNode | null, docKind: string = MARKDOWN_KIND) {
   closeTreeMenu()
   nameDialog.value = {
     mode: 'note',
     parentPath: parent?.path ?? null,
     target: null,
     error: null,
+    docKind,
   }
 }
 
@@ -1139,7 +1162,7 @@ function openDelete(node: VaultTreeNode) {
     title: isDir ? '删除目录' : '删除笔记',
     message: isDir
       ? `将「${node.name}」及其子目录与笔记移入本地回收站（.v5notes/trash，永不同步）。可稍后还原。`
-      : `将「${node.name.replace(/\.md$/i, '')}」移入本地回收站（永不同步）。可稍后还原。`,
+      : `将「${displayNameOf(node.name)}」移入本地回收站（永不同步）。可稍后还原。`,
   }
 }
 
@@ -1242,14 +1265,15 @@ async function submitName(raw: string) {
         const ok = await saveCurrent()
         if (!ok) return
       }
-      const leaf = raw.trim().replace(/\.md$/i, '')
-      const fileName = `${leaf}.md`
+      const kind = docKindById(dialog.docKind ?? MARKDOWN_KIND) ?? docKindById(MARKDOWN_KIND)!
+      const leaf = displayNameOf(raw.trim()) || raw.trim()
+      const fileName = `${leaf}${kind.extension}`
       const rel = dialog.parentPath ? `${dialog.parentPath}/${fileName}` : fileName
       const { displayPath } = normalizeVaultPath(rel)
       if (await vaultFs.exists(props.vault.rootPath, displayPath)) {
         throw new VaultPathError('同名笔记已存在')
       }
-      await vaultFs.writeText(props.vault.rootPath, displayPath, `# ${leaf}\n\n`)
+      await vaultFs.writeText(props.vault.rootPath, displayPath, initialContentFor(kind, leaf))
       nameDialog.value = null
       await refreshTree()
       await openNote({
@@ -1374,8 +1398,38 @@ function requestClose() {
   }
 }
 
+/** Document kinds that currently have an editor, in menu order. */
+const creatableKinds = computed(() => {
+  const live = new Set(listEditorKinds().map(row => row.docKind))
+  return DOC_KINDS.filter(kind => live.has(kind.id))
+})
+
+const createMenuOpen = ref(false)
+
+function closeCreateMenu() {
+  createMenuOpen.value = false
+}
+
+/**
+ * One kind creates straight away; several kinds open the chooser so the user
+ * still picks every time (⌘N included).
+ */
 async function createNoteRoot() {
-  openCreateNote(null)
+  openCreateMenu()
+}
+
+function openCreateMenu() {
+  if (creatableKinds.value.length > 1) {
+    sidebarMenuOpen.value = false
+    createMenuOpen.value = true
+    return
+  }
+  openCreateNote(null, creatableKinds.value[0]?.id ?? MARKDOWN_KIND)
+}
+
+function createNoteOfKind(docKind: string) {
+  createMenuOpen.value = false
+  openCreateNote(null, docKind)
 }
 
 async function runSearch(query: string) {
@@ -1439,6 +1493,7 @@ function onKeydown(event: KeyboardEvent) {
   const meta = event.metaKey || event.ctrlKey
   if (event.key === 'Escape') {
     if (sidebarMenuOpen.value) sidebarMenuOpen.value = false
+    if (createMenuOpen.value) closeCreateMenu()
     if (searchOpen.value) closeSearch()
   }
   const modalBlocking = !!nameDialog.value || !!confirmDialog.value || attachmentOpen.value
@@ -1447,8 +1502,9 @@ function onKeydown(event: KeyboardEvent) {
     void saveCurrent()
   }
   if (meta && event.key.toLowerCase() === 'n' && !modalBlocking) {
+    // Always lets the user choose the note kind when more than one exists.
     event.preventDefault()
-    openCreateNote(null)
+    openCreateMenu()
   }
   if (meta && event.key.toLowerCase() === 'k' && !modalBlocking) {
     event.preventDefault()
@@ -1728,6 +1784,28 @@ defineExpose({
         </div>
 
         <div
+          v-if="createMenuOpen && creatableKinds.length > 1"
+          class="sidebar-menu create-menu"
+          role="menu"
+          aria-label="新建笔记"
+          @click.stop
+        >
+          <button
+            v-for="kind in creatableKinds"
+            :key="kind.id"
+            type="button"
+            role="menuitem"
+            class="sidebar-menu-item"
+            @click="createNoteOfKind(kind.id)"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 2.5h6l4 4V17H5zM11 2.8v4h3.7M8 10h4M8 13h4M16.5 12v5M14 14.5h5" />
+            </svg>
+            <span>{{ kind.newLabel }}</span>
+          </button>
+        </div>
+
+        <div
           v-if="sidebarMenuOpen && !showTrash && !searchOpen"
           class="sidebar-menu"
           role="menu"
@@ -1740,7 +1818,28 @@ defineExpose({
             </svg>
             <span>新建目录</span>
           </button>
-          <button type="button" role="menuitem" class="sidebar-menu-item" @click="createFromSidebar('note')">
+          <template v-if="creatableKinds.length > 1">
+            <button
+              v-for="kind in creatableKinds"
+              :key="kind.id"
+              type="button"
+              role="menuitem"
+              class="sidebar-menu-item"
+              @click="createFromSidebarKind(kind.id)"
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M5 2.5h6l4 4V17H5zM11 2.8v4h3.7M8 10h4M8 13h4M16.5 12v5M14 14.5h5" />
+              </svg>
+              <span>{{ kind.newLabel }}</span>
+            </button>
+          </template>
+          <button
+            v-else
+            type="button"
+            role="menuitem"
+            class="sidebar-menu-item"
+            @click="createFromSidebar('note')"
+          >
             <svg viewBox="0 0 20 20" aria-hidden="true">
               <path d="M5 2.5h6l4 4V17H5zM11 2.8v4h3.7M8 10h4M8 13h4M16.5 12v5M14 14.5h5" />
             </svg>
@@ -1847,9 +1946,9 @@ defineExpose({
           <li v-for="entry in trashEntries" :key="entry.trashRel" class="trash-entry-row">
             <TreeIcon :kind="entry.kind === 'dir' ? 'folder' : 'note'" />
             <span class="trash-copy">
-              <strong>{{ entry.name.replace(/\.md$/i, '') }}</strong>
+              <strong>{{ displayNameOf(entry.name) }}</strong>
               <span
-                v-if="entry.originalPath !== entry.name && entry.originalPath !== entry.name.replace(/\.md$/i, '')"
+                v-if="entry.originalPath !== entry.name && entry.originalPath !== displayNameOf(entry.name)"
               >{{ entry.originalPath }}</span>
               <span>{{ formatDeletedAt(entry.deletedAt) }}</span>
             </span>
@@ -1873,7 +1972,8 @@ defineExpose({
           :selected-path="selectedPath"
           :show-hint="noteGroup === 'list'"
           @open="openNote"
-          @add-note="openCreateNote"
+          :kinds="creatableKinds"
+          @add-note="onTreeAddNote"
           @add-dir="openCreateDir"
           @rename="openRename"
           @move="openMove"
@@ -2032,7 +2132,16 @@ defineExpose({
           <h2>从左侧打开一篇笔记</h2>
           <p class="empty-lede">打开后为只读预览；点「编辑」开始写作，切回预览前会先保存。</p>
           <div class="empty-actions">
-            <button type="button" class="primary" @click="createNoteRoot">新建笔记</button>
+            <template v-if="creatableKinds.length > 1">
+              <button
+                v-for="kind in creatableKinds"
+                :key="kind.id"
+                type="button"
+                class="primary"
+                @click="createNoteOfKind(kind.id)"
+              >{{ kind.newLabel }}</button>
+            </template>
+            <button v-else type="button" class="primary" @click="createNoteRoot">新建笔记</button>
             <button type="button" class="secondary" @click="openCreateDir(null)">新建目录</button>
           </div>
           <p class="empty-shortcuts">
@@ -2202,7 +2311,7 @@ defineExpose({
       :open="!!nameDialog"
       :title="
         nameDialog?.mode === 'note'
-          ? '新建笔记'
+          ? docKindById(nameDialog.docKind ?? MARKDOWN_KIND)?.label.replace('笔记', '') + '笔记'
           : nameDialog?.mode === 'dir'
             ? '新建目录'
             : '重命名'
@@ -2210,7 +2319,7 @@ defineExpose({
       :label="nameDialog?.mode === 'dir' ? '目录名' : '名称'"
       :initial-value="
         nameDialog?.mode === 'rename' && nameDialog.target
-          ? nameDialog.target.name.replace(/\.md$/i, '')
+          ? displayNameOf(nameDialog.target.name)
           : nameDialog?.mode === 'note'
             ? '未命名'
             : '新建文件夹'
@@ -2229,7 +2338,7 @@ defineExpose({
         moveDialog
           ? moveDialog.node.kind === 'dir'
             ? moveDialog.node.name
-            : moveDialog.node.name.replace(/\.md$/i, '')
+            : displayNameOf(moveDialog.node.name)
           : ''
       "
       :targets="moveTargets"

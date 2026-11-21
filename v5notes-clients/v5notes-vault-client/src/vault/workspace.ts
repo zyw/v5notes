@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { readDir, stat } from '@tauri-apps/plugin-fs'
 import { mkdir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { VaultJson } from '../models/vault'
+import { isNotePath } from './docKinds'
 import { normalizeVaultName, resolveCreateVaultRoot, VaultPathError } from '../path/identity'
 import {
   listRecentVaults,
@@ -161,7 +162,7 @@ async function newestNoteMtime(rootPath: string): Promise<number | null> {
         await walk(item.abs, depth + 1)
         continue
       }
-      if (!item.name.toLowerCase().endsWith('.md')) continue
+      if (!isNotePath(item.name)) continue
       visited += 1
       try {
         const info = await stat(item.abs)

@@ -1,4 +1,5 @@
 import { Plugin, type PluginManifest } from '@v5notes/vault-plugin-api'
+import { MARKDOWN_KIND } from '../../vault/docKinds'
 
 /** Always loaded. Users can switch away, but cannot disable this provider. */
 export const V5_EDITOR_ID = 'v5-editor'
@@ -20,6 +21,7 @@ export class V5EditorPlugin extends Plugin {
     this.registerEditorProvider({
       id: V5_EDITOR_ID,
       name: 'V5 编辑器',
+      docKind: MARKDOWN_KIND,
       mount(container, options) {
         return import('./v5EditorMount').then((mod) => mod.mountV5Editor(container, options))
       },

@@ -1,5 +1,7 @@
 /** Pure search scoring (no Tauri) — unit-tested. */
 
+import { displayNameOf } from './docKinds'
+
 export interface ScoredHit {
   path: string
   title: string
@@ -8,8 +10,7 @@ export interface ScoredHit {
 }
 
 function titleOf(path: string): string {
-  const leaf = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path
-  return leaf.replace(/\.md$/i, '')
+  return displayNameOf(path)
 }
 
 /** Pure helper: score + snippet for one note. */

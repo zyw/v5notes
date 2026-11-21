@@ -19,9 +19,12 @@ import { TemplatesPlugin, TEMPLATES_MANIFEST } from './core/templates'
 import { V5EditorPlugin, V5_EDITOR_ID, V5_EDITOR_MANIFEST } from './core/v5Editor'
 import { parseManifestJson, satisfiesMinAppVersion } from './manifest'
 import { loadSafeMode, saveSafeMode } from './safeMode'
+import { MARKDOWN_KIND, docKindById } from '../vault/docKinds'
 
 const APP_VERSION = '2.1.0'
 export const ACTIVE_EDITOR_STORAGE_KEY = 'v5notes.vault.active-editor'
+/** Per-kind active editor ids, `{ markdown: 'v5-editor', text: 'plain-text' }`. */
+export const ACTIVE_EDITORS_STORAGE_KEY = 'v5notes.vault.active-editors'
 
 export type PluginStatus = 'loaded' | 'failed' | 'disabled' | 'skipped-safe-mode'
 
@@ -69,7 +72,18 @@ export interface HostEditorProvider {
   pluginId: string
   id: string
   name: string
+  /** Document kind this provider owns; `markdown` for plugins that omit it. */
+  docKind: string
   mount: EditorProviderSpec['mount']
+}
+
+/** One row per document kind with a loaded provider: the kind's active editor. */
+export interface HostEditorKind {
+  docKind: string
+  /** Active provider for this kind. */
+  active: HostEditorProvider
+  /** Every loaded provider for this kind; `active` always belongs here. */
+  providers: HostEditorProvider[]
 }
 
 export interface VaultPluginPackage {
@@ -102,20 +116,76 @@ const CORE_REGISTRY: { manifest: PluginManifest; Factory: CoreFactory }[] = [
 
 const ALWAYS_ON_CORE = new Set<string>([V5_EDITOR_ID])
 
-function readStoredEditorId(): string {
+type ActiveEditorMap = Record<string, string>
+
+function readActiveEditorMap(): ActiveEditorMap {
   try {
-    return localStorage.getItem(ACTIVE_EDITOR_STORAGE_KEY) || V5_EDITOR_ID
+    const raw = localStorage.getItem(ACTIVE_EDITORS_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: ActiveEditorMap = {}
+    for (const [kind, id] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof id === 'string' && id) out[kind] = id
+    }
+    return out
   } catch {
-    return V5_EDITOR_ID
+    return {}
   }
 }
 
-function storeEditorId(id: string) {
+function storeActiveEditorMap(map: ActiveEditorMap) {
   try {
-    localStorage.setItem(ACTIVE_EDITOR_STORAGE_KEY, id)
+    localStorage.setItem(ACTIVE_EDITORS_STORAGE_KEY, JSON.stringify(map))
   } catch {
     /* private mode / non-browser tests */
   }
+}
+
+/** Pre-per-kind builds stored one id; keep it so the first run can migrate. */
+export function readLegacyEditorId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_EDITOR_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function clearLegacyEditorId() {
+  try {
+    localStorage.removeItem(ACTIVE_EDITOR_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** First loaded provider for a kind, preferring that kind's built-in provider. */
+function defaultProviderFor(docKind: string, all: Iterable<HostEditorProvider>): HostEditorProvider | null {
+  const spec = docKindById(docKind)
+  let fallback: HostEditorProvider | null = null
+  for (const editor of all) {
+    if (editor.docKind !== docKind) continue
+    if (spec && editor.id === spec.builtinProviderId) return editor
+    fallback ??= editor
+  }
+  return fallback
+}
+
+/** Built-in kinds first (Markdown, then text), plugin kinds after by id. */
+function kindOrder(docKind: string): number {
+  const builtin = ['markdown', 'text']
+  const index = builtin.indexOf(docKind)
+  return index === -1 ? builtin.length : index
+}
+
+/** Stored pick when it is still loaded for this kind, else that kind's default. */
+function resolveActive(docKind: string, all: Iterable<HostEditorProvider>): HostEditorProvider | null {
+  const stored = readActiveEditorMap()[docKind]
+  if (stored) {
+    const match = [...all].find(editor => editor.id === stored && editor.docKind === docKind)
+    if (match) return match
+  }
+  return defaultProviderFor(docKind, all)
 }
 
 function loadCjsPluginClass(source: string): typeof Plugin {
@@ -144,8 +214,10 @@ export interface PluginHost {
   listSettingTabs(): HostSettingTab[]
   listViews(): HostView[]
   listEditorProviders(): HostEditorProvider[]
-  getActiveEditor(): HostEditorProvider | null
-  getActiveEditorId(): string
+  /** One row per document kind that has a loaded provider, with its active editor. */
+  listEditorKinds(): HostEditorKind[]
+  getActiveEditor(docKind?: string): HostEditorProvider | null
+  getActiveEditorId(docKind?: string): string | null
   setActiveEditor(id: string): void
   setSafeMode(enabled: boolean): Promise<void>
   isSafeMode(): boolean
@@ -257,10 +329,13 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
         })
       },
       registerEditorProvider: (pluginId: string, spec: EditorProviderSpec) => {
+        // A provider owns exactly one document kind; plugins that omit it are Markdown.
+        const docKind = spec.docKind ?? MARKDOWN_KIND
         editors.set(spec.id, {
           pluginId,
           id: spec.id,
           name: spec.name,
+          docKind,
           mount: spec.mount,
         })
       },
@@ -390,6 +465,24 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     }
   }
 
+  /**
+   * Moves a pre-per-kind `active-editor` id into that provider's kind slot,
+   * then drops the old key. Runs once; an id that no longer loads is discarded.
+   */
+  function migrateLegacyActiveEditor() {
+    const legacyId = readLegacyEditorId()
+    if (!legacyId) return
+    const editor = editors.get(legacyId)
+    if (editor) {
+      const map = readActiveEditorMap()
+      if (!map[editor.docKind]) {
+        map[editor.docKind] = legacyId
+        storeActiveEditorMap(map)
+      }
+    }
+    clearLegacyEditorId()
+  }
+
   async function reload() {
     await unloadAll()
     infos.clear()
@@ -407,6 +500,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     async start() {
       safeMode = loadSafeMode()
       await reload()
+      migrateLegacyActiveEditor()
     },
     async stop() {
       await unloadAll()
@@ -435,16 +529,33 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     listEditorProviders() {
       return [...editors.values()].sort((a, b) => Number(b.id === V5_EDITOR_ID) - Number(a.id === V5_EDITOR_ID) || a.name.localeCompare(b.name))
     },
-    getActiveEditor() {
-      const stored = readStoredEditorId()
-      return editors.get(stored) || editors.get(V5_EDITOR_ID) || [...editors.values()][0] || null
+    listEditorKinds() {
+      const kinds = new Map<string, HostEditorProvider[]>()
+      for (const editor of editors.values()) {
+        const list = kinds.get(editor.docKind) ?? []
+        list.push(editor)
+        kinds.set(editor.docKind, list)
+      }
+      return [...kinds.entries()]
+        .map(([docKind, providers]) => ({
+          docKind,
+          active: resolveActive(docKind, providers)!,
+          providers,
+        }))
+        .sort((a, b) => kindOrder(a.docKind) - kindOrder(b.docKind) || a.docKind.localeCompare(b.docKind))
     },
-    getActiveEditorId() {
-      return this.getActiveEditor()?.id ?? V5_EDITOR_ID
+    getActiveEditor(docKind: string = MARKDOWN_KIND) {
+      return resolveActive(docKind, editors.values())
+    },
+    getActiveEditorId(docKind: string = MARKDOWN_KIND) {
+      return resolveActive(docKind, editors.values())?.id ?? null
     },
     setActiveEditor(id: string) {
-      if (!editors.has(id)) throw new Error(`没有编辑器 ${id}`)
-      storeEditorId(id)
+      const editor = editors.get(id)
+      if (!editor) throw new Error(`没有编辑器 ${id}`)
+      const map = readActiveEditorMap()
+      map[editor.docKind] = id
+      storeActiveEditorMap(map)
     },
     isSafeMode() {
       return safeMode

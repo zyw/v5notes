@@ -15,6 +15,12 @@ describe('scoreNoteHit (local search MVP)', () => {
     expect(scoreNoteHit('a.md', 'hello', 'xyz')).toBeNull()
   })
 
+  it('titles a plain-text note without its suffix', () => {
+    const hit = scoreNoteHit('工作/草稿.txt', '正文', '草稿')
+    expect(hit?.title).toBe('草稿')
+    expect(scoreNoteHit('工作/README.md', '正文', 'README')?.title).toBe('README')
+  })
+
   it('builds a body snippet around the match', () => {
     const hit = scoreNoteHit('note.md', '前面内容 关键字 后面内容', '关键字')
     expect(hit?.snippet).toContain('关键字')

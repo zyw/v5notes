@@ -6,6 +6,7 @@ import {
   type PickedImage,
   type PluginManifest,
 } from '@v5notes/vault-plugin-api'
+import { TEXT_KIND } from '../../vault/docKinds'
 
 export const PLAIN_EDITOR_ID = 'plain-text'
 
@@ -15,7 +16,7 @@ export const PLAIN_EDITOR_MANIFEST: PluginManifest = {
   kind: 'plugin',
   version: '1.0.0',
   minAppVersion: '0.1.0',
-  description: '可选的纯文本编辑器，用来替换默认 Markdown 编辑器。',
+  description: '纯文本笔记（.txt）的编辑器；与 Markdown 编辑器并存。',
   author: 'v5notes',
   permissions: ['editor:provide'],
   main: 'core',
@@ -26,6 +27,7 @@ export class PlainEditorPlugin extends Plugin {
     this.registerEditorProvider({
       id: PLAIN_EDITOR_ID,
       name: '纯文本',
+      docKind: TEXT_KIND,
       mount(container, options) {
         return mountPlainEditor(container, options)
       },

@@ -27,7 +27,8 @@ import { stripCssComments } from '../theme-host/cssValidate'
 import TOKENS_CSS from '../styles/tokens.css?raw'
 import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
-import type { HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
+import type { HostEditorKind, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
+import { docKindById } from '../vault/docKinds'
 import { loadSafeMode } from '../plugin-host/safeMode'
 import { importExtensionZip, listImportedExtensions, removeImportedExtension } from '../catalog'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -93,8 +94,8 @@ const prefs = ref<AppearancePrefs>(loadAppearancePrefs())
 const safeMode = ref(loadSafeMode())
 const themes = ref<ThemeInfo[]>([])
 const plugins = ref<PluginRuntimeInfo[]>([])
-const editors = ref<HostEditorProvider[]>([])
-const activeEditorId = ref('v5-editor')
+/** One row per document kind: its active editor and the providers it may swap to. */
+const editorKinds = ref<HostEditorKind[]>([])
 const settingTabs = ref<HostSettingTab[]>([])
 const catalogItems = ref<CatalogItem[]>([])
 /** 卸载确认：只记录目标，真正删除在确认后。 */
@@ -457,8 +458,7 @@ function refreshExtensionState() {
   const host = getPluginHost()
   plugins.value = listPluginInfos()
   hostReady.value = host !== null
-  editors.value = host?.listEditorProviders() ?? []
-  activeEditorId.value = host?.getActiveEditorId() ?? 'v5-editor'
+  editorKinds.value = host?.listEditorKinds() ?? []
   settingTabs.value = listHostSettingTabs()
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
 }
@@ -729,6 +729,10 @@ async function toggleSafeMode() {
   } finally {
     extensionBusy.value = false
   }
+}
+
+function editorKindLabel(docKind: string): string {
+  return docKindById(docKind)?.label ?? docKind
 }
 
 async function chooseEditor(id: string) {
@@ -1092,16 +1096,15 @@ watch(publishDraft, () => {
                 </ul>
                 <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
                 <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件列表中的扩展。</p>
-                <div v-if="editors.length" class="book-cmd-row">
-                  <p class="book-sub">笔记编辑器</p>
-                  <p class="book-small">同一时间只用一个，切换后回到笔记生效；预览和编辑仍复用当前实例。默认 V5 编辑器不可禁用。</p>
+                <div v-for="row in editorKinds" :key="row.docKind" class="book-cmd-row">
+                  <p class="book-sub">{{ editorKindLabel(row.docKind) }}</p>
                   <button
-                    v-for="ed in editors"
+                    v-for="ed in row.providers"
                     :key="ed.id"
                     class="book-cmd"
-                    :class="{ 'is-on': ed.id === activeEditorId }"
+                    :class="{ 'is-on': ed.id === row.active.id }"
                     type="button"
-                    :aria-pressed="ed.id === activeEditorId"
+                    :aria-pressed="ed.id === row.active.id"
                     :disabled="extensionBusy"
                     @click="chooseEditor(ed.id)"
                   >

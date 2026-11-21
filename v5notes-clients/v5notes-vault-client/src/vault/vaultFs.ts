@@ -13,6 +13,7 @@ import {
 import { normalizeVaultPath, toIdentityKey, VaultPathError } from '../path/identity'
 import { TRASH_DIR_REL, V5NOTES_DIR } from './skeleton'
 import { ATTACHMENT_DIR_REL } from './attachments'
+import { isNotePath } from './docKinds'
 import type { VaultTreeNode } from './types'
 
 const HIDDEN_ROOT_SKIP = new Set(['.git', '.DS_Store', 'Thumbs.db'])
@@ -64,8 +65,8 @@ async function abs(rootPath: string, relativePath: string): Promise<{ absPath: s
   return { absPath, displayPath }
 }
 
-function isMarkdown(name: string): boolean {
-  return name.toLowerCase().endsWith('.md')
+function isNote(name: string): boolean {
+  return isNotePath(name)
 }
 
 async function readChildren(rootPath: string, dirRel: string | null): Promise<VaultTreeNode[]> {
@@ -115,7 +116,7 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
         path: normalized.displayPath,
         identityKey: normalized.identityKey,
         name,
-        kind: isMarkdown(name) ? 'note' : 'file',
+        kind: isNote(name) ? 'note' : 'file',
       })
     }
   }

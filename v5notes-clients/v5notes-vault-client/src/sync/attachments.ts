@@ -3,6 +3,7 @@
  * OSS direct upload remains deferred; this slice uses PUT + base64Body.
  */
 
+import { isNotePath } from '../vault/docKinds'
 import { VaultQuotaRules } from './limits'
 
 export type SyncFileKind = 'note' | 'asset' | 'config'
@@ -40,7 +41,7 @@ export function extensionOf(path: string): string {
 export function classifyFileKind(relativePath: string): SyncFileKind {
   const lower = relativePath.replace(/\\/g, '/').toLowerCase()
   if (lower.startsWith('.v5notes/')) return 'config'
-  if (lower.endsWith('.md')) return 'note'
+  if (isNotePath(lower)) return 'note'
   return 'asset'
 }
 

@@ -5,6 +5,7 @@
 
 import { exists, mkdir, readDir, remove, rename } from '@tauri-apps/plugin-fs'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
+import { isNotePath } from './docKinds'
 import { TRASH_DIR_REL } from './skeleton'
 import { buildTrashRel, isMetaOrTrashPath } from './trashPaths'
 import { vaultFs } from './vaultFs'
@@ -105,7 +106,7 @@ export async function listTrash(rootPath: string): Promise<TrashEntry[]> {
           trashRel: childRel,
           originalPath: name,
           deletedAt,
-          kind: name.toLowerCase().endsWith('.md') ? 'note' : 'file',
+          kind: isNotePath(name) ? 'note' : 'file',
           name,
         })
       }

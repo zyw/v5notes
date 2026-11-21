@@ -227,10 +227,18 @@ export interface EditorSession {
   destroy(): void
 }
 
-/** Requires `editor:provide`. One active provider paints the note canvas. */
+/**
+ * Requires `editor:provide`. One active provider paints the note canvas per
+ * document kind; different kinds get their own create-note entry.
+ */
 export interface EditorProviderSpec {
   id: string
   name: string
+  /**
+   * Document kind this provider owns. Providers sharing a kind compete for one
+   * active slot. Defaults to `'markdown'` so existing plugins keep working.
+   */
+  docKind?: string
   mount(container: HTMLElement, options: EditorMountOptions): EditorSession | Promise<EditorSession>
 }
 

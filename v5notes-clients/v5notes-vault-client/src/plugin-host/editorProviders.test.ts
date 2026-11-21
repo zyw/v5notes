@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { createPluginHost } from './PluginHost'
 import type { CommunityPluginsFile } from './communityPlugins'
 import { saveSafeMode } from './safeMode'
+import { ACTIVE_EDITOR_STORAGE_KEY, ACTIVE_EDITORS_STORAGE_KEY } from './PluginHost'
+import { MARKDOWN_KIND, TEXT_KIND } from '../vault/docKinds'
 import { PLAIN_EDITOR_ID } from './core/plainEditor'
 import { V5_EDITOR_ID } from './core/v5Editor'
 import type { ThemeApi, VaultAdapter, WorkspaceApi } from '@v5notes/vault-plugin-api'
@@ -96,9 +98,9 @@ describe('editor providers', () => {
     const host = hostWith([PLAIN_EDITOR_ID])
     await host.start()
     host.setActiveEditor(PLAIN_EDITOR_ID)
-    expect(host.getActiveEditorId()).toBe(PLAIN_EDITOR_ID)
+    expect(host.getActiveEditorId(TEXT_KIND)).toBe(PLAIN_EDITOR_ID)
 
-    const provider = host.getActiveEditor()
+    const provider = host.getActiveEditor(TEXT_KIND)
     const el = document.createElement('div')
     document.body.append(el)
     let latest = '# hello'
@@ -170,6 +172,55 @@ describe('editor providers', () => {
     await host.start()
     expect(host.list().find((p) => p.id === 'alt-editor')?.status).toBe('failed')
     expect(host.listEditorProviders().some((ed) => ed.id === 'alt')).toBe(false)
+    await host.stop()
+  })
+  it('keeps one active editor per document kind', async () => {
+    saveSafeMode(false)
+    localStorage.removeItem(ACTIVE_EDITOR_STORAGE_KEY)
+    localStorage.removeItem(ACTIVE_EDITORS_STORAGE_KEY)
+    const host = hostWith([PLAIN_EDITOR_ID])
+    await host.start()
+
+    // Two kinds coexist; neither replaces the other.
+    expect(host.getActiveEditorId()).toBe(V5_EDITOR_ID)
+    expect(host.getActiveEditorId(TEXT_KIND)).toBe(PLAIN_EDITOR_ID)
+    expect(host.listEditorKinds().map((row) => row.docKind)).toEqual([MARKDOWN_KIND, TEXT_KIND])
+
+    // Selecting by id writes only that provider's kind slot.
+    host.setActiveEditor(PLAIN_EDITOR_ID)
+    expect(host.getActiveEditorId()).toBe(V5_EDITOR_ID)
+    expect(host.getActiveEditorId(TEXT_KIND)).toBe(PLAIN_EDITOR_ID)
+    await host.stop()
+  })
+
+  it('migrates a legacy single active-editor id into its kind slot', async () => {
+    saveSafeMode(false)
+    localStorage.removeItem(ACTIVE_EDITORS_STORAGE_KEY)
+    localStorage.setItem(ACTIVE_EDITOR_STORAGE_KEY, PLAIN_EDITOR_ID)
+    const host = hostWith([PLAIN_EDITOR_ID])
+    await host.start()
+
+    expect(host.getActiveEditorId(TEXT_KIND)).toBe(PLAIN_EDITOR_ID)
+    expect(localStorage.getItem(ACTIVE_EDITOR_STORAGE_KEY)).toBeNull()
+    expect(JSON.parse(localStorage.getItem(ACTIVE_EDITORS_STORAGE_KEY) || '{}')).toEqual({
+      [TEXT_KIND]: PLAIN_EDITOR_ID,
+    })
+    await host.stop()
+  })
+
+  it('drops a kind from the list once its only provider is disabled', async () => {
+    saveSafeMode(false)
+    localStorage.removeItem(ACTIVE_EDITOR_STORAGE_KEY)
+    localStorage.removeItem(ACTIVE_EDITORS_STORAGE_KEY)
+    const host = hostWith([PLAIN_EDITOR_ID])
+    await host.start()
+    expect(host.getActiveEditorId(TEXT_KIND)).toBe(PLAIN_EDITOR_ID)
+
+    await host.setEnabled(PLAIN_EDITOR_ID, false)
+    expect(host.getActiveEditorId(TEXT_KIND)).toBeNull()
+    expect(host.listEditorKinds().map((row) => row.docKind)).toEqual([MARKDOWN_KIND])
+    // Markdown is untouched by the text provider going away.
+    expect(host.getActiveEditorId()).toBe(V5_EDITOR_ID)
     await host.stop()
   })
 })
