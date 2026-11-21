@@ -118,7 +118,24 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       seen.add(b.id)
       out.push(b)
     }
-    for (const t of [...installedThemes, ...sampleCache.values()]) {
+    // 随应用内置的示例（林墨 / 晚晴）固定排在默认主题之后。
+    // 即使磁盘上存在同名目录，它们仍属于内置示例，不能当成“用户安装”的主题。
+    for (const sample of sampleCache.values()) {
+      seen.add(sample.id)
+      // 装了同名目录就用目录里的名字/版本，样式也以目录为准。
+      const t = installedThemes.find((v) => v.id === sample.id) ?? sample
+      out.push({
+        id: t.id,
+        name: t.name,
+        version: t.version,
+        description: t.description,
+        author: t.author,
+        builtin: false,
+        source: 'core',
+      })
+    }
+    // 其余在磁盘上的主题才是用户安装的，排在最后。
+    for (const t of installedThemes) {
       if (seen.has(t.id)) continue
       seen.add(t.id)
       out.push({
@@ -128,7 +145,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
         description: t.description,
         author: t.author,
         builtin: false,
-        source: installedThemes.some((v) => v.id === t.id) ? 'vault' : 'core',
+        source: 'vault',
       })
     }
     return out

@@ -8,7 +8,7 @@ export interface InstallResult {
   id: string
   kind: 'plugin' | 'theme'
   version: string
-  source: 'server' | 'bundled'
+  source: 'server' | 'bundled' | 'imported'
 }
 
 /**
@@ -26,7 +26,7 @@ export async function installCatalogItem(
 
 export async function installCatalogPackage(
   pkg: CatalogPackage,
-  source: 'server' | 'bundled' = 'bundled',
+  source: 'server' | 'bundled' | 'imported' = 'bundled',
 ): Promise<InstallResult> {
   if (pkg.fileSyncResource) {
     throw new Error('拒绝安装：包标记为 file-sync 资源')

@@ -151,6 +151,8 @@ export interface PluginHost {
   isSafeMode(): boolean
   getEnabledIds(): string[]
   setEnabled(pluginId: string, enabled: boolean): Promise<void>
+  /** Stop one plugin and drop what it registered; used before its files go away. */
+  unload(pluginId: string): Promise<void>
   enableCoreDefaults(): Promise<void>
   installSampleHelloWorld(source: { manifestJson: string; mainJs: string }): Promise<void>
 }
@@ -457,6 +459,10 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     },
     getEnabledIds() {
       return [...community.enabled]
+    },
+    async unload(pluginId: string) {
+      await unloadOne(pluginId)
+      infos.delete(pluginId)
     },
     async setEnabled(pluginId: string, enabled: boolean) {
       if (pluginId === V5_EDITOR_ID && !enabled) {

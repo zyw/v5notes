@@ -12,3 +12,9 @@ export { fetchCatalogList, fetchCatalogPackage } from './api'
 export { installCatalogItem, installCatalogPackage, type InstallResult } from './install'
 export { assertCatalogItemInstallable, hasPublishingTag } from './rejectPublishing'
 export { bundledCatalogList, bundledCatalogPackage } from './bundled'
+export {
+  importExtensionZip,
+  installImportedPackage,
+  listImportedExtensions,
+  removeImportedExtension,
+} from './imported'

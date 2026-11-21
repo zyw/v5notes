@@ -1,0 +1,20 @@
+{
+  "id": "import-test",
+  "name": "Import Test",
+  "kind": "plugin",
+  "version": "1.2.3",
+  "minAppVersion": "0.1.0",
+  "description": "导入流程测试：命令 / Ribbon / 设置页 / 全局设置读写",
+  "author": "v5notes",
+  "permissions": [
+    "ui:commands",
+    "ui:ribbon",
+    "ui:settings",
+    "vault:read"
+  ],
+  "tags": [
+    "demo",
+    "import"
+  ],
+  "main": "main.js"
+}

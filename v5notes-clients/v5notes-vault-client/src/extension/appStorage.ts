@@ -16,7 +16,7 @@
 
 import { appConfigDir, join } from '@tauri-apps/api/path'
 import { isTauri } from '@tauri-apps/api/core'
-import { mkdir, readDir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { mkdir, readDir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 
 export interface AppDirEntry {
   name: string
@@ -29,6 +29,8 @@ export interface AppFileStore {
   readText(path: string): Promise<string | null>
   writeText(path: string, data: string): Promise<void>
   mkdir(path: string): Promise<void>
+  /** 递归删除；待装扩展移出或安装完成后清掉暂存副本。 */
+  remove(path: string): Promise<void>
 }
 
 type MemoryEntry = { kind: 'file'; content: string } | { kind: 'dir' }
@@ -85,6 +87,12 @@ export function createMemoryAppStore(seed: Record<string, string> = {}): AppFile
     async mkdir(path) {
       ensureDir(path)
     },
+    async remove(path) {
+      const norm = normalizeAppPath(path)
+      for (const key of [...entries.keys()]) {
+        if (key === norm || key.startsWith(norm + '/')) entries.delete(key)
+      }
+    },
   }
 }
 
@@ -113,6 +121,13 @@ function createTauriAppStore(): AppFileStore {
     async writeText(path, data) {
       await api.mkdir(parentOf(path))
       await writeTextFile(path, data)
+    },
+    async remove(path) {
+      try {
+        await remove(path, { recursive: true })
+      } catch {
+        /* 已经不在了就是删除成功 */
+      }
     },
   }
   return api

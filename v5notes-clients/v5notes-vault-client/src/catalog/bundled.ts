@@ -87,13 +87,54 @@ const BUNDLED_PACKAGES: Record<
         null,
         2,
       )}\n`,
-      'theme.css': `:root {
+      'theme.css': `/* Catalog Moss 的每条规则都必须限定到本主题：注入的社区主题 CSS
+ * 叠在应用外壳之上，裸 :root 会让配色泄漏到其它主题。 */
+:root[data-community-theme='catalog-moss'] {
   --bg: #f3f6f1;
-  --surface: #ffffff;
+  --panel: #fbfdfa;
   --ink: #1e2a22;
   --muted: #5c6b60;
-  --accent: #3d6b4f;
   --line: #d5e0d6;
+  --accent: #3d6b4f;
+  --accent-hover: #31573f;
+  --surface: #e9efe9;
+  --danger: #8a3b2e;
+  --danger-bg: #f3e4e0;
+  --bg-glow-a: #e6eee7;
+  --bg-glow-b: #f0f5f0;
+  --vault: #3d6b4f !important;
+}
+
+:root[data-community-theme='catalog-moss'][data-color-mode='dark'] {
+  --bg: #141b16;
+  --panel: #1c2620;
+  --ink: #e3ece5;
+  --muted: #93a496;
+  --line: #2e3b32;
+  --accent: #7cb08c;
+  --accent-hover: #97c5a5;
+  --surface: #232e26;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --bg-glow-a: #1a221c;
+  --bg-glow-b: #151c17;
+  --vault: #7cb08c !important;
+}
+
+:root[data-community-theme='catalog-moss'][data-color-preference='dark']:not([data-color-mode='dark']) {
+  --bg: #141b16;
+  --panel: #1c2620;
+  --ink: #e3ece5;
+  --muted: #93a496;
+  --line: #2e3b32;
+  --accent: #7cb08c;
+  --accent-hover: #97c5a5;
+  --surface: #232e26;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --bg-glow-a: #1a221c;
+  --bg-glow-b: #151c17;
+  --vault: #7cb08c !important;
 }
 `,
     },

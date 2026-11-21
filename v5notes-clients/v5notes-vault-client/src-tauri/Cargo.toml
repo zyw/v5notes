@@ -17,6 +17,8 @@ serde_json = "1"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
 keyring = "3"
+# 导入扩展包：只解开本地 zip 读成文本文件，不做压缩写入。
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-deep-link = "2"

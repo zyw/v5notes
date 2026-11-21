@@ -29,11 +29,15 @@ import type { OpenedVault } from '../vault/types'
 import type { ThemeInfo } from '@v5notes/vault-plugin-api'
 import type { HostEditorProvider, HostSettingTab, PluginRuntimeInfo } from '../plugin-host'
 import { loadSafeMode } from '../plugin-host/safeMode'
+import { importExtensionZip, listImportedExtensions, removeImportedExtension } from '../catalog'
+import { open } from '@tauri-apps/plugin-dialog'
 import {
-  ensureSampleExtensions,
   getPluginHost,
   getThemeHost,
   installFromCatalog,
+  installFromPending,
+  uninstallPlugin,
+  uninstallTheme,
   listHostSettingTabs,
   listPluginInfos,
   setSafeModeAndReload,
@@ -93,6 +97,12 @@ const editors = ref<HostEditorProvider[]>([])
 const activeEditorId = ref('v5-editor')
 const settingTabs = ref<HostSettingTab[]>([])
 const catalogItems = ref<CatalogItem[]>([])
+/** 卸载确认：只记录目标，真正删除在确认后。 */
+const uninstallPluginTarget = ref<PluginRuntimeInfo | null>(null)
+const uninstallThemeTarget = ref<ThemeInfo | null>(null)
+const uninstallBusy = ref(false)
+/** 本机导入、还没安装的扩展包；它们排在同一张列表的最前面。 */
+const importedItems = ref<CatalogItem[]>([])
 const catalogSource = ref<'server' | 'bundled' | ''>('')
 const catalogBusy = ref(false)
 const extensionBusy = ref(false)
@@ -136,7 +146,6 @@ const orderedVaults = ref<{ rootPath: string; name: string }[]>([])
 const vaultRows = computed(() =>
   buildSettingsVaultRows(orderedVaults.value, activeVaultRow.value),
 )
-const hasVault = computed(() => Boolean(props.vault?.rootPath))
 
 const publishOptions: { id: OfficialPublishVisibility; label: string }[] = [
   { id: 'private', label: '私有' },
@@ -366,8 +375,22 @@ const activeColorModeLabel = computed(
   () => colorModes.find((m) => m.id === prefs.value.colorMode)?.label ?? '跟随系统',
 )
 
+/** 已渲染过内容的 tab：key → 当时写入的宿主节点，用节点身份挡住重复渲染。 */
+const renderedTabs = new Map<string, HTMLElement>()
+
 function setPluginTabHost(pluginId: string, tabId: string, el: unknown): void {
-  pluginTabHosts.value[pluginId + ':' + tabId] = (el as HTMLElement | null) ?? null
+  const key = pluginId + ':' + tabId
+  const node = (el as HTMLElement | null) ?? null
+  pluginTabHosts.value[key] = node
+  const tab = settingTabs.value.find((t) => t.pluginId === pluginId && t.id === tabId)
+  if (!node) {
+    // 插件被禁用或卸载后 tab 已不在注册表里，连同渲染标记一起清掉。
+    if (!tab) renderedTabs.delete(key)
+    return
+  }
+  if (!tab || renderedTabs.get(key) === node) return
+  renderedTabs.set(key, node)
+  tab.display(node)
 }
 
 /** An empty plugin list means different things before and after the host starts. */
@@ -402,11 +425,23 @@ function pickVaultColor(id: string) {
   })
 }
 
+/**
+ * 主题列表顺序：内置（默认 / 暮色）→ 随应用内置的示例 → 用户安装的。
+ * 安装的排在最后，因为它们才是会变、会卸载的那一组。
+ */
+const THEME_SOURCE_ORDER: Record<ThemeInfo['source'], number> = { builtin: 0, core: 1, vault: 2 }
+
+function sortThemes(list: ThemeInfo[]): ThemeInfo[] {
+  return [...list].sort(
+    (a, b) => (THEME_SOURCE_ORDER[a.source] ?? 9) - (THEME_SOURCE_ORDER[b.source] ?? 9),
+  )
+}
+
 function refreshExtensionState() {
   const th = getThemeHost()
   if (th) {
     prefs.value = th.getPrefs()
-    themes.value = th.list()
+    themes.value = sortThemes(th.list())
     themeError.value = th.getLastError()
   } else {
     prefs.value = loadAppearancePrefs()
@@ -428,12 +463,44 @@ function refreshExtensionState() {
   safeMode.value = getPluginHost()?.isSafeMode() ?? loadSafeMode()
 }
 
+/** 导入的待装包排在前面；同 id 已在待装区时以 pending 那份为准。 */
+const catalogRows = computed<CatalogItem[]>(() => {
+  const imported = new Set(importedItems.value.map((i) => i.id))
+  return [...importedItems.value, ...catalogItems.value.filter((i) => !imported.has(i.id))]
+})
+
+function isPendingImport(item: CatalogItem): boolean {
+  return importedItems.value.some((i) => i.id === item.id)
+}
+
+/**
+ * 本条的安装状态：按它自己的 id 去真实的已装插件 / 主题列表里查。
+ * 以前用一份被整张列表共享的 id 数组来判断，装一条就可能连带影响其它行。
+ */
+function isCatalogInstalled(item: CatalogItem): boolean {
+  if (!item.id) return false
+  if (item.kind === 'plugin') return plugins.value.some((p) => p.id === item.id)
+  // 只有用户装到磁盘上的主题才可卸载；内置示例本来就在，不算这条装过。
+  return themes.value.some((t) => t.id === item.id && t.source === 'vault')
+}
+
+/**
+ * 目录行的按钮：未装只有「安装」，装好后按钮消失（不再提供行内卸载）。
+ * 卸载仍走各自的既有入口：主题卡的删除、已安装扩展里的插件卸载。
+ * 导入的待装包保持原行为：始终只有「安装」，装完从待装区消失。
+ */
+function catalogAction(item: CatalogItem): 'install' | 'none' {
+  if (isPendingImport(item)) return 'install'
+  return isCatalogInstalled(item) ? 'none' : 'install'
+}
+
 async function loadCatalog() {
   catalogBusy.value = true
   try {
-    const { list, source } = await fetchCatalogList()
-    catalogItems.value = list.items
-    catalogSource.value = source
+    const [catalog, pending] = await Promise.all([fetchCatalogList(), listImportedExtensions()])
+    catalogItems.value = catalog.list.items
+    catalogSource.value = catalog.source
+    importedItems.value = pending
   } catch (error) {
     catalogMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -441,18 +508,90 @@ async function loadCatalog() {
   }
 }
 
-async function installCatalog(item: CatalogItem) {
-  if (!hasVault.value) {
-    catalogMessage.value = '请先打开 Vault'
-    return
+/** 「安装」：本机导入的从 pending 装，种子/服务器的走 catalog。 */
+/** 卸载：核心插件拿不到入口，这里再挡一次。 */
+async function confirmUninstallPlugin() {
+  const target = uninstallPluginTarget.value
+  if (!target) return
+  uninstallBusy.value = true
+  pluginMessage.value = ''
+  try {
+    await uninstallPlugin(target.id, props.vault?.rootPath ?? null)
+    uninstallPluginTarget.value = null
+    refreshExtensionState()
+  } catch (error) {
+    uninstallPluginTarget.value = null
+    pluginMessage.value = error instanceof Error ? error.message : String(error)
+    // 不管成败都重新对一次真实状态：文件可能已经删掉。
+    refreshExtensionState()
+  } finally {
+    uninstallBusy.value = false
   }
+}
+
+async function confirmUninstallTheme() {
+  const target = uninstallThemeTarget.value
+  if (!target) return
+  uninstallBusy.value = true
+  themeError.value = null
+  try {
+    await uninstallTheme(target.id)
+    uninstallThemeTarget.value = null
+    refreshExtensionState()
+  } catch (error) {
+    uninstallThemeTarget.value = null
+    themeError.value = error instanceof Error ? error.message : String(error)
+    refreshExtensionState()
+  } finally {
+    uninstallBusy.value = false
+  }
+}
+
+async function installCatalog(item: CatalogItem) {
   extensionBusy.value = true
   catalogMessage.value = ''
   try {
-    await installFromCatalog(item)
+    if (importedItems.value.some((i) => i.id === item.id)) {
+      await installFromPending(item.id)
+      importedItems.value = importedItems.value.filter((i) => i.id !== item.id)
+    } else {
+      await installFromCatalog(item)
+    }
     refreshExtensionState()
-    // The installed item now appears under 已安装扩展; the row keeps its own outcome.
+    // 装好后这一行的按钮切到「卸载」，与其它行无关。
     catalogMessage.value = `已安装 ${item.name}`
+  } catch (error) {
+    catalogMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    extensionBusy.value = false
+  }
+}
+
+/** 选择一个 zip 放进待装列表；此时还没有装进「插件与安全」。 */
+async function importExtensionZipFile() {
+  extensionBusy.value = true
+  catalogMessage.value = ''
+  try {
+    const picked = await open({ multiple: false, directory: false, title: '导入扩展包', filters: [{ name: '扩展包', extensions: ['zip'] }] })
+    if (!picked || Array.isArray(picked)) return
+    const item = await importExtensionZip(picked)
+    importedItems.value = [...importedItems.value.filter((i) => i.id !== item.id), item]
+    catalogMessage.value = `已导入 ${item.name}`
+  } catch (error) {
+    catalogMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    extensionBusy.value = false
+  }
+}
+
+/** 把导入错了的包移出列表；不影响已安装的扩展。 */
+async function discardImported(item: CatalogItem) {
+  extensionBusy.value = true
+  catalogMessage.value = ''
+  try {
+    await removeImportedExtension(item.id)
+    importedItems.value = importedItems.value.filter((i) => i.id !== item.id)
+    catalogMessage.value = `已移出 ${item.name}`
   } catch (error) {
     catalogMessage.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -486,6 +625,15 @@ const SAMPLE_THEME_META: Record<string, { name: string; description: string }> =
     name: WANQING_MANIFEST.name,
     description: WANQING_MANIFEST.description,
   },
+}
+
+/**
+ * 只有用户安装的主题（extensions/themes/ 里、且不是内置示例）才能卸载。
+ * builtin（默认 / 暮色）与内置示例（林墨 / 晚晴）随应用提供，不给卸载入口；
+ * 内置示例即使曾被写过目录，ThemeHost 也会把它归到 core 而不是 vault。
+ */
+function isRemovableTheme(theme: ThemeInfo): boolean {
+  return !theme.builtin && theme.source === 'vault'
 }
 
 function themeLabel(theme: ThemeInfo): string {
@@ -609,19 +757,6 @@ async function togglePlugin(id: string, enabled: boolean) {
   extensionBusy.value = true
   try {
     await host.setEnabled(id, enabled)
-    refreshExtensionState()
-  } catch (error) {
-    pluginMessage.value = error instanceof Error ? error.message : String(error)
-  } finally {
-    extensionBusy.value = false
-  }
-}
-
-async function installSamples() {
-  extensionBusy.value = true
-  pluginMessage.value = ''
-  try {
-    await ensureSampleExtensions()
     refreshExtensionState()
   } catch (error) {
     pluginMessage.value = error instanceof Error ? error.message : String(error)
@@ -754,14 +889,13 @@ watch(publishDraft, () => {
           <button type="button" class="side-nav-item" :class="{ on: scope === 'global' }" @click="scope = 'global'"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>账户</button>
           <a class="side-nav-item" href="#g-appearance"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg>主题与明暗</a>
           <a class="side-nav-item" href="#g-plugins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>插件与安全</a>
-          <a class="side-nav-item" href="#g-security"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg>安全模式</a>
-          <a class="side-nav-item" href="#g-catalog"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>插件目录</a>
+          <a class="side-nav-item" href="#g-catalog"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>插件列表</a>
           <a class="side-nav-item" href="#g-about"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>关于本机</a>
         </div>
       </div>
 
       <div v-if="vaultRows.length" class="side-group">
-        <p class="side-group-label">库列表</p>
+        <p class="side-group-label">库设置</p>
         <div class="side-vaults">
           <button
             v-for="row in vaultRows"
@@ -844,26 +978,43 @@ watch(publishDraft, () => {
               </div>
               <div class="p-body">
                 <div class="book-theme-grid" role="group" aria-label="主题">
-                  <button
+                  <div
                     v-for="theme in themes"
                     :key="theme.id"
                     class="book-theme"
-                    type="button"
-                    :class="{ on: prefs.theme === theme.id }"
-                    :disabled="safeMode && !theme.builtin"
-                    @click="setTheme(theme.id)"
+                    :class="{ on: prefs.theme === theme.id, 'is-removable': isRemovableTheme(theme) }"
                   >
-                    <div
-                      class="book-theme-preview"
-                      :style="themePreviewStyle(theme.id)"
-                      :data-mode="previewDark ? 'dark' : 'light'"
-                      aria-hidden="true"
+                    <button
+                      class="book-theme-pick"
+                      type="button"
+                      :disabled="safeMode && !theme.builtin"
+                      :aria-pressed="prefs.theme === theme.id"
+                      @click="setTheme(theme.id)"
                     >
-                      <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
+                      <div
+                        class="book-theme-preview"
+                        :style="themePreviewStyle(theme.id)"
+                        :data-mode="previewDark ? 'dark' : 'light'"
+                        aria-hidden="true"
+                      >
+                        <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
+                      </div>
+                      <div class="book-theme-name">{{ themeLabel(theme) }}<span class="check">✓</span></div>
+                      <div v-if="themeDescription(theme)" class="book-theme-desc">{{ themeDescription(theme) }}</div>
+                    </button>
+                    <div v-if="isRemovableTheme(theme)" class="book-theme-foot">
+                      <button
+                        class="book-row-discard book-theme-discard"
+                        type="button"
+                        :disabled="extensionBusy || uninstallBusy"
+                        :aria-label="`卸载主题 ${themeLabel(theme)}`"
+                        :title="`卸载主题 ${themeLabel(theme)}`"
+                        @click="uninstallThemeTarget = theme"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.4h10"/><path d="M6.4 4.4V3.2h3.2v1.2"/><path d="M4.4 4.4l.6 8.1a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.6-8.1"/><path d="M6.8 6.8v4.4M9.2 6.8v4.4"/></svg>
+                      </button>
                     </div>
-                    <div class="book-theme-name">{{ themeLabel(theme) }}<span class="check">✓</span></div>
-                    <div v-if="themeDescription(theme)" class="book-theme-desc">{{ themeDescription(theme) }}</div>
-                  </button>
+                  </div>
                 </div>
                 <div class="book-row">
                   <div class="book-row-copy">
@@ -884,13 +1035,19 @@ watch(publishDraft, () => {
                 <h3 id="g-plugins-title">插件与安全</h3>
               </div>
               <div class="p-body">
-                <div class="book-subhead">
-                  <strong>已安装扩展</strong>
-                  <button class="book-ghost book-ghost--sm" type="button" :disabled="extensionBusy" @click="installSamples">
-                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-                    安装示例扩展
-                  </button>
+                <div class="book-list-row book-guard-row">
+                  <div class="book-plugin-main">
+                    <div class="book-plugin-line">
+                      <strong>安全模式</strong>
+                      <span class="book-plugin-state" :class="safeMode ? 'on' : 'off'"><i aria-hidden="true"></i>{{ safeMode ? '仅核心' : '关' }}</span>
+                    </div>
+                    <div class="book-plugin-perms">
+                      <span class="book-plugin-perm">社区扩展与社区主题暂停加载；默认 / 暮色与明暗照常生效</span>
+                    </div>
+                  </div>
+                  <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
                 </div>
+                <p class="book-sub book-guard-gap">已安装扩展</p>
                 <ul v-if="plugins.length" class="book-list">
                   <li v-for="p in plugins" :key="p.id" class="book-list-row">
                     <div class="book-plugin-main">
@@ -909,19 +1066,32 @@ watch(publishDraft, () => {
                       </div>
                       <div v-if="p.error" class="book-danger">{{ p.error }}</div>
                     </div>
-                    <button
-                      v-if="p.id !== 'v5-editor'"
-                      class="book-row-btn"
-                      :class="{ on: p.status !== 'loaded' }"
-                      type="button"
-                      :disabled="extensionBusy || (safeMode && !p.core)"
-                      @click="togglePlugin(p.id, p.status !== 'loaded')"
-                    >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
-                    <span v-else class="book-plugin-fixed">始终启用</span>
+                    <div class="book-row-actions">
+                      <button
+                        v-if="!p.core"
+                        class="book-row-discard"
+                        type="button"
+                        :disabled="extensionBusy || uninstallBusy"
+                        :aria-label="`卸载 ${p.name}`"
+                        :title="`卸载 ${p.name}`"
+                        @click="uninstallPluginTarget = p"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.4h10"/><path d="M6.4 4.4V3.2h3.2v1.2"/><path d="M4.4 4.4l.6 8.1a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.6-8.1"/><path d="M6.8 6.8v4.4M9.2 6.8v4.4"/></svg>
+                      </button>
+                      <button
+                        v-if="p.id !== 'v5-editor'"
+                        class="book-row-btn"
+                        :class="{ on: p.status !== 'loaded' }"
+                        type="button"
+                        :disabled="extensionBusy || (safeMode && !p.core)"
+                        @click="togglePlugin(p.id, p.status !== 'loaded')"
+                      >{{ p.status === 'loaded' ? '禁用' : '启用' }}</button>
+                      <span v-else class="book-plugin-fixed">始终启用</span>
+                    </div>
                   </li>
                 </ul>
                 <p v-if="!hostReady" class="book-small">扩展宿主未能启动。</p>
-                <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件目录中的扩展。</p>
+                <p v-else-if="!plugins.length" class="book-small">暂无已安装扩展，可安装下方插件列表中的扩展。</p>
                 <div v-if="editors.length" class="book-cmd-row">
                   <p class="book-sub">笔记编辑器</p>
                   <p class="book-small">同一时间只用一个，切换后回到笔记生效；预览和编辑仍复用当前实例。默认 V5 编辑器不可禁用。</p>
@@ -949,55 +1119,55 @@ watch(publishDraft, () => {
               </div>
             </section>
 
-            <section class="panel" id="g-security" aria-labelledby="g-security-title">
-              <div class="p-head">
-                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg></span>
-                <h3 id="g-security-title">安全模式</h3>
-                <span class="state">{{ safeMode ? '开' : '关' }}</span>
-              </div>
-              <div class="p-body">
-                <div class="book-pref-row">
-                  <div class="book-pref-copy">
-                    <strong>安全模式</strong>
-                    <span>{{ safeMode ? '已开启：只加载核心插件，社区扩展暂停；默认 / 暮色与明暗照常生效。' : '只加载核心插件，社区扩展与社区主题暂停；默认 / 暮色与明暗不受影响。对所有库生效。' }}</span>
-                  </div>
-                  <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
-                </div>
-              </div>
-            </section>
-
             <section class="panel" id="g-catalog" aria-labelledby="g-catalog-title">
               <div class="p-head">
                 <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg></span>
-                <h3 id="g-catalog-title">插件目录</h3>
+                <h3 id="g-catalog-title">插件列表</h3>
                 <span class="state">{{ catalogSource === 'server' ? '服务器' : '本地种子' }}</span>
+                <button type="button" class="p-head-action" :disabled="extensionBusy" aria-label="导入扩展包" title="导入扩展包" @click="importExtensionZipFile">
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 9.6v2.2a1 1 0 0 0 1 1h8.8a1 1 0 0 0 1-1V9.6"/><path d="M8 2.6v6.2M5.3 6.1 8 8.8l2.7-2.7"/></svg>
+                </button>
                 <button type="button" class="p-head-action" :disabled="catalogBusy" :aria-label="catalogBusy ? '刷新中' : '刷新目录'" :title="catalogBusy ? '刷新中' : '刷新目录'" @click="loadCatalog">
-                  <svg viewBox="0 0 16 16" aria-hidden="true" :class="{ spinning: catalogBusy }"><path d="M3.2 8a4.8 4.8 0 0 1 8.2-3.4M12.8 8a4.8 4.8 0 0 1-8.2 3.4"/><path d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"/></svg>
+                  <svg viewBox="0 0 16 16" aria-hidden="true" :class="{ spinning: catalogBusy }"><path d="M12.9 8.5A5.1 5.1 0 1 1 11.2 4.1"/><path d="M11.6 1.9v3h-3"/></svg>
                 </button>
               </div>
               <div class="p-body">
-                <div v-if="catalogItems.length" class="book-catalog-list">
-                  <div v-for="item in catalogItems" :key="item.id" class="book-catalog-row">
+                <div v-if="catalogRows.length" class="book-catalog-list">
+                  <div v-for="item in catalogRows" :key="item.id" class="book-catalog-row">
                     <div>
                       <strong>{{ item.name }}</strong><span class="book-mono"> · {{ item.kind }} · {{ item.version }}</span>
                       <p>{{ item.description }}</p>
                       <div class="book-tags">
+                        <span v-if="importedItems.some(i => i.id === item.id)" class="book-tag book-tag--local">本机</span>
                         <span v-for="tag in item.tags || []" :key="tag" class="book-tag">{{ tag }}</span>
                         <span v-if="item.networkAllowlist?.length" class="book-tag">allowlist: {{ item.networkAllowlist.join(', ') }}</span>
                       </div>
                     </div>
-                    <button
-                      class="book-ghost book-ghost--sm"
-                      type="button"
-                      :disabled="extensionBusy || safeMode || !hasVault"
-                      :title="safeMode ? '安全模式下不可安装' : (!hasVault ? '选择库后返回这里安装' : undefined)"
-                      @click="installCatalog(item)"
-                    >
-                      安装
-                    </button>
+                    <div class="book-catalog-actions">
+                      <button
+                        v-if="importedItems.some(i => i.id === item.id)"
+                        class="book-row-discard"
+                        type="button"
+                        :disabled="extensionBusy"
+                        aria-label="移出列表"
+                        title="移出列表"
+                        @click="discardImported(item)"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2"/></svg>
+                      </button>
+                      <button
+                        v-if="catalogAction(item) === 'install'"
+                        class="book-ghost book-ghost--sm"
+                        type="button"
+                        :disabled="extensionBusy || safeMode"
+                        :title="safeMode ? '安全模式下不可安装' : undefined"
+                        @click="installCatalog(item)"
+                      >
+                        安装
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <p v-if="!hasVault" class="book-small">安装需要先打开一个库，装好后所有库共用。</p>
                 <p v-if="catalogMessage" class="book-small" role="status">{{ catalogMessage }}</p>
               </div>
             </section>
@@ -1180,6 +1350,26 @@ watch(publishDraft, () => {
       </div>
     </div>
 
+    <ConfirmDialog
+      :open="uninstallPluginTarget !== null"
+      :title="`卸载「${uninstallPluginTarget?.name ?? ''}」？`"
+      message="将从这台机器删除插件文件、全局设置，以及当前库中它的设置。该插件在所有库中都不可用，笔记不受影响。"
+      confirm-label="卸载"
+      danger
+      :busy="uninstallBusy"
+      @cancel="uninstallPluginTarget = null"
+      @confirm="confirmUninstallPlugin"
+    />
+    <ConfirmDialog
+      :open="uninstallThemeTarget !== null"
+      :title="`卸载主题「${uninstallThemeTarget ? themeLabel(uninstallThemeTarget) : ''}」？`"
+      :message="`将从这台机器删除这个主题的文件。${uninstallThemeTarget && prefs.theme === uninstallThemeTarget.id ? '当前正在使用它，卸载后会切回「默认」。' : '已安装的笔记不受影响。'}`"
+      confirm-label="卸载"
+      danger
+      :busy="uninstallBusy"
+      @cancel="uninstallThemeTarget = null"
+      @confirm="confirmUninstallTheme"
+    />
     <ConfirmDialog
       :open="deleteOpen"
       :title="`删除「${vault?.name ?? ''}」？`"
@@ -1549,18 +1739,16 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-danger-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 
 /* 库设置页：库名 + 路径在左、页签靠右，下面一条四块状态卡，一次只展开一块 */
-/* 库页占满整栏：设置页本身再宽，也不把它缩成一条居中窄条。
-   纵向排列，与全局设置一致：库色 → 同步 → 备份与迁移 → 发布 → 删除库。 */
+/* 库页与全局设置同一宽度：由 .settings-inner 收窄到 860px 并居中。
+   纵向排列：库色 → 同步 → 备份与迁移 → 发布 → 删除库。 */
 .vault-page {
   display: flex;
   flex-direction: column;
   gap: 18px;
   width: 100%;
-  max-width: none;
+  min-width: 0;
 }
 .vault-page > * { min-width: 0; }
-/* 打开库页时，内层不再按全局的 860px 收窄 */
-.settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
 .vault-head {
   display: flex;
   align-items: center;
@@ -1847,6 +2035,8 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-action:hover:not(:disabled) .book-action-go { color: var(--accent); }
 .book-action.open .book-action-chevron { transform: rotate(90deg); color: var(--accent); }
 .book-actions .book-note { margin: 0; border-radius: 0 0 8px 8px; border-top: 0; }
+.book-guard-row { margin-top: -2px; }
+.book-guard-gap { display: block; margin-top: 14px; }
 .book-subhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .book-subhead strong { font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
 .book-pref-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -2014,7 +2204,10 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-row-btn.on:hover:not(:disabled) {
   border-color: var(--accent-hover);
   background: var(--accent-hover);
+  /* 通用 :hover 会把文字压成深色，这里必须还原，否则深绿底上看不见。 */
+  color: #fffefa;
 }
+:root[data-color-mode='dark'] .book-row-btn.on:hover:not(:disabled) { color: #10231b; }
 .book-row-btn:disabled { opacity: 0.5; cursor: default; }
 .book-plugin-fixed { flex: none; font-size: 10px; color: color-mix(in srgb, var(--muted) 85%, transparent); }
 .book-cmd-row { margin-top: 12px; }
@@ -2024,13 +2217,80 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-cmd span { display: block; margin-top: 1px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
 .book-plugin-tabs { margin-top: 12px; }
 .book-plugin-tab { padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
-.book-plugin-tab strong { font-size: 10px; font-weight: 600; }
+.book-plugin-tab strong { font-size: 11px; font-weight: 600; }
 .book-plugin-tab-host { margin-top: 6px; font-size: 10px; color: var(--muted); }
+.book-plugin-tab-host p { margin: 0 0 4px; font-size: 10px; line-height: 1.5; }
+.book-plugin-tab-host > :last-child { margin-bottom: 0; }
 .book-catalog-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent); }
 .book-catalog-row strong { font-size: 11px; font-weight: 600; }
 .book-catalog-row p { margin: 4px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
 .book-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
 .book-tag { padding: 1px 4px; border: 1px solid color-mix(in srgb, var(--line) 90%, transparent); border-radius: 3px; font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+/* 本机导入的包：来源与种子条目不同，只在行上标出这一点。 */
+.book-tag--local { border-color: color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent); }
+.book-catalog-actions { display: flex; align-items: center; gap: 4px; }
+/* 插件行右侧：卸载是次要动作，悬停/聚焦才出现，不抢禁用/启用。
+   但一出现就是红底白图标——悬停到行上即可见，不必再移进图标。 */
+.book-row-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.book-list-row:hover .book-row-discard,
+.book-list-row:focus-within .book-row-discard {
+  opacity: 1;
+  color: #fffefa;
+  background: var(--danger);
+}
+/* 卸载按钮悬停才出现，固定在卡片右下角；名称与描述在右侧让出它的宽度，
+   文字不会从按钮底下穿过去，卡片高度也不因它变化。 */
+.book-theme.is-removable .book-theme-name,
+.book-theme.is-removable .book-theme-desc { padding-right: 30px; }
+.book-theme-foot {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: flex;
+}
+.book-theme:hover .book-theme-discard,
+.book-theme:focus-within .book-theme-discard,
+.book-theme-discard:focus-visible {
+  opacity: 1;
+  color: #fffefa;
+  background: var(--danger);
+}
+/* 移出列表只在悬停/聚焦时出现：它是导入行的次要动作。 */
+.book-row-discard {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+/* 悬停到行上就变红：这一下会删东西，视觉上不该是轻描淡写的灰。 */
+.book-catalog-row:hover .book-row-discard,
+.book-row-discard:focus-visible {
+  opacity: 1;
+  color: #fffefa;
+  background: var(--danger);
+}
+.book-row-discard:focus-visible { outline: none; }
+.book-row-discard:disabled { cursor: default; opacity: 0; }
+.book-row-discard svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* 主题卡右下角的卸载按钮：与名称/描述行同高，悬停时浮现在预留的右侧空白里。 */
+.book-theme-discard { width: 26px; height: 22px; }
+.book-theme-discard svg { width: 13px; height: 13px; }
 
 .book-about-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .book-about-check {
@@ -2079,6 +2339,9 @@ a.side-nav-item:visited { color: var(--muted); }
 
 .book-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .book-theme {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   padding: 7px;
   border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
@@ -2087,12 +2350,30 @@ a.side-nav-item:visited { color: var(--muted); }
   text-align: left;
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.book-theme:hover:not(:disabled) { border-color: color-mix(in srgb, var(--muted) 55%, var(--line)); }
+.book-theme:hover { border-color: color-mix(in srgb, var(--muted) 55%, var(--line)); }
 .book-theme.on {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
-.book-theme:disabled { opacity: 0.55; cursor: default; }
+/* 卡片里真正可点的部分是上半块；卸载按钮是独立的第二个控件。 */
+.book-theme-pick {
+  display: block;
+  flex: 1;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.book-theme-pick:disabled { opacity: 0.55; cursor: default; }
+.book-theme-pick:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
 /*
  * Each card paints from its own theme tokens (--pv-*, set inline from the
  * theme's light/dark palette), never from the colours currently on screen —
@@ -2152,12 +2433,19 @@ a.side-nav-item:visited { color: var(--muted); }
   font-weight: 600;
   color: var(--ink);
 }
+/* 选中标记固定在卡片右上角，压在预览缩略图的右上角上。
+   它现在落在主题自己的预览底色上，所以用不透明的卡片底色 + 细边框，
+   深色/浅色主题的预览里都看得清。 */
 .book-theme-name .check {
-  margin-left: auto;
+  position: absolute;
+  top: 10px;
+  right: 10px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--muted) 42%, transparent);
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
   display: grid;
   place-items: center;
   color: transparent;
@@ -2193,7 +2481,6 @@ a.side-nav-item:visited { color: var(--muted); }
   .settings-side { height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .settings-main { overflow: visible; padding: 22px 20px 50px; }
   .settings-inner { width: 100%; }
-  .settings-inner:has(> .vault-page) { width: 100%; max-width: none; }
   .status-strip { grid-template-columns: 1fr 1fr; }
   .status-strip li:nth-child(2) { border-right: 0; }
   .status-strip li:nth-child(1),
@@ -2365,23 +2652,37 @@ button.status-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--a
   display: grid;
   place-items: center;
   border-radius: 7px;
-  color: var(--muted);
-  transition: background 0.14s ease, color 0.14s ease;
+  /* 常驻一点强调色：这两个是能点的动作，不该和旁边的说明文字同色。 */
+  color: color-mix(in srgb, var(--accent) 72%, var(--muted));
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
 }
 .p-head-action:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
   color: var(--accent);
 }
+.p-head-action:active:not(:disabled) { transform: scale(0.94); }
+.p-head-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+  color: var(--accent);
+}
+.p-head-action:disabled { cursor: default; opacity: 0.38; }
 .p-head-action svg {
   width: 15px;
   height: 15px;
+  display: block;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.p-head-action svg.spinning { animation: settings-spin 0.8s linear infinite; }
+/* 旋转围绕图标盒中心，且刷新期间保持强调色，说明"正在做"。 */
+.p-head-action svg.spinning {
+  animation: settings-spin 0.75s linear infinite;
+  transform-origin: 50% 50%;
+}
+.p-head-action:has(svg.spinning) { color: var(--accent); }
 @keyframes settings-spin { to { transform: rotate(360deg); } }
 .p-body { padding: 4px 22px 20px; }
 .p-body:deep(.account-panel) { margin: 0; }

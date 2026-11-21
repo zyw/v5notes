@@ -14,7 +14,7 @@
  */
 
 import { join } from '@tauri-apps/api/path'
-import { readTextFile, writeTextFile, mkdir } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, mkdir, remove } from '@tauri-apps/plugin-fs'
 import { V5NOTES_DIR } from '../vault/skeleton'
 import { extensionPath, getAppStore } from './appStorage'
 
@@ -52,6 +52,16 @@ export async function readPluginData(
     return parse(await readTextFile(await vaultDataPath(vaultRoot, pluginId)))
   } catch {
     return null
+  }
+}
+
+/** Remove this plugin's settings from one vault when the plugin is uninstalled. */
+export async function removeVaultPluginData(vaultRoot: string, pluginId: string): Promise<void> {
+  const dir = await join(vaultRoot, V5NOTES_DIR, 'plugins', pluginId)
+  try {
+    await remove(dir, { recursive: true })
+  } catch {
+    // Nothing stored for this vault is the normal case for most plugins.
   }
 }
 

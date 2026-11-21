@@ -3,6 +3,7 @@ import { fetchCatalogList, fetchCatalogPackage } from './api'
 import { assertCatalogItemInstallable, hasPublishingTag } from './rejectPublishing'
 import { bundledCatalogList, bundledCatalogPackage } from './bundled'
 import { CATALOG_PROTOCOL_VERSION } from './types'
+import { validateThemeCss } from '../theme-host/cssValidate'
 import { parseManifestJson } from '../plugin-host/manifest'
 
 describe('catalog reject publishing', () => {
@@ -49,6 +50,17 @@ describe('bundled catalog', () => {
     expect(list.items.length).toBeGreaterThan(0)
     const pkg = bundledCatalogPackage('safe-fetch-demo')
     expect(pkg.files['manifest.json']).toContain('network:safe')
+  })
+
+  // 主题种子直接落盘给 ThemeHost 注入，必须符合社区主题 CSS 规则，
+  // 否则点选时会校验失败并回退内置（catalog-moss 曾用裸 :root 踩过）。
+  it('bundled theme packages pass community CSS validation', () => {
+    for (const item of bundledCatalogList('theme').items) {
+      const css = bundledCatalogPackage(item.id).files['theme.css'] ?? ''
+      const check = validateThemeCss(css)
+      expect(check.errors, `${item.id}: ${check.errors.join('; ')}`).toEqual([])
+      expect(css).toContain(`[data-community-theme='${item.id}']`)
+    }
   })
 })
 

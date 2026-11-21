@@ -9,6 +9,7 @@ import {
 } from './globalPlugins'
 import { installGlobalSampleThemes, listGlobalThemes } from './globalThemes'
 import { installCatalogPackage } from '../catalog'
+import { validateThemeCss } from '../theme-host/cssValidate'
 
 const ROOT = '/cfg/extensions'
 
@@ -82,6 +83,39 @@ describe('app-level extension storage', () => {
     await installGlobalSampleThemes()
     const themes = await listGlobalThemes()
     expect(themes.map(t => t.id)).toEqual(expect.arrayContaining(['forest-ink', 'wanqing']))
+  })
+
+  // 旧版本装下的官方主题可能带着裸 :root 的 CSS，点击时会被 ThemeHost 拒绝；
+  // 读取时应就地换成随应用发布的种子，而不是一路把错误留给用户。
+  it('repairs an installed bundled theme whose CSS no longer validates', async () => {
+    const store = seed()
+    await installCatalogPackage({
+      catalogProtocolVersion: '1',
+      fileSyncResource: false,
+      id: 'catalog-moss',
+      kind: 'theme',
+      version: '1.0.0',
+      files: {
+        'manifest.json': JSON.stringify({
+          id: 'catalog-moss',
+          name: 'Catalog Moss',
+          kind: 'theme',
+          version: '1.0.0',
+          minAppVersion: '0.1.0',
+          permissions: ['ui:theme'],
+          theme: 'theme.css',
+        }),
+        'theme.css': ':root { --bg: #f3f6f1; --accent: #3d6b4f; }\n',
+      },
+    })
+
+    const themes = await listGlobalThemes()
+    const moss = themes.find(t => t.id === 'catalog-moss')
+    expect(moss).toBeDefined()
+    expect(validateThemeCss(moss!.css).ok).toBe(true)
+    expect(await store.readText(ROOT + '/themes/catalog-moss/theme.css')).toContain(
+      "data-community-theme='catalog-moss'",
+    )
   })
 
   it('returns an empty list instead of throwing when nothing is installed', async () => {

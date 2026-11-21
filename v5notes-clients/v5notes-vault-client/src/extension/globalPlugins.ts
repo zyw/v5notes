@@ -50,6 +50,38 @@ export async function listGlobalPluginPackages(): Promise<VaultPluginPackage[]> 
   return out
 }
 
+/**
+ * Remove one installed plugin folder (code + its global data.json).
+ * Core plugins have no folder here, so callers must refuse their ids first.
+ */
+export async function removeGlobalPluginPackage(id: string): Promise<void> {
+  const store = getAppStore()
+  const dir = await extensionPath([PLUGINS_DIR, id])
+  // Only delete what we know is a package: a missing manifest means the folder
+  // is not ours (or already gone), and guessing would be destructive.
+  const manifest = await store.readText(dir + '/manifest.json')
+  if (manifest === null) {
+    throw new Error('插件目录不存在: ' + id)
+  }
+  await store.remove(dir)
+}
+
+/** Drop every trace of a plugin from the enable file. */
+export async function forgetGlobalPlugin(id: string): Promise<void> {
+  const file = await readGlobalCommunityPlugins()
+  const withoutKey = <T>(map: Record<string, T> | undefined): Record<string, T> => {
+    const next = { ...(map ?? {}) }
+    delete next[id]
+    return next
+  }
+  await writeGlobalCommunityPlugins({
+    schemaVersion: 1,
+    enabled: file.enabled.filter((entry) => entry !== id),
+    versions: withoutKey(file.versions),
+    userEnableSeen: withoutKey(file.userEnableSeen),
+  })
+}
+
 export async function writeGlobalPluginPackage(sample: {
   id: string
   manifestJson: string

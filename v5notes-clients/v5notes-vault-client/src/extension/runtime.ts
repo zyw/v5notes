@@ -16,6 +16,7 @@ import type {
   HostEditorProvider,
 } from '../plugin-host'
 import {
+  CORE_REGISTRY,
   createPluginHost,
   createVaultAdapter,
   createWorkspaceApi,
@@ -23,17 +24,20 @@ import {
 } from '../plugin-host'
 import type { ThemeHost } from '../theme-host'
 import { createThemeHost, readAppearanceFile, writeAppearanceFile } from '../theme-host'
-import { HELLO_WORLD_MAIN_JS, HELLO_WORLD_MANIFEST } from '../plugin-host/samples/helloWorld'
-import { SAFE_FETCH_MAIN_JS, SAFE_FETCH_MANIFEST } from '../plugin-host/samples/safeFetch'
-import { installCatalogItem, type CatalogItem } from '../catalog'
+import { installCatalogItem, installImportedPackage, type CatalogItem } from '../catalog'
 import {
+  forgetGlobalPlugin,
   listGlobalPluginPackages,
   readGlobalCommunityPlugins,
+  removeGlobalPluginPackage,
   writeGlobalCommunityPlugins,
-  writeGlobalPluginPackage,
 } from './globalPlugins'
-import { installGlobalSampleThemes, listGlobalThemes } from './globalThemes'
-import { readPluginData, writePluginData } from './pluginData'
+import { listGlobalThemes, removeGlobalTheme } from './globalThemes'
+import {
+  readPluginData,
+  removeVaultPluginData,
+  writePluginData,
+} from './pluginData'
 
 let pluginHost: PluginHost | null = null
 let themeHost: ThemeHost | null = null
@@ -192,27 +196,16 @@ export function getActiveEditorProvider(): HostEditorProvider | null {
   return pluginHost?.getActiveEditor() ?? null
 }
 
-/** The sample extension the settings button installs. */
-export const SAMPLE_EXTENSION_ID = 'hello-world'
-
-/** Samples install into the app, not into a vault, so no vault is needed. */
-export async function ensureSampleExtensions(): Promise<void> {
-  await writeGlobalPluginPackage({
-    id: SAMPLE_EXTENSION_ID,
-    manifestJson: JSON.stringify(HELLO_WORLD_MANIFEST, null, 2),
-    mainJs: HELLO_WORLD_MAIN_JS,
-  })
-  await writeGlobalPluginPackage({
-    id: SAFE_FETCH_MANIFEST.id,
-    manifestJson: JSON.stringify(SAFE_FETCH_MANIFEST, null, 2),
-    mainJs: SAFE_FETCH_MAIN_JS,
-  })
-  await installGlobalSampleThemes()
-  if (!pluginHost || !themeHost) return
-  await pluginHost.setEnabled(SAMPLE_EXTENSION_ID, true)
-  await pluginHost.setEnabled(SAFE_FETCH_MANIFEST.id, true)
-  // Refresh theme discovery
-  await themeHost.start()
+/** Write an installed package, then enable a plugin or reload the theme host. */
+async function activateInstalled(result: { id: string; kind: 'plugin' | 'theme' }): Promise<void> {
+  if (!pluginHost || !themeHost) {
+    throw new Error('扩展宿主尚未启动')
+  }
+  if (result.kind === 'plugin') {
+    await pluginHost.setEnabled(result.id, true)
+  } else {
+    await themeHost.start()
+  }
 }
 
 /** Install from catalog into the app, then enable plugins / refresh themes. */
@@ -220,12 +213,64 @@ export async function installFromCatalog(item: CatalogItem): Promise<void> {
   if (!pluginHost || !themeHost) {
     throw new Error('扩展宿主尚未启动')
   }
-  const result = await installCatalogItem(item)
-  if (result.kind === 'plugin') {
-    await pluginHost.setEnabled(result.id, true)
-  } else {
-    await themeHost.start()
+  await activateInstalled(await installCatalogItem(item))
+}
+
+/**
+ * 安装本机导入的包：从 pending/ 复制到 plugins/ 或 themes/，再启用。
+ * 与 catalog 安装走同一条落盘路径，只是包来自用户选的 zip。
+ */
+export async function installFromPending(id: string): Promise<void> {
+  if (!pluginHost || !themeHost) {
+    throw new Error('扩展宿主尚未启动')
   }
+  await activateInstalled(await installImportedPackage(id))
+}
+
+/** Core plugins ship inside the app and have no folder to delete. */
+export function isCorePluginId(id: string): boolean {
+  return CORE_REGISTRY.some((entry) => entry.manifest.id === id)
+}
+
+/**
+ * Remove an installed community plugin.
+ *
+ * Order matters: stop the code first, then delete the folder, then forget the
+ * enable entry. If the folder step fails nothing else changes, so the plugin
+ * keeps working; if only the bookkeeping fails the next start simply finds no
+ * package and ignores the stale id.
+ */
+export async function uninstallPlugin(id: string, vaultRoot: string | null): Promise<void> {
+  if (isCorePluginId(id)) {
+    throw new Error('核心插件不能卸载')
+  }
+  if (!pluginHost) {
+    throw new Error('扩展宿主尚未启动')
+  }
+  await pluginHost.unload(id)
+  await removeGlobalPluginPackage(id)
+  let bookkeepingError: string | null = null
+  try {
+    await forgetGlobalPlugin(id)
+    if (vaultRoot) {
+      await removeVaultPluginData(vaultRoot, id)
+    }
+  } catch (error) {
+    bookkeepingError = error instanceof Error ? error.message : String(error)
+  }
+  await pluginHost.start()
+  if (bookkeepingError) {
+    throw new Error(`文件已删除，启用记录未清理：${bookkeepingError}`)
+  }
+}
+
+/** Remove an installed community theme; falls back to the default when it was active. */
+export async function uninstallTheme(id: string): Promise<void> {
+  if (!themeHost) {
+    throw new Error('扩展宿主尚未启动')
+  }
+  await removeGlobalTheme(id)
+  await themeHost.start()
 }
 
 /**
