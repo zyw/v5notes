@@ -1,10 +1,10 @@
 /**
- * 随应用内置的主题包（默认 / 暮色之外的那几张）。
+ * Catalog 主题种子包（当前只有 Catalog Moss）。
  *
- * 与 `appearance/themes.ts` 里的 builtin（默认 / 暮色）合起来就是主题列表的全部
- * 预设：catalog 用同一份数据对外提供种子包，ThemeHost 用同一份数据直接注入，
- * 不用先装进 `extensions/themes/`。每张主题在 `samples/<id>/` 下保留
- * manifest/theme/theme.json 的物化形态，供「装到应用目录」使用。
+ * 林墨与晚晴已并入 `appearance/themes.ts` 的 builtin，走 shell 变量。
+ * 这里的包**不再随应用注入**主题列表：它们只是 catalog 对外提供的安装包，
+ * 用户点「安装」后才落盘到 `extensions/themes/`，成为可卸载的目录主题。
+ * 每张主题在 `samples/<id>/` 下保留 manifest/theme/theme.json 的物化形态。
  */
 import type { CatalogItem } from '../../catalog/types'
 import {
@@ -12,8 +12,6 @@ import {
   CATALOG_MOSS_MANIFEST,
   CATALOG_MOSS_META,
 } from './catalogMoss'
-import { FOREST_INK_CSS, FOREST_INK_MANIFEST, FOREST_INK_META } from './forestInk'
-import { WANQING_CSS, WANQING_MANIFEST, WANQING_META } from './wanqing'
 
 interface PackagedThemeManifest {
   id: string
@@ -58,11 +56,9 @@ function bundledTheme(
   }
 }
 
-/** 列表顺序即设置页里的卡片顺序：官方 catalog 示例在前，设计师做的两张在后。 */
+/** 列表顺序即设置页里的卡片顺序：官方 catalog 示例在前。 */
 export const BUNDLED_THEMES: readonly BundledTheme[] = [
   bundledTheme(CATALOG_MOSS_MANIFEST, CATALOG_MOSS_CSS, CATALOG_MOSS_META),
-  bundledTheme(FOREST_INK_MANIFEST, FOREST_INK_CSS, FOREST_INK_META),
-  bundledTheme(WANQING_MANIFEST, WANQING_CSS, WANQING_META),
 ]
 
 /** The theme's package as the catalog serves it (manifest.json + theme.css + theme.json). */

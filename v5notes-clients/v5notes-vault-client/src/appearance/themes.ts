@@ -3,12 +3,12 @@
  * `theme` may be a builtin id or a community/vault theme id.
  */
 
-export type BuiltinThemeId = 'default' | 'dusk'
+export type BuiltinThemeId = 'default' | 'dusk' | 'forest-ink' | 'wanqing'
 export type ColorMode = 'system' | 'light' | 'dark'
 
 export interface AppearancePrefs {
   schemaVersion: 1
-  /** Builtin id or community theme id (e.g. forest-ink). */
+  /** Builtin id or community theme id (e.g. catalog-moss). */
   theme: string
   colorMode: ColorMode
 }
@@ -18,10 +18,14 @@ export const APPEARANCE_STORAGE_KEY = 'v5notes.vault.appearance.v1'
 export const BUILTIN_THEMES: { id: BuiltinThemeId; label: string; description: string }[] = [
   { id: 'default', label: '默认', description: '节气暖纸底 + 墨绿强调 + 库色条' },
   { id: 'dusk', label: '暮色', description: '深橄榄底，仍属内置 fallback' },
+  { id: 'forest-ink', label: '林墨', description: '冷绿纸底 + 墨绿强调，深色为林间夜色' },
+  { id: 'wanqing', label: '晚晴', description: '暖纸底 + 靛蓝强调，深色为夜蓝' },
 ]
 
+const BUILTIN_THEME_IDS = new Set<string>(BUILTIN_THEMES.map((t) => t.id))
+
 export function isBuiltinThemeId(id: string): id is BuiltinThemeId {
-  return id === 'default' || id === 'dusk'
+  return BUILTIN_THEME_IDS.has(id)
 }
 
 export function defaultAppearance(): AppearancePrefs {

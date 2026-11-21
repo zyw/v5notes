@@ -133,7 +133,7 @@ export async function startExtensionRuntime(rootPath: string | null): Promise<vo
   docKindsRevision.value += 1
 
   // Safe Mode was on before start(): re-apply the current choice so the host
-  // knows to skip community code. The theme itself (内置默认 / 暮色 / 明暗) stays.
+  // knows to skip community code. The theme itself (内置主题 / 明暗) stays.
   if (pluginHost.isSafeMode()) {
     await themeHost.setActive(themeHost.getActive())
   }

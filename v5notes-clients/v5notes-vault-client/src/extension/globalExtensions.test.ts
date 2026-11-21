@@ -7,9 +7,8 @@ import {
   writeGlobalCommunityPlugins,
   writeGlobalPluginPackage,
 } from './globalPlugins'
-import { installGlobalSampleThemes, listGlobalThemes } from './globalThemes'
+import { listGlobalThemes } from './globalThemes'
 import { installCatalogPackage } from '../catalog'
-import { validateThemeCss } from '../theme-host/cssValidate'
 
 const ROOT = '/cfg/extensions'
 
@@ -78,47 +77,12 @@ describe('app-level extension storage', () => {
     expect((await listGlobalPluginPackages()).map(p => p.id)).toEqual(['hello-world'])
   })
 
-  it('installs the bundled themes app-wide', async () => {
-    seed()
-    await installGlobalSampleThemes()
-    const themes = await listGlobalThemes()
-    expect(themes.map(t => t.id).sort()).toEqual(['catalog-moss', 'forest-ink', 'wanqing'])
-  })
-
-  // 内置主题现在直接由 ThemeHost 注入，旧版本留在应用目录里的同名副本
-  // 会让同一张主题在列表里变成「已安装」，所以安装种子时顺手清掉。
-  it('clears stale copies of bundled themes before installing the seeds', async () => {
-    const store = createMemoryAppStore({
-      [ROOT + '/themes/wanqing/manifest.json']: JSON.stringify({
-        id: 'wanqing',
-        name: '晚晴',
-        kind: 'theme',
-        version: '0.9.0',
-        permissions: ['ui:theme'],
-        theme: 'theme.css',
-      }),
-      [ROOT + '/themes/wanqing/theme.css']: ':root { --bg: #fff; }',
-      [ROOT + '/themes/my-own/manifest.json']: JSON.stringify({
-        id: 'my-own',
-        name: 'Mine',
-        kind: 'theme',
-        version: '1.0.0',
-        permissions: ['ui:theme'],
-        theme: 'theme.css',
-      }),
-      [ROOT + '/themes/my-own/theme.css']: ":root[data-community-theme='my-own'] { --bg: #fff; }",
-    })
-    setAppStore(store, ROOT)
-    await installGlobalSampleThemes()
-    const themes = await listGlobalThemes()
-    expect(themes.map(t => t.id).sort()).toEqual(['catalog-moss', 'forest-ink', 'my-own', 'wanqing'])
-    expect(await store.readText(ROOT + '/themes/my-own/theme.css')).not.toBeNull()
-  })
-
-  // 旧版本装下的官方主题可能带着裸 :root 的 CSS，点击时会被 ThemeHost 拒绝；
-  // 读取时应就地换成随应用发布的种子，而不是一路把错误留给用户。
-  it('repairs an installed bundled theme whose CSS no longer validates', async () => {
+  // Catalog Moss 现在是普通目录主题：只报磁盘上真实存在的包，
+  // 既不自动投放种子，也不会把用户卸载掉的目录再写回来、改写用户的 CSS。
+  it('lists only themes that are actually installed, without seeding or repairing', async () => {
     const store = seed()
+    expect(await listGlobalThemes()).toEqual([])
+
     await installCatalogPackage({
       catalogProtocolVersion: '1',
       fileSyncResource: false,
@@ -135,16 +99,13 @@ describe('app-level extension storage', () => {
           permissions: ['ui:theme'],
           theme: 'theme.css',
         }),
-        'theme.css': ':root { --bg: #f3f6f1; --accent: #3d6b4f; }\n',
+        'theme.css': ":root[data-community-theme='catalog-moss'] { --bg: #f3f6f1; }\n",
       },
     })
 
-    const themes = await listGlobalThemes()
-    const moss = themes.find(t => t.id === 'catalog-moss')
-    expect(moss).toBeDefined()
-    expect(validateThemeCss(moss!.css).ok).toBe(true)
-    expect(await store.readText(ROOT + '/themes/catalog-moss/theme.css')).toContain(
-      "data-community-theme='catalog-moss'",
+    expect((await listGlobalThemes()).map(t => t.id)).toEqual(['catalog-moss'])
+    expect(await store.readText(ROOT + '/themes/catalog-moss/theme.css')).toBe(
+      ":root[data-community-theme='catalog-moss'] { --bg: #f3f6f1; }\n",
     )
   })
 

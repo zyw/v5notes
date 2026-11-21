@@ -10,7 +10,6 @@ import {
   type ColorMode,
 } from '../appearance/themes'
 import { validateThemeCss } from './cssValidate'
-import { BUNDLED_THEMES } from './samples/bundled'
 
 const STYLE_ID = 'v5-community-theme-style'
 
@@ -45,7 +44,6 @@ export interface ThemeHost extends ThemeApi {
   setColorMode(mode: ColorMode): Promise<void>
   getPrefs(): AppearancePrefs
   getLastError(): string | null
-  installBundledSample(id: string): VaultThemePackage | null
 }
 
 function builtinInfos(): ThemeInfo[] {
@@ -55,21 +53,6 @@ function builtinInfos(): ThemeInfo[] {
     description: t.description,
     builtin: true,
     source: 'builtin' as const,
-  }))
-}
-
-/**
- * 随应用内置的主题（林墨 / 晚晴 / Catalog Moss 等）直接按包注入 CSS，
- * 与 builtin 一样不用先装进 extensions/themes/。
- */
-function bundledThemes(): VaultThemePackage[] {
-  return BUNDLED_THEMES.map((theme) => ({
-    id: theme.id,
-    name: theme.name,
-    version: theme.version,
-    description: theme.description,
-    author: theme.author,
-    css: theme.css,
   }))
 }
 
@@ -94,14 +77,13 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
   let prefs = loadAppearancePrefs()
   let installedThemes: VaultThemePackage[] = []
   let lastError: string | null = null
-  const bundledCache = new Map(bundledThemes().map((t) => [t.id, t]))
 
   async function refreshInstalledThemes(): Promise<void> {
     installedThemes = deps.listInstalledThemes ? await deps.listInstalledThemes() : []
   }
 
   function resolvePackage(id: string): VaultThemePackage | null {
-    return bundledCache.get(id) || installedThemes.find((t) => t.id === id) || null
+    return installedThemes.find((t) => t.id === id) || null
   }
 
   function list(): ThemeInfo[] {
@@ -111,21 +93,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       seen.add(b.id)
       out.push(b)
     }
-    // 随应用内置的主题（林墨 / 晚晴 / Catalog Moss）固定排在默认主题之后。
-    // 即使磁盘上还留着同名目录（旧版本装过种子），它们仍属内置，只显示一次、不可卸载。
-    for (const bundled of bundledCache.values()) {
-      seen.add(bundled.id)
-      out.push({
-        id: bundled.id,
-        name: bundled.name,
-        version: bundled.version,
-        description: bundled.description,
-        author: bundled.author,
-        builtin: false,
-        source: 'core',
-      })
-    }
-    // 其余在磁盘上的主题才是用户安装的，排在最后。
+    // 其余在磁盘上的主题都是用户安装的（含 catalog 装的 Catalog Moss），排在最后。
     for (const t of installedThemes) {
       if (seen.has(t.id)) continue
       seen.add(t.id)
@@ -175,7 +143,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
     lastError = null
 
     if (deps.isSafeMode?.() ?? false) {
-      // Safe Mode only skips community code. The builtin theme (默认 / 暮色) and
+      // Safe Mode only skips community code. The builtin theme (默认 / 暮色 / 林墨 / 晚晴) and
       // 明暗 are shell settings, not plugin code, so both stay as chosen; only
       // community CSS is withheld. Nothing is persisted here, so the stored
       // theme is still the user's own choice when Safe Mode goes off.
@@ -291,9 +259,6 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
     },
     getLastError() {
       return lastError
-    },
-    installBundledSample(id: string) {
-      return bundledCache.get(id) ?? null
     },
   }
 }

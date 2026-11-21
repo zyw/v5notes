@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { validateThemeCss } from './cssValidate'
-import { FOREST_INK_CSS } from './samples/forestInk'
+import { CATALOG_MOSS_CSS } from './samples/catalogMoss'
 
 describe('validateThemeCss', () => {
-  it('accepts Forest Ink sample', () => {
-    const r = validateThemeCss(FOREST_INK_CSS)
+  it('accepts the bundled Catalog Moss sample', () => {
+    const r = validateThemeCss(CATALOG_MOSS_CSS)
     expect(r.ok).toBe(true)
     expect(r.definedVars).toContain('--bg')
     expect(r.definedVars).toContain('--accent')
@@ -22,11 +22,11 @@ describe('validateThemeCss', () => {
 
   it('rejects a theme whose :root rules are not scoped to the theme id', () => {
     // An unscoped :root palette stays applied after switching away, so every
-    // theme looks the same (the bug behind "点默认/Forest Ink 没变化").
-    const r = validateThemeCss(":root,\n:root[data-community-theme='forest-ink'] { --bg: #fff; --panel: #fff; --ink: #000; --muted: #777; --line: #ddd; --accent: #3d6b54; --accent-hover: #2f5441; --surface: #eee; --danger: #a00; --danger-bg: #fee; }")
+    // theme looks the same (the bug behind "点默认/Catalog Moss 没变化").
+    const r = validateThemeCss(":root,\n:root[data-community-theme='catalog-moss'] { --bg: #fff; --panel: #fff; --ink: #000; --muted: #777; --line: #ddd; --accent: #3d6b54; --accent-hover: #2f5441; --surface: #eee; --danger: #a00; --danger-bg: #fee; }")
     expect(r.ok).toBe(false)
     expect(r.errors.some(e => e.includes(':root'))).toBe(true)
-    expect(validateThemeCss(FOREST_INK_CSS).ok).toBe(true)
+    expect(validateThemeCss(CATALOG_MOSS_CSS).ok).toBe(true)
   })
 
   it('rejects empty css', () => {

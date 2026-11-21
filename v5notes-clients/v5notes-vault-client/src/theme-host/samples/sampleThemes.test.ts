@@ -4,8 +4,6 @@ import { validateThemeCss } from '../cssValidate'
 
 const SAMPLES = [
   { id: 'catalog-moss', lightVault: '#3d6b4f', darkVault: '#7cb08c' },
-  { id: 'forest-ink', lightVault: '#3d6b54', darkVault: '#6fad8e' },
-  { id: 'wanqing', lightVault: '#4a5a86', darkVault: '#9aa9d4' },
 ] as const
 
 describe('bundled themes', () => {

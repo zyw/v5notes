@@ -91,6 +91,84 @@
   --sidebar-bg: #1c1812;
 }
 
+/* 林墨：冷绿纸底 + 墨绿强调（原样搬自随应用内置的主题包）。 */
+:root[data-theme='forest-ink']:not([data-color-mode='dark']),
+:root[data-theme='forest-ink'][data-color-mode='light'] {
+  --bg: #e8f0ea;
+  --panel: #f7fbf8;
+  --ink: #1e3328;
+  --muted: #5f7568;
+  --line: #c5d4ca;
+  --accent: #3d6b54;
+  --accent-hover: #2f5441;
+  --surface: #dce8e0;
+  --danger: #8a3b2e;
+  --danger-bg: #f3e4e0;
+  --vault: #3d6b54;
+  --bg-glow-a: #d2e2d8;
+  --bg-glow-b: #e3eee6;
+  --rail: #dce8e0;
+  --sidebar-bg: #dce8e0;
+  /* 保留主题包里的宋体标题字面，shell 默认是 Noto Serif SC 优先。 */
+  --font-serif: 'Songti SC', 'STSong', serif;
+}
+
+:root[data-theme='forest-ink'][data-color-mode='dark'] {
+  --bg: #141c17;
+  --panel: #1c2620;
+  --ink: #e2eee6;
+  --muted: #8fa498;
+  --line: #2e3c34;
+  --accent: #6fad8e;
+  --accent-hover: #8bc4a6;
+  --surface: #243028;
+  --danger: #e0a090;
+  --danger-bg: #3a2a26;
+  --vault: #6fad8e;
+  --bg-glow-a: #1a241e;
+  --bg-glow-b: #15201a;
+  --rail: #15201a;
+  --sidebar-bg: #15201a;
+}
+
+/* 晚晴：暖纸底 + 靛蓝强调，深色为夜蓝。 */
+:root[data-theme='wanqing']:not([data-color-mode='dark']),
+:root[data-theme='wanqing'][data-color-mode='light'] {
+  --bg: #f6f1e7;
+  --panel: #fffcf5;
+  --ink: #2c2a3a;
+  --muted: #6f6a7c;
+  --line: #ddd4c6;
+  --accent: #4a5a86;
+  --accent-hover: #3a486e;
+  --surface: #ece4d6;
+  --danger: #8a3b2e;
+  --danger-bg: #f2e2dc;
+  --vault: #4a5a86;
+  --bg-glow-a: #eae2d3;
+  --bg-glow-b: #f1ece2;
+  --rail: #ece4d6;
+  --sidebar-bg: #ece4d6;
+}
+
+:root[data-theme='wanqing'][data-color-mode='dark'] {
+  --bg: #191d26;
+  --panel: #21262f;
+  --ink: #e6e3dc;
+  --muted: #9a97a8;
+  --line: #333947;
+  --accent: #9aa9d4;
+  --accent-hover: #b4c0e4;
+  --surface: #2a2f3b;
+  --danger: #e0a090;
+  --danger-bg: #3a2a2a;
+  --vault: #9aa9d4;
+  --bg-glow-a: #1e232d;
+  --bg-glow-b: #171b23;
+  --rail: #171b23;
+  --sidebar-bg: #171b23;
+}
+
 /*
  * Vault identity tones. --vault (and --vault-on) are written per open vault;
  * these derivations let surfaces carry the identity without repainting the app.

@@ -427,7 +427,7 @@ function pickVaultColor(id: string) {
 }
 
 /**
- * 主题列表顺序：内置（默认 / 暮色）→ 随应用内置的示例 → 用户安装的。
+ * 主题列表顺序：内置（默认 / 暮色 / 林墨 / 晚晴）→ 随应用内置的主题包 → 用户安装的。
  * 安装的排在最后，因为它们才是会变、会卸载的那一组。
  */
 const THEME_SOURCE_ORDER: Record<ThemeInfo['source'], number> = { builtin: 0, core: 1, vault: 2 }
@@ -437,6 +437,24 @@ function sortThemes(list: ThemeInfo[]): ThemeInfo[] {
     (a, b) => (THEME_SOURCE_ORDER[a.source] ?? 9) - (THEME_SOURCE_ORDER[b.source] ?? 9),
   )
 }
+
+/** 分组小标题：真内置、随应用带的示例、用户安装的，不再混在同一块里。 */
+const THEME_GROUP_LABELS: Record<ThemeInfo['source'], string> = {
+  builtin: '内置',
+  core: '内置示例',
+  vault: '已安装',
+}
+
+/** 排序后的 themes 已按来源连续排列，这里只做相邻切段，不改变顺序。 */
+const themeGroups = computed(() => {
+  const groups: { source: ThemeInfo['source']; label: string; themes: ThemeInfo[] }[] = []
+  for (const theme of themes.value) {
+    const last = groups[groups.length - 1]
+    if (last && last.source === theme.source) last.themes.push(theme)
+    else groups.push({ source: theme.source, label: THEME_GROUP_LABELS[theme.source], themes: [theme] })
+  }
+  return groups
+})
 
 function refreshExtensionState() {
   const th = getThemeHost()
@@ -480,8 +498,9 @@ function isPendingImport(item: CatalogItem): boolean {
 function isCatalogInstalled(item: CatalogItem): boolean {
   if (!item.id) return false
   if (item.kind === 'plugin') return plugins.value.some((p) => p.id === item.id)
-  // 只有用户装到磁盘上的主题才可卸载；内置示例本来就在，不算这条装过。
-  return themes.value.some((t) => t.id === item.id && t.source === 'vault')
+  // 主题以 ThemeHost.list() 为唯一真相：内置与内置示例（Catalog Moss）随应用提供、
+  // 本来就在列表里，用户装到磁盘的也在这里。是否可卸载由 isRemovableTheme 再收窄到 vault。
+  return themes.value.some((t) => t.id === item.id)
 }
 
 /**
@@ -610,18 +629,20 @@ async function commitLocal(next: AppearancePrefs) {
  * currently on screen. Without this every card looked the same, and switching
  * 明暗 gave no feedback about what a theme would look like in the dark.
  */
-const PREVIEW_BUILTIN_THEMES: Record<string, string> = { default: TOKENS_CSS, dusk: TOKENS_CSS }
+const PREVIEW_BUILTIN_THEMES: Record<string, string> = Object.fromEntries(
+  BUILTIN_THEMES.map((theme) => [theme.id, TOKENS_CSS] as const),
+)
 
 /**
- * 随应用内置的主题（林墨 / 晚晴 / Catalog Moss）以包为单位：名字、说明和
- * 预览用的 CSS 都从这里取，避免再按 id 硬编码一份。
+ * Catalog 主题种子包（Catalog Moss）以包为单位：名字、说明和预览用的 CSS
+ * 都从这里取，避免再按 id 硬编码一份。它只是目录里的安装包，不再随应用注入主题列表。
  */
 const BUNDLED_THEME_BY_ID = new Map(BUNDLED_THEMES.map((theme) => [theme.id, theme]))
 
 /**
  * 只有用户安装的主题（extensions/themes/ 里、且不是内置）才能卸载。
- * builtin（默认 / 暮色）与内置主题随应用提供，不给卸载入口；内置主题即使
- * 磁盘上还留着旧目录，ThemeHost 也会把它归到 core 而不是 vault。
+ * builtin（默认 / 暮色 / 林墨 / 晚晴）随应用提供，不给卸载入口；
+ * Catalog Moss 这类目录主题装上后才属于 vault，可以卸载。
  */
 function isRemovableTheme(theme: ThemeInfo): boolean {
   return !theme.builtin && theme.source === 'vault'
@@ -968,42 +989,45 @@ watch(publishDraft, () => {
                 <span class="state">{{ activeThemeLabel }} · {{ activeColorModeLabel }}</span>
               </div>
               <div class="p-body">
-                <div class="book-theme-grid" role="group" aria-label="主题">
-                  <div
-                    v-for="theme in themes"
-                    :key="theme.id"
-                    class="book-theme"
-                    :class="{ on: prefs.theme === theme.id, 'is-removable': isRemovableTheme(theme) }"
-                  >
-                    <button
-                      class="book-theme-pick"
-                      type="button"
-                      :disabled="safeMode && !theme.builtin"
-                      :aria-pressed="prefs.theme === theme.id"
-                      @click="setTheme(theme.id)"
+                <div v-for="group in themeGroups" :key="group.source" class="book-theme-group">
+                  <div class="book-sub">{{ group.label }}</div>
+                  <div class="book-theme-grid" role="group" :aria-label="group.label">
+                    <div
+                      v-for="theme in group.themes"
+                      :key="theme.id"
+                      class="book-theme"
+                      :class="{ on: prefs.theme === theme.id, 'is-removable': isRemovableTheme(theme) }"
                     >
-                      <div
-                        class="book-theme-preview"
-                        :style="themePreviewStyle(theme.id)"
-                        :data-mode="previewDark ? 'dark' : 'light'"
-                        aria-hidden="true"
-                      >
-                        <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
-                      </div>
-                      <div class="book-theme-name">{{ themeLabel(theme) }}<span class="check">✓</span></div>
-                      <div v-if="themeDescription(theme)" class="book-theme-desc">{{ themeDescription(theme) }}</div>
-                    </button>
-                    <div v-if="isRemovableTheme(theme)" class="book-theme-foot">
                       <button
-                        class="book-row-discard book-theme-discard"
+                        class="book-theme-pick"
                         type="button"
-                        :disabled="extensionBusy || uninstallBusy"
-                        :aria-label="`卸载主题 ${themeLabel(theme)}`"
-                        :title="`卸载主题 ${themeLabel(theme)}`"
-                        @click="uninstallThemeTarget = theme"
+                        :disabled="safeMode && !theme.builtin"
+                        :aria-pressed="prefs.theme === theme.id"
+                        @click="setTheme(theme.id)"
                       >
-                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.4h10"/><path d="M6.4 4.4V3.2h3.2v1.2"/><path d="M4.4 4.4l.6 8.1a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.6-8.1"/><path d="M6.8 6.8v4.4M9.2 6.8v4.4"/></svg>
+                        <div
+                          class="book-theme-preview"
+                          :style="themePreviewStyle(theme.id)"
+                          :data-mode="previewDark ? 'dark' : 'light'"
+                          aria-hidden="true"
+                        >
+                          <span class="rail"></span><span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="dot"></span><span class="page"></span>
+                        </div>
+                        <div class="book-theme-name">{{ themeLabel(theme) }}<span class="check">✓</span></div>
+                        <div v-if="themeDescription(theme)" class="book-theme-desc">{{ themeDescription(theme) }}</div>
                       </button>
+                      <div v-if="isRemovableTheme(theme)" class="book-theme-foot">
+                        <button
+                          class="book-row-discard book-theme-discard"
+                          type="button"
+                          :disabled="extensionBusy || uninstallBusy"
+                          :aria-label="`卸载主题 ${themeLabel(theme)}`"
+                          :title="`卸载主题 ${themeLabel(theme)}`"
+                          @click="uninstallThemeTarget = theme"
+                        >
+                          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.4h10"/><path d="M6.4 4.4V3.2h3.2v1.2"/><path d="M4.4 4.4l.6 8.1a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.6-8.1"/><path d="M6.8 6.8v4.4M9.2 6.8v4.4"/></svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1033,7 +1057,7 @@ watch(publishDraft, () => {
                       <span class="book-plugin-state" :class="safeMode ? 'on' : 'off'"><i aria-hidden="true"></i>{{ safeMode ? '仅核心' : '关' }}</span>
                     </div>
                     <div class="book-plugin-perms">
-                      <span class="book-plugin-perm">社区扩展与社区主题暂停加载；默认 / 暮色与明暗照常生效</span>
+                      <span class="book-plugin-perm">社区扩展与社区主题暂停加载；内置主题与明暗照常生效</span>
                     </div>
                   </div>
                   <button class="book-switch" :class="{ on: safeMode }" type="button" role="switch" :aria-checked="safeMode" :disabled="extensionBusy" aria-label="安全模式" @click="toggleSafeMode"><span></span></button>
@@ -2327,6 +2351,7 @@ a.side-nav-item:visited { color: var(--muted); }
 .book-swatch-label { font-size: 9px; line-height: 1.35; text-align: center; color: var(--muted); }
 .book-swatch-label b { font-weight: 600; color: var(--ink); }
 
+.book-theme-group + .book-theme-group { margin-top: 10px; }
 .book-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .book-theme {
   position: relative;
