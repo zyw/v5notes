@@ -14,6 +14,7 @@ import {
   type SyncEngineStatus,
   type VaultDeviceInfo,
 } from '../sync'
+import { liveDocKinds } from '../extension/runtime'
 import type { OpenedVault } from '../vault/types'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { join } from '@tauri-apps/api/path'
@@ -142,6 +143,7 @@ function makeEngine(): SyncEngine {
     onUnauthorized: () => {
       void props.account.logout()
     },
+    docKinds: () => liveDocKinds(),
   })
   return fallbackEngine
 }

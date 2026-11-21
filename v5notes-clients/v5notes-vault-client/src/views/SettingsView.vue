@@ -21,8 +21,7 @@ import {
   type VaultColorSwatch,
 } from '../appearance/vaultColors'
 import { readAppearanceFile, updateAppearanceFile } from '../theme-host'
-import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from '../theme-host/samples/forestInk'
-import { WANQING_CSS, WANQING_MANIFEST } from '../theme-host/samples/wanqing'
+import { BUNDLED_THEMES } from '../theme-host/samples/bundled'
 import { stripCssComments } from '../theme-host/cssValidate'
 import TOKENS_CSS from '../styles/tokens.css?raw'
 import type { OpenedVault } from '../vault/types'
@@ -39,6 +38,7 @@ import {
   installFromPending,
   uninstallPlugin,
   uninstallTheme,
+  listDocKinds,
   listHostSettingTabs,
   listPluginInfos,
   setSafeModeAndReload,
@@ -613,39 +613,26 @@ async function commitLocal(next: AppearancePrefs) {
 const PREVIEW_BUILTIN_THEMES: Record<string, string> = { default: TOKENS_CSS, dusk: TOKENS_CSS }
 
 /**
- * Sample themes ship with English ids but Chinese display names; the card shows
- * the package's own name/description instead of a hard-coded English label.
+ * 随应用内置的主题（林墨 / 晚晴 / Catalog Moss）以包为单位：名字、说明和
+ * 预览用的 CSS 都从这里取，避免再按 id 硬编码一份。
  */
-const SAMPLE_THEME_META: Record<string, { name: string; description: string }> = {
-  [FOREST_INK_MANIFEST.id]: {
-    name: FOREST_INK_MANIFEST.name,
-    description: FOREST_INK_MANIFEST.description,
-  },
-  [WANQING_MANIFEST.id]: {
-    name: WANQING_MANIFEST.name,
-    description: WANQING_MANIFEST.description,
-  },
-}
+const BUNDLED_THEME_BY_ID = new Map(BUNDLED_THEMES.map((theme) => [theme.id, theme]))
 
 /**
- * 只有用户安装的主题（extensions/themes/ 里、且不是内置示例）才能卸载。
- * builtin（默认 / 暮色）与内置示例（林墨 / 晚晴）随应用提供，不给卸载入口；
- * 内置示例即使曾被写过目录，ThemeHost 也会把它归到 core 而不是 vault。
+ * 只有用户安装的主题（extensions/themes/ 里、且不是内置）才能卸载。
+ * builtin（默认 / 暮色）与内置主题随应用提供，不给卸载入口；内置主题即使
+ * 磁盘上还留着旧目录，ThemeHost 也会把它归到 core 而不是 vault。
  */
 function isRemovableTheme(theme: ThemeInfo): boolean {
   return !theme.builtin && theme.source === 'vault'
 }
 
 function themeLabel(theme: ThemeInfo): string {
-  return SAMPLE_THEME_META[theme.id]?.name ?? theme.name
+  return BUNDLED_THEME_BY_ID.get(theme.id)?.name ?? theme.name
 }
 
 function themeDescription(theme: ThemeInfo): string | undefined {
-  return SAMPLE_THEME_META[theme.id]?.description ?? theme.description
-}
-const PREVIEW_SAMPLE_THEMES: Record<string, string> = {
-  'forest-ink': FOREST_INK_CSS,
-  wanqing: WANQING_CSS,
+  return BUNDLED_THEME_BY_ID.get(theme.id)?.description ?? theme.description
 }
 
 function parseCssTokens(css: string, selector: string): Record<string, string> {
@@ -669,7 +656,7 @@ function builtinPalette(themeId: string, dark: boolean): Record<string, string> 
 
 function previewPalette(themeId: string, dark: boolean): Record<string, string> {
   if (PREVIEW_BUILTIN_THEMES[themeId]) return builtinPalette(themeId, dark)
-  const css = PREVIEW_SAMPLE_THEMES[themeId]
+  const css = BUNDLED_THEME_BY_ID.get(themeId)?.css
   if (!css) return builtinPalette('default', dark)
   const scoped = `:root[data-community-theme='${themeId}']`
   const base = parseCssTokens(css, scoped)
@@ -732,7 +719,7 @@ async function toggleSafeMode() {
 }
 
 function editorKindLabel(docKind: string): string {
-  return docKindById(docKind)?.label ?? docKind
+  return listDocKinds().find(kind => kind.id === docKind)?.label ?? docKindById(docKind)?.label ?? docKind
 }
 
 async function chooseEditor(id: string) {

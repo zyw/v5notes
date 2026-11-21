@@ -1,6 +1,12 @@
 import type { CatalogItem, CatalogListResponse, CatalogPackage } from './types'
 import { CATALOG_PROTOCOL_VERSION } from './types'
+import { HELLO_WORLD_MAIN_JS, HELLO_WORLD_MANIFEST } from '../plugin-host/samples/helloWorld'
 import { SAFE_FETCH_MAIN_JS, SAFE_FETCH_MANIFEST } from '../plugin-host/samples/safeFetch'
+import {
+  BUNDLED_THEMES,
+  bundledThemeFiles,
+  bundledThemePackages,
+} from '../theme-host/samples/bundled'
 
 /** Offline / no-server fallback catalog (same seeds as backend). */
 export function bundledCatalogList(kind?: string): CatalogListResponse {
@@ -27,6 +33,17 @@ export function bundledCatalogPackage(id: string): CatalogPackage {
 
 const BUNDLED_ITEMS: CatalogItem[] = [
   {
+    id: HELLO_WORLD_MANIFEST.id,
+    name: HELLO_WORLD_MANIFEST.name,
+    kind: 'plugin',
+    version: HELLO_WORLD_MANIFEST.version,
+    description: HELLO_WORLD_MANIFEST.description,
+    author: HELLO_WORLD_MANIFEST.author,
+    minAppVersion: HELLO_WORLD_MANIFEST.minAppVersion,
+    permissions: [...HELLO_WORLD_MANIFEST.permissions],
+    packagePath: `/vault/v1/catalog/plugins/${HELLO_WORLD_MANIFEST.id}/package`,
+  },
+  {
     id: SAFE_FETCH_MANIFEST.id,
     name: SAFE_FETCH_MANIFEST.name,
     kind: 'plugin',
@@ -39,24 +56,24 @@ const BUNDLED_ITEMS: CatalogItem[] = [
     networkAllowlist: [...SAFE_FETCH_MANIFEST.networkAllowlist],
     packagePath: `/vault/v1/catalog/plugins/${SAFE_FETCH_MANIFEST.id}/package`,
   },
-  {
-    id: 'catalog-moss',
-    name: 'Catalog Moss',
-    kind: 'theme',
-    version: '1.0.0',
-    description: '官方 catalog 示例主题（柔和苔绿）',
-    author: 'v5notes',
-    minAppVersion: '0.1.0',
-    permissions: ['ui:theme'],
-    tags: ['demo', 'theme', 'official'],
-    packagePath: '/vault/v1/catalog/plugins/catalog-moss/package',
-  },
+  // 主题种子与随应用内置的主题是同一份数据（theme-host/samples/bundled.ts），
+  // 这里只负责把它们排进 catalog。
+  ...bundledThemePackages(),
 ]
 
 const BUNDLED_PACKAGES: Record<
   string,
   { id: string; kind: 'plugin' | 'theme'; version: string; files: Record<string, string> }
 > = {
+  'hello-world': {
+    id: 'hello-world',
+    kind: 'plugin',
+    version: '1.0.0',
+    files: {
+      'manifest.json': `${JSON.stringify(HELLO_WORLD_MANIFEST, null, 2)}\n`,
+      'main.js': HELLO_WORLD_MAIN_JS,
+    },
+  },
   'safe-fetch-demo': {
     id: 'safe-fetch-demo',
     kind: 'plugin',
@@ -66,77 +83,15 @@ const BUNDLED_PACKAGES: Record<
       'main.js': SAFE_FETCH_MAIN_JS,
     },
   },
-  'catalog-moss': {
-    id: 'catalog-moss',
-    kind: 'theme',
-    version: '1.0.0',
-    files: {
-      'manifest.json': `${JSON.stringify(
-        {
-          id: 'catalog-moss',
-          name: 'Catalog Moss',
-          kind: 'theme',
-          version: '1.0.0',
-          minAppVersion: '0.1.0',
-          description: '官方 catalog 示例主题（柔和苔绿）',
-          author: 'v5notes',
-          permissions: ['ui:theme'],
-          tags: ['demo', 'theme', 'official'],
-          theme: 'theme.css',
-        },
-        null,
-        2,
-      )}\n`,
-      'theme.css': `/* Catalog Moss 的每条规则都必须限定到本主题：注入的社区主题 CSS
- * 叠在应用外壳之上，裸 :root 会让配色泄漏到其它主题。 */
-:root[data-community-theme='catalog-moss'] {
-  --bg: #f3f6f1;
-  --panel: #fbfdfa;
-  --ink: #1e2a22;
-  --muted: #5c6b60;
-  --line: #d5e0d6;
-  --accent: #3d6b4f;
-  --accent-hover: #31573f;
-  --surface: #e9efe9;
-  --danger: #8a3b2e;
-  --danger-bg: #f3e4e0;
-  --bg-glow-a: #e6eee7;
-  --bg-glow-b: #f0f5f0;
-  --vault: #3d6b4f !important;
-}
-
-:root[data-community-theme='catalog-moss'][data-color-mode='dark'] {
-  --bg: #141b16;
-  --panel: #1c2620;
-  --ink: #e3ece5;
-  --muted: #93a496;
-  --line: #2e3b32;
-  --accent: #7cb08c;
-  --accent-hover: #97c5a5;
-  --surface: #232e26;
-  --danger: #e0a090;
-  --danger-bg: #3a2a26;
-  --bg-glow-a: #1a221c;
-  --bg-glow-b: #151c17;
-  --vault: #7cb08c !important;
-}
-
-:root[data-community-theme='catalog-moss'][data-color-preference='dark']:not([data-color-mode='dark']) {
-  --bg: #141b16;
-  --panel: #1c2620;
-  --ink: #e3ece5;
-  --muted: #93a496;
-  --line: #2e3b32;
-  --accent: #7cb08c;
-  --accent-hover: #97c5a5;
-  --surface: #232e26;
-  --danger: #e0a090;
-  --danger-bg: #3a2a26;
-  --bg-glow-a: #1a221c;
-  --bg-glow-b: #151c17;
-  --vault: #7cb08c !important;
-}
-`,
-    },
-  },
+  ...Object.fromEntries(
+    BUNDLED_THEMES.map((theme) => [
+      theme.id,
+      {
+        id: theme.id,
+        kind: 'theme' as const,
+        version: theme.version,
+        files: bundledThemeFiles(theme),
+      },
+    ]),
+  ),
 }

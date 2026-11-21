@@ -223,4 +223,85 @@ describe('editor providers', () => {
     expect(host.getActiveEditorId()).toBe(V5_EDITOR_ID)
     await host.stop()
   })
+  it('registers a plugin-declared kind and offers it beside core kinds', async () => {
+    saveSafeMode(false)
+    localStorage.removeItem(ACTIVE_EDITOR_STORAGE_KEY)
+    localStorage.removeItem(ACTIVE_EDITORS_STORAGE_KEY)
+    const host = createPluginHost({
+      vault: vault(),
+      workspace: workspace(),
+      theme: theme(),
+      readCommunityPlugins: async () => ({ schemaVersion: 1, enabled: ['csv-editor'], versions: {}, userEnableSeen: {} }),
+      writeCommunityPlugins: async () => undefined,
+      loadPluginData: async () => null,
+      savePluginData: async () => undefined,
+      listVaultPlugins: async () => [
+        {
+          id: 'csv-editor',
+          manifest: { id: 'csv-editor', name: 'CSV', version: '1.0.0', permissions: ['editor:provide'], main: 'main.js' },
+          mainSource: `
+            module.exports = class extends Plugin {
+              onload() {
+                this.registerEditorProvider({
+                  id: 'csv-editor',
+                  name: 'CSV 编辑器',
+                  docKind: 'csv',
+                  docKindSpec: { id: 'csv', label: 'CSV 表格', newLabel: '新建 CSV 表格', extension: '.csv' },
+                  mount() { throw new Error('not mounted in this test') }
+                })
+              }
+            }
+          `,
+        },
+      ],
+    })
+    await host.start()
+
+    const kinds = host.listDocKinds()
+    expect(kinds.map((kind) => kind.id).sort()).toEqual(['csv', 'markdown'])
+    expect(kinds.find((kind) => kind.id === 'csv')?.extension).toBe('.csv')
+    // The plugin kind is directly creatable, but plain text stays gone until enabled.
+    expect(host.getActiveEditorId('csv')).toBe('csv-editor')
+    await host.stop()
+  })
+
+  it('refuses a plugin kind that would take over a core suffix', async () => {
+    saveSafeMode(false)
+    const notice = vi.fn()
+    const host = createPluginHost({
+      vault: vault(),
+      workspace: workspace(),
+      theme: theme(),
+      onNotice: notice,
+      readCommunityPlugins: async () => ({ schemaVersion: 1, enabled: ['hijack'], versions: {}, userEnableSeen: {} }),
+      writeCommunityPlugins: async () => undefined,
+      loadPluginData: async () => null,
+      savePluginData: async () => undefined,
+      listVaultPlugins: async () => [
+        {
+          id: 'hijack',
+          manifest: { id: 'hijack', name: 'Hijack', version: '1.0.0', permissions: ['editor:provide'], main: 'main.js' },
+          mainSource: `
+            module.exports = class extends Plugin {
+              onload() {
+                this.registerEditorProvider({
+                  id: 'hijack',
+                  name: 'Hijack',
+                  docKind: 'secret-md',
+                  docKindSpec: { id: 'secret-md', label: '伪 Markdown', newLabel: '新建', extension: '.md' },
+                  mount() { throw new Error('should not mount') }
+                })
+              }
+            }
+          `,
+        },
+      ],
+    })
+    await host.start()
+
+    expect(host.list().find((plugin) => plugin.id === 'hijack')?.status).toBe('failed')
+    expect(host.listDocKinds().map((kind) => kind.id)).toEqual([MARKDOWN_KIND])
+    expect(notice).toHaveBeenCalled()
+    await host.stop()
+  })
 })

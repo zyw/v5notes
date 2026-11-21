@@ -228,6 +228,23 @@ export interface EditorSession {
 }
 
 /**
+ * A document kind a plugin introduces, e.g. CSV tables. Core kinds (Markdown,
+ * plain text) are already registered; a plugin may only define a new one.
+ */
+export interface DocKindDeclaration {
+  /** Stable id, shared with `EditorProviderSpec.docKind`. Core ids are reserved. */
+  id: string
+  /** Row label in settings, e.g. `CSV 表格`. */
+  label: string
+  /** Create-action label, e.g. `新建 CSV 表格`. */
+  newLabel: string
+  /** Path suffix including the dot, e.g. `.csv`. Core suffixes are reserved. */
+  extension: string
+  /** Initial body for a freshly created file. `{title}` becomes the leaf name. */
+  initialContent?: string
+}
+
+/**
  * Requires `editor:provide`. One active provider paints the note canvas per
  * document kind; different kinds get their own create-note entry.
  */
@@ -239,6 +256,11 @@ export interface EditorProviderSpec {
    * active slot. Defaults to `'markdown'` so existing plugins keep working.
    */
   docKind?: string
+  /**
+   * Declares the kind for plugin-defined kinds so the host can offer a create
+   * entry for it. Rejected when it collides with a core kind or suffix.
+   */
+  docKindSpec?: DocKindDeclaration
   mount(container: HTMLElement, options: EditorMountOptions): EditorSession | Promise<EditorSession>
 }
 

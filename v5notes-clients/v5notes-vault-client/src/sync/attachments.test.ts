@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DOC_KINDS } from '../vault/docKinds'
 import {
   attachmentBadgeLabel,
   base64ToBytes,
@@ -15,6 +16,16 @@ describe('attachments', () => {
     expect(classifyFileKind('DRAFT.TXT')).toBe('note')
     expect(classifyFileKind('附件/图.png')).toBe('asset')
     expect(classifyFileKind('.v5notes/appearance.json')).toBe('config')
+  })
+
+  it('classifies plugin kinds as notes when given the live table', () => {
+    const csv = { id: 'csv', label: 'CSV', newLabel: '新建 CSV', extension: '.csv', initialContent: '' }
+    const kinds = [...DOC_KINDS, csv]
+    // Without the table the plugin kind would be treated as a binary asset.
+    expect(classifyFileKind('预算.csv')).toBe('asset')
+    expect(classifyFileKind('预算.csv', kinds)).toBe('note')
+    expect(prefersTextBody('预算.csv', kinds)).toBe(true)
+    expect(classifyFileKind('a.md', kinds)).toBe('note')
   })
 
   it('prefers text for md/json and binary for png', () => {

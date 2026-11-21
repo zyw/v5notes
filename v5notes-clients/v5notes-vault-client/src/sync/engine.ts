@@ -9,6 +9,7 @@ import type { SyncFileEntry, SyncStateJson } from '../models/sync-state'
 import { SYNC_STATE_SCHEMA_VERSION } from '../models/sync-state'
 import type { VaultJson } from '../models/vault'
 import { toIdentityKey, normalizeVaultPath } from '../path/identity'
+import { DOC_KINDS, type DocKindSpec } from '../vault/docKinds'
 import { SYNC_STATE_REL, SYNCIGNORE_REL, VAULT_JSON_REL } from '../vault/skeleton'
 import type { VaultFs } from '../vault/vaultFs'
 import { vaultFs as defaultVaultFs } from '../vault/vaultFs'
@@ -55,6 +56,11 @@ export interface SyncEngineDeps {
   isOnline?: () => boolean
   /** Idle background sync interval (ms). 0 disables. Default 60s. */
   backgroundIntervalMs?: number
+  /**
+   * Core plus plugin-declared document kinds. Notes sync and conflict-copy as
+   * text; everything else is an asset. Defaults to the core kinds.
+   */
+  docKinds?: () => readonly DocKindSpec[]
 }
 
 const DEFAULT_BG_INTERVAL_MS = 60_000
@@ -66,6 +72,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
   const isOnline = deps.isOnline ?? (() =>
     typeof navigator === 'undefined' ? true : navigator.onLine !== false)
   const backgroundIntervalMs = deps.backgroundIntervalMs ?? DEFAULT_BG_INTERVAL_MS
+  const docKinds = () => deps.docKinds?.() ?? DOC_KINDS
 
   let status: SyncStatus = 'idle'
   let message = '未同步'
@@ -143,7 +150,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
   async function listSyncableFiles(): Promise<LocalScanFile[]> {
     const patterns = await readIgnorePatterns()
-    const tree = await fs.listTree(deps.rootPath)
+    const tree = await fs.listTree(deps.rootPath, docKinds())
     const files: LocalScanFile[] = []
 
     async function walk(nodes: Awaited<ReturnType<VaultFs['listTree']>>) {
@@ -158,8 +165,8 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
         const kind = decision.reason === 'intent-config'
           ? 'config' as const
-          : classifyFileKind(node.path)
-        const useText = prefersTextBody(node.path)
+          : classifyFileKind(node.path, docKinds())
+        const useText = prefersTextBody(node.path, docKinds())
 
         try {
           if (useText) {
@@ -318,7 +325,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
   /** Hash an untracked on-disk file (text or binary) for bootstrap comparison. */
   async function hashUntrackedFile(path: string): Promise<string> {
-    if (prefersTextBody(path)) {
+    if (prefersTextBody(path, docKinds())) {
       return sha256Hex(await fs.readText(deps.rootPath, path))
     }
     return sha256Hex(await fs.readBytes(deps.rootPath, path))
@@ -327,7 +334,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
   /** Find an on-disk file whose identity key matches, for bootstrap conflict copies. */
   async function findOnDiskPathByIdentity(identityKey: string): Promise<string | null> {
     try {
-      const tree = await fs.listTree(deps.rootPath)
+      const tree = await fs.listTree(deps.rootPath, docKinds())
       const stack = [...tree]
       while (stack.length > 0) {
         const node = stack.pop()!
@@ -383,7 +390,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
           untrackedLocalPath = change.path
         } else {
           // Case-variant display path may exist on disk for the same identity key.
-          const tree = await fs.listTree(deps.rootPath)
+          const tree = await fs.listTree(deps.rootPath, docKinds())
           const stack = [...tree]
           while (stack.length > 0) {
             const node = stack.pop()!
@@ -418,7 +425,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         ?? (await findOnDiskPathByIdentity(identityKey)) ?? change.path
       const copyPath = buildConflictCopyPath(sourcePath, deviceId, occupied, toIdentityKey)
       occupied.add(toIdentityKey(copyPath))
-      if (prefersTextBody(sourcePath)) {
+      if (prefersTextBody(sourcePath, docKinds())) {
         const localContent = await fs.readText(deps.rootPath, sourcePath)
         await fs.writeText(deps.rootPath, copyPath, localContent)
         state.files[copyPath] = {
@@ -605,7 +612,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
                   if (await fs.exists(deps.rootPath, change.from)) {
                     copyPath = buildConflictCopyPath(change.from, config.binding.deviceId, occupied, toIdentityKey)
                     occupied.add(toIdentityKey(copyPath))
-                    if (prefersTextBody(change.from)) {
+                    if (prefersTextBody(change.from, docKinds())) {
                       const localContent = await fs.readText(deps.rootPath, change.from)
                       await fs.writeText(deps.rootPath, copyPath, localContent)
                       state.files[copyPath] = {
@@ -686,7 +693,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         // with a fileId, and not the source of another rename.
         const renameTarget = localFiles.find(candidate => {
           if (candidate.tooLarge) return false
-          if (candidate.kind !== classifyFileKind(path)) return false
+          if (candidate.kind !== classifyFileKind(path, docKinds())) return false
           if (renamedLocally.has(candidate.identityKey)) return false
           const candidateEntry = state.files[candidate.displayPath]
             || Object.values(state.files).find(e => e.identityKey === candidate.identityKey)

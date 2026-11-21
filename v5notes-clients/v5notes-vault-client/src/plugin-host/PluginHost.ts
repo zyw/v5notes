@@ -19,7 +19,14 @@ import { TemplatesPlugin, TEMPLATES_MANIFEST } from './core/templates'
 import { V5EditorPlugin, V5_EDITOR_ID, V5_EDITOR_MANIFEST } from './core/v5Editor'
 import { parseManifestJson, satisfiesMinAppVersion } from './manifest'
 import { loadSafeMode, saveSafeMode } from './safeMode'
-import { MARKDOWN_KIND, docKindById } from '../vault/docKinds'
+import {
+  DOC_KINDS,
+  MARKDOWN_KIND,
+  docKindById,
+  sortKinds,
+  toCustomKind,
+  type DocKindSpec,
+} from '../vault/docKinds'
 
 const APP_VERSION = '2.1.0'
 export const ACTIVE_EDITOR_STORAGE_KEY = 'v5notes.vault.active-editor'
@@ -214,6 +221,10 @@ export interface PluginHost {
   listSettingTabs(): HostSettingTab[]
   listViews(): HostView[]
   listEditorProviders(): HostEditorProvider[]
+  /** Core kinds plus plugin-declared kinds that currently have a live editor. */
+  listDocKinds(): DocKindSpec[]
+  /** Plugin-declared kinds with the owning plugin id, for durable remembering. */
+  listDeclaredKinds(): (DocKindSpec & { pluginId: string })[]
   /** One row per document kind that has a loaded provider, with its active editor. */
   listEditorKinds(): HostEditorKind[]
   getActiveEditor(docKind?: string): HostEditorProvider | null
@@ -239,6 +250,8 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
   const settingTabs = new Map<string, HostSettingTab>()
   const views = new Map<string, HostView>()
   const editors = new Map<string, HostEditorProvider>()
+  /** Document kinds introduced by plugins, keyed by plugin id. */
+  const customKinds = new Map<string, DocKindSpec>()
 
   function clearSurfaceFor(pluginId: string) {
     for (const key of [...commands.keys()]) {
@@ -256,6 +269,7 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     for (const [key, editor] of [...editors.entries()]) {
       if (editor.pluginId === pluginId) editors.delete(key)
     }
+    customKinds.delete(pluginId)
   }
 
   async function unloadOne(id: string) {
@@ -331,6 +345,16 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
       registerEditorProvider: (pluginId: string, spec: EditorProviderSpec) => {
         // A provider owns exactly one document kind; plugins that omit it are Markdown.
         const docKind = spec.docKind ?? MARKDOWN_KIND
+        // A plugin may only introduce a new kind; collisions with core kinds or
+        // suffixes are refused so `.md`/`.txt` files never change hands.
+        if (spec.docKindSpec) {
+          const result = toCustomKind(spec.docKindSpec)
+          if ('error' in result) throw new Error(result.error)
+          if (result.kind.id !== docKind) {
+            throw new Error(`文档类型声明 ${result.kind.id} 与 docKind ${docKind} 不一致`)
+          }
+          customKinds.set(pluginId, result.kind)
+        }
         editors.set(spec.id, {
           pluginId,
           id: spec.id,
@@ -528,6 +552,14 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     },
     listEditorProviders() {
       return [...editors.values()].sort((a, b) => Number(b.id === V5_EDITOR_ID) - Number(a.id === V5_EDITOR_ID) || a.name.localeCompare(b.name))
+    },
+    listDeclaredKinds() {
+      return [...customKinds.entries()].map(([pluginId, kind]) => ({ ...kind, pluginId }))
+    },
+    listDocKinds() {
+      const live = new Set([...editors.values()].map((editor) => editor.docKind))
+      const all = [...DOC_KINDS, ...customKinds.values()].filter((kind) => live.has(kind.id))
+      return sortKinds(all)
     },
     listEditorKinds() {
       const kinds = new Map<string, HostEditorProvider[]>()

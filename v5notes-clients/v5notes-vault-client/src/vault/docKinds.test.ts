@@ -4,12 +4,16 @@ import {
   MARKDOWN_KIND,
   TEXT_KIND,
   displayNameOf,
+  displayNameOfIn,
   docKindById,
   docKindOfPath,
   initialContentFor,
   isNotePath,
   isSafeExtension,
   noteSuffixes,
+  sortKinds,
+  toCustomKind,
+  docKindOfPathIn,
 } from './docKinds'
 
 describe('docKinds', () => {
@@ -52,6 +56,37 @@ describe('docKinds', () => {
     const ids = DOC_KINDS.map(kind => kind.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(docKindById('nope')).toBeNull()
+  })
+
+  it('accepts a fresh plugin kind and rejects reserved ones', () => {
+    const ok = toCustomKind({ id: 'csv', label: 'CSV 表格', newLabel: '新建 CSV 表格', extension: '.CSV' })
+    expect('kind' in ok && ok.kind).toMatchObject({ id: 'csv', extension: '.csv', initialContent: '' })
+
+    // Core ids and core suffixes stay reserved.
+    expect('error' in toCustomKind({ id: 'markdown', label: 'x', newLabel: 'x', extension: '.sql' })).toBe(true)
+    expect('error' in toCustomKind({ id: 'sneaky', label: 'x', newLabel: 'x', extension: '.md' })).toBe(true)
+    expect('error' in toCustomKind({ id: 'sneaky', label: 'x', newLabel: 'x', extension: '.TXT' })).toBe(true)
+    expect('error' in toCustomKind({ id: 'bad', label: 'x', newLabel: 'x', extension: '../x' })).toBe(true)
+  })
+
+  it('sorts core kinds ahead of plugin kinds', () => {
+    const custom = { id: 'csv', label: 'CSV', newLabel: '新建 CSV', extension: '.csv', initialContent: '' }
+    const sorted = sortKinds([custom, ...DOC_KINDS])
+    expect(sorted.map((kind) => kind.id)).toEqual(['markdown', 'text', 'csv'])
+    expect(docKindOfPathIn(sorted, 'table.csv')?.id).toBe('csv')
+  })
+
+  it('treats a plugin kind as a note across shared helpers', () => {
+    const ok = toCustomKind({ id: 'csv', label: 'CSV 表格', newLabel: '新建 CSV 表格', extension: '.csv' })
+    const csv = 'kind' in ok ? ok.kind : null
+    expect(csv).not.toBeNull()
+    const table = [...DOC_KINDS, csv!]
+
+    // Tree, trash, sync and search all route through these two helpers.
+    expect(docKindOfPathIn(table, 'dir/预算.csv')?.id).toBe('csv')
+    expect(displayNameOfIn(table, 'dir/预算.csv')).toBe('预算')
+    // Core kinds keep working alongside it.
+    expect(docKindOfPathIn(table, 'a.md')?.id).toBe(MARKDOWN_KIND)
   })
 
   it('rejects provider extensions that could escape the vault', () => {

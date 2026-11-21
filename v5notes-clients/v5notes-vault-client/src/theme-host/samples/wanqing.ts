@@ -1,5 +1,6 @@
 /** Bundled 晚晴 sample theme (mirrors samples/wanqing/). */
 import css from './wanqing/theme.css?raw'
+import meta from './wanqing/theme.json'
 
 export const WANQING_MANIFEST = {
   id: 'wanqing',
@@ -15,3 +16,4 @@ export const WANQING_MANIFEST = {
 }
 
 export const WANQING_CSS = css
+export const WANQING_META = meta

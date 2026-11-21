@@ -3,7 +3,7 @@
  * OSS direct upload remains deferred; this slice uses PUT + base64Body.
  */
 
-import { isNotePath } from '../vault/docKinds'
+import { DOC_KINDS, docKindOfPathIn, type DocKindSpec } from '../vault/docKinds'
 import { VaultQuotaRules } from './limits'
 
 export type SyncFileKind = 'note' | 'asset' | 'config'
@@ -38,16 +38,23 @@ export function extensionOf(path: string): string {
   return base.slice(dot).toLowerCase()
 }
 
-export function classifyFileKind(relativePath: string): SyncFileKind {
+/** `kinds` defaults to core kinds; pass the host's table to include plugin kinds. */
+export function classifyFileKind(
+  relativePath: string,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): SyncFileKind {
   const lower = relativePath.replace(/\\/g, '/').toLowerCase()
   if (lower.startsWith('.v5notes/')) return 'config'
-  if (isNotePath(lower)) return 'note'
+  if (docKindOfPathIn(kinds, lower)) return 'note'
   return 'asset'
 }
 
 /** Prefer text PUT for notes/configs and common text assets; binary otherwise. */
-export function prefersTextBody(relativePath: string): boolean {
-  const kind = classifyFileKind(relativePath)
+export function prefersTextBody(
+  relativePath: string,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): boolean {
+  const kind = classifyFileKind(relativePath, kinds)
   if (kind === 'note' || kind === 'config') return true
   const ext = extensionOf(relativePath)
   return TEXT_EXT.has(ext)

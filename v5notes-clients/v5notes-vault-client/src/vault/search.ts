@@ -1,9 +1,11 @@
 /**
  * Local vault search MVP (design §10).
- * Full-text scan of `.md` files — FTS can replace this later without UI changes.
+ * Full-text scan of note files across every document kind — FTS can replace
+ * this later without UI changes.
  */
 
 import { toIdentityKey } from '../path/identity'
+import { DOC_KINDS, type DocKindSpec } from './docKinds'
 import { scoreNoteHit } from './searchScore'
 import type { VaultTreeNode } from './types'
 import { vaultFs } from './vaultFs'
@@ -20,7 +22,11 @@ export interface SearchHit {
 }
 
 export interface VaultSearch {
-  search(rootPath: string, query: string, options?: { limit?: number }): Promise<SearchHit[]>
+  search(
+    rootPath: string,
+    query: string,
+    options?: { limit?: number; kinds?: readonly DocKindSpec[] },
+  ): Promise<SearchHit[]>
 }
 
 function collectNotes(nodes: VaultTreeNode[], out: VaultTreeNode[] = []): VaultTreeNode[] {
@@ -37,7 +43,8 @@ export const vaultSearch: VaultSearch = {
     const q = query.trim()
     if (!q) return []
 
-    const tree = await vaultFs.listTree(rootPath)
+    const kinds = options?.kinds ?? DOC_KINDS
+    const tree = await vaultFs.listTree(rootPath, kinds)
     const notes = collectNotes(tree)
     const hits: SearchHit[] = []
 
@@ -48,7 +55,7 @@ export const vaultSearch: VaultSearch = {
       } catch {
         continue
       }
-      const scored = scoreNoteHit(note.path, body, q)
+      const scored = scoreNoteHit(note.path, body, q, kinds)
       if (!scored) continue
       hits.push({
         ...scored,

@@ -7,6 +7,7 @@ const mtimes: Record<string, number> = {
   '/tmp/v5vaulttest/v3/note.md': Date.parse('2026-02-01T00:00:00Z'),
   '/tmp/v5vaulttest/v4/draft.txt': Date.parse('2026-04-01T00:00:00Z'),
   '/tmp/v5vaulttest/v4/cover.png': Date.parse('2026-05-01T00:00:00Z'),
+  '/tmp/v5vaulttest/v5/data.csv': Date.parse('2026-06-01T00:00:00Z'),
 }
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -15,6 +16,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     if (path.endsWith('/v2')) return [{ name: 'note.md', isFile: true, isDirectory: false, isSymlink: false }, { name: '.v5notes', isFile: false, isDirectory: true, isSymlink: false }]
     if (path.endsWith('/v3')) return [{ name: 'note.md', isFile: true, isDirectory: false, isSymlink: false }, { name: '.v5notes', isFile: false, isDirectory: true, isSymlink: false }]
     if (path.endsWith('/v4')) return [{ name: 'draft.txt', isFile: true, isDirectory: false, isSymlink: false }, { name: 'cover.png', isFile: true, isDirectory: false, isSymlink: false }]
+    if (path.endsWith('/v5')) return [{ name: 'data.csv', isFile: true, isDirectory: false, isSymlink: false }]
     throw new Error('not a directory: ' + path)
   },
   stat: async (path: string) => {
@@ -54,6 +56,17 @@ describe('vault last note change', () => {
     // draft.txt is newer than nothing else in v4; the later cover.png must not win.
     expect(await vaultWorkspace.lastNoteChange('/tmp/v5vaulttest/v4')).toBe(
       Date.parse('2026-04-01T00:00:00Z'),
+    )
+  })
+
+  it('counts a plugin-declared kind when the table includes it', async () => {
+    const { vaultWorkspace } = await import('./workspace')
+    const { DOC_KINDS } = await import('./docKinds')
+    const csv = { id: 'csv', label: 'CSV', newLabel: '新建 CSV', extension: '.csv', initialContent: '' }
+    // A `.csv` is an asset by default and a note once the plugin declares it.
+    expect(await vaultWorkspace.lastNoteChange('/tmp/v5vaulttest/v5')).toBeNull()
+    expect(await vaultWorkspace.lastNoteChange('/tmp/v5vaulttest/v5', [...DOC_KINDS, csv])).toBe(
+      Date.parse('2026-06-01T00:00:00Z'),
     )
   })
 })

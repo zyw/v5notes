@@ -1,6 +1,6 @@
 /** Pure search scoring (no Tauri) — unit-tested. */
 
-import { displayNameOf } from './docKinds'
+import { DOC_KINDS, displayNameOfIn, type DocKindSpec } from './docKinds'
 
 export interface ScoredHit {
   path: string
@@ -9,16 +9,17 @@ export interface ScoredHit {
   score: number
 }
 
-function titleOf(path: string): string {
-  return displayNameOf(path)
-}
-
-/** Pure helper: score + snippet for one note. */
-export function scoreNoteHit(path: string, body: string, query: string): ScoredHit | null {
+/** Pure helper: score + snippet for one note. `kinds` adds plugin kinds. */
+export function scoreNoteHit(
+  path: string,
+  body: string,
+  query: string,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): ScoredHit | null {
   const q = query.trim().toLowerCase()
   if (!q) return null
 
-  const title = titleOf(path)
+  const title = displayNameOfIn(kinds, path)
   const titleLower = title.toLowerCase()
   const pathLower = path.toLowerCase()
   const bodyLower = body.toLowerCase()

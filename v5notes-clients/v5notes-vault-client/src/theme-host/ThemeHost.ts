@@ -10,8 +10,7 @@ import {
   type ColorMode,
 } from '../appearance/themes'
 import { validateThemeCss } from './cssValidate'
-import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from './samples/forestInk'
-import { WANQING_CSS, WANQING_MANIFEST } from './samples/wanqing'
+import { BUNDLED_THEMES } from './samples/bundled'
 
 const STYLE_ID = 'v5-community-theme-style'
 
@@ -59,25 +58,19 @@ function builtinInfos(): ThemeInfo[] {
   }))
 }
 
-function bundledSamples(): VaultThemePackage[] {
-  return [
-    {
-      id: FOREST_INK_MANIFEST.id,
-      name: FOREST_INK_MANIFEST.name,
-      version: FOREST_INK_MANIFEST.version,
-      description: FOREST_INK_MANIFEST.description,
-      author: FOREST_INK_MANIFEST.author,
-      css: FOREST_INK_CSS,
-    },
-    {
-      id: WANQING_MANIFEST.id,
-      name: WANQING_MANIFEST.name,
-      version: WANQING_MANIFEST.version,
-      description: WANQING_MANIFEST.description,
-      author: WANQING_MANIFEST.author,
-      css: WANQING_CSS,
-    },
-  ]
+/**
+ * 随应用内置的主题（林墨 / 晚晴 / Catalog Moss 等）直接按包注入 CSS，
+ * 与 builtin 一样不用先装进 extensions/themes/。
+ */
+function bundledThemes(): VaultThemePackage[] {
+  return BUNDLED_THEMES.map((theme) => ({
+    id: theme.id,
+    name: theme.name,
+    version: theme.version,
+    description: theme.description,
+    author: theme.author,
+    css: theme.css,
+  }))
 }
 
 function clearInjectedStyle(): void {
@@ -101,14 +94,14 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
   let prefs = loadAppearancePrefs()
   let installedThemes: VaultThemePackage[] = []
   let lastError: string | null = null
-  const sampleCache = new Map(bundledSamples().map((t) => [t.id, t]))
+  const bundledCache = new Map(bundledThemes().map((t) => [t.id, t]))
 
   async function refreshInstalledThemes(): Promise<void> {
     installedThemes = deps.listInstalledThemes ? await deps.listInstalledThemes() : []
   }
 
   function resolvePackage(id: string): VaultThemePackage | null {
-    return installedThemes.find((t) => t.id === id) || sampleCache.get(id) || null
+    return bundledCache.get(id) || installedThemes.find((t) => t.id === id) || null
   }
 
   function list(): ThemeInfo[] {
@@ -118,18 +111,16 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       seen.add(b.id)
       out.push(b)
     }
-    // 随应用内置的示例（林墨 / 晚晴）固定排在默认主题之后。
-    // 即使磁盘上存在同名目录，它们仍属于内置示例，不能当成“用户安装”的主题。
-    for (const sample of sampleCache.values()) {
-      seen.add(sample.id)
-      // 装了同名目录就用目录里的名字/版本，样式也以目录为准。
-      const t = installedThemes.find((v) => v.id === sample.id) ?? sample
+    // 随应用内置的主题（林墨 / 晚晴 / Catalog Moss）固定排在默认主题之后。
+    // 即使磁盘上还留着同名目录（旧版本装过种子），它们仍属内置，只显示一次、不可卸载。
+    for (const bundled of bundledCache.values()) {
+      seen.add(bundled.id)
       out.push({
-        id: t.id,
-        name: t.name,
-        version: t.version,
-        description: t.description,
-        author: t.author,
+        id: bundled.id,
+        name: bundled.name,
+        version: bundled.version,
+        description: bundled.description,
+        author: bundled.author,
         builtin: false,
         source: 'core',
       })
@@ -302,7 +293,7 @@ export function createThemeHost(deps: ThemeHostDeps = {}): ThemeHost {
       return lastError
     },
     installBundledSample(id: string) {
-      return sampleCache.get(id) || null
+      return bundledCache.get(id) ?? null
     },
   }
 }

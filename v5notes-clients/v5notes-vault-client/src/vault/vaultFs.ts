@@ -13,7 +13,7 @@ import {
 import { normalizeVaultPath, toIdentityKey, VaultPathError } from '../path/identity'
 import { TRASH_DIR_REL, V5NOTES_DIR } from './skeleton'
 import { ATTACHMENT_DIR_REL } from './attachments'
-import { isNotePath } from './docKinds'
+import { DOC_KINDS, docKindOfPathIn, type DocKindSpec } from './docKinds'
 import type { VaultTreeNode } from './types'
 
 const HIDDEN_ROOT_SKIP = new Set(['.git', '.DS_Store', 'Thumbs.db'])
@@ -45,7 +45,8 @@ export function touchLocalWriteGuard(rootPath: string, relativePath?: string | n
 }
 
 export interface VaultFs {
-  listTree(rootPath: string): Promise<VaultTreeNode[]>
+  /** `kinds` adds plugin-declared document kinds to the note/file split. */
+  listTree(rootPath: string, kinds?: readonly DocKindSpec[]): Promise<VaultTreeNode[]>
   readText(rootPath: string, relativePath: string): Promise<string>
   writeText(rootPath: string, relativePath: string, content: string): Promise<void>
   /** Binary read for attachment sync (Phase 5). */
@@ -65,11 +66,15 @@ async function abs(rootPath: string, relativePath: string): Promise<{ absPath: s
   return { absPath, displayPath }
 }
 
-function isNote(name: string): boolean {
-  return isNotePath(name)
+function isNote(name: string, kinds: readonly DocKindSpec[]): boolean {
+  return docKindOfPathIn(kinds, name) !== null
 }
 
-async function readChildren(rootPath: string, dirRel: string | null): Promise<VaultTreeNode[]> {
+async function readChildren(
+  rootPath: string,
+  dirRel: string | null,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): Promise<VaultTreeNode[]> {
   const dirAbs = dirRel ? (await abs(rootPath, dirRel)).absPath : rootPath
   let entries
   try {
@@ -100,7 +105,7 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
     }
 
     if (entry.isDirectory) {
-      const children = await readChildren(rootPath, normalized.displayPath)
+      const children = await readChildren(rootPath, normalized.displayPath, kinds)
       nodes.push({
         path: normalized.displayPath,
         identityKey: normalized.identityKey,
@@ -116,7 +121,7 @@ async function readChildren(rootPath: string, dirRel: string | null): Promise<Va
         path: normalized.displayPath,
         identityKey: normalized.identityKey,
         name,
-        kind: isNote(name) ? 'note' : 'file',
+        kind: isNote(name, kinds) ? 'note' : 'file',
       })
     }
   }
@@ -150,8 +155,8 @@ function tmpNameFor(displayPath: string): string {
 }
 
 export const vaultFs: VaultFs = {
-  async listTree(rootPath: string) {
-    return readChildren(rootPath, null)
+  async listTree(rootPath: string, kinds: readonly DocKindSpec[] = DOC_KINDS) {
+    return readChildren(rootPath, null, kinds)
   },
 
   async readText(rootPath, relativePath) {

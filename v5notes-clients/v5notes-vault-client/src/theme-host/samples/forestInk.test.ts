@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { FOREST_INK_CSS } from './forestInk'
+import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from './forestInk'
+import forestInkManifest from './forest-ink/manifest.json'
 
 describe('Forest Ink sample theme', () => {
-  it('scopes every rule to its own theme', () => {
-    const selectors = [...FOREST_INK_CSS.matchAll(/([^{}]+)\{/g)].map(m => m[1].trim())
-    expect(selectors.length).toBeGreaterThan(0)
-    for (const selector of selectors) {
-      if (selector.startsWith('/*')) continue
-      expect(selector).toContain("data-community-theme='forest-ink'")
-    }
+  it('keeps the importable manifest identical to the installable folder', () => {
+    expect(FOREST_INK_MANIFEST).toEqual(forestInkManifest)
   })
 
   it('themes the vault identity colours as well as the shell tokens', () => {

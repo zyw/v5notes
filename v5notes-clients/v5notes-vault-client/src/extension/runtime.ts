@@ -6,6 +6,7 @@
  * Tokens stay in account/session modules — never passed into hosts.
  */
 
+import { ref } from 'vue'
 import type {
   PluginHost,
   PluginRuntimeInfo,
@@ -23,6 +24,8 @@ import {
   createWorkspaceApi,
   saveSafeMode,
 } from '../plugin-host'
+import { DOC_KINDS, type DocKindSpec } from '../vault/docKinds'
+import { forgetKindsForPlugin, readRememberedKinds, rememberKinds } from './docKindStore'
 import type { ThemeHost } from '../theme-host'
 import { createThemeHost, readAppearanceFile, writeAppearanceFile } from '../theme-host'
 import { installCatalogItem, installImportedPackage, type CatalogItem } from '../catalog'
@@ -126,6 +129,8 @@ export async function startExtensionRuntime(rootPath: string | null): Promise<vo
   } else {
     await pluginHost.start()
   }
+  await syncRememberedKinds()
+  docKindsRevision.value += 1
 
   // Safe Mode was on before start(): re-apply the current choice so the host
   // knows to skip community code. The theme itself (内置默认 / 暮色 / 明暗) stays.
@@ -155,6 +160,14 @@ function createDetachedVaultAdapter(): ReturnType<typeof createVaultAdapter> {
       return false
     },
   }
+}
+
+/**
+ * Test seam: pretend a set of plugin kinds was declared earlier. Retired kinds
+ * keep counting as notes even after the plugin that declared them is gone.
+ */
+export function __setRememberedKindsForTest(kinds: DocKindSpec[]): void {
+  rememberedKinds = kinds
 }
 
 export async function stopExtensionRuntime(): Promise<void> {
@@ -201,6 +214,43 @@ export function getActiveEditorProvider(docKind?: string): HostEditorProvider | 
 export function listEditorKinds(): HostEditorKind[] {
   return pluginHost?.listEditorKinds() ?? []
 }
+
+/** Core kinds plus plugin-declared kinds the user can create right now. */
+export function listDocKinds(): DocKindSpec[] {
+  return pluginHost?.listDocKinds() ?? []
+}
+
+/** Kinds a plugin declared earlier, so its files still read as notes. */
+let rememberedKinds: DocKindSpec[] = []
+
+/**
+ * The kind table every note-facing scan should use (tree, search, trash, sync,
+ * activity): core kinds, plugin kinds that are live now, and kinds whose plugin
+ * has since been disabled. Replaced wholesale when the extension runtime loads
+ * or stops, so callers can read this synchronously.
+ */
+export function liveDocKinds(): DocKindSpec[] {
+  const live = listDocKinds()
+  const ids = new Set(live.map((kind) => kind.id))
+  const retired = rememberedKinds.filter((kind) => !ids.has(kind.id))
+  return [...(live.length ? live : DOC_KINDS), ...retired]
+}
+
+/**
+ * Persist the plugin kinds that are live right now, then reload the remembered
+ * set. Runs on every runtime (re)start, after the host finished loading.
+ */
+async function syncRememberedKinds(): Promise<void> {
+  try {
+    await rememberKinds(pluginHost?.listDeclaredKinds() ?? [])
+    rememberedKinds = Object.values(await readRememberedKinds())
+  } catch {
+    rememberedKinds = []
+  }
+}
+
+/** Bumped whenever the live kind set changes, so long-lived owners can rebind. */
+export const docKindsRevision = ref(0)
 
 /** Write an installed package, then enable a plugin or reload the theme host. */
 async function activateInstalled(result: { id: string; kind: 'plugin' | 'theme' }): Promise<void> {
@@ -265,6 +315,10 @@ export async function uninstallPlugin(id: string, vaultRoot: string | null): Pro
     bookkeepingError = error instanceof Error ? error.message : String(error)
   }
   await pluginHost.start()
+  // Nothing describes this plugin's format any more, so stop guessing at it.
+  await forgetKindsForPlugin(id).catch(() => undefined)
+  await syncRememberedKinds()
+  docKindsRevision.value += 1
   if (bookkeepingError) {
     throw new Error(`文件已删除，启用记录未清理：${bookkeepingError}`)
   }

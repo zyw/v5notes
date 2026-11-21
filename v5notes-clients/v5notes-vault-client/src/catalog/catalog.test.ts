@@ -52,6 +52,17 @@ describe('bundled catalog', () => {
     expect(pkg.files['manifest.json']).toContain('network:safe')
   })
 
+  it('seeds Hello World as an installable plugin', () => {
+    const list = bundledCatalogList('plugin')
+    expect(list.items.map((i) => i.id)).toEqual(['hello-world', 'safe-fetch-demo'])
+    const pkg = bundledCatalogPackage('hello-world')
+    expect(pkg.kind).toBe('plugin')
+    expect(pkg.files['manifest.json']).toContain('"id": "hello-world"')
+    expect(pkg.files['main.js']).toContain('HelloWorldPlugin')
+    // 种子 manifest 必须能过插件清单解析，否则点「安装」会在落盘前失败。
+    expect(parseManifestJson(pkg.files['manifest.json']!).id).toBe('hello-world')
+  })
+
   // 主题种子直接落盘给 ThemeHost 注入，必须符合社区主题 CSS 规则，
   // 否则点选时会校验失败并回退内置（catalog-moss 曾用裸 :root 踩过）。
   it('bundled theme packages pass community CSS validation', () => {

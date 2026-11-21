@@ -1,8 +1,7 @@
 import { parseManifestJson } from '../plugin-host/manifest'
 import type { VaultThemePackage } from '../theme-host/ThemeHost'
 import { validateThemeCss } from '../theme-host/cssValidate'
-import { FOREST_INK_CSS, FOREST_INK_MANIFEST } from '../theme-host/samples/forestInk'
-import { WANQING_CSS, WANQING_MANIFEST } from '../theme-host/samples/wanqing'
+import { BUNDLED_THEMES, type BundledTheme } from '../theme-host/samples/bundled'
 import { bundledCatalogList, bundledCatalogPackage } from '../catalog/bundled'
 import { extensionPath, getAppStore } from './appStorage'
 
@@ -72,41 +71,36 @@ export async function removeGlobalTheme(id: string): Promise<void> {
   await store.remove(dir)
 }
 
-/** Write one bundled sample package into the app theme folder. */
-async function installSampleTheme(
-  manifest: {
-    id: string
-    name: string
-    version: string
-    description?: string
-    author?: string
-    kind: string
-    minAppVersion?: string
-    permissions?: readonly string[]
-    theme?: string
-    themeMeta?: string
-  },
-  css: string,
-  accent: string,
-): Promise<void> {
+/**
+ * 随应用内置的主题不再需要装进应用目录：ThemeHost 直接按包注入。
+ * 旧版本留下的同名目录反而会让同一主题在「已安装」里多出一条，删掉它们。
+ */
+async function removeLegacyInstalledCopies(): Promise<void> {
   const store = getAppStore()
-  const dir = await extensionPath([THEMES_DIR, manifest.id])
-  await store.mkdir(dir)
-  await store.writeText(dir + '/manifest.json', JSON.stringify(manifest, null, 2) + '\n')
-  await store.writeText(dir + '/theme.css', css.endsWith('\n') ? css : css + '\n')
-  await store.writeText(
-    dir + '/theme.json',
-    JSON.stringify({ modes: ['light', 'dark'], accent }, null, 2) + '\n',
-  )
+  for (const theme of BUNDLED_THEMES) {
+    const dir = await extensionPath([THEMES_DIR, theme.id])
+    if ((await store.readText(dir + '/manifest.json')) !== null) await store.remove(dir)
+  }
 }
 
-/** Install the bundled sample themes into the app theme folder. */
+/** Write one bundled theme package into the app theme folder. */
+async function installBundledTheme(theme: BundledTheme): Promise<void> {
+  const store = getAppStore()
+  const dir = await extensionPath([THEMES_DIR, theme.id])
+  await store.mkdir(dir)
+  await store.writeText(dir + '/manifest.json', JSON.stringify(theme.manifest, null, 2) + '\n')
+  await store.writeText(dir + '/theme.css', theme.css.endsWith('\n') ? theme.css : theme.css + '\n')
+  await store.writeText(dir + '/theme.json', JSON.stringify(theme.meta, null, 2) + '\n')
+}
+
+/** Install the bundled themes into the app theme folder. */
 export async function installGlobalSampleThemes(): Promise<void> {
-  await installSampleTheme(FOREST_INK_MANIFEST, FOREST_INK_CSS, '#3d6b54')
-  await installSampleTheme(WANQING_MANIFEST, WANQING_CSS, '#4a5a86')
+  await removeLegacyInstalledCopies()
+  for (const theme of BUNDLED_THEMES) await installBundledTheme(theme)
 }
 
 /** @deprecated kept for callers that only install Forest Ink. */
 export async function installGlobalForestInkSample(): Promise<void> {
-  await installSampleTheme(FOREST_INK_MANIFEST, FOREST_INK_CSS, '#3d6b54')
+  const forestInk = BUNDLED_THEMES.find((theme) => theme.id === 'forest-ink')
+  if (forestInk) await installBundledTheme(forestInk)
 }

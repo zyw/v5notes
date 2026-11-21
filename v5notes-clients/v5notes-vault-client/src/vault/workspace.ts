@@ -4,7 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { readDir, stat } from '@tauri-apps/plugin-fs'
 import { mkdir, readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { VaultJson } from '../models/vault'
-import { isNotePath } from './docKinds'
+import { DOC_KINDS, docKindOfPathIn, type DocKindSpec } from './docKinds'
 import { normalizeVaultName, resolveCreateVaultRoot, VaultPathError } from '../path/identity'
 import {
   listRecentVaults,
@@ -137,7 +137,10 @@ const NOTE_MTIME_MAX_FILES = 400
  * directory) instead of the whole tree, so the settings list can order vaults
  * by real activity without a heavy scan of large folders.
  */
-async function newestNoteMtime(rootPath: string): Promise<number | null> {
+async function newestNoteMtime(
+  rootPath: string,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): Promise<number | null> {
   let newest: number | null = null
   let visited = 0
 
@@ -162,7 +165,7 @@ async function newestNoteMtime(rootPath: string): Promise<number | null> {
         await walk(item.abs, depth + 1)
         continue
       }
-      if (!isNotePath(item.name)) continue
+      if (!docKindOfPathIn(kinds, item.name)) continue
       visited += 1
       try {
         const info = await stat(item.abs)
@@ -200,7 +203,8 @@ export interface VaultWorkspace {
   /** Open a vault's settings page without touching recency or registry order. */
   openForSettings(rootPath: string): Promise<OpenedVault>
   /** Newest note change time (epoch ms), or null when the folder is gone. */
-  lastNoteChange(rootPath: string): Promise<number | null>
+  /** `kinds` adds plugin-declared kinds to the activity scan. */
+  lastNoteChange(rootPath: string, kinds?: readonly DocKindSpec[]): Promise<number | null>
   listRecent(): RecentVaultEntry[]
   forgetRecent(rootPath: string): void
   /** Check whether a registered root still holds a valid vault on disk. */
@@ -291,8 +295,8 @@ export const vaultWorkspace: VaultWorkspace = {
     return readVaultForSettings(rootPath)
   },
 
-  lastNoteChange(rootPath: string) {
-    return newestNoteMtime(rootPath)
+  lastNoteChange(rootPath: string, kinds: readonly DocKindSpec[] = DOC_KINDS) {
+    return newestNoteMtime(rootPath, kinds)
   },
 
   listRecent() {

@@ -5,7 +5,7 @@
 
 import { exists, mkdir, readDir, remove, rename } from '@tauri-apps/plugin-fs'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
-import { isNotePath } from './docKinds'
+import { DOC_KINDS, docKindOfPathIn, type DocKindSpec } from './docKinds'
 import { TRASH_DIR_REL } from './skeleton'
 import { buildTrashRel, isMetaOrTrashPath } from './trashPaths'
 import { vaultFs } from './vaultFs'
@@ -65,7 +65,11 @@ export async function permanentDelete(rootPath: string, relativePath: string): P
 }
 
 /** List top-level items in each trash stamp folder (newest first). */
-export async function listTrash(rootPath: string): Promise<TrashEntry[]> {
+/** `kinds` defaults to core kinds; pass the host's table to include plugin kinds. */
+export async function listTrash(
+  rootPath: string,
+  kinds: readonly DocKindSpec[] = DOC_KINDS,
+): Promise<TrashEntry[]> {
   const trashAbs = await vaultFs.absolute(rootPath, TRASH_DIR_REL)
   if (!(await exists(trashAbs))) return []
   const stamps = await readDir(trashAbs)
@@ -106,7 +110,7 @@ export async function listTrash(rootPath: string): Promise<TrashEntry[]> {
           trashRel: childRel,
           originalPath: name,
           deletedAt,
-          kind: isNotePath(name) ? 'note' : 'file',
+          kind: docKindOfPathIn(kinds, name) ? 'note' : 'file',
           name,
         })
       }

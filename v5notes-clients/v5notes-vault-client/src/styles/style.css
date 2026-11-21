@@ -3996,6 +3996,26 @@ button.dock-save:hover:not(:disabled) {
   font-size: 10px;
 }
 
+.empty-shortcuts .shortcut-choice {
+  margin: 0 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.empty-shortcuts .shortcut-choice:hover {
+  color: var(--ws-text);
+}
+
+.empty-shortcuts .shortcut-choice:focus-visible {
+  outline: 2px solid var(--ws-accent, currentColor);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .empty-shortcuts span {
   margin: 0 6px;
   opacity: 0.6;

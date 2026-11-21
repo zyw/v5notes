@@ -82,7 +82,37 @@ describe('app-level extension storage', () => {
     seed()
     await installGlobalSampleThemes()
     const themes = await listGlobalThemes()
-    expect(themes.map(t => t.id)).toEqual(expect.arrayContaining(['forest-ink', 'wanqing']))
+    expect(themes.map(t => t.id).sort()).toEqual(['catalog-moss', 'forest-ink', 'wanqing'])
+  })
+
+  // 内置主题现在直接由 ThemeHost 注入，旧版本留在应用目录里的同名副本
+  // 会让同一张主题在列表里变成「已安装」，所以安装种子时顺手清掉。
+  it('clears stale copies of bundled themes before installing the seeds', async () => {
+    const store = createMemoryAppStore({
+      [ROOT + '/themes/wanqing/manifest.json']: JSON.stringify({
+        id: 'wanqing',
+        name: '晚晴',
+        kind: 'theme',
+        version: '0.9.0',
+        permissions: ['ui:theme'],
+        theme: 'theme.css',
+      }),
+      [ROOT + '/themes/wanqing/theme.css']: ':root { --bg: #fff; }',
+      [ROOT + '/themes/my-own/manifest.json']: JSON.stringify({
+        id: 'my-own',
+        name: 'Mine',
+        kind: 'theme',
+        version: '1.0.0',
+        permissions: ['ui:theme'],
+        theme: 'theme.css',
+      }),
+      [ROOT + '/themes/my-own/theme.css']: ":root[data-community-theme='my-own'] { --bg: #fff; }",
+    })
+    setAppStore(store, ROOT)
+    await installGlobalSampleThemes()
+    const themes = await listGlobalThemes()
+    expect(themes.map(t => t.id).sort()).toEqual(['catalog-moss', 'forest-ink', 'my-own', 'wanqing'])
+    expect(await store.readText(ROOT + '/themes/my-own/theme.css')).not.toBeNull()
   })
 
   // 旧版本装下的官方主题可能带着裸 :root 的 CSS，点击时会被 ThemeHost 拒绝；

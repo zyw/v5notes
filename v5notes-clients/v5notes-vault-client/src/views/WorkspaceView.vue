@@ -39,12 +39,13 @@ import { closeTreeMenu } from '../components/treeMenu'
 import VaultTree from '../components/VaultTree.vue'
 import { normalizeVaultPath, VaultPathError } from '../path/identity'
 import {
-  DOC_KINDS,
   MARKDOWN_KIND,
-  displayNameOf,
+  displayNameOfIn,
   docKindById,
-  initialContentFor,
   docKindOfPath,
+  docKindOfPathIn,
+  initialContentFor,
+  type DocKindSpec,
 } from '../vault/docKinds'
 import { APPEARANCE_REL } from '../vault/skeleton'
 import {
@@ -68,8 +69,9 @@ import {
 } from '../appearance/themes'
 import { applyVaultColorForPath, resolveVaultColor, type VaultColorSwatch } from '../appearance/vaultColors'
 import {
+  docKindsRevision,
   getActiveEditorProvider,
-  listEditorKinds,
+  listDocKinds,
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
@@ -583,7 +585,7 @@ const vaultInitial = computed(() => (props.vault.name || 'V').slice(0, 1).toUppe
 const noteTitle = computed(() => {
   if (!selectedPath.value) return ''
   const name = selectedPath.value.split('/').pop() ?? selectedPath.value
-  return displayNameOf(name)
+  return displayNameOfIn(creatableKinds.value, name)
 })
 const modKey = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'
 
@@ -611,6 +613,11 @@ function onNarrowOutlineChange(event: MediaQueryListEvent) {
 
 watch(dirty, value => emit('dirtyChange', value), { immediate: true })
 
+// Enabling or disabling a plugin can change which kinds count as notes.
+watch(docKindsRevision, () => {
+  void refreshTree()
+})
+
 watch(sidebarOpen, open => {
   if (!open) {
     closeTreeMenu()
@@ -635,6 +642,9 @@ function refreshOutline() {
   }, 140)
 }
 
+/** A remembered kind whose plugin is gone has files but no editor to open them. */
+const editorUnavailable = ref(false)
+
 function destroyEditorSession() {
   editorSession.value?.destroy()
   editorSession.value = null
@@ -650,7 +660,11 @@ async function ensureEditorMounted() {
     return
   }
   const provider = getActiveEditorProvider(docKindOfPath(path)?.id)
-  if (!provider) return
+  editorUnavailable.value = !provider
+  if (!provider) {
+    destroyEditorSession()
+    return
+  }
   if (editorSession.value && mountedEditorId === provider.id) {
     syncEditorSurface()
     return
@@ -998,7 +1012,7 @@ watch([nameDialog, moveDialog, confirmDialog, attachmentOpen], ([name, move, con
 
 
 async function refreshTree() {
-  tree.value = await vaultFs.listTree(props.vault.rootPath)
+  tree.value = await vaultFs.listTree(props.vault.rootPath, creatableKinds.value)
 }
 
 function findTreeNode(nodes: VaultTreeNode[], identityKey: string): VaultTreeNode | null {
@@ -1011,7 +1025,7 @@ function findTreeNode(nodes: VaultTreeNode[], identityKey: string): VaultTreeNod
 }
 
 async function refreshTrash() {
-  trashEntries.value = await listTrash(props.vault.rootPath)
+  trashEntries.value = await listTrash(props.vault.rootPath, creatableKinds.value)
 }
 
 async function openNote(node: VaultTreeNode) {
@@ -1051,6 +1065,8 @@ async function openNote(node: VaultTreeNode) {
 }
 
 async function saveCurrent(): Promise<boolean> {
+  // An unopenable note's in-memory copy is not authoritative; never write it back.
+  if (editorUnavailable.value) return true
   if (!selectedPath.value || !dirty.value) return true
   busy.value = true
   status.value = ''
@@ -1090,6 +1106,8 @@ function syncEditorSurface(): void {
 
 /** Undo history and the Markdown model survive a mode switch: no remount. */
 function enterWritableMode(mode: Exclude<EditorMode, 'preview'>): void {
+  // Nothing can accept keystrokes without an editor for this note's kind.
+  if (editorUnavailable.value) return
   if (editorMode.value === mode) return
   editorMode.value = mode
   sourceMode.value = mode === 'source'
@@ -1162,7 +1180,7 @@ function openDelete(node: VaultTreeNode) {
     title: isDir ? '删除目录' : '删除笔记',
     message: isDir
       ? `将「${node.name}」及其子目录与笔记移入本地回收站（.v5notes/trash，永不同步）。可稍后还原。`
-      : `将「${displayNameOf(node.name)}」移入本地回收站（永不同步）。可稍后还原。`,
+      : `将「${displayNameOfIn(creatableKinds.value, node.name)}」移入本地回收站（永不同步）。可稍后还原。`,
   }
 }
 
@@ -1265,8 +1283,10 @@ async function submitName(raw: string) {
         const ok = await saveCurrent()
         if (!ok) return
       }
-      const kind = docKindById(dialog.docKind ?? MARKDOWN_KIND) ?? docKindById(MARKDOWN_KIND)!
-      const leaf = displayNameOf(raw.trim()) || raw.trim()
+      const kind =
+        creatableKinds.value.find(candidate => candidate.id === dialog.docKind) ??
+        docKindById(MARKDOWN_KIND)!
+      const leaf = displayNameOfIn(creatableKinds.value, raw.trim()) || raw.trim()
       const fileName = `${leaf}${kind.extension}`
       const rel = dialog.parentPath ? `${dialog.parentPath}/${fileName}` : fileName
       const { displayPath } = normalizeVaultPath(rel)
@@ -1304,8 +1324,11 @@ async function submitName(raw: string) {
         if (!ok) return
       }
       const target = dialog.target
+      const targetKind = docKindOfPathIn(creatableKinds.value, target.name)
       const newLeaf =
-        target.kind === 'note' ? `${raw.trim().replace(/\.md$/i, '')}.md` : raw.trim()
+        target.kind === 'note'
+          ? `${displayNameOfIn(creatableKinds.value, raw.trim()) || raw.trim()}${targetKind?.extension ?? '.md'}`
+          : raw.trim()
       const toRel = dialog.parentPath ? `${dialog.parentPath}/${newLeaf}` : newLeaf
       const { displayPath } = normalizeVaultPath(toRel)
       if (displayPath === target.path) {
@@ -1398,11 +1421,8 @@ function requestClose() {
   }
 }
 
-/** Document kinds that currently have an editor, in menu order. */
-const creatableKinds = computed(() => {
-  const live = new Set(listEditorKinds().map(row => row.docKind))
-  return DOC_KINDS.filter(kind => live.has(kind.id))
-})
+/** Document kinds the user can create right now, core first then plugin kinds. */
+const creatableKinds = computed<DocKindSpec[]>(() => listDocKinds())
 
 const createMenuOpen = ref(false)
 
@@ -1410,12 +1430,41 @@ function closeCreateMenu() {
   createMenuOpen.value = false
 }
 
+const LAST_KIND_KEY = 'v5notes.vault.last-note-kind'
+
+function readLastKind(): string | null {
+  try {
+    return localStorage.getItem(LAST_KIND_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberKind(docKind: string) {
+  try {
+    localStorage.setItem(LAST_KIND_KEY, docKind)
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Last created kind when it is still creatable, else the first one on offer. */
+const preferredKind = computed(() => {
+  const last = readLastKind()
+  const kinds = creatableKinds.value
+  return kinds.find(kind => kind.id === last) ?? kinds[0] ?? null
+})
+
 /**
- * One kind creates straight away; several kinds open the chooser so the user
- * still picks every time (⌘N included).
+ * ⌘N repeats the last kind; ⌘⇧N (and the sidebar button) opens the chooser.
+ * With a single kind there is nothing to choose, so every entry creates it.
  */
 async function createNoteRoot() {
-  openCreateMenu()
+  if (creatableKinds.value.length > 1) {
+    openCreateMenu()
+    return
+  }
+  createNoteOfKind(creatableKinds.value[0]?.id ?? MARKDOWN_KIND)
 }
 
 function openCreateMenu() {
@@ -1424,18 +1473,29 @@ function openCreateMenu() {
     createMenuOpen.value = true
     return
   }
-  openCreateNote(null, creatableKinds.value[0]?.id ?? MARKDOWN_KIND)
+  createNoteOfKind(creatableKinds.value[0]?.id ?? MARKDOWN_KIND)
 }
 
 function createNoteOfKind(docKind: string) {
   createMenuOpen.value = false
+  rememberKind(docKind)
   openCreateNote(null, docKind)
+}
+
+/** ⌘N path: same vault location rules as the chooser, no menu. */
+function createNoteWithPreferredKind() {
+  createMenuOpen.value = false
+  const kind = preferredKind.value
+  rememberKind(kind?.id ?? MARKDOWN_KIND)
+  openCreateNote(null, kind?.id ?? MARKDOWN_KIND)
 }
 
 async function runSearch(query: string) {
   searchBusy.value = true
   try {
-    searchHits.value = query.trim() ? await vaultSearch.search(props.vault.rootPath, query) : []
+    searchHits.value = query.trim()
+      ? await vaultSearch.search(props.vault.rootPath, query, { kinds: creatableKinds.value })
+      : []
   } catch (error) {
     emit('error', error instanceof Error ? error.message : String(error))
   } finally {
@@ -1502,9 +1562,10 @@ function onKeydown(event: KeyboardEvent) {
     void saveCurrent()
   }
   if (meta && event.key.toLowerCase() === 'n' && !modalBlocking) {
-    // Always lets the user choose the note kind when more than one exists.
+    // ⌘N repeats the last note kind; ⌘⇧N opens the kind chooser.
     event.preventDefault()
-    openCreateMenu()
+    if (event.shiftKey) openCreateMenu()
+    else createNoteWithPreferredKind()
   }
   if (meta && event.key.toLowerCase() === 'k' && !modalBlocking) {
     event.preventDefault()
@@ -1946,9 +2007,9 @@ defineExpose({
           <li v-for="entry in trashEntries" :key="entry.trashRel" class="trash-entry-row">
             <TreeIcon :kind="entry.kind === 'dir' ? 'folder' : 'note'" />
             <span class="trash-copy">
-              <strong>{{ displayNameOf(entry.name) }}</strong>
+              <strong>{{ displayNameOfIn(creatableKinds, entry.name) }}</strong>
               <span
-                v-if="entry.originalPath !== entry.name && entry.originalPath !== displayNameOf(entry.name)"
+                v-if="entry.originalPath !== entry.name && entry.originalPath !== displayNameOfIn(creatableKinds, entry.name)"
               >{{ entry.originalPath }}</span>
               <span>{{ formatDeletedAt(entry.deletedAt) }}</span>
             </span>
@@ -2119,7 +2180,19 @@ defineExpose({
           <button v-if="dirty" type="button" class="ghost compact" @click="reloadExternal">加载磁盘版本</button>
         </p>
 
-        <div v-if="selectedPath" ref="editorMountEl" class="editor-body"></div>
+        <div v-if="selectedPath && editorUnavailable" class="editor-empty" role="status">
+          <span class="empty-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 3.5h8l4 4v13H6z" />
+              <path d="M14 3.8v4h3.8" />
+              <path d="M9 13h6" />
+            </svg>
+          </span>
+          <p>当前笔记类型没有可用编辑器。</p>
+          <p class="book-small">启用提供该类型的扩展后即可打开；文件内容不受影响。</p>
+        </div>
+
+        <div v-else-if="selectedPath" ref="editorMountEl" class="editor-body"></div>
 
         <div v-else class="editor-empty">
           <span class="empty-mark" aria-hidden="true">
@@ -2148,6 +2221,14 @@ defineExpose({
             <kbd>{{ modKey }}</kbd><kbd>S</kbd> 保存
             <span>·</span>
             <kbd>{{ modKey }}</kbd><kbd>N</kbd> 新建
+            <button
+              v-if="creatableKinds.length > 1"
+              type="button"
+              class="shortcut-choice"
+              @click="openCreateMenu"
+            >
+              <kbd>{{ modKey }}</kbd><kbd>⇧</kbd><kbd>N</kbd> 选择类型
+            </button>
           </p>
         </div>
 
@@ -2319,7 +2400,7 @@ defineExpose({
       :label="nameDialog?.mode === 'dir' ? '目录名' : '名称'"
       :initial-value="
         nameDialog?.mode === 'rename' && nameDialog.target
-          ? displayNameOf(nameDialog.target.name)
+          ? displayNameOfIn(creatableKinds, nameDialog.target.name)
           : nameDialog?.mode === 'note'
             ? '未命名'
             : '新建文件夹'
@@ -2338,7 +2419,7 @@ defineExpose({
         moveDialog
           ? moveDialog.node.kind === 'dir'
             ? moveDialog.node.name
-            : displayNameOf(moveDialog.node.name)
+            : displayNameOfIn(creatableKinds, moveDialog.node.name)
           : ''
       "
       :targets="moveTargets"

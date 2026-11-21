@@ -28,6 +28,42 @@ describe('ThemeHost', () => {
     expect(document.getElementById('v5-community-theme-style')).toBeNull()
   })
 
+  it('lists every bundled theme right after the builtins', async () => {
+    const host = createThemeHost({
+      isSafeMode: () => false,
+      // 旧版本把官方主题种子写进了应用目录；它仍是内置主题，只出现一次。
+      listInstalledThemes: async () => [
+        { id: 'catalog-moss', name: 'Catalog Moss', css: ":root[data-community-theme='catalog-moss'] { --bg: #fff; }" },
+        { id: 'user-theme', name: 'User', css: ":root[data-community-theme='user-theme'] { --bg: #fff; }" },
+      ],
+    })
+    await host.start()
+    const list = host.list()
+    expect(list.map((t) => t.id)).toEqual(['default', 'dusk', 'catalog-moss', 'forest-ink', 'wanqing', 'user-theme'])
+    expect(list.filter((t) => t.source === 'core').map((t) => t.id)).toEqual([
+      'catalog-moss',
+      'forest-ink',
+      'wanqing',
+    ])
+    expect(list.find((t) => t.id === 'user-theme')?.source).toBe('vault')
+  })
+
+  it('prefers the bundled package over a stale copy left in the app folder', async () => {
+    const host = createThemeHost({
+      isSafeMode: () => false,
+      listInstalledThemes: async () => [
+        { id: 'catalog-moss', name: 'Old Moss', css: ':root { --bg: red; }' },
+      ],
+    })
+    await host.start()
+    await host.setActive('catalog-moss')
+    expect(host.getActive()).toBe('catalog-moss')
+    expect(host.getLastError()).toBeNull()
+    expect(document.getElementById('v5-community-theme-style')?.textContent).toContain(
+      "data-community-theme='catalog-moss'",
+    )
+  })
+
   it('applies bundled forest-ink sample', async () => {
     const host = createThemeHost({ isSafeMode: () => false })
     await host.start()
@@ -46,10 +82,10 @@ describe('ThemeHost', () => {
     expect(document.getElementById('v5-community-theme-style')).toBeNull()
   })
 
-  it('applies every sample theme in both 明暗 modes', async () => {
+  it('applies every bundled theme in both 明暗 modes', async () => {
     const host = createThemeHost({ isSafeMode: () => false })
     await host.start()
-    for (const id of ['forest-ink', 'wanqing']) {
+    for (const id of ['catalog-moss', 'forest-ink', 'wanqing']) {
       await host.setActive(id)
       await host.setColorMode('light')
       expect(document.documentElement.dataset.colorMode).toBe('light')

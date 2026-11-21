@@ -1,0 +1,19 @@
+{
+  "id": "catalog-moss",
+  "name": "Catalog Moss",
+  "kind": "theme",
+  "version": "1.0.0",
+  "minAppVersion": "0.1.0",
+  "description": "官方 catalog 示例主题（柔和苔绿）",
+  "author": "v5notes",
+  "permissions": [
+    "ui:theme"
+  ],
+  "tags": [
+    "demo",
+    "theme",
+    "official"
+  ],
+  "theme": "theme.css",
+  "themeMeta": "theme.json"
+}

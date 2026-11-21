@@ -17,6 +17,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { createSyncEngine, type SyncEngine } from './engine'
 import type { SyncEngineStatus } from './types'
 import type { AccountState } from '../account'
+import { docKindsRevision, liveDocKinds } from '../extension/runtime'
 import type { OpenedVault } from '../vault/types'
 import { DEFAULT_CLIENT_ID } from '../account/constants'
 
@@ -100,6 +101,8 @@ export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandle
         onUnauthorized: () => {
           void account.logout()
         },
+        // Plugin-declared kinds must sync as text notes, not assets.
+        docKinds: () => liveDocKinds(),
       })
       boundRootPath = rootPath
     }
@@ -144,6 +147,14 @@ export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandle
       else stop()
     },
   )
+
+  // Enabling a plugin can add document kinds. The engine reads kinds lazily via
+  // liveDocKinds(), so only a fresh engine is needed for its tree walks.
+  watch(docKindsRevision, () => {
+    if (!engine.value) return
+    stop()
+    start()
+  })
 
   async function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
     activeCycles.value += 1
