@@ -5,7 +5,7 @@
  * - bootstrap merge conflict copies (design §9.3 两端都有内容)
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { createSyncEngine, type SyncEngineDeps } from './engine'
 import { VaultSyncApiError, type VaultSyncApi } from './api'
 
@@ -636,5 +636,48 @@ describe('pull-side protective branches (§9.3)', () => {
     const puts = api.calls.filter(c => c.startsWith('put:'))
     expect(puts.some(c => c.includes('old-name.md') || c.includes('new-name.md'))).toBe(false)
     expect(api.calls.some(c => c.startsWith('delete:'))).toBe(false)
+  })
+})
+
+describe('retry queue growth (§14 断网队列)', () => {
+  // The meta map is shared by this file's tests; start from an unbound vault so
+  // another test's sync-state cannot be read as a local rename.
+  beforeAll(() => {
+    metaFiles.clear()
+  })
+
+  it('does not append another dead item for the same permanent failure', async () => {
+    const { fs } = makeFs({ 'a.md': '# a' })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+      onPut: () => {
+        throw new VaultSyncApiError('contentHash 与正文不一致', 400, 'vault.hash.mismatch')
+      },
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    await engine.pushPull()
+    const afterFirst = engine.getRetryQueue().length
+    await engine.pushPull()
+
+    expect(afterFirst).toBe(1)
+    expect(engine.getRetryQueue()).toHaveLength(1)
+    // The entry is permanent, so it must never be retried on its own.
+    expect(engine.getRetryQueue()[0]?.dead).toBe(true)
+  })
+
+  it('reports its size in the status snapshot', async () => {
+    const { fs } = makeFs({ 'a.md': '# a' })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+      onPut: () => {
+        throw new VaultSyncApiError('contentHash 与正文不一致', 400, 'vault.hash.mismatch')
+      },
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    await engine.pushPull()
+    expect(engine.getStatus().retryQueueSize).toBe(1)
   })
 })

@@ -11,6 +11,7 @@
 
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { STORAGE_KEYS } from './constants'
+import { DEVICE_KEYS, removeDeviceScopedItem, writeDeviceScopedItem } from './deviceStorage'
 
 export interface SessionSecrets {
   token: string
@@ -63,8 +64,11 @@ interface KeychainResponse {
 
 /**
  * OS keychain store. Every operation invokes the Rust `keychain` command; any
- * failure (locked keychain, unsupported platform) degrades to "no stored
- * session" instead of throwing, so login state simply starts empty.
+ * failure (locked keychain, unsupported platform) degrades to "no keychain
+ * session" instead of throwing. The OS keychain is shared by every build of the
+ * app that uses the same signing identity, so an unsigned `tauri dev` build and
+ * the installed app can see (and overwrite) each other's entries — which is why
+ * the store never relies on the keychain as its only copy.
  */
 export function createKeychainStore(account: string): CredentialStore {
   async function call(operation: 'get' | 'set' | 'delete', values?: SessionSecrets): Promise<KeychainResponse | null> {
@@ -90,14 +94,60 @@ export function createKeychainStore(account: string): CredentialStore {
   }
 }
 
+/**
+ * Restores the session after a reload for *this* install.
+ *
+ * Why not the keychain alone: the keychain service name is fixed, so the
+ * installed app, a second checkout and an unsigned `tauri dev` build all read
+ * and overwrite one entry. A login made by another build therefore either
+ * disappears (its empty save deletes the entry) or is handed to a build that
+ * should have its own session. Observed symptom: sign in, reload, signed out.
+ *
+ * Order of truth: keychain (survives reinstall, and is what other builds see)
+ * → device-scoped localStorage (survives a lost/rejected keychain entry) →
+ * empty. Writes are mirrored to both; a delete that empties the session clears
+ * both.
+ */
+export function createPersistentStore(
+  /** Per-install copy of the tokens (a keychain-independent fallback). */
+  device: CredentialStore,
+  keychain: CredentialStore = createKeychainStore('session'),
+): CredentialStore {
+  function writeLocal(secrets: SessionSecrets): void {
+    writeDeviceScopedItem('token', secrets.token)
+    writeDeviceScopedItem('refreshToken', secrets.refreshToken)
+  }
+  return {
+    async load() {
+      const [fromKeychain, fromDevice] = await Promise.all([keychain.load(), device.load()])
+      if (fromKeychain.token) return fromKeychain
+      if (!fromDevice.token) return fromKeychain
+      // Keychain entry is gone (deleted, denied, or written empty by another
+      // build): put this install's copy back so the next reload is still signed in.
+      await keychain.save(fromDevice)
+      return fromDevice
+    },
+    async save(secrets) {
+      writeLocal(secrets)
+      await Promise.all([device.save(secrets), keychain.save(secrets)])
+    },
+    async clear() {
+      removeDeviceScopedItem('token')
+      removeDeviceScopedItem('refreshToken')
+      await Promise.all([device.clear(), keychain.clear()])
+    },
+  }
+}
+
 let active: CredentialStore | null = null
 
 /** The app-wide credential store: keychain under Tauri, localStorage otherwise. */
 export function getSessionStore(): CredentialStore {
   if (active) return active
+  const device = createFallbackStore({ token: DEVICE_KEYS.token, refreshToken: DEVICE_KEYS.refreshToken })
   active = isTauri()
-    ? createKeychainStore('session')
-    : createFallbackStore({ token: STORAGE_KEYS.token, refreshToken: STORAGE_KEYS.refreshToken })
+    ? createPersistentStore(device)
+    : device
   return active
 }
 

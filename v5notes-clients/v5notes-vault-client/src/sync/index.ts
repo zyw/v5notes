@@ -16,7 +16,30 @@ export {
 } from './exclude'
 export { createSyncEngine, type SyncEngine, type SyncEngineDeps } from './engine'
 export { useSyncCoordinator, type SyncCoordinatorHandles } from './coordinator'
+export {
+  buildDeviceLabel,
+  buildVaultDeviceLabel,
+  describeDeviceLabel,
+  detectPlatform,
+  LABEL_SEPARATOR,
+  type DeviceLabelParts,
+  type DevicePlatform,
+} from './deviceLabel'
+export {
+  bindLabelForVault,
+  localDeviceNames,
+  rememberLocalDeviceName,
+  type LocalDeviceName,
+} from './localDeviceNames'
+export { describeFileHash, formatHashReport, type FileHashReport } from './diagnostics'
 export { normalizeContentHash, sha256Hex } from './hash'
+export {
+  CLOUD_DEVICE_LIMIT,
+  DEVICE_IDLE_WINDOW_MS,
+  kickBlockedLabel,
+  kickBlockedReason,
+  type KickBlockedReason,
+} from './kickable'
 export { VaultQuotaRules } from './limits'
 export {
   cloudQuotaHelp,

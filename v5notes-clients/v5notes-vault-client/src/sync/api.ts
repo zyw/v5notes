@@ -39,8 +39,16 @@ export class VaultSyncApiError extends Error {
     return this.httpStatus === 413 || this.businessCode === VaultErrorCode.FILE_TOO_LARGE
   }
 
+  /**
+   * A declared hash that does not match the uploaded bytes is deterministic:
+   * re-sending the same body can never succeed, so retrying only grows the queue.
+   */
+  get isHashMismatch(): boolean {
+    return this.businessCode === VaultErrorCode.HASH_MISMATCH
+  }
+
   get isRetryable(): boolean {
-    if (this.isQuota || this.isTooLarge || this.isConflict) return false
+    if (this.isQuota || this.isTooLarge || this.isConflict || this.isHashMismatch) return false
     if (this.businessCode === VaultErrorCode.PATH_INVALID) return false
     if (this.httpStatus === 401) return false
     return this.httpStatus === 0 || this.httpStatus === 429 || this.httpStatus >= 500

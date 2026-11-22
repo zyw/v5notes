@@ -24,12 +24,15 @@ import {
 } from './attachments'
 import { planBootstrap } from './bootstrap'
 import { buildConflictCopyPath } from './conflict'
+import { describeFileHash as describeHash } from './diagnostics'
+import { bindLabelForVault, rememberLocalDeviceName } from './localDeviceNames'
 import { applySyncIgnore, parseSyncIgnore } from './exclude'
 import { normalizeContentHash, sha256Hex } from './hash'
 import { VaultQuotaRules } from './limits'
 import { overQuotaPushMessage } from './quotaCopy'
 import {
   createRetryQueue,
+  isRetryableError,
   RETRY_QUEUE_REL,
   type RetryQueue,
   type RetryQueueSnapshot,
@@ -267,16 +270,22 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     config.binding.deviceId = deviceId
     config.binding.server = auth.server
 
+    const vaultName = options?.vaultName || config.name
     let vaultId = options?.existingVaultId || config.binding.cloudVaultId
     if (!vaultId) {
-      const created = await api.createVault(options?.vaultName || config.name)
+      const created = await api.createVault(vaultName)
       vaultId = created.vaultId
     }
     try {
+      const userAgent = typeof navigator === 'undefined' ? null : navigator.userAgent
+      const label = bindLabelForVault(vaultName, userAgent)
       const bindResult = await api.bind(vaultId, {
         deviceId,
-        clientInfo: 'v5notes-vault-client/phase5',
+        clientInfo: label,
       })
+      // Remembered so this machine can recognise its own row when bound devices
+      // are listed (the server never says which row is the caller's).
+      rememberLocalDeviceName(auth.server, bindResult.vaultId, label)
       config.binding.cloudVaultId = bindResult.vaultId
       await writeVaultJson(config)
 
@@ -491,22 +500,25 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     path?: string,
   ): Promise<void> {
     await hydrateRetryQueue()
-    if (err instanceof VaultSyncApiError) {
-      retryQueue.enqueue({
-        kind,
-        path,
-        error: err.message,
-        errorCode: err.businessCode,
-        httpStatus: err.httpStatus,
-      })
-    } else {
-      retryQueue.enqueue({
-        kind,
-        path,
-        error: err instanceof Error ? err.message : String(err),
-        httpStatus: 0,
-      })
+    const errorCode = err instanceof VaultSyncApiError ? err.businessCode : null
+    const httpStatus = err instanceof VaultSyncApiError ? err.httpStatus : 0
+    // Permanent items are never retried, so appending another one only grows
+    // the list: a fixed defect that keeps hitting the same file would otherwise
+    // pile up one dead entry per cycle.
+    if (!isRetryableError(errorCode, httpStatus)) {
+      const duplicate = retryQueue.list().some(item =>
+        item.kind === kind
+        && item.path === path
+        && item.lastErrorCode === errorCode)
+      if (duplicate) return
     }
+    retryQueue.enqueue({
+      kind,
+      path,
+      error: err instanceof Error ? err.message : String(err),
+      errorCode,
+      httpStatus,
+    })
     await persistRetryQueue()
   }
 
@@ -855,7 +867,9 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       if (!auth.token) return
       void (async () => {
         await hydrateRetryQueue()
-        if (retryQueue.pendingCount() > 0 || retryQueue.ready().length > 0) {
+        // Only items whose backoff elapsed may drive the timer; dead items are
+        // listed in the UI but must not make the engine retry on their own.
+        if (retryQueue.ready().length > 0) {
           await flushRetryQueue()
         } else {
           // Idle opportunistic sync when already bound.
@@ -876,6 +890,11 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       clearInterval(bgTimer)
       bgTimer = null
     }
+  }
+
+  /** Read-only: how this note would be hashed and sent right now. */
+  async function describeFileHash(relativePath: string) {
+    return describeHash(deps.rootPath, relativePath, fs)
   }
 
   async function listDevices(): Promise<VaultDeviceInfo[]> {
@@ -924,6 +943,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     listSyncableFiles,
     listDevices,
     kickDevice,
+    describeFileHash,
     listFileVersions,
     getRetryQueue: () => retryQueue.list(),
     getStatus: () => getStatusSnapshot(),

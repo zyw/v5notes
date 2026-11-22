@@ -81,6 +81,7 @@ import {
   startExtensionRuntime,
 } from '../extension/runtime'
 import type { HostRibbon } from '../plugin-host'
+import { isEditorReserialization } from './editorReserialization'
 import { join } from '@tauri-apps/api/path'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 
@@ -1068,6 +1069,12 @@ async function saveCurrent(): Promise<boolean> {
   // An unopenable note's in-memory copy is not authoritative; never write it back.
   if (editorUnavailable.value) return true
   if (!selectedPath.value || !dirty.value) return true
+  // The model only differs from disk because the editor re-serialised it: writing
+  // it would change the file (and therefore its sync hash) without a user edit.
+  if (isEditorReserialization(content.value, savedContent.value)) {
+    content.value = savedContent.value
+    return true
+  }
   busy.value = true
   status.value = ''
   try {
@@ -1521,8 +1528,16 @@ async function onExternalChange() {
       return
     }
     const disk = await vaultFs.readText(props.vault.rootPath, selectedPath.value)
-    if (disk === content.value) {
-      savedContent.value = disk
+    // Compare against what was last read from / written to disk, not against the
+    // editor's model: the editor normalises Markdown (line endings, fences), so
+    // a re-rendered copy that differs from disk is not a local edit.
+    if (disk === savedContent.value) {
+      // Same note newer on disk (typically a sync pull): show it, never save it
+      // back — writing the re-serialised copy would change the bytes on disk.
+      if (disk !== content.value) {
+        content.value = disk
+        status.value = '已从磁盘重新加载'
+      }
       return
     }
     if (!dirty.value) {

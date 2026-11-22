@@ -13,6 +13,8 @@ describe('retry queue', () => {
     expect(isRetryableError('vault.file.too.large', 413)).toBe(false)
     expect(isRetryableError('vault.quota.exceeded', 402)).toBe(false)
     expect(isRetryableError('vault.conflict.rev', 409)).toBe(false)
+    // A declared hash that does not match the bytes can never succeed on retry.
+    expect(isRetryableError('vault.hash.mismatch', 400)).toBe(false)
   })
 
   it('backs off exponentially and caps', () => {

@@ -6,14 +6,20 @@ import {
   bootstrapModeLabel,
   cloudQuotaHelp,
   createSyncEngine,
+  describeDeviceLabel,
   deviceLimitMessage,
   formatVaultQuotaLine,
+  kickBlockedLabel,
+  kickBlockedReason,
+  formatHashReport,
+  localDeviceNames,
   vaultSyncQuotaHelp,
   type SyncCoordinatorHandles,
   type SyncEngine,
   type SyncEngineStatus,
   type VaultDeviceInfo,
 } from '../sync'
+import ConfirmDialog from './ConfirmDialog.vue'
 import { liveDocKinds } from '../extension/runtime'
 import type { OpenedVault } from '../vault/types'
 import { readTextFile } from '@tauri-apps/plugin-fs'
@@ -41,6 +47,7 @@ const props = withDefaults(defineProps<{
 const serverBusy = ref(false)
 const serverError = ref('')
 const showPassword = ref(false)
+const logoutConfirmOpen = ref(false)
 const syncBusyLocal = ref(false)
 const syncMessageLocal = ref('')
 const syncStatusLocal = ref<SyncEngineStatus | null>(null)
@@ -57,7 +64,11 @@ const devices = ref<VaultDeviceInfo[]>([])
 const devicesBusy = ref(false)
 const devicesError = ref('')
 const kickBusyId = ref<string | null>(null)
+const kickConfirm = ref<VaultDeviceInfo | null>(null)
 const localDeviceId = ref<string | null>(null)
+/** Cloud library this local vault is bound to; null until 绑定并同步. */
+const cloudVaultId = ref<string | null>(null)
+const bound = computed(() => Boolean(cloudVaultId.value))
 // Local fallback engine for standalone mounting (tests/storybook); the real
 // one is owned by the App-level coordinator and passed through `sync`.
 let fallbackEngine: SyncEngine | null = null
@@ -88,6 +99,7 @@ async function onLogout() {
   setSyncMessage('')
   devices.value = []
   localDeviceId.value = null
+  logoutConfirmOpen.value = false
 }
 
 /**
@@ -111,6 +123,18 @@ async function applyServer(next: { server: string; official: boolean }) {
     }
   } catch (cause) {
     serverError.value = cause instanceof Error ? cause.message : '无法保存服务器'
+  } finally {
+    serverBusy.value = false
+  }
+}
+
+/** 开关探测失败时重试；仍失败则以带原因的错误就地反馈，不做全局弹窗。 */
+async function retrySocialProbe() {
+  serverBusy.value = true
+  serverError.value = ''
+  try {
+    const ok = await props.account.probeAuthFeatures()
+    if (!ok) serverError.value = `无法连接 ${props.account.server.value}`
   } finally {
     serverBusy.value = false
   }
@@ -148,28 +172,34 @@ function makeEngine(): SyncEngine {
   return fallbackEngine
 }
 
+/** This machine's identity and binding come from the vault's own vault.json. */
 async function refreshLocalDeviceId() {
   localDeviceId.value = null
+  cloudVaultId.value = null
   const root = props.vault?.rootPath
   if (!root) return
   try {
     const raw = await readTextFile(await join(root, VAULT_JSON_REL))
     const config = JSON.parse(raw) as VaultJson
     localDeviceId.value = config.binding.deviceId
+    cloudVaultId.value = config.binding.cloudVaultId
   } catch {
     localDeviceId.value = null
+    cloudVaultId.value = null
   }
 }
 
 async function refreshDevices() {
-  if (!canSync.value) {
-    devices.value = []
-    return
-  }
   devicesBusy.value = true
   devicesError.value = ''
   try {
+    // Local identity first: it decides which row is this machine even when the
+    // cloud list itself cannot be fetched.
     await refreshLocalDeviceId()
+    if (!canSync.value) {
+      devices.value = []
+      return
+    }
     const engine = makeEngine()
     devices.value = await engine.listDevices()
   } catch (cause) {
@@ -179,16 +209,57 @@ async function refreshDevices() {
   }
 }
 
+/** Labels this machine has sent for the open library; the row carries the last one. */
+const myLabels = computed(() => localDeviceNames(
+  props.account.server.value,
+  cloudVaultId.value,
+  typeof navigator === 'undefined' ? null : navigator.userAgent,
+))
+
+/**
+ * The device id in vault.json only identifies this directory. When the same
+ * machine bound the same library from another directory it shows up as a
+ * second row with a label this machine already sent.
+ */
+function isLocalRow(device: VaultDeviceInfo): boolean {
+  if (device.deviceId === localDeviceId.value) return true
+  const label = device.clientInfo?.trim()
+  return Boolean(label) && myLabels.value.includes(label as string)
+}
+
+/** One name for a device everywhere it is shown: the row and its confirmation. */
+function deviceTitle(device: VaultDeviceInfo | null): string {
+  const parts = describeDeviceLabel(device?.clientInfo)
+  // A legacy label is a build tag, not a name; the row's context carries identity.
+  return parts.legacy || !parts.name ? '未命名的设备' : parts.name
+}
+
+/** The button only stays clickable where removing the row actually frees a slot. */
+function blockReason(device: VaultDeviceInfo) {
+  return kickBlockedReason({
+    deviceId: device.deviceId,
+    localDeviceId: isLocalRow(device) ? device.deviceId : localDeviceId.value,
+    bound: bound.value,
+    // listDevices() only resolves for this vault's cloud library; other vaults'
+    // rows come from a listing that cannot be kicked from here.
+    inLocalVault: device.vaultId === cloudVaultId.value,
+    lastSeenAt: device.lastSeenAt,
+  })
+}
+
+function requestKick(device: VaultDeviceInfo) {
+  if (blockReason(device)) return
+  devicesError.value = ''
+  kickConfirm.value = device
+}
+
 async function onKick(device: VaultDeviceInfo) {
-  if (device.deviceId === localDeviceId.value) {
-    devicesError.value = '不能踢除当前本机设备；请在其他设备上操作，或先解除本机绑定。'
-    return
-  }
   kickBusyId.value = device.deviceId
   devicesError.value = ''
   try {
     const engine = makeEngine()
     await engine.kickDevice(device.deviceId)
+    kickConfirm.value = null
     await refreshDevices()
     await props.account.refreshProfileAndPlan()
   } catch (cause) {
@@ -217,7 +288,6 @@ async function onBindAndSync() {
     }
     await (props.sync?.runExclusive(cycle) ?? cycle())
     await props.account.refreshProfileAndPlan()
-    await refreshDevices()
   } catch (cause) {
     const msg = cause instanceof Error ? cause.message : '同步失败'
     const shown = msg.includes('设备') ? `${msg}（${deviceLimitMessage()}）` : msg
@@ -237,7 +307,6 @@ async function onSyncNow() {
     }
     await (props.sync?.runExclusive(cycle) ?? cycle())
     await props.account.refreshProfileAndPlan()
-    await refreshDevices()
   } catch (cause) {
     setSyncMessage(cause instanceof Error ? cause.message : '同步失败')
   } finally {
@@ -261,6 +330,26 @@ async function onFlushRetry() {
   }
 }
 
+/** A queue entry that keeps failing on hash will never clear on its own. */
+const hashMismatchPath = computed(() => {
+  const engine = props.sync?.currentEngine() ?? fallbackEngine
+  return engine?.getRetryQueue().find(item => item.lastErrorCode === 'vault.hash.mismatch')?.path ?? null
+})
+
+async function copyHashReport() {
+  const path = hashMismatchPath.value
+  if (!path) return
+  const engine = props.sync?.currentEngine() ?? fallbackEngine
+  if (!engine) return
+  try {
+    const report = await engine.describeFileHash(path)
+    await navigator.clipboard.writeText(formatHashReport(report))
+    setSyncMessage('同步诊断已复制')
+  } catch (cause) {
+    setSyncMessage(cause instanceof Error ? cause.message : '无法生成同步诊断')
+  }
+}
+
 function formatSeen(value?: string | null): string {
   if (!value) return '—'
   try {
@@ -276,8 +365,12 @@ watch(
   () => [props.account.loggedIn.value, props.vault?.rootPath] as const,
   ([loggedIn, root]) => {
     fallbackEngine = null
-    if (loggedIn && root) void refreshDevices()
-    else devices.value = []
+    if (loggedIn && root) {
+      void refreshDevices()
+    } else {
+      devices.value = []
+      void refreshLocalDeviceId()
+    }
   },
 )
 
@@ -336,6 +429,20 @@ onBeforeUnmount(() => {
             <svg v-else viewBox="0 0 16 16" class="i-check"><path d="m3.4 8.4 3 3 6.2-6.6"/></svg>
           </span>
           {{ serverBusy ? '检测中…' : '使用自定义' }}
+        </button>
+        <!-- 开关探测失败时就地重试：落在自定义地址那一行的末尾，不另起一行 -->
+        <button
+          v-if="account.socialProbeFailed.value"
+          type="button"
+          class="ghost server-retry-btn"
+          :disabled="serverBusy"
+          :aria-label="'重新检测第三方登录'"
+          title="重新检测第三方登录"
+          @click="retrySocialProbe"
+        >
+          <span class="btn-ico" aria-hidden="true">
+            <svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6"/><path d="M13 2.6v3h-3"/></svg>
+          </span>
         </button>
       </form>
       <p v-if="serverError" class="inline-error" role="alert">{{ serverError }}</p>
@@ -413,6 +520,10 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <p v-if="syncMessage" class="settings-help tight" role="status">{{ syncMessage }}</p>
+        <p v-if="hashMismatchPath" class="sync-diagnose" role="status">
+          <span>同步被拒：{{ hashMismatchPath }}</span>
+          <button type="button" class="sync-diagnose-btn" @click="copyHashReport">复制诊断</button>
+        </p>
         <p v-if="syncStatus && !syncStatus.online" class="inline-error" role="status">当前离线 · 恢复网络后自动重试</p>
         <p v-if="syncStatus?.conflictPaths?.length" class="inline-error" role="alert">
           冲突副本：{{ syncStatus.conflictPaths.join('、') }}
@@ -423,40 +534,81 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="props.mode === 'sync'" class="device-panel" aria-labelledby="devices-title">
-        <h3 id="devices-title">同步设备</h3>
-        <p class="settings-help tight">踢除闲置设备可释放绑定名额。踢除不会删除云端笔记内容。</p>
-        <div class="login-actions">
-          <button type="button" class="ghost" :disabled="!canSync || devicesBusy" @click="refreshDevices">
-            {{ devicesBusy ? '刷新中…' : '刷新设备列表' }}
+        <div class="device-head">
+          <h3 id="devices-title">同步设备</h3>
+          <button
+            type="button"
+            class="device-refresh"
+            :disabled="!canSync || devicesBusy"
+            :aria-label="devicesBusy ? '正在刷新设备列表' : '刷新设备列表'"
+            title="刷新设备列表"
+            @click="refreshDevices"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M12.8 8a4.8 4.8 0 1 1-1.4-3.4"/>
+              <path d="M12.8 2.8v2.9H9.9"/>
+            </svg>
           </button>
         </div>
+
         <p v-if="devicesError" class="inline-error" role="alert">{{ devicesError }}</p>
-        <ul v-if="devices.length" class="device-list">
-          <li v-for="device in devices" :key="device.id" class="device-row">
-            <div>
+
+        <ul v-if="devices.length" class="device-list" :aria-busy="devicesBusy">
+          <li
+            v-for="device in devices"
+            :key="device.id"
+            class="device-row"
+            :class="{ 'is-local': isLocalRow(device) }"
+          >
+            <span class="device-glyph" aria-hidden="true">
+              <svg v-if="describeDeviceLabel(device.clientInfo).platform === 'windows'" viewBox="0 0 16 16"><path d="M2.6 3.8 7.4 3v4.2H2.6zM8.6 2.8 13.4 2v5.2H8.6zM2.6 8.6h4.8V13l-4.8-.8zM8.6 8.6h4.8V14l-4.8-.8z"/></svg>
+              <svg v-else-if="describeDeviceLabel(device.clientInfo).platform === 'linux'" viewBox="0 0 16 16"><path d="M8 2.2c1.5 0 2.3 1.3 2.3 2.9 0 1 .6 1.6 1.2 2.5.7 1 1 2 .7 3.2-.4 1.5-2 2.4-4.2 2.4s-3.8-.9-4.2-2.4c-.3-1.2 0-2.2.7-3.2.6-.9 1.2-1.5 1.2-2.5C5.7 3.5 6.5 2.2 8 2.2z"/><path d="M6.8 6.2h.01M9.2 6.2h.01"/></svg>
+              <svg v-else-if="describeDeviceLabel(device.clientInfo).platform === 'android' || describeDeviceLabel(device.clientInfo).platform === 'ios'" viewBox="0 0 16 16"><rect x="4.4" y="2.6" width="7.2" height="10.8" rx="1.6"/><path d="M7 11.4h2"/></svg>
+              <svg v-else viewBox="0 0 16 16"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1.2"/><path d="M5.4 13h5.2M8 10.4V13"/></svg>
+            </span>
+            <div class="device-copy">
               <strong>
-                {{ device.clientInfo || 'Vault 客户端' }}
-                <span v-if="device.deviceId === localDeviceId" class="device-tag">本机</span>
+                {{ deviceTitle(device) }}
+                <span v-if="isLocalRow(device)" class="device-tag">本机</span>
               </strong>
-              <p class="settings-help tight muted">
-                {{ device.deviceId.slice(0, 8) }}…
-                · 最近 {{ formatSeen(device.lastSeenAt) }}
+              <p class="device-meta">
+                <time :datetime="device.lastSeenAt || undefined">{{ formatSeen(device.lastSeenAt) }}</time>
               </p>
             </div>
             <button
+              v-if="!blockReason(device)"
               type="button"
-              class="danger compact"
-              :disabled="device.deviceId === localDeviceId || kickBusyId === device.deviceId"
-              @click="onKick(device)"
+              class="device-kick"
+              :disabled="kickBusyId === device.deviceId"
+              @click="requestKick(device)"
             >
               {{ kickBusyId === device.deviceId ? '踢除中…' : '踢除' }}
             </button>
+            <!-- 本机行已有「本机」标签，不再重复一个同字的状态位 -->
+            <span v-else-if="blockReason(device) !== 'local'" class="device-state">
+              {{ kickBlockedLabel(blockReason(device)) }}
+            </span>
+            <span v-else aria-hidden="true"></span>
           </li>
         </ul>
-        <p v-else-if="canSync && !devicesBusy" class="settings-help tight muted">暂无已绑定设备（先「绑定并同步」）。</p>
+
+        <ul v-else-if="devicesBusy" class="device-list" aria-hidden="true">
+          <li class="device-row is-skeleton"><span class="device-skel-bar"></span></li>
+          <li class="device-row is-skeleton"><span class="device-skel-bar short"></span></li>
+        </ul>
+
+        <p v-else-if="bound" class="device-empty">云端还没有登记任何设备。</p>
+        <p v-else-if="canSync" class="device-empty">这台库还没有绑定到云端。</p>
+        <details
+          v-if="devices.length && !devices.some(d => describeDeviceLabel(d.clientInfo).platform)"
+          class="device-footnote"
+        >
+          <summary>名称说明</summary>
+          <p>这些设备早于设备名称上线，名称由云端保存的旧标签决定，不作为身份依据。</p>
+        </details>
       </div>
 
-      <button v-if="props.mode === 'account'" type="button" class="danger" @click="onLogout">退出登录</button>
+      <button v-if="props.mode === 'account'" type="button" class="danger" @click="logoutConfirmOpen = true">退出登录</button>
     </div>
 
     <form v-else-if="props.mode === 'account'" class="login-form" :aria-label="props.subject + '登录'" @submit.prevent="onLogin">
@@ -541,5 +693,26 @@ onBeforeUnmount(() => {
 
     </form>
     <p v-else class="settings-help tight muted">登录后可绑定当前本地库并增量同步。</p>
+
+    <ConfirmDialog
+      :open="Boolean(kickConfirm)"
+      title="踢除这台设备？"
+      :message="`「${deviceTitle(kickConfirm)}」将不能再同步这个库，要重新绑定才能继续。云端笔记不会被删除。`"
+      confirm-label="踢除"
+      :busy="Boolean(kickBusyId)"
+      danger
+      @cancel="kickConfirm = null"
+      @confirm="kickConfirm && onKick(kickConfirm)"
+    />
+
+    <ConfirmDialog
+      :open="logoutConfirmOpen"
+      title="退出登录？"
+      message="会移除这台机器保存的登录凭证，并停止当前库的同步；本地笔记保持原样，重新登录后可继续同步。"
+      confirm-label="退出登录"
+      danger
+      @cancel="logoutConfirmOpen = false"
+      @confirm="onLogout"
+    />
   </section>
 </template>

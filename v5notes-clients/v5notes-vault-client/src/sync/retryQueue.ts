@@ -45,6 +45,10 @@ export function isRetryableError(code: string | null | undefined, httpStatus?: n
   if (code === 'vault.file.too.large' || code === 'vault.path.invalid' || code === 'vault.conflict.rev') {
     return false
   }
+  // Same bytes, same declared hash: a mismatch is permanent, not transient.
+  if (code === 'vault.hash.mismatch') {
+    return false
+  }
   if (code === 'vault.quota.exceeded') {
     // Capacity/device quota: do not burn retries; user must free space / kick device.
     return false

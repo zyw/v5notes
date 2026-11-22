@@ -52,6 +52,8 @@ export function useAccount() {
   const fieldPasswordError = ref('')
   const sessionExpired = ref(false)
   const socialLoginEnabled = ref(false)
+  /** 上一次开关探测是否失败（断网 / 服务未启动）；用于在设置页给出手动重试入口。 */
+  const socialProbeFailed = ref(false)
   const profile = ref<UserProfile | null>(null)
   const plan = ref<AccountPlan | null>(null)
   const loggedIn = computed(() => Boolean(token.value))
@@ -114,11 +116,19 @@ export function useAccount() {
     }
   }
 
-  async function probeAuthFeatures() {
+  /**
+   * 探测第三方登录开关。开关在服务端参数里随时会变，打开设置页时需重探；
+   * 请求失败（断网、服务未启动）一律按关闭处理，不展示第三方入口。
+   */
+  async function probeAuthFeatures(): Promise<boolean> {
     try {
       socialLoginEnabled.value = await api.thirdPartyLoginEnabled()
+      socialProbeFailed.value = false
+      return true
     } catch {
       socialLoginEnabled.value = false
+      socialProbeFailed.value = true
+      return false
     }
   }
 
@@ -280,6 +290,7 @@ export function useAccount() {
     fieldPasswordError,
     sessionExpired,
     socialLoginEnabled,
+    socialProbeFailed,
     socialProviders: SOCIAL_PROVIDERS,
     profile,
     plan,
@@ -289,6 +300,7 @@ export function useAccount() {
     startSocialLogin,
     saveServer,
     refreshProfileAndPlan,
+    probeAuthFeatures,
     dismissSessionExpired: () => { sessionExpired.value = false },
   }
 }
