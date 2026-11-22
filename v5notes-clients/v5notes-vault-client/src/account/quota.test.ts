@@ -21,13 +21,13 @@ describe('account plan shape B', () => {
       available: true,
       usedBytes: 100,
       quotaBytes: 1024,
-      deviceLimit: 3,
-      deviceUsed: 1,
+      replicaLimit: 3,
+      replicaUsed: 1,
       overQuota: false,
       planName: 'vault-default',
     }))
     expect(plan.vaultSync.available).toBe(true)
-    expect(plan.vaultSync.deviceLimit).toBe(3)
+    expect(plan.vaultSync.replicaLimit).toBe(3)
     expect(plan.vaultSync.planName).toBe('vault-default')
   })
 

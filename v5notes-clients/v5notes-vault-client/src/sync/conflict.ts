@@ -1,10 +1,11 @@
 /**
  * Conflict copy naming (design §9.3).
- * Template: `{stem} (冲突 {yyyy-mm-dd} {HHmm} {deviceShort}).{ext}`
+ * Template: `{stem} (冲突 {yyyy-mm-dd} {HHmm} {replicaShort}).{ext}`
  */
 
-export function deviceShort(deviceId: string | null | undefined, hostFallback = 'dev'): string {
-  const raw = (deviceId || hostFallback).replace(/[^a-zA-Z0-9]/g, '')
+/** Short form of a replica id; the copy is named after the copy that wrote it. */
+export function replicaShort(replicaId: string | null | undefined, fallback = 'dev'): string {
+  const raw = (replicaId || fallback).replace(/[^a-zA-Z0-9]/g, '')
   if (!raw) return 'dev'
   return raw.slice(0, 6).toLowerCase()
 }
@@ -32,7 +33,7 @@ export function splitStemExt(fileName: string): { stem: string; ext: string } {
  */
 export function buildConflictCopyPath(
   displayPath: string,
-  deviceId: string | null | undefined,
+  replicaId: string | null | undefined,
   occupiedIdentityKeys: Set<string>,
   toIdentityKey: (path: string) => string,
   now: Date = new Date(),
@@ -42,7 +43,7 @@ export function buildConflictCopyPath(
   const dir = parts.join('/')
   const { stem, ext } = splitStemExt(fileName)
   const { day, time } = formatConflictStamp(now)
-  const short = deviceShort(deviceId)
+  const short = replicaShort(replicaId)
   const baseName = `${stem} (冲突 ${day} ${time} ${short})${ext}`
 
   let candidate = dir ? `${dir}/${baseName}` : baseName

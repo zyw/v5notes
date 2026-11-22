@@ -16,7 +16,7 @@ import xin.v5ai.common.web.core.BaseController;
 import xin.v5ai.vault.domain.bo.VaultBindBo;
 import xin.v5ai.vault.domain.bo.VaultCreateBo;
 import xin.v5ai.vault.domain.vo.VaultBindVo;
-import xin.v5ai.vault.domain.vo.VaultDeviceVo;
+import xin.v5ai.vault.domain.vo.VaultReplicaVo;
 import xin.v5ai.vault.domain.vo.VaultSpaceVo;
 import xin.v5ai.vault.service.IVaultSyncService;
 
@@ -45,14 +45,14 @@ public class VaultSpaceController extends BaseController {
         return R.ok(vaultSyncService.bind(LoginHelper.getUserId(), Long.parseLong(vaultId), bo));
     }
 
-    @GetMapping("/{vaultId}/devices")
-    public R<List<VaultDeviceVo>> listDevices(@PathVariable String vaultId) {
-        return R.ok(vaultSyncService.listDevices(LoginHelper.getUserId(), Long.parseLong(vaultId)));
+    @GetMapping("/{vaultId}/replicas")
+    public R<List<VaultReplicaVo>> listReplicas(@PathVariable String vaultId) {
+        return R.ok(vaultSyncService.listReplicas(LoginHelper.getUserId(), Long.parseLong(vaultId)));
     }
 
-    @DeleteMapping("/{vaultId}/devices/{deviceId}")
-    public R<Void> kickDevice(@PathVariable String vaultId, @PathVariable String deviceId) {
-        vaultSyncService.kickDevice(LoginHelper.getUserId(), Long.parseLong(vaultId), deviceId);
+    @DeleteMapping("/{vaultId}/replicas/{replicaId}")
+    public R<Void> kickReplica(@PathVariable String vaultId, @PathVariable String replicaId) {
+        vaultSyncService.kickReplica(LoginHelper.getUserId(), Long.parseLong(vaultId), replicaId);
         return R.ok();
     }
 }

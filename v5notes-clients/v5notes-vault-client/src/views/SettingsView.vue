@@ -2839,7 +2839,7 @@ button.status-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--a
 .settings-workspace :deep(.account-panel .plan-grid > div) {
   padding: 8px 10px;
 }
-/* 设备名的字号跟「备份与迁移」的条目标题同一档（11px），比说明行略大 */
+/* 副本名的字号跟「备份与迁移」的条目标题同一档（11px），比说明行略大 */
 .settings-workspace :deep(.account-panel .device-copy strong) {
   font-size: 11px;
 }

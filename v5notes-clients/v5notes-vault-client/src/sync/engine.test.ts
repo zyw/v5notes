@@ -49,7 +49,7 @@ function makeVaultJson(overrides?: Partial<VaultJson>): VaultJson {
     binding: {
       server: 'https://api.example.com',
       cloudVaultId: '9001',
-      deviceId: 'device-abc123',
+      replicaId: 'device-abc123',
       lastCursor: null,
     },
     ...overrides,
@@ -161,10 +161,10 @@ function makeApi(overrides: ApiOverrides = {}): VaultSyncApi & { calls: string[]
     async bind(): Promise<VaultBindResult> {
       throw new Error('not used')
     },
-    async listDevices() {
+    async listReplicas() {
       return []
     },
-    async kickDevice() {},
+    async kickReplica() {},
     async manifest(_vaultId: string, since?: string | null): Promise<VaultManifest> {
       calls.push(`manifest:${since ?? ''}`)
       const pages = overrides.manifests ?? []
@@ -208,8 +208,8 @@ function makeApi(overrides: ApiOverrides = {}): VaultSyncApi & { calls: string[]
         available: true,
         usedBytes: 0,
         quotaBytes: 1024 * 1024,
-        deviceLimit: 3,
-        deviceUsed: 1,
+        replicaLimit: 3,
+        replicaUsed: 1,
         overQuota: false,
         maxFileBytes: 25 * 1024 * 1024,
       }
@@ -679,5 +679,69 @@ describe('retry queue growth (§14 断网队列)', () => {
     const engine = createSyncEngine(makeDeps(fs, api))
     await engine.pushPull()
     expect(engine.getStatus().retryQueueSize).toBe(1)
+  })
+})
+
+describe('replica identity in vault.json (§6.4)', () => {
+  function legacyVaultJson(): string {
+    const json = makeVaultJson() as unknown as { binding: Record<string, unknown> }
+    delete json.binding.replicaId
+    json.binding.deviceId = 'legacy-device-uuid'
+    return JSON.stringify(json)
+  }
+
+  it('reads an old deviceId as the replica id instead of treating the vault as new', async () => {
+    const { fs } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, legacyVaultJson())
+    const api = makeApi({ manifests: [{ cursor: '10', hasMore: false, changes: [] }] })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    // Still bound: the sync runs rather than asking for a re-bind.
+    const status = await engine.pushPull()
+    expect(status.status).not.toBe('error')
+    expect(api.calls.some(c => c.startsWith('manifest:'))).toBe(true)
+  })
+
+  it('refuses to sync a bound vault that has no replica id at all', async () => {
+    const { fs } = makeFs()
+    const json = makeVaultJson()
+    json.binding.replicaId = null
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(json))
+    const api = makeApi({ manifests: [{ cursor: '10', hasMore: false, changes: [] }] })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    const status = await engine.pushPull()
+    expect(status.status).toBe('error')
+    expect(status.lastErrorCode).toBe('vault.replica.missing')
+    // Nothing reached the server: no row could have been created there.
+    expect(api.calls.some(c => c.startsWith('manifest:'))).toBe(false)
+  })
+
+  it('names a conflict copy after the replica that wrote it', async () => {
+    const { fs, files } = makeFs({ 'weekly.md': '# local' })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'weekly.md', contentHash: 'sha256:' + '1'.repeat(64) })],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: 'sha256:' + '1'.repeat(64),
+        size: 10,
+        body: '# cloud',
+        base64Body: null,
+      }),
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+    await engine.pushPull()
+    const copy = [...files.keys()].find(k => k.includes('冲突'))
+    // makeVaultJson's replica id is 'device-abc123' → device
+    expect(copy).toContain('device')
   })
 })

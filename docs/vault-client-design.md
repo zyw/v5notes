@@ -224,13 +224,14 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 | `.v5notes/plugins/*/data.json` | **默认同步开** | 插件**库**设置意图（描述本库笔记） |
 | 插件代码、主题包、启用列表 | **不在库内** | 装在应用目录 `extensions/`，天然不进库同步（§插件 3.1） |
 | 插件**全局**设置 `extensions/plugins/*/data.json` | **不在库内** | 应用级数据，不属于任何库 |
-| `.v5notes/sync-state.json` | **永不同步** | 本机 cursor / baseRev / dirty / 设备视角 |
+| `.v5notes/sync-state.json` | **永不同步** | 本机 cursor / baseRev / dirty / 副本视角 |
 | `.v5notes/index.sqlite`（及 FTS 旁路文件） | **永不同步** | 可重建索引 |
-| `.v5notes/vault.json` 中的本地设备字段（`deviceId`、本机路径书签、本地 salt 缓存等） | **永不同步** | 可同步的仅限显式列出的绑定元数据（如 `cloudVaultId`）；实现须字段级白名单，默认拒绝 |
+| `.v5notes/vault.json` 中的本地副本字段（`replicaId`、本机路径书签、本地 salt 缓存等） | **永不同步** | 可同步的仅限显式列出的绑定元数据（如 `cloudVaultId`）；实现须字段级白名单，默认拒绝 |
+| 设备 ID（本机身份，存应用级 localStorage，不在任何库内） | **不在库内** | 同一机器上所有库共用一个设备 ID；重装保留应用数据时不变 |
 | `.v5notes/trash/**`（本地回收站） | **永不同步** | 与云端 tombstone / 云 trash 分开；他端以 tombstone 为准删文件 |
 | 其它未列名的 `.v5notes/**` | **默认永不同步** | 新增路径须先改本表再进 Sync |
 
-误同步 `sync-state` / 索引 / 设备字段会导致跨设备互相踩踏或「幽灵冲突」——视为协议级缺陷，禁止「先传着再说」。
+误同步 `sync-state` / 索引 / 副本字段会导致跨副本互相踩踏或「幽灵冲突」——视为协议级缺陷，禁止「先传着再说」。
 
 ### 6.5 关键配置 schema
 
@@ -245,7 +246,7 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
   "binding": {
     "server": "https://api.example.com",
     "cloudVaultId": null,
-    "deviceId": "ulid",
+    "replicaId": "uuid",
     "lastCursor": null
   }
 }
@@ -253,7 +254,9 @@ UI（侧栏树、搜索、设置）只依赖上述接口，不直接打 Sync HTT
 
 - `localVaultId`：本机生成；「打开已有库」复用文件内值。
 - `binding.cloudVaultId`：未绑定为 `null`；绑定后写入。**一本地库 ↔ 一云端库**（首期不做一对多）。
-- `deviceId` / `lastCursor` 等设备字段：**永不同步**（§6.4）；可同步的绑定元数据须字段级白名单。
+- `replicaId`：本库目录的**副本 ID**，创建库时以 `crypto.randomUUID()` 生成；同一库复制到别的目录或别的机器沿用原值，复制到同一机器另一目录则是另一副本。
+- **设备 ID 不在这里**：它是「这台机器」的身份，首次 bind 时以 UUID 生成并存在应用级 localStorage（随应用数据目录），同一机器上的所有库共用；重装保留应用数据则不变，否则视为新设备。服务端只存不生成。
+- `replicaId` / `lastCursor` 等本地字段：**永不同步**（§6.4）；可同步的绑定元数据须字段级白名单。
 
 **`sync-state.json`（示意；大库可迁 sqlite）：**
 
@@ -346,7 +349,7 @@ SyncEngine：先应用 §6.4，再应用 `syncignore`；被忽略的用户文件
 ```
 POST   /vault/v1/vaults                 # 创建云端库，返回 vaultId
 GET    /vault/v1/vaults                 # 列表
-POST   /vault/v1/vaults/{id}/bind       # 设备绑定（deviceId, clientInfo）
+POST   /vault/v1/vaults/{id}/bind       # 副本绑定（replicaId, deviceId, clientInfo）
 
 GET    /vault/v1/vaults/{id}/manifest?since=CURSOR
        # 返回变更列表：upsert/delete/rename + fileId + remoteRev + contentHash + size
@@ -362,7 +365,7 @@ POST   /vault/v1/vaults/{id}/renames    # from → to + baseRev（保留 fileId�
 
 GET    /vault/v1/vaults/{id}/files/content?path=&rev=
 
-GET    /vault/v1/quota                  # 套餐剩余容量、设备数
+GET    /vault/v1/quota                  # 套餐剩余容量、副本数
 ```
 
 认证：与现网同一 OAuth2/Sa-Token；`deviceType` 可用 `vault_client`。  
@@ -375,7 +378,7 @@ GET    /vault/v1/quota                  # 套餐剩余容量、设备数
 | 表 | 要点 |
 |---|---|
 | `vault_space` | `id`（雪花字符串）、`user_id`、`name`、`created_at` |
-| `vault_device` | `id`、`vault_id`、`device_id`、`client_info`、`last_seen_at` |
+| `vault_replica` | `id`、`vault_id`、`replica_id`、`device_id`、`client_info`、`last_seen_at`；唯一键 `(vault_id, replica_id)` |
 | `vault_file` | `id`（=fileId）、`vault_id`、展示 `path`、`identity_key`、`type`、`content_hash`、`size`、`rev`、`deleted`、`updated_at` |
 | `vault_file_blob` | `content_hash`、`storage_key`、`size`（内容寻址去重） |
 | `vault_change` | `vault_id`、`cursor`、`file_id`、`op`（upsert/delete/rename）、`path`、`from_path`、摘要 |
@@ -431,16 +434,16 @@ ID 一律 **字符串**。索引：`(vault_id, identity_key)` **非唯一**（�
 
 `GET …/files/content?path=&rev=`：请求的 `rev` 不是该文件当前 rev 时返回 **`409 vault.conflict.rev`**，**不得**静默改返回最新正文。客户端本轮跳过该变更，下一轮再拉；不把过期正文写入磁盘。
 
-#### 设备绑定（已存在）
+#### 副本绑定（已存在）
 
-`POST /vault/v1/vaults/{id}/bind` 在 `VaultSpaceController` 上，并执行设备数上限：超限拒绝新 bind；已绑定设备可继续 sync（§8.3）。这不是缺口。
+`POST /vault/v1/vaults/{id}/bind` 在 `VaultSpaceController` 上，并执行**副本数**上限：超限拒绝新 bind；已绑定副本可继续 sync（§8.3）。额度按 `vault_replica` 行数计，不做设备去重——同一台机器上的两份库副本各占一个名额。这不是缺口。
 
 #### 错误码空间（HTTP + 业务码）
 
 | HTTP | 业务码（示意） | 含义 |
 |---|---|---|
 | 401 | `auth.unauthorized` | 未登录/过期 |
-| 402/403 | `vault.quota.exceeded` | 容量或设备数超额 |
+| 402/403 | `vault.quota.exceeded` | 容量或副本数超额 |
 | 404 | `vault.not.found` / `vault.file.not.found` | |
 | 409 | `vault.conflict.rev` | `baseRev` 不匹配，或 `GET content?rev=` 不是当前 rev；body 带服务端 path/rev/hash/fileId。不得改返回最新正文 |
 | 413 | `vault.file.too.large` | 超单文件上限 |
@@ -468,7 +471,7 @@ POST 购买套餐、Webhook
 |---|---|---|
 | 笔记数量 / 云端目录 | ✓ | — |
 | 同步容量 GB | — | ✓ |
-| 同步设备数 | — | ✓ |
+| 同步副本数 | — | ✓ |
 | 版本历史保留天数 | 可选 | ✓ |
 | 第三方登录 | ✓ | ✓（仅账号） |
 
@@ -479,7 +482,7 @@ POST 购买套餐、Webhook
 | 套餐售卖 | **A)** 两个 SKU（Cloud 笔记套餐 / Vault 同步套餐）可独立购买；**B)** 一账号两配额字段，单一商品内含两桶额度 |
 | 同步超额 push | 一律拒绝 push（`402/403` + 可读错误码）；本地编辑不阻断 |
 | 同步超额 pull | **冻结建议：仍允许只读 pull**（已有云端变更可拉取；避免「超额后多设备永久分叉」）；产品若改「超额双禁」须显式改本文与 Phase 0 勾选 |
-| 设备数超限 | 拒绝新 `bind`；已绑定设备可继续 sync，直到用户踢设备或升级 |
+| 副本数超限 | 拒绝新 `bind`；已绑定副本可继续 sync，直到用户停止该副本或升级 |
 
 ### 8.4 Vault Client 社交登录回调
 
@@ -535,7 +538,7 @@ pull 发现新 rev → 若 local dirty → `conflict` → 用户处理 → `clea
 
 - 模板：`{stem} (冲突 {yyyy-mm-dd} {HHmm} {deviceShort}).{ext}`  
   例：`周报 (冲突 2026-11-14 1642 mac).md`
-- `{deviceShort}` = 本地 deviceId 短码（或主机名截断），避免多设备同日撞名。
+- `{replicaShort}` = 本地 `replicaId` 前 6 位小写字母数字（无值时取 `dev`），避免多副本同日撞名。
 - 若目标名已存在：追加 `-2`、`-3`… 直至身份键唯一。
 - 冲突副本本身是普通本地文件：标记 dirty，随后按增量上传（新 `fileId`）。
 
@@ -649,7 +652,7 @@ Phase 0 脚手架/冻结
 - [ ] **fileId / rename / tombstone / 同 path 重建：** §8.2 冻结  
 - [ ] **冲突矩阵 + bootstrap 权威：** §9.3 冻结（删改/改名/双 rename；冲突副本命名；cursor/baseRev/dirty；云端已有内容时禁止静默整库覆盖）  
 - [ ] 套餐字段：`cloud_*` / `vault_sync_*` 分列；**售卖形态**勾选 §8.3 的 A（双 SKU）或 B（一账号双配额）  
-- [ ] **超额 pull 政策：** 勾选「仍允许只读 pull」（默认）或显式改为双禁；设备数超限 = 拒新 bind  
+- [ ] **超额 pull 政策：** 勾选「仍允许只读 pull」（默认）或显式改为双禁；副本数超限 = 拒新 bind  
 - [ ] **Catalog 前缀：** 独立于文件 sync 协议版本（§8.2 选项 A 或 B）  
 - [ ] **双产品一句话：** 登录/帮助最小文案定稿（§7；Cloud 与 Vault 数据默认不通）  
 - [ ] 插件 P1 对外承诺级别：权限代理 + Safe Mode，**不**承诺进程级沙箱（见插件设计 §6.2）  
@@ -693,8 +696,8 @@ Phase 0 脚手架/冻结
 
 **后端（模块 `note-vault-sync`，前缀 `/vault/v1`）：**
 
-- [ ] 表：`vault_space` / `vault_file` / `vault_change` / `vault_device`（§8.2）  
-- [ ] Vault 创建/列表、设备绑定  
+- [ ] 表：`vault_space` / `vault_file` / `vault_change` / `vault_replica`（§8.2）  
+- [ ] Vault 创建/列表、副本绑定  
 - [ ] `manifest?since=`、单文件 up/down、tombstone、rename（保留 `fileId`）  
 - [ ] `baseRev` 冲突 → `409 vault.conflict.rev`；配额与错误码表；超额 pull 政策按 §8.3  
 
@@ -720,7 +723,7 @@ Phase 0 脚手架/冻结
 - [x] **协议补丁：** `GET content?rev=` 不匹配返回 409，客户端不写过期正文（§8.2）  
 - [x] **协议补丁：** 推送侧本地改名发 rename、本地删除发 tombstone；删除 409 标冲突（§9.2）  
 - [x] **协议补丁：** 首次绑定同身份键且 hash 不同才出冲突副本；hash 相同则采纳基线（§9.3）  
-- [x] `POST …/bind` 已存在并执行设备数上限（§8.2 / §8.3）
+- [x] `POST …/bind` 已存在并执行副本数上限（§8.2 / §8.3）
 
 ### Phase 6 — 插件宿主 + 一等主题（扩展平台地基）
 
@@ -823,7 +826,7 @@ Phase 0 脚手架/冻结
 | 双产品一句 | 「同一账号可登录两个客户端；Cloud 笔记与 Vault 库默认不是同一份数据。Cloud 在服务端目录树；Vault 在本机文件夹，可选同步。」 |
 | 安装包名 / bundle | `productName=V5Notes Vault`；`identifier=xin.v5ai.v5notes.vault` |
 | tombstone GC | ≥ 90 天 |
-| 超额 pull | 仍允许只读 pull；设备数超限拒绝新 bind |
+| 超额 pull | 仍允许只读 pull；副本数超限拒绝新 bind |
 
 ## 工程 · 工作流
 

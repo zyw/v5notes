@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { DEVICE_IDLE_WINDOW_MS, kickBlockedLabel, kickBlockedReason } from './kickable'
+import { REPLICA_IDLE_WINDOW_MS, kickBlockedLabel, kickBlockedReason } from './kickable'
 
 const NOW = Date.parse('2026-11-22T20:30:00+08:00')
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
 
 const base = {
-  deviceId: 'other',
-  localDeviceId: 'local',
+  replicaId: 'other',
+  localReplicaId: 'local',
   bound: true,
   inLocalVault: true,
   now: NOW,
@@ -17,15 +17,15 @@ describe('whether 踢除 can free a slot', () => {
     expect(kickBlockedReason({
       ...base,
       inLocalVault: false,
-      lastSeenAt: ago(DEVICE_IDLE_WINDOW_MS * 5),
+      lastSeenAt: ago(REPLICA_IDLE_WINDOW_MS * 5),
     })).toBe('other-vault')
   })
 
-  it('blocks this machine: it would be re-bound by the next sync', () => {
+  it('blocks this copy: it would be re-bound by the next sync', () => {
     expect(kickBlockedReason({
       ...base,
-      deviceId: 'local',
-      lastSeenAt: ago(DEVICE_IDLE_WINDOW_MS * 5),
+      replicaId: 'local',
+      lastSeenAt: ago(REPLICA_IDLE_WINDOW_MS * 5),
     })).toBe('local')
   })
 
@@ -34,14 +34,14 @@ describe('whether 踢除 can free a slot', () => {
   })
 
   it('allows a device that has been idle past the window', () => {
-    expect(kickBlockedReason({ ...base, lastSeenAt: ago(DEVICE_IDLE_WINDOW_MS + 1) })).toBeNull()
+    expect(kickBlockedReason({ ...base, lastSeenAt: ago(REPLICA_IDLE_WINDOW_MS + 1) })).toBeNull()
   })
 
   it('blocks every row while this library is unbound', () => {
     expect(kickBlockedReason({
       ...base,
       bound: false,
-      lastSeenAt: ago(DEVICE_IDLE_WINDOW_MS * 5),
+      lastSeenAt: ago(REPLICA_IDLE_WINDOW_MS * 5),
     })).toBe('unbound')
   })
 

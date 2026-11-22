@@ -13,7 +13,7 @@ import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
-import xin.v5ai.vault.mapper.VaultDeviceMapper;
+import xin.v5ai.vault.mapper.VaultReplicaMapper;
 import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
@@ -43,7 +43,7 @@ class VaultSyncPutBatchTest {
     @Mock
     private VaultSpaceMapper spaceMapper;
     @Mock
-    private VaultDeviceMapper deviceMapper;
+    private VaultReplicaMapper replicaMapper;
     @Mock
     private VaultFileMapper fileMapper;
     @Mock
@@ -52,7 +52,7 @@ class VaultSyncPutBatchTest {
     private VaultChangeMapper changeMapper;
 
     private VaultSyncServiceImpl service() {
-        return new VaultSyncServiceImpl(spaceMapper, deviceMapper, fileMapper, blobMapper, changeMapper);
+        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, blobMapper, changeMapper);
     }
 
     private void stubOwnedVault() {

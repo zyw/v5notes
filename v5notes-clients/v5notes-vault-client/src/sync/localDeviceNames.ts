@@ -65,8 +65,7 @@ function browserStorage(): Storage | null {
 /** Labels this machine has sent for the library, newest first. */
 export function localDeviceNames(server: string, vaultId: string | null, userAgent?: string | null): string[] {
   const names = new Set<string>()
-  const current = buildDeviceLabel(userAgent)
-  names.add(current)
+  names.add(buildDeviceLabel(userAgent))
   if (!vaultId) return [...names]
   const key = normalizeServer(server)
   const entry = read(browserStorage()).find(item => item.server === key && item.vaultId === vaultId)
@@ -95,7 +94,11 @@ export function rememberLocalDeviceName(
   write(store, [next, ...entries.filter(item => !(item.server === key && item.vaultId === vaultId))])
 }
 
-/** Label to send before this vault has bound, e.g. `测试4 · macOS`. */
-export function bindLabelForVault(vaultName: string, userAgent?: string | null): string {
-  return buildVaultDeviceLabel(vaultName, userAgent)
+/** Label to send at bind time, e.g. `测试4 · macOS · 3fa2c1`. */
+export function bindLabelForVault(
+  vaultName: string,
+  deviceId: string | null | undefined,
+  userAgent?: string | null,
+): string {
+  return buildVaultDeviceLabel(vaultName, deviceId, userAgent)
 }

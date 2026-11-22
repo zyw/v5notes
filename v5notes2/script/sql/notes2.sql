@@ -440,20 +440,22 @@ CREATE TABLE IF NOT EXISTS vault_space
     KEY idx_vault_space_user (user_id)
 ) ENGINE = InnoDB COMMENT = 'Vault 云端库';
 
-CREATE TABLE IF NOT EXISTS vault_device
+CREATE TABLE IF NOT EXISTS vault_replica
 (
     id           bigint(20)    NOT NULL COMMENT '绑定记录 ID',
     vault_id     bigint(20)    NOT NULL COMMENT '云端库 ID',
     user_id      bigint(20)    NOT NULL COMMENT '所属用户',
-    device_id    varchar(64)   NOT NULL COMMENT '客户端设备 ID',
+    replica_id   varchar(64)   NOT NULL COMMENT '客户端副本 ID（vault.json binding.replicaId）',
+    device_id    varchar(64)   NOT NULL COMMENT '客户端设备 ID（重装保留数据不变）',
     client_info  varchar(255)           DEFAULT NULL COMMENT '客户端信息摘要',
     last_seen_at datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近同步时间',
     create_time  datetime               DEFAULT CURRENT_TIMESTAMP,
     update_time  datetime               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_vault_device (vault_id, device_id),
-    KEY idx_vault_device_user (user_id)
-) ENGINE = InnoDB COMMENT = 'Vault 设备绑定';
+    UNIQUE KEY uk_vault_replica (vault_id, replica_id),
+    KEY idx_vault_replica_device (device_id),
+    KEY idx_vault_replica_user (user_id)
+) ENGINE = InnoDB COMMENT = 'Vault 副本绑定';
 
 CREATE TABLE IF NOT EXISTS vault_file
 (

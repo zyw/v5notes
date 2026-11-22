@@ -7,7 +7,7 @@ import {
   cloudQuotaHelp,
   createSyncEngine,
   describeDeviceLabel,
-  deviceLimitMessage,
+  replicaLimitMessage,
   formatVaultQuotaLine,
   kickBlockedLabel,
   kickBlockedReason,
@@ -17,7 +17,7 @@ import {
   type SyncCoordinatorHandles,
   type SyncEngine,
   type SyncEngineStatus,
-  type VaultDeviceInfo,
+  type VaultReplicaInfo,
 } from '../sync'
 import ConfirmDialog from './ConfirmDialog.vue'
 import { liveDocKinds } from '../extension/runtime'
@@ -60,12 +60,13 @@ function setSyncMessage(text: string) {
 }
 const syncMessage = computed(() => props.sync?.lastSyncMessage.value ?? syncMessageLocal.value)
 const syncBusy = computed(() => props.sync?.syncing.value ?? syncBusyLocal.value)
-const devices = ref<VaultDeviceInfo[]>([])
-const devicesBusy = ref(false)
-const devicesError = ref('')
+const replicas = ref<VaultReplicaInfo[]>([])
+const replicasBusy = ref(false)
+const replicasError = ref('')
 const kickBusyId = ref<string | null>(null)
-const kickConfirm = ref<VaultDeviceInfo | null>(null)
-const localDeviceId = ref<string | null>(null)
+const kickConfirm = ref<VaultReplicaInfo | null>(null)
+/** Replica id of the vault open here; identifies this row in the list. */
+const localReplicaId = ref<string | null>(null)
 /** Cloud library this local vault is bound to; null until 绑定并同步. */
 const cloudVaultId = ref<string | null>(null)
 const bound = computed(() => Boolean(cloudVaultId.value))
@@ -97,8 +98,8 @@ async function onLogout() {
   // standalone mount without the coordinator also clears.
   syncStatusLocal.value = null
   setSyncMessage('')
-  devices.value = []
-  localDeviceId.value = null
+  replicas.value = []
+  localReplicaId.value = null
   logoutConfirmOpen.value = false
 }
 
@@ -172,40 +173,40 @@ function makeEngine(): SyncEngine {
   return fallbackEngine
 }
 
-/** This machine's identity and binding come from the vault's own vault.json. */
-async function refreshLocalDeviceId() {
-  localDeviceId.value = null
+/** This copy's replica id and binding come from the vault's own vault.json. */
+async function refreshLocalReplicaId() {
+  localReplicaId.value = null
   cloudVaultId.value = null
   const root = props.vault?.rootPath
   if (!root) return
   try {
     const raw = await readTextFile(await join(root, VAULT_JSON_REL))
     const config = JSON.parse(raw) as VaultJson
-    localDeviceId.value = config.binding.deviceId
+    localReplicaId.value = config.binding.replicaId
     cloudVaultId.value = config.binding.cloudVaultId
   } catch {
-    localDeviceId.value = null
+    localReplicaId.value = null
     cloudVaultId.value = null
   }
 }
 
-async function refreshDevices() {
-  devicesBusy.value = true
-  devicesError.value = ''
+async function refreshReplicas() {
+  replicasBusy.value = true
+  replicasError.value = ''
   try {
-    // Local identity first: it decides which row is this machine even when the
+    // Local identity first: it decides which row is this copy even when the
     // cloud list itself cannot be fetched.
-    await refreshLocalDeviceId()
+    await refreshLocalReplicaId()
     if (!canSync.value) {
-      devices.value = []
+      replicas.value = []
       return
     }
     const engine = makeEngine()
-    devices.value = await engine.listDevices()
+    replicas.value = await engine.listReplicas()
   } catch (cause) {
-    devicesError.value = cause instanceof Error ? cause.message : '无法加载设备列表'
+    replicasError.value = cause instanceof Error ? cause.message : '无法加载副本列表'
   } finally {
-    devicesBusy.value = false
+    replicasBusy.value = false
   }
 }
 
@@ -217,53 +218,53 @@ const myLabels = computed(() => localDeviceNames(
 ))
 
 /**
- * The device id in vault.json only identifies this directory. When the same
+ * The replica id in vault.json only identifies this directory. When the same
  * machine bound the same library from another directory it shows up as a
- * second row with a label this machine already sent.
+ * second row carrying this machine's device id and a label it already sent.
  */
-function isLocalRow(device: VaultDeviceInfo): boolean {
-  if (device.deviceId === localDeviceId.value) return true
-  const label = device.clientInfo?.trim()
+function isLocalRow(replica: VaultReplicaInfo): boolean {
+  if (replica.replicaId === localReplicaId.value) return true
+  const label = replica.clientInfo?.trim()
   return Boolean(label) && myLabels.value.includes(label as string)
 }
 
-/** One name for a device everywhere it is shown: the row and its confirmation. */
-function deviceTitle(device: VaultDeviceInfo | null): string {
-  const parts = describeDeviceLabel(device?.clientInfo)
+/** One name for a replica everywhere it is shown: the row and its confirmation. */
+function replicaTitle(replica: VaultReplicaInfo | null): string {
+  const parts = describeDeviceLabel(replica?.clientInfo)
   // A legacy label is a build tag, not a name; the row's context carries identity.
-  return parts.legacy || !parts.name ? '未命名的设备' : parts.name
+  return parts.legacy || !parts.name ? '未命名的副本' : parts.name
 }
 
 /** The button only stays clickable where removing the row actually frees a slot. */
-function blockReason(device: VaultDeviceInfo) {
+function blockReason(replica: VaultReplicaInfo) {
   return kickBlockedReason({
-    deviceId: device.deviceId,
-    localDeviceId: isLocalRow(device) ? device.deviceId : localDeviceId.value,
+    replicaId: replica.replicaId,
+    localReplicaId: isLocalRow(replica) ? replica.replicaId : localReplicaId.value,
     bound: bound.value,
-    // listDevices() only resolves for this vault's cloud library; other vaults'
+    // listReplicas() only resolves for this vault's cloud library; other vaults'
     // rows come from a listing that cannot be kicked from here.
-    inLocalVault: device.vaultId === cloudVaultId.value,
-    lastSeenAt: device.lastSeenAt,
+    inLocalVault: replica.vaultId === cloudVaultId.value,
+    lastSeenAt: replica.lastSeenAt,
   })
 }
 
-function requestKick(device: VaultDeviceInfo) {
-  if (blockReason(device)) return
-  devicesError.value = ''
-  kickConfirm.value = device
+function requestKick(replica: VaultReplicaInfo) {
+  if (blockReason(replica)) return
+  replicasError.value = ''
+  kickConfirm.value = replica
 }
 
-async function onKick(device: VaultDeviceInfo) {
-  kickBusyId.value = device.deviceId
-  devicesError.value = ''
+async function onKick(replica: VaultReplicaInfo) {
+  kickBusyId.value = replica.replicaId
+  replicasError.value = ''
   try {
     const engine = makeEngine()
-    await engine.kickDevice(device.deviceId)
+    await engine.kickReplica(replica.replicaId)
     kickConfirm.value = null
-    await refreshDevices()
+    await refreshReplicas()
     await props.account.refreshProfileAndPlan()
   } catch (cause) {
-    devicesError.value = cause instanceof Error ? cause.message : '踢除失败'
+    replicasError.value = cause instanceof Error ? cause.message : '停止同步失败'
   } finally {
     kickBusyId.value = null
   }
@@ -290,7 +291,7 @@ async function onBindAndSync() {
     await props.account.refreshProfileAndPlan()
   } catch (cause) {
     const msg = cause instanceof Error ? cause.message : '同步失败'
-    const shown = msg.includes('设备') ? `${msg}（${deviceLimitMessage()}）` : msg
+    const shown = msg.includes('设备') || msg.includes('副本') ? `${msg}（${replicaLimitMessage()}）` : msg
     setSyncMessage(shown)
   } finally {
     syncBusyLocal.value = false
@@ -359,17 +360,17 @@ function formatSeen(value?: string | null): string {
   }
 }
 
-// Device list and fallback-engine lifecycle only; the coordinator owns the
+// Replica list and fallback-engine lifecycle only; the coordinator owns the
 // engine, its background timer, online/focus wakeups, and status pushes.
 watch(
   () => [props.account.loggedIn.value, props.vault?.rootPath] as const,
   ([loggedIn, root]) => {
     fallbackEngine = null
     if (loggedIn && root) {
-      void refreshDevices()
+      void refreshReplicas()
     } else {
-      devices.value = []
-      void refreshLocalDeviceId()
+      replicas.value = []
+      void refreshLocalReplicaId()
     }
   },
 )
@@ -383,9 +384,9 @@ onMounted(() => {
     } catch {
       /* no vault open */
     }
-    void refreshDevices()
+    void refreshReplicas()
   } else if (canSync.value) {
-    void refreshDevices()
+    void refreshReplicas()
   }
 })
 
@@ -533,16 +534,16 @@ onBeforeUnmount(() => {
         </ul>
       </div>
 
-      <div v-if="props.mode === 'sync'" class="device-panel" aria-labelledby="devices-title">
+      <div v-if="props.mode === 'sync'" class="device-panel" aria-labelledby="replicas-title">
         <div class="device-head">
-          <h3 id="devices-title">同步设备</h3>
+          <h3 id="replicas-title">同步副本</h3>
           <button
             type="button"
             class="device-refresh"
-            :disabled="!canSync || devicesBusy"
-            :aria-label="devicesBusy ? '正在刷新设备列表' : '刷新设备列表'"
-            title="刷新设备列表"
-            @click="refreshDevices"
+            :disabled="!canSync || replicasBusy"
+            :aria-label="replicasBusy ? '正在刷新副本列表' : '刷新副本列表'"
+            title="刷新副本列表"
+            @click="refreshReplicas"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M12.8 8a4.8 4.8 0 1 1-1.4-3.4"/>
@@ -551,11 +552,11 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <p v-if="devicesError" class="inline-error" role="alert">{{ devicesError }}</p>
+        <p v-if="replicasError" class="inline-error" role="alert">{{ replicasError }}</p>
 
-        <ul v-if="devices.length" class="device-list" :aria-busy="devicesBusy">
+        <ul v-if="replicas.length" class="device-list" :aria-busy="replicasBusy">
           <li
-            v-for="device in devices"
+            v-for="device in replicas"
             :key="device.id"
             class="device-row"
             :class="{ 'is-local': isLocalRow(device) }"
@@ -568,7 +569,7 @@ onBeforeUnmount(() => {
             </span>
             <div class="device-copy">
               <strong>
-                {{ deviceTitle(device) }}
+                {{ replicaTitle(device) }}
                 <span v-if="isLocalRow(device)" class="device-tag">本机</span>
               </strong>
               <p class="device-meta">
@@ -579,10 +580,10 @@ onBeforeUnmount(() => {
               v-if="!blockReason(device)"
               type="button"
               class="device-kick"
-              :disabled="kickBusyId === device.deviceId"
+              :disabled="kickBusyId === device.replicaId"
               @click="requestKick(device)"
             >
-              {{ kickBusyId === device.deviceId ? '踢除中…' : '踢除' }}
+              {{ kickBusyId === device.replicaId ? '停止中…' : '停止同步' }}
             </button>
             <!-- 本机行已有「本机」标签，不再重复一个同字的状态位 -->
             <span v-else-if="blockReason(device) !== 'local'" class="device-state">
@@ -592,19 +593,19 @@ onBeforeUnmount(() => {
           </li>
         </ul>
 
-        <ul v-else-if="devicesBusy" class="device-list" aria-hidden="true">
+        <ul v-else-if="replicasBusy" class="device-list" aria-hidden="true">
           <li class="device-row is-skeleton"><span class="device-skel-bar"></span></li>
           <li class="device-row is-skeleton"><span class="device-skel-bar short"></span></li>
         </ul>
 
-        <p v-else-if="bound" class="device-empty">云端还没有登记任何设备。</p>
+        <p v-else-if="bound" class="device-empty">云端还没有登记任何副本。</p>
         <p v-else-if="canSync" class="device-empty">这台库还没有绑定到云端。</p>
         <details
-          v-if="devices.length && !devices.some(d => describeDeviceLabel(d.clientInfo).platform)"
+          v-if="replicas.length && !replicas.some(d => describeDeviceLabel(d.clientInfo).platform)"
           class="device-footnote"
         >
           <summary>名称说明</summary>
-          <p>这些设备早于设备名称上线，名称由云端保存的旧标签决定，不作为身份依据。</p>
+          <p>这些副本早于名称规则上线，名称由云端保存的旧标签决定，不作为身份依据。</p>
         </details>
       </div>
 
@@ -696,9 +697,9 @@ onBeforeUnmount(() => {
 
     <ConfirmDialog
       :open="Boolean(kickConfirm)"
-      title="踢除这台设备？"
-      :message="`「${deviceTitle(kickConfirm)}」将不能再同步这个库，要重新绑定才能继续。云端笔记不会被删除。`"
-      confirm-label="踢除"
+      title="停止这份副本的同步？"
+      :message="`「${replicaTitle(kickConfirm)}」将不能再同步这个库，要重新绑定才能继续。云端笔记不会被删除。`"
+      confirm-label="停止同步"
       :busy="Boolean(kickBusyId)"
       danger
       @cancel="kickConfirm = null"

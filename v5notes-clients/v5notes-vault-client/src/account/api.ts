@@ -159,8 +159,8 @@ export function createAccountApi(
           available?: boolean
           usedBytes?: number
           quotaBytes?: number
-          deviceLimit?: number
-          deviceUsed?: number
+          replicaLimit?: number
+          replicaUsed?: number
           planName?: string | null
           overQuota?: boolean
           maxFileBytes?: number

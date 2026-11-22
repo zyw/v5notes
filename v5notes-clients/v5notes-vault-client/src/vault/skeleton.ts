@@ -35,7 +35,7 @@ export function buildVaultJson(name: string, localVaultId = newLocalId()): Vault
     binding: {
       server: null,
       cloudVaultId: null,
-      deviceId: newLocalId(),
+      replicaId: newLocalId(),
       lastCursor: null,
     },
   }

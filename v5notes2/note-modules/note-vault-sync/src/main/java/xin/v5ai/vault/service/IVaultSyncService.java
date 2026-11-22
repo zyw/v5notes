@@ -6,7 +6,7 @@ import xin.v5ai.vault.domain.bo.VaultFileDeleteBo;
 import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.domain.bo.VaultRenameBo;
 import xin.v5ai.vault.domain.vo.VaultBindVo;
-import xin.v5ai.vault.domain.vo.VaultDeviceVo;
+import xin.v5ai.vault.domain.vo.VaultReplicaVo;
 import xin.v5ai.vault.domain.vo.VaultFileContentVo;
 import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
 import xin.v5ai.vault.domain.vo.VaultFileVersionVo;
@@ -24,13 +24,16 @@ public interface IVaultSyncService {
 
     VaultBindVo bind(Long userId, Long vaultId, VaultBindBo bo);
 
-    List<VaultDeviceVo> listDevices(Long userId, Long vaultId);
+    List<VaultReplicaVo> listReplicas(Long userId, Long vaultId);
 
     /**
-     * Remove a bound device so a new bind slot frees up (design §8.3).
-     * Does not wipe cloud file history; only the device binding row.
+     * Remove a bound replica so a new bind slot frees up (design §8.3).
+     * Does not wipe cloud file history; only the replica binding row.
+     *
+     * @param replicaId copy identity, not a machine id: one machine running two
+     *                  libraries holds two replicas and loses only the kicked one
      */
-    void kickDevice(Long userId, Long vaultId, String deviceId);
+    void kickReplica(Long userId, Long vaultId, String replicaId);
 
     VaultManifestVo manifest(Long userId, Long vaultId, String sinceCursor);
 

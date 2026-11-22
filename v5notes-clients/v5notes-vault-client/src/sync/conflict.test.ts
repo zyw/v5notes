@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toIdentityKey } from '../path/identity'
-import { buildConflictCopyPath, deviceShort } from './conflict'
+import { buildConflictCopyPath, replicaShort } from './conflict'
 
 describe('conflict copy naming §9.3', () => {
   it('builds stamped conflict path', () => {
@@ -28,7 +28,8 @@ describe('conflict copy naming §9.3', () => {
     expect(path).toContain('-2.md')
   })
 
-  it('shortens device id', () => {
-    expect(deviceShort('ABC-123')).toBe('abc123')
+  it('shortens the replica id that wrote the copy', () => {
+    expect(replicaShort('ABC-123')).toBe('abc123')
+    expect(replicaShort(null)).toBe('dev')
   })
 })

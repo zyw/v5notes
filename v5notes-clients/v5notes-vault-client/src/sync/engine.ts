@@ -25,6 +25,7 @@ import {
 import { planBootstrap } from './bootstrap'
 import { buildConflictCopyPath } from './conflict'
 import { describeFileHash as describeHash } from './diagnostics'
+import { getDeviceId } from '../account/deviceIdentity'
 import { bindLabelForVault, rememberLocalDeviceName } from './localDeviceNames'
 import { applySyncIgnore, parseSyncIgnore } from './exclude'
 import { normalizeContentHash, sha256Hex } from './hash'
@@ -43,7 +44,7 @@ import type {
   SyncEngineStatus,
   SyncStatus,
   VaultChange,
-  VaultDeviceInfo,
+  VaultReplicaInfo,
   VaultFileVersion,
   VaultQuota,
 } from './types'
@@ -67,6 +68,31 @@ export interface SyncEngineDeps {
 }
 
 const DEFAULT_BG_INTERVAL_MS = 60_000
+
+type VaultJsonWithLegacyBinding = VaultJson & {
+  binding: VaultJson['binding'] & { deviceId?: string }
+}
+
+/**
+ * A vault.json written before the replica field was renamed may still carry the
+ * id under its old name. Map it once, in the one place every reader goes
+ * through, so a bound vault keeps its binding row instead of looking unbound
+ * and taking a new id at the next bind.
+ */
+function migrateBindingDeviceId(config: VaultJsonWithLegacyBinding): VaultJson {
+  if (!config.binding) return config
+  if (!config.binding.replicaId && config.binding.deviceId) {
+    config.binding.replicaId = config.binding.deviceId
+  }
+  delete config.binding.deviceId
+  return config
+}
+
+/** Replica id of the open vault, minted when the file has none. */
+function ensureReplicaId(config: VaultJson): string {
+  if (!config.binding.replicaId) config.binding.replicaId = crypto.randomUUID()
+  return config.binding.replicaId
+}
 
 export function createSyncEngine(deps: SyncEngineDeps) {
   const fs = deps.fs ?? defaultVaultFs
@@ -103,7 +129,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
   async function readVaultJson(): Promise<VaultJson> {
     const raw = await readTextFile(await join(deps.rootPath, VAULT_JSON_REL))
-    return JSON.parse(raw) as VaultJson
+    return migrateBindingDeviceId(JSON.parse(raw) as VaultJsonWithLegacyBinding)
   }
 
   async function writeVaultJson(config: VaultJson): Promise<void> {
@@ -266,8 +292,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     }
     setStatus('binding', '正在绑定云端库…')
     const config = await readVaultJson()
-    const deviceId = config.binding.deviceId || crypto.randomUUID()
-    config.binding.deviceId = deviceId
+    const replicaId = ensureReplicaId(config)
     config.binding.server = auth.server
 
     const vaultName = options?.vaultName || config.name
@@ -278,8 +303,10 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     }
     try {
       const userAgent = typeof navigator === 'undefined' ? null : navigator.userAgent
-      const label = bindLabelForVault(vaultName, userAgent)
+      const deviceId = getDeviceId()
+      const label = bindLabelForVault(vaultName, deviceId, userAgent)
       const bindResult = await api.bind(vaultId, {
+        replicaId,
         deviceId,
         clientInfo: label,
       })
@@ -301,7 +328,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       return plan
     } catch (err) {
       if (err instanceof VaultSyncApiError && err.isQuota) {
-        setStatus('over-quota', err.message || '同步设备数已达上限', err.businessCode)
+        setStatus('over-quota', err.message || '同步副本数已达上限', err.businessCode)
       }
       throw err
     }
@@ -364,7 +391,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     change: VaultChange,
     state: SyncStateJson,
     occupied: Set<string>,
-    deviceId: string | null,
+    replicaId: string | null,
   ): Promise<void> {
     if (!change.path) return
     const content = await api.getContent(vaultId, change.path, change.remoteRev)
@@ -432,7 +459,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       const sourcePath = localPath
         ?? untrackedLocalPath
         ?? (await findOnDiskPathByIdentity(identityKey)) ?? change.path
-      const copyPath = buildConflictCopyPath(sourcePath, deviceId, occupied, toIdentityKey)
+      const copyPath = buildConflictCopyPath(sourcePath, replicaId, occupied, toIdentityKey)
       occupied.add(toIdentityKey(copyPath))
       if (prefersTextBody(sourcePath, docKinds())) {
         const localContent = await fs.readText(deps.rootPath, sourcePath)
@@ -551,6 +578,14 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         setStatus('error', '尚未绑定云端库', 'vault.not.found')
         return getStatusSnapshot(config)
       }
+      // The server indexes this copy by replica id; a snapshot without one
+      // (hand-edited, or written before the field existed) must not sync, or
+      // every later bind would create a fresh binding row.
+      const replicaId = config.binding.replicaId
+      if (!replicaId) {
+        setStatus('error', '本地副本标识缺失，请重新绑定', 'vault.replica.missing')
+        return getStatusSnapshot(config)
+      }
 
       await refreshQuota()
       const state = await readSyncState()
@@ -568,7 +603,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         const manifest = await api.manifest(vaultId, pullCursor)
         for (const change of manifest.changes) {
           if (change.op === 'upsert') {
-            await applyRemoteUpsert(vaultId, change, state, occupied, config.binding.deviceId)
+            await applyRemoteUpsert(vaultId, change, state, occupied, config.binding.replicaId)
           } else if (change.op === 'delete' && change.path) {
             const identityKey = toIdentityKey(change.path)
             const localEntry = Object.entries(state.files).find(
@@ -622,7 +657,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
               if ((meta.status === 'dirty' || meta.status === 'conflict') && meta.fileId) {
                 try {
                   if (await fs.exists(deps.rootPath, change.from)) {
-                    copyPath = buildConflictCopyPath(change.from, config.binding.deviceId, occupied, toIdentityKey)
+                    copyPath = buildConflictCopyPath(change.from, config.binding.replicaId, occupied, toIdentityKey)
                     occupied.add(toIdentityKey(copyPath))
                     if (prefersTextBody(change.from, docKinds())) {
                       const localContent = await fs.readText(deps.rootPath, change.from)
@@ -897,18 +932,18 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     return describeHash(deps.rootPath, relativePath, fs)
   }
 
-  async function listDevices(): Promise<VaultDeviceInfo[]> {
+  async function listReplicas(): Promise<VaultReplicaInfo[]> {
     const config = await readVaultJson()
     const vaultId = config.binding.cloudVaultId
     if (!vaultId) return []
-    return api.listDevices(vaultId)
+    return api.listReplicas(vaultId)
   }
 
-  async function kickDevice(deviceId: string): Promise<void> {
+  async function kickReplica(replicaId: string): Promise<void> {
     const config = await readVaultJson()
     const vaultId = config.binding.cloudVaultId
     if (!vaultId) throw new VaultSyncApiError('尚未绑定云端库', 404, 'vault.not.found')
-    await api.kickDevice(vaultId, deviceId)
+    await api.kickReplica(vaultId, replicaId)
   }
 
   async function listFileVersions(path: string): Promise<VaultFileVersion[]> {
@@ -941,8 +976,8 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     stopBackgroundSync,
     refreshQuota,
     listSyncableFiles,
-    listDevices,
-    kickDevice,
+    listReplicas,
+    kickReplica,
     describeFileHash,
     listFileVersions,
     getRetryQueue: () => retryQueue.list(),

@@ -14,9 +14,9 @@ class VaultQuotaRulesTest {
     }
 
     @Test
-    void deviceLimitAllowsRebind() {
-        assertFalse(VaultQuotaRules.wouldExceedDevices(3, true, 3));
-        assertTrue(VaultQuotaRules.wouldExceedDevices(3, false, 3));
+    void replicaLimitAllowsRebind() {
+        assertFalse(VaultQuotaRules.wouldExceedReplicas(3, true, 3));
+        assertTrue(VaultQuotaRules.wouldExceedReplicas(3, false, 3));
     }
 
     @Test

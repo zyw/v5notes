@@ -6,7 +6,7 @@ export {
   prefersTextBody,
 } from './attachments'
 export { planBootstrap, bootstrapModeLabel } from './bootstrap'
-export { buildConflictCopyPath, deviceShort, formatConflictStamp } from './conflict'
+export { buildConflictCopyPath, formatConflictStamp, replicaShort } from './conflict'
 export {
   applySyncIgnore,
   classifySyncPath,
@@ -34,8 +34,8 @@ export {
 export { describeFileHash, formatHashReport, type FileHashReport } from './diagnostics'
 export { normalizeContentHash, sha256Hex } from './hash'
 export {
-  CLOUD_DEVICE_LIMIT,
-  DEVICE_IDLE_WINDOW_MS,
+  CLOUD_REPLICA_LIMIT,
+  REPLICA_IDLE_WINDOW_MS,
   kickBlockedLabel,
   kickBlockedReason,
   type KickBlockedReason,
@@ -43,7 +43,7 @@ export {
 export { VaultQuotaRules } from './limits'
 export {
   cloudQuotaHelp,
-  deviceLimitMessage,
+  replicaLimitMessage,
   formatVaultQuotaLine,
   overQuotaPushMessage,
   vaultSyncQuotaHelp,
@@ -59,7 +59,7 @@ export type {
   BootstrapPlan,
   SyncEngineStatus,
   SyncStatus,
-  VaultDeviceInfo,
+  VaultReplicaInfo,
   VaultFileVersion,
   VaultQuota,
   VaultSpaceSummary,

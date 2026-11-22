@@ -12,8 +12,12 @@ public class VaultQuotaVo {
 
     private long quotaBytes;
 
-    private int deviceLimit;
+    /** Cap on bound replicas per vault. */
+    private int replicaLimit;
 
+    private int replicaUsed;
+
+    /** Distinct machines behind those replicas; informational. */
     private int deviceUsed;
 
     private String planName;

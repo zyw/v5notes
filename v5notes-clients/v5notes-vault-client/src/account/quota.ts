@@ -16,8 +16,8 @@ export interface VaultSyncQuotaBucket {
   available: boolean
   usedBytes: number
   quotaBytes: number
-  deviceLimit: number
-  deviceUsed: number
+  replicaLimit: number
+  replicaUsed: number
   planName?: string | null
   overQuota?: boolean
   maxFileBytes?: number
@@ -34,8 +34,8 @@ export function stubVaultSyncQuota(): VaultSyncQuotaBucket {
     available: false,
     usedBytes: 0,
     quotaBytes: 0,
-    deviceLimit: 0,
-    deviceUsed: 0,
+    replicaLimit: 0,
+    replicaUsed: 0,
     planName: null,
     overQuota: false,
   }
@@ -45,8 +45,8 @@ export function mapVaultQuota(raw: {
   available?: boolean
   usedBytes?: number
   quotaBytes?: number
-  deviceLimit?: number
-  deviceUsed?: number
+  replicaLimit?: number
+  replicaUsed?: number
   planName?: string | null
   overQuota?: boolean
   maxFileBytes?: number
@@ -56,8 +56,8 @@ export function mapVaultQuota(raw: {
     available: raw.available !== false,
     usedBytes: raw.usedBytes ?? 0,
     quotaBytes: raw.quotaBytes ?? 0,
-    deviceLimit: raw.deviceLimit ?? 0,
-    deviceUsed: raw.deviceUsed ?? 0,
+    replicaLimit: raw.replicaLimit ?? 0,
+    replicaUsed: raw.replicaUsed ?? 0,
     planName: raw.planName ?? null,
     overQuota: Boolean(raw.overQuota),
     maxFileBytes: raw.maxFileBytes,

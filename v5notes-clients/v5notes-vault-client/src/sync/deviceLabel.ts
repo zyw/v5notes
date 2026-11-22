@@ -9,6 +9,7 @@
  */
 
 import { PRODUCT_DISPLAY_NAME } from '../account/constants'
+import { deviceShort } from '../account/deviceIdentity'
 
 /** Labels every client sent before this module existed. */
 const LEGACY_LABELS = new Set(['v5notes-vault-client/phase5'])
@@ -44,15 +45,22 @@ export function buildDeviceLabel(userAgent?: string | null): string {
 export const LABEL_SEPARATOR = ' · '
 
 /**
- * A label every machine can answer for itself: the vault it has open plus its
- * platform. Lets each client recognise its own row (see localDeviceNames) even
- * on a machine that has not bound yet, without the server knowing the network
- * address or hostname of anyone.
+ * A label every machine can answer for itself: the vault it has open, its
+ * platform, and a short form of this machine's device id. The name alone
+ * separates libraries; the device short tells two machines with an identically
+ * named library apart, without the server knowing any network address.
  */
-export function buildVaultDeviceLabel(vaultName: string, userAgent?: string | null): string {
+export function buildVaultDeviceLabel(
+  vaultName: string,
+  deviceId: string | null | undefined,
+  userAgent?: string | null,
+): string {
   const platform = detectPlatform(userAgent)
   const name = vaultName.trim() || PRODUCT_DISPLAY_NAME
-  return platform ? `${name}${LABEL_SEPARATOR}${PLATFORM_NAMES[platform]}` : name
+  const parts = [name]
+  if (platform) parts.push(PLATFORM_NAMES[platform])
+  parts.push(deviceShort(deviceId))
+  return parts.join(LABEL_SEPARATOR)
 }
 
 export interface DeviceLabelParts {
@@ -60,6 +68,8 @@ export interface DeviceLabelParts {
   name: string
   /** Platform carried by the label, when it names one. */
   platform: string | null
+  /** Short device id carried by the label, when it names one. */
+  deviceShort: string | null
   /** False when the server only holds a free-form label. */
   recognised: boolean
   /** Label written by a build before this module (shows a placeholder name). */
@@ -68,20 +78,32 @@ export interface DeviceLabelParts {
 
 const KNOWN_PLATFORMS = new Set<string>(Object.values(PLATFORM_NAMES))
 
+/** Trailing device segment written by this build: six lowercase alphanumerics. */
+const DEVICE_SHORT_RE = /^[a-z0-9]{6}$/
+
 /**
  * Splits only when the second half is a platform this app can send. Vault names
  * may contain " · " themselves, so a plain split would truncate them.
  */
 export function describeDeviceLabel(clientInfo: string | null | undefined): DeviceLabelParts {
   const raw = clientInfo?.trim()
-  if (!raw) return { name: '', platform: null, recognised: false }
-  if (LEGACY_LABELS.has(raw)) return { name: raw, platform: null, recognised: false, legacy: true }
-  const cut = raw.lastIndexOf(' · ')
-  if (cut > 0) {
-    const platform = raw.slice(cut + 3).trim()
-    if (KNOWN_PLATFORMS.has(platform)) {
-      return { name: raw.slice(0, cut).trim(), platform, recognised: true }
-    }
+  if (!raw) return { name: '', platform: null, deviceShort: null, recognised: false }
+  if (LEGACY_LABELS.has(raw)) {
+    return { name: raw, platform: null, deviceShort: null, recognised: false, legacy: true }
   }
-  return { name: raw, platform: null, recognised: false }
+  const segments = raw.split(LABEL_SEPARATOR).map(part => part.trim()).filter(Boolean)
+  let device: string | null = null
+  const last = segments[segments.length - 1]
+  if (segments.length > 1 && DEVICE_SHORT_RE.test(last)) {
+    device = last
+    segments.pop()
+  }
+  const platform = segments.length > 1 ? segments[segments.length - 1] : null
+  if (platform && KNOWN_PLATFORMS.has(platform)) segments.pop()
+  return {
+    name: segments.join(LABEL_SEPARATOR),
+    platform: platform && KNOWN_PLATFORMS.has(platform) ? platform : null,
+    deviceShort: device,
+    recognised: Boolean(device || (platform && KNOWN_PLATFORMS.has(platform))),
+  }
 }

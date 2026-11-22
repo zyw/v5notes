@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   cloudQuotaHelp,
-  deviceLimitMessage,
+  replicaLimitMessage,
   formatVaultQuotaLine,
   overQuotaPushMessage,
   vaultSyncQuotaHelp,
@@ -19,14 +19,14 @@ describe('quota copy', () => {
     const line = formatVaultQuotaLine({
       usedBytes: 1024,
       quotaBytes: 2048,
-      deviceUsed: 2,
-      deviceLimit: 3,
+      replicaUsed: 2,
+      replicaLimit: 3,
       overQuota: true,
       maxFileBytes: 25 * 1024 * 1024,
     })
-    expect(line).toContain('设备 2/3')
+    expect(line).toContain('副本 2/3')
     expect(line).toContain('push 拒绝')
     expect(overQuotaPushMessage()).toContain('pull')
-    expect(deviceLimitMessage()).toContain('踢除')
+    expect(replicaLimitMessage()).toContain('停止')
   })
 })

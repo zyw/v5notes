@@ -9,7 +9,7 @@ import xin.v5ai.vault.domain.VaultChange;
 import xin.v5ai.vault.domain.VaultFile;
 import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
-import xin.v5ai.vault.mapper.VaultDeviceMapper;
+import xin.v5ai.vault.mapper.VaultReplicaMapper;
 import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
@@ -35,7 +35,7 @@ class VaultSyncManifestPaginationTest {
     @Mock
     private VaultSpaceMapper spaceMapper;
     @Mock
-    private VaultDeviceMapper deviceMapper;
+    private VaultReplicaMapper replicaMapper;
     @Mock
     private VaultFileMapper fileMapper;
     @Mock
@@ -44,7 +44,7 @@ class VaultSyncManifestPaginationTest {
     private VaultChangeMapper changeMapper;
 
     private VaultSyncServiceImpl service() {
-        return new VaultSyncServiceImpl(spaceMapper, deviceMapper, fileMapper, blobMapper, changeMapper);
+        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, blobMapper, changeMapper);
     }
 
     private VaultChange change(long id) {

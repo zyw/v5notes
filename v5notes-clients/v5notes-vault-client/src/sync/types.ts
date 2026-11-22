@@ -23,10 +23,14 @@ export interface VaultChange {
   type?: string
 }
 
-export interface VaultDeviceInfo {
+/** One bound copy of a cloud library (a row of vault_replica). */
+export interface VaultReplicaInfo {
   id: string
   vaultId: string
-  deviceId: string
+  /** This copy's replica id, taken from its own vault.json. */
+  replicaId: string
+  /** Machine that bound it; shared by every replica on that machine. */
+  deviceId?: string | null
   clientInfo?: string | null
   lastSeenAt?: string | null
   boundAt?: string | null
@@ -73,8 +77,8 @@ export interface VaultQuota {
   available: boolean
   usedBytes: NumericByteSize
   quotaBytes: NumericByteSize
-  deviceLimit: number
-  deviceUsed: number
+  replicaLimit: number
+  replicaUsed: number
   planName?: string | null
   overQuota?: boolean
   /** May arrive stringified by normalizeIds; always read via toNumericBytes. */
@@ -90,7 +94,7 @@ export interface VaultSpaceSummary {
 
 export interface VaultBindResult {
   vaultId: string
-  deviceId: string
+  replicaId: string
   cloudHasContent: boolean
   quota?: VaultQuota
 }

@@ -14,13 +14,13 @@
     "binding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["server", "cloudVaultId", "deviceId", "lastCursor"],
+      "required": ["server", "cloudVaultId", "replicaId", "lastCursor"],
       "properties": {
         "server": { "type": ["string", "null"] },
         "cloudVaultId": { "type": ["string", "null"] },
-        "deviceId": {
+        "replicaId": {
           "type": ["string", "null"],
-          "description": "Local-only; never sync (§6.4)."
+          "description": "Local-only replica id; never sync (§6.4)."
         },
         "lastCursor": {
           "type": ["string", "null"],

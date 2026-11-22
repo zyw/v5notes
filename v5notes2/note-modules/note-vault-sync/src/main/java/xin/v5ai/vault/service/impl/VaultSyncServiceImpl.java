@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.domain.VaultChange;
-import xin.v5ai.vault.domain.VaultDevice;
+import xin.v5ai.vault.domain.VaultReplica;
 import xin.v5ai.vault.domain.VaultFile;
 import xin.v5ai.vault.domain.VaultFileBlob;
 import xin.v5ai.vault.domain.VaultSpace;
@@ -20,7 +20,7 @@ import xin.v5ai.vault.domain.bo.VaultRenameBo;
 import xin.v5ai.vault.domain.vo.VaultBindVo;
 import xin.v5ai.vault.domain.vo.VaultChangeVo;
 import xin.v5ai.vault.domain.vo.VaultConflictVo;
-import xin.v5ai.vault.domain.vo.VaultDeviceVo;
+import xin.v5ai.vault.domain.vo.VaultReplicaVo;
 import xin.v5ai.vault.domain.vo.VaultFileContentVo;
 import xin.v5ai.vault.domain.vo.VaultFileMetaVo;
 import xin.v5ai.vault.domain.vo.VaultFileVersionVo;
@@ -30,7 +30,7 @@ import xin.v5ai.vault.domain.vo.VaultSpaceVo;
 import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.exception.VaultConflictException;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
-import xin.v5ai.vault.mapper.VaultDeviceMapper;
+import xin.v5ai.vault.mapper.VaultReplicaMapper;
 import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
@@ -55,7 +55,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     public static final int MANIFEST_PAGE_LIMIT = 500;
 
     private final VaultSpaceMapper spaceMapper;
-    private final VaultDeviceMapper deviceMapper;
+    private final VaultReplicaMapper replicaMapper;
     private final VaultFileMapper fileMapper;
     private final VaultFileBlobMapper blobMapper;
     private final VaultChangeMapper changeMapper;
@@ -91,69 +91,74 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     @Transactional(rollbackFor = Exception.class)
     public VaultBindVo bind(Long userId, Long vaultId, VaultBindBo bo) {
         VaultSpace space = requireOwnedVault(userId, vaultId);
+        String replicaId = bo.getReplicaId().trim();
         String deviceId = bo.getDeviceId().trim();
-        VaultDevice existing = deviceMapper.selectOne(new LambdaQueryWrapper<VaultDevice>()
-            .eq(VaultDevice::getVaultId, vaultId)
-            .eq(VaultDevice::getDeviceId, deviceId));
-        int deviceUsed = Math.toIntExact(deviceMapper.selectCount(new LambdaQueryWrapper<VaultDevice>()
-            .eq(VaultDevice::getVaultId, vaultId)));
+        VaultReplica existing = replicaMapper.selectOne(new LambdaQueryWrapper<VaultReplica>()
+            .eq(VaultReplica::getVaultId, vaultId)
+            .eq(VaultReplica::getReplicaId, replicaId));
+        int replicaUsed = Math.toIntExact(replicaMapper.selectCount(new LambdaQueryWrapper<VaultReplica>()
+            .eq(VaultReplica::getVaultId, vaultId)));
         boolean alreadyBound = existing != null;
-        if (VaultQuotaRules.wouldExceedDevices(deviceUsed, alreadyBound, VaultQuotaRules.DEFAULT_DEVICE_LIMIT)) {
+        if (VaultQuotaRules.wouldExceedReplicas(replicaUsed, alreadyBound, VaultQuotaRules.DEFAULT_REPLICA_LIMIT)) {
             throw new VaultBusinessException(HttpStatus.FORBIDDEN, VaultErrorCodes.QUOTA_DEVICES_EXCEEDED,
-                "同步设备数已达上限，请踢除旧设备或升级套餐");
+                "同步副本数已达上限，请停止旧副本的同步或升级套餐");
         }
         Date now = new Date();
         if (existing == null) {
-            VaultDevice device = new VaultDevice();
-            device.setVaultId(vaultId);
-            device.setUserId(userId);
-            device.setDeviceId(deviceId);
-            device.setClientInfo(bo.getClientInfo());
-            device.setLastSeenAt(now);
-            device.setCreateTime(now);
-            device.setUpdateTime(now);
-            deviceMapper.insert(device);
+            VaultReplica replica = new VaultReplica();
+            replica.setVaultId(vaultId);
+            replica.setUserId(userId);
+            replica.setReplicaId(replicaId);
+            replica.setDeviceId(deviceId);
+            replica.setClientInfo(bo.getClientInfo());
+            replica.setLastSeenAt(now);
+            replica.setCreateTime(now);
+            replica.setUpdateTime(now);
+            replicaMapper.insert(replica);
         } else {
+            // The replica moved to a machine (or its data was restored there):
+            // follow it, so the listing never points at a machine it left.
+            existing.setDeviceId(deviceId);
             existing.setClientInfo(bo.getClientInfo());
             existing.setLastSeenAt(now);
             existing.setUpdateTime(now);
-            deviceMapper.updateById(existing);
+            replicaMapper.updateById(existing);
         }
         VaultBindVo vo = new VaultBindVo();
         vo.setVaultId(String.valueOf(space.getId()));
-        vo.setDeviceId(deviceId);
+        vo.setReplicaId(replicaId);
         vo.setCloudHasContent(hasLiveFiles(vaultId));
         vo.setQuota(buildQuota(userId));
         return vo;
     }
 
     @Override
-    public List<VaultDeviceVo> listDevices(Long userId, Long vaultId) {
+    public List<VaultReplicaVo> listReplicas(Long userId, Long vaultId) {
         requireOwnedVault(userId, vaultId);
-        List<VaultDevice> devices = deviceMapper.selectList(new LambdaQueryWrapper<VaultDevice>()
-            .eq(VaultDevice::getVaultId, vaultId)
-            .orderByDesc(VaultDevice::getLastSeenAt));
-        List<VaultDeviceVo> out = new ArrayList<>(devices.size());
-        for (VaultDevice device : devices) {
-            out.add(toDeviceVo(device));
+        List<VaultReplica> replicas = replicaMapper.selectList(new LambdaQueryWrapper<VaultReplica>()
+            .eq(VaultReplica::getVaultId, vaultId)
+            .orderByDesc(VaultReplica::getLastSeenAt));
+        List<VaultReplicaVo> out = new ArrayList<>(replicas.size());
+        for (VaultReplica replica : replicas) {
+            out.add(toReplicaVo(replica));
         }
         return out;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void kickDevice(Long userId, Long vaultId, String deviceId) {
+    public void kickReplica(Long userId, Long vaultId, String replicaId) {
         requireOwnedVault(userId, vaultId);
-        if (deviceId == null || deviceId.isBlank()) {
-            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "deviceId 无效");
+        if (replicaId == null || replicaId.isBlank()) {
+            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "replicaId 无效");
         }
-        VaultDevice existing = deviceMapper.selectOne(new LambdaQueryWrapper<VaultDevice>()
-            .eq(VaultDevice::getVaultId, vaultId)
-            .eq(VaultDevice::getDeviceId, deviceId.trim()));
+        VaultReplica existing = replicaMapper.selectOne(new LambdaQueryWrapper<VaultReplica>()
+            .eq(VaultReplica::getVaultId, vaultId)
+            .eq(VaultReplica::getReplicaId, replicaId.trim()));
         if (existing == null) {
-            throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.NOT_FOUND, "设备未绑定");
+            throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.NOT_FOUND, "副本未绑定");
         }
-        deviceMapper.deleteById(existing.getId());
+        replicaMapper.deleteById(existing.getId());
     }
 
     @Override
@@ -430,16 +435,22 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         List<VaultSpace> spaces = spaceMapper.selectList(new LambdaQueryWrapper<VaultSpace>()
             .eq(VaultSpace::getUserId, userId));
         long used = spaces.stream().mapToLong(s -> nullToZero(s.getUsedBytes())).sum();
+        // Quota counts replicas: each bound library directory is one slot. The
+        // machine count is reported alongside it for display only.
+        int replicas = 0;
         int devices = 0;
         for (VaultSpace space : spaces) {
-            devices += Math.toIntExact(deviceMapper.selectCount(new LambdaQueryWrapper<VaultDevice>()
-                .eq(VaultDevice::getVaultId, space.getId())));
+            List<VaultReplica> bound = replicaMapper.selectList(new LambdaQueryWrapper<VaultReplica>()
+                .eq(VaultReplica::getVaultId, space.getId()));
+            replicas += bound.size();
+            devices += (int) bound.stream().map(VaultReplica::getDeviceId).distinct().count();
         }
         VaultQuotaVo vo = new VaultQuotaVo();
         vo.setAvailable(true);
         vo.setUsedBytes(used);
         vo.setQuotaBytes(VaultQuotaRules.DEFAULT_QUOTA_BYTES);
-        vo.setDeviceLimit(VaultQuotaRules.DEFAULT_DEVICE_LIMIT);
+        vo.setReplicaLimit(VaultQuotaRules.DEFAULT_REPLICA_LIMIT);
+        vo.setReplicaUsed(replicas);
         vo.setDeviceUsed(devices);
         vo.setPlanName("vault-default");
         vo.setOverQuota(used >= VaultQuotaRules.DEFAULT_QUOTA_BYTES);
@@ -541,14 +552,15 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         return vo;
     }
 
-    private VaultDeviceVo toDeviceVo(VaultDevice device) {
-        VaultDeviceVo vo = new VaultDeviceVo();
-        vo.setId(String.valueOf(device.getId()));
-        vo.setVaultId(String.valueOf(device.getVaultId()));
-        vo.setDeviceId(device.getDeviceId());
-        vo.setClientInfo(device.getClientInfo());
-        vo.setLastSeenAt(device.getLastSeenAt());
-        vo.setBoundAt(device.getCreateTime());
+    private VaultReplicaVo toReplicaVo(VaultReplica replica) {
+        VaultReplicaVo vo = new VaultReplicaVo();
+        vo.setId(String.valueOf(replica.getId()));
+        vo.setVaultId(String.valueOf(replica.getVaultId()));
+        vo.setReplicaId(replica.getReplicaId());
+        vo.setDeviceId(replica.getDeviceId());
+        vo.setClientInfo(replica.getClientInfo());
+        vo.setLastSeenAt(replica.getLastSeenAt());
+        vo.setBoundAt(replica.getCreateTime());
         return vo;
     }
 

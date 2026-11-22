@@ -6,8 +6,12 @@
 export interface VaultBinding {
   server: string | null
   cloudVaultId: string | null
-  /** Local-only; never sync. */
-  deviceId: string | null
+  /**
+   * Identity of this vault directory's replica (design §6.4). Local-only;
+   * never syncs. The machine's own identity is the device id, kept outside
+   * the vault so it survives a reinstall.
+   */
+  replicaId: string | null
   /** Local-only cursor; never sync. */
   lastCursor: string | null
 }

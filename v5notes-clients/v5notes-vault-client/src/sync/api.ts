@@ -1,7 +1,7 @@
 import { VaultErrorCode } from '../models/errors'
 import type {
   VaultBindResult,
-  VaultDeviceInfo,
+  VaultReplicaInfo,
   VaultFileContent,
   VaultFileMeta,
   VaultFileVersion,
@@ -152,16 +152,16 @@ export function createVaultSyncApi(
         body: JSON.stringify({ name }),
       }),
     listVaults: () => call<VaultSpaceSummary[]>('/vault/v1/vaults'),
-    bind: (vaultId: string, body: { deviceId: string; clientInfo?: string }) =>
+    bind: (vaultId: string, body: { replicaId: string; deviceId: string; clientInfo?: string }) =>
       call<VaultBindResult>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/bind`, {
         method: 'POST',
         body: JSON.stringify(body),
       }),
-    listDevices: (vaultId: string) =>
-      call<VaultDeviceInfo[]>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/devices`),
-    kickDevice: (vaultId: string, deviceId: string) =>
+    listReplicas: (vaultId: string) =>
+      call<VaultReplicaInfo[]>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/replicas`),
+    kickReplica: (vaultId: string, replicaId: string) =>
       call<null>(
-        `/vault/v1/vaults/${encodeURIComponent(vaultId)}/devices/${encodeURIComponent(deviceId)}`,
+        `/vault/v1/vaults/${encodeURIComponent(vaultId)}/replicas/${encodeURIComponent(replicaId)}`,
         { method: 'DELETE' },
       ),
     manifest: (vaultId: string, since?: string | null) => {
