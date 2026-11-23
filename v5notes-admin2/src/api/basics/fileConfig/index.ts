@@ -1,7 +1,7 @@
 import type { PageResult } from '@/api/types';
 import type { AxiosPromise } from '@/utils/api-types';
 import request from '@/utils/request';
-import type { FileConfigForm, FileConfigQuery, FileConfigVO } from '@/api/basics/fileConfig/types';
+import type { FileConfigForm, FileConfigPurpose, FileConfigQuery, FileConfigVO } from '@/api/basics/fileConfig/types';
 
 const fileBaseUrl = '/basics/admin/file-config';
 
@@ -59,6 +59,18 @@ export const updateFileConfig = (data: FileConfigForm) => {
 export const updateMasterConfig = (id: string | number) => {
   return request({
     url: fileBaseUrl + '/master/' + id,
+    method: 'put'
+  });
+};
+
+/**
+ * 切换文件配置用途：目标接管用途，原持有者退回 GENERIC
+ * @param id
+ * @param purpose
+ */
+export const updateFileConfigPurpose = (id: string | number, purpose: FileConfigPurpose) => {
+  return request({
+    url: fileBaseUrl + '/purpose/' + id + '/' + purpose,
     method: 'put'
   });
 };

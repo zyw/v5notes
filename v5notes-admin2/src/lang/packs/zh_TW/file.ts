@@ -37,6 +37,9 @@ export default {
     },
     config: {
       name: '設定名稱',
+      purpose: '用途',
+      purposeGeneric: '圖片庫/頭像',
+      purposeVaultAsset: '同步附件',
       storage: '儲存器',
       startTime: '開始時間',
       endTime: '結束時間',
@@ -89,6 +92,9 @@ export default {
       accessSecretRequired: 'accessSecret 不能為空',
       domainRequired: '自訂網域不能為空',
       confirmDelete: '是否確認刪除檔案設定編號為"{name}"的資料項目？',
+      useFor: '設為{purpose}',
+      confirmSwitchPurpose: '確認把「{name}」設為{purpose}嗎？原本的設定會保留，歷史附件仍從它讀取。',
+      switchPurposeSuccess: '用途已切換',
       setMasterSuccess: '設定主要設定成功',
       cancelMasterSuccess: '取消主要設定成功'
     }

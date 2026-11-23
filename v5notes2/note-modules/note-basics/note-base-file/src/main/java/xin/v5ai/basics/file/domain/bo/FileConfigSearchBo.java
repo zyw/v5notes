@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.format.annotation.DateTimeFormat;
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +20,9 @@ import java.time.LocalDateTime;
 public class FileConfigSearchBo {
     @Schema(description = "配置名", example = "S3 - 阿里云")
     private String name;
+
+    @Schema(description = "用途", example = "VAULT_ASSET")
+    private FileConfigPurpose purpose;
 
     @Schema(description = "存储器", example = "1")
     private Integer storage;

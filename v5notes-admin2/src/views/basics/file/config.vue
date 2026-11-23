@@ -7,6 +7,11 @@
             <el-form-item :label="$t('file.config.name')" prop="name">
               <el-input v-model="queryParams.name" :placeholder="$t('common.pleaseInput', { label: $t('file.config.name') })" clearable style="width: 240px" @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item :label="$t('file.config.purpose')" prop="purpose">
+              <el-select v-model="queryParams.purpose" clearable :placeholder="$t('common.pleaseInput', { label: $t('file.config.purpose') })" style="width: 200px" @change="handleQuery">
+                <el-option v-for="item in purposeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
             <el-form-item :label="$t('file.config.storage')" prop="storage">
               <el-select v-model="queryParams.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 240px" @change="handleQuery">
                 <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
@@ -61,6 +66,11 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column :label="$t('common.serial')" type="index" width="50" :index="hIndex" />
         <el-table-column :label="$t('file.config.name')" align="center" prop="name" />
+        <el-table-column :label="$t('file.config.purpose')" align="center" prop="purpose" width="150">
+          <template #default="scope">
+            <el-tag :type="scope.row.purpose === 'VAULT_ASSET' ? 'warning' : 'info'" disable-transitions>{{ purposeLabel(scope.row.purpose) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column :label="$t('file.config.storage')" align="center" prop="storage">
           <template #default="scope">
             <el-tag type="primary">{{ storageFormatter(scope.row) }}</el-tag>
@@ -75,6 +85,9 @@
         <el-table-column :label="$t('common.createTime')" align="center" prop="createTime" width="160" />
         <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
+            <el-tooltip v-if="purposeTargetFor(scope.row as FileConfigVO)" :content="$t('file.config.useFor', { purpose: purposeLabel(purposeTargetFor(scope.row as FileConfigVO)) })" placement="top">
+              <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" icon="Switch" @click="handleSwitchPurpose(scope.row as FileConfigVO)" />
+            </el-tooltip>
             <el-tooltip :content="scope.row.master ? $t('file.config.currentMaster') : $t('file.config.setMaster')" placement="top">
               <el-button
                 v-hasPermi="['basics:fileConfig:edit']"
@@ -145,6 +158,13 @@
                 <el-select v-model="form.storage" :placeholder="$t('common.pleaseInput', { label: $t('file.config.storage') })" style="width: 100%" @change="handleStorageChange">
                   <el-option v-for="item in dicts" :key="item.dictValue" :label="item.dictLabel" :value="Number(item.dictValue)" />
                 </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item :label="$t('file.config.purpose')" prop="purpose">
+                <el-radio-group v-model="form.purpose">
+                  <el-radio v-for="item in purposeOptions" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
+                </el-radio-group>
               </el-form-item>
             </el-col>
             <el-col :span="24">
@@ -281,8 +301,8 @@
 </template>
 
 <script setup name="FileConfig" lang="ts">
-import { addFileConfig, delFileConfig, getFileConfig, listFileConfig, updateFileConfig, updateMasterConfig } from '@/api/basics/fileConfig';
-import type { FileClientConfig, FileConfigForm, FileConfigQuery, FileConfigVO } from '@/api/basics/fileConfig/types';
+import { addFileConfig, delFileConfig, getFileConfig, listFileConfig, updateFileConfig, updateFileConfigPurpose, updateMasterConfig } from '@/api/basics/fileConfig';
+import type { FileClientConfig, FileConfigForm, FileConfigPurpose, FileConfigQuery, FileConfigVO } from '@/api/basics/fileConfig/types';
 import { getDicts } from '@/api/system/dict/data';
 import type { DictDataVO } from '@/api/system/dict/data/types';
 import animateConfig from '@/animate';
@@ -313,9 +333,17 @@ const dialog = reactive<DialogOption>({
   title: ''
 });
 
+const purposeOptions = computed(() => [
+  { value: 'GENERIC', label: t('file.config.purposeGeneric') },
+  { value: 'VAULT_ASSET', label: t('file.config.purposeVaultAsset') }
+]);
+
+const purposeLabel = (purpose?: FileConfigPurpose) => purposeOptions.value.find((item) => item.value === purpose)?.label ?? '';
+
 const initFormData: FileConfigForm = {
   id: undefined,
   name: undefined,
+  purpose: 'GENERIC',
   storage: undefined,
   remark: undefined,
   config: {} as FileClientConfig
@@ -326,6 +354,7 @@ const data = reactive<PageData<FileConfigForm, FileConfigQuery>>({
     pageNum: 1,
     pageSize: 10,
     name: undefined,
+    purpose: undefined,
     storage: undefined,
     createTime: undefined
   },
@@ -480,6 +509,33 @@ const handleDelete = async (row?: FileConfigVO) => {
 const getDictData = async () => {
   const res = await getDicts('basics_file_storage');
   dicts.value = res.data ?? [];
+};
+
+/**
+ * 卡片上的切换入口只在该行能承接的用途上出现：GENERIC 行可以去做 VAULT_ASSET，
+ * 已被占用的用途不出现入口 —— 先把当前持有者改回，再让这一行接手。
+ */
+const purposeTargetFor = (row: FileConfigVO): FileConfigPurpose | undefined => {
+  if (row.purpose !== 'GENERIC') {
+    return undefined;
+  }
+  const taken = fileConfigList.value.some((item) => item.purpose === 'VAULT_ASSET');
+  return taken ? undefined : 'VAULT_ASSET';
+};
+
+/** 切换用途 */
+const handleSwitchPurpose = async (row: FileConfigVO) => {
+  const purpose = purposeTargetFor(row);
+  if (!purpose) {
+    return;
+  }
+  const result = await modal.confirm(t('file.config.confirmSwitchPurpose', { name: row.name, purpose: purposeLabel(purpose) })).catch((err) => err);
+  if (result !== 'confirm') {
+    return;
+  }
+  await updateFileConfigPurpose(row.id, purpose);
+  modal.msgSuccess(t('file.config.switchPurposeSuccess'));
+  await getList();
 };
 
 /** 设置主配置 */

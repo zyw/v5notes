@@ -84,6 +84,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
     private LambdaQueryWrapper<FileConfig> buildQueryWrapper(FileConfigSearchBo bo) {
         LambdaQueryWrapper<FileConfig> lqw = Wrappers.lambdaQuery();
         lqw.like(StringUtils.isNotBlank(bo.getName()), FileConfig::getName, bo.getName());
+        lqw.eq(bo.getPurpose() != null, FileConfig::getPurpose, bo.getPurpose());
         lqw.eq(bo.getStorage() != null, FileConfig::getStorage, bo.getStorage());
         if(bo.getCreateTime() != null && bo.getCreateTime().length == 2) {
             lqw.between(FileConfig::getCreateTime, bo.getCreateTime()[0], bo.getCreateTime()[1]);
@@ -101,6 +102,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
         // config 字段类型与 Bo 不同（Map vs FileClientConfig），单独解析后设置
         FileConfig config = BeanUtil.copyProperties(bo, FileConfig.class, "config");
         config.setMaster(false); // 默认不是主配置
+        config.setPurpose(resolvePurpose(bo.getPurpose()));
         config.setConfig(parseClientConfig(bo.getStorage(),bo.getConfig()));
         validEntityBeforeSave(config);
         boolean flag = baseMapper.insert(config) > 0;
@@ -119,6 +121,8 @@ public class FileConfigServiceImpl implements IFileConfigService {
         FileConfig config = validateFileConfigExists(bo.getId());
         // 更新
         FileConfig update = BeanUtil.copyProperties(bo, FileConfig.class, "config");
+        // 不传用途时沿用原值，避免编辑时被静默改回 GENERIC
+        update.setPurpose(resolvePurpose(bo.getPurpose() != null ? bo.getPurpose() : parsePurpose(config.getPurpose())));
         // 必须用 bo.storage，否则改存储器类型后仍按旧类型解析，会出现 SFTP+21 端口等错配
         Integer storage = bo.getStorage() != null ? bo.getStorage() : config.getStorage();
         update.setConfig(parseClientConfig(storage, bo.getConfig()));
@@ -153,6 +157,51 @@ public class FileConfigServiceImpl implements IFileConfigService {
     }
 
     /**
+     * 切换用途指针（设计 §7.5 阶段 1 的「切换用途指针」）。
+     *
+     * <p>替换而不是转交：目标接管用途后，原持有者退回 {@code GENERIC}，同用途恒为一条，
+     * 后台也就不会出现两条同用途配置而让附件链路报错。旧配置行不删除 ——
+     * 历史附件仍按各自 {@code basics_file.config_id} 在原后端读取（设计 §7.4）。</p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateFileConfigPurpose(Long id, FileConfigPurpose purpose) {
+        if (purpose == null || purpose == FileConfigPurpose.GENERIC) {
+            throw new ServiceException("只能切换到 GENERIC 以外的用途");
+        }
+        FileConfig target = validateFileConfigExists(id);
+        String current = resolvePurpose(parsePurpose(target.getPurpose()));
+        if (purpose.name().equals(current)) {
+            throw new ServiceException(MessageUtils.message("file.config.purpose.already", purpose.name(), target.getName()));
+        }
+
+        FileConfig holder = findUniqueByPurpose(purpose.name());
+        if (holder != null && holder.getId().equals(id)) {
+            return true;
+        }
+        // 主配置同时兼任某用途的数据行时，改它的用途等于让图片库失去主配置；
+        // 主配置统一走卡片上的「设为主配置」，这里直接拒绝而不是替用户做取舍。
+        if (holder != null && Boolean.TRUE.equals(holder.getMaster())) {
+            throw new ServiceException(
+                MessageUtils.message("file.config.purpose.held.by.master", purpose.name(), holder.getName()));
+        }
+
+        if (holder != null) {
+            baseMapper.update(null, Wrappers.<FileConfig>lambdaUpdate()
+                .set(FileConfig::getPurpose, FileConfigPurpose.GENERIC.name())
+                .eq(FileConfig::getId, holder.getId()));
+            clearCache(holder.getId());
+        }
+        baseMapper.update(null, Wrappers.<FileConfig>lambdaUpdate()
+            .set(FileConfig::getPurpose, purpose.name())
+            .eq(FileConfig::getId, id));
+        clearCache(id);
+
+        log.info("switch file config purpose, purpose:{}, from:{} -> to:{}", purpose, holder == null ? null : holder.getId(), id);
+        return true;
+    }
+
+    /**
      * 批量删除文件配置
      */
     @Override
@@ -180,22 +229,38 @@ public class FileConfigServiceImpl implements IFileConfigService {
     /**
      * 按用途取客户端（设计 D2）。与 {@link #getMasterFileClient()} 完全独立：
      * 图片库/头像的选路不因附件用途的存在而改变。
+     *
+     * <p>没有该用途的配置时依次回退：先取 {@code GENERIC} 配置，再取主配置。
+     * 这样尚未在后台建 VAULT_ASSET 配置的部署仍能同步附件，而不是整条链路报 503。</p>
      */
     @Override
     public FileClient getByPurpose(FileConfigPurpose purpose) {
         if (purpose == null) {
             throw new ServiceException("文件配置用途不能为空");
         }
-        List<FileConfig> matched = baseMapper.selectList(new LambdaQueryWrapper<FileConfig>()
-            .eq(FileConfig::getPurpose, purpose.name()));
-        if (matched.isEmpty()) {
+        FileConfig config = findUniqueByPurpose(purpose.name());
+        if (config == null && purpose != FileConfigPurpose.GENERIC) {
+            config = findUniqueByPurpose(FileConfigPurpose.GENERIC.name());
+        }
+        if (config == null && purpose != FileConfigPurpose.GENERIC) {
+            config = getMasterConfig();
+        }
+        if (config == null) {
             throw new ServiceException("未配置文件用途：" + purpose.name());
         }
-        if (matched.size() > 1) {
-            throw new ServiceException("文件用途 " + purpose.name() + " 存在多条配置，请只保留一条");
-        }
-        FileConfig config = matched.get(0);
         return getFileClient(config.getId());
+    }
+
+    /**
+     * 按用途取唯一配置；同用途存在多条说明后台配置有误，直接报错而不是随便挑一条。
+     */
+    private FileConfig findUniqueByPurpose(String purpose) {
+        List<FileConfig> matched = baseMapper.selectList(new LambdaQueryWrapper<FileConfig>()
+            .eq(FileConfig::getPurpose, purpose));
+        if (matched.size() > 1) {
+            throw new ServiceException("文件用途 " + purpose + " 存在多条配置，请只保留一条");
+        }
+        return matched.isEmpty() ? null : matched.get(0);
     }
 
     @Override
@@ -214,7 +279,22 @@ public class FileConfigServiceImpl implements IFileConfigService {
      * 保存前的数据校验
      */
     private void validEntityBeforeSave(FileConfig entity){
-        //TODO 做一些数据校验,如唯一约束
+        // 同一用途只能有一条配置：{@link #getByPurpose} 按用途取唯一客户端，
+        // 出现多条会让附件上传直接失败，因此在保存入口就挡掉。
+        Long duplicated = baseMapper.selectCount(Wrappers.<FileConfig>lambdaQuery()
+            .eq(FileConfig::getPurpose, entity.getPurpose())
+            .ne(entity.getId() != null, FileConfig::getId, entity.getId()));
+        if (duplicated != null && duplicated > 0) {
+            throw new ServiceException(MessageUtils.message("file.config.purpose.duplicated", entity.getPurpose()));
+        }
+    }
+
+    private static String resolvePurpose(FileConfigPurpose purpose) {
+        return (purpose == null ? FileConfigPurpose.GENERIC : purpose).name();
+    }
+
+    private static FileConfigPurpose parsePurpose(String purpose) {
+        return StringUtils.isBlank(purpose) ? FileConfigPurpose.GENERIC : FileConfigPurpose.valueOf(purpose);
     }
 
     /**

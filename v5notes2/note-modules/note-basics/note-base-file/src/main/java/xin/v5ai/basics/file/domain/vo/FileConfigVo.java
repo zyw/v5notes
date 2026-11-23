@@ -5,6 +5,7 @@ import org.apache.fesod.sheet.annotation.ExcelIgnoreUnannotated;
 import org.apache.fesod.sheet.annotation.ExcelProperty;
 import lombok.Data;
 import xin.v5ai.basics.file.core.client.FileClientConfig;
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.basics.file.domain.FileConfig;
 
 import java.io.Serial;
@@ -37,6 +38,12 @@ public class FileConfigVo implements Serializable {
      */
     @ExcelProperty(value = "配置名")
     private String name;
+
+    /**
+     * 用途：GENERIC(图片库/头像) / VAULT_ASSET(同步附件)
+     */
+    @ExcelProperty(value = "用途")
+    private FileConfigPurpose purpose;
 
     /**
      * 存储器

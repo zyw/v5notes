@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.basics.file.domain.bo.FileConfigBo;
 import xin.v5ai.basics.file.domain.bo.FileConfigSearchBo;
 import xin.v5ai.basics.file.domain.vo.FileConfigVo;
@@ -116,5 +117,19 @@ public class FileConfigController extends BaseController {
     @PutMapping("/master/{id}")
     public R<Void> updateFileConfigMaster(@PathVariable("id") Long id) {
         return toAjax(fileConfigService.updateFileConfigMaster(id));
+    }
+
+    /**
+     * 切换文件配置用途（设计 §7.5「切换用途指针」）
+     *
+     * @param id      目标配置编号
+     * @param purpose 目标用途，取 GENERIC / VAULT_ASSET；GENERIC 由服务端拒绝
+     */
+    @SaCheckPermission("basics:fileConfig:edit")
+    @Log(title = "文件配置用途", businessType = BusinessType.UPDATE)
+    @PutMapping("/purpose/{id}/{purpose}")
+    public R<Void> updateFileConfigPurpose(@PathVariable("id") Long id,
+                                           @PathVariable("purpose") FileConfigPurpose purpose) {
+        return toAjax(fileConfigService.updateFileConfigPurpose(id, purpose));
     }
 }

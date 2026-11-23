@@ -37,6 +37,9 @@ export default {
     },
     config: {
       name: 'Config name',
+      purpose: 'Purpose',
+      purposeGeneric: 'Image library / avatars',
+      purposeVaultAsset: 'Sync attachments',
       storage: 'Storage',
       startTime: 'Start time',
       endTime: 'End time',
@@ -89,6 +92,9 @@ export default {
       accessSecretRequired: 'accessSecret is required',
       domainRequired: 'Custom domain is required',
       confirmDelete: 'Delete file config "{name}"?',
+      useFor: 'Use for {purpose}',
+      confirmSwitchPurpose: 'Set "{name}" as {purpose}? The previous config is kept and still serves existing attachments.',
+      switchPurposeSuccess: 'Purpose switched',
       setMasterSuccess: 'Primary config updated',
       cancelMasterSuccess: 'Primary config cleared'
     }

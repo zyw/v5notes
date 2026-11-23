@@ -1,5 +1,6 @@
 package xin.v5ai.basics.file.domain.bo;
 
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.common.mybatis.core.domain.BaseEntity;
 import xin.v5ai.common.core.validate.AddGroup;
 import xin.v5ai.common.core.validate.EditGroup;
@@ -30,6 +31,12 @@ public class FileConfigBo extends BaseEntity {
      */
     @NotBlank(message = "{file.config.name.not.blank}", groups = { AddGroup.class, EditGroup.class })
     private String name;
+
+    /**
+     * 用途：GENERIC(图片库/头像) / VAULT_ASSET(同步附件)。
+     * 不传时按 GENERIC 处理，保持既有调用方兼容。
+     */
+    private FileConfigPurpose purpose;
 
     /**
      * 存储器

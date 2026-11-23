@@ -58,6 +58,11 @@ export interface FileClientConfig {
   accessPolicy?: string;
 }
 
+/**
+ * 用途：GENERIC(图片库/头像) / VAULT_ASSET(同步附件)
+ */
+export type FileConfigPurpose = 'GENERIC' | 'VAULT_ASSET';
+
 export interface FileConfigVO {
   /**
    * 编号
@@ -68,6 +73,11 @@ export interface FileConfigVO {
    * 配置名
    */
   name: string;
+
+  /**
+   * 用途
+   */
+  purpose: FileConfigPurpose;
 
   /**
    * 存储器
@@ -102,6 +112,11 @@ export interface FileConfigForm extends BaseEntity {
   name?: string;
 
   /**
+   * 用途
+   */
+  purpose?: FileConfigPurpose;
+
+  /**
    * 存储器
    */
   storage?: number;
@@ -122,6 +137,11 @@ export interface FileConfigQuery extends PageQuery {
    * 配置名
    */
   name?: string;
+
+  /**
+   * 用途
+   */
+  purpose?: FileConfigPurpose;
 
   /**
    * 存储器
