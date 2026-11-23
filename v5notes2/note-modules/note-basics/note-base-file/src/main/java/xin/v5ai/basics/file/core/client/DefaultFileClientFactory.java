@@ -60,7 +60,15 @@ public class DefaultFileClientFactory implements FileClientFactory {
 
     @Override
     public void removeFileClient(Long configId) {
-        clients.remove(configId);
+        AbstractFileClient<?> client = clients.remove(configId);
+        if (client != null) {
+            // Pooled clients keep live connections; dropping the map entry alone would strand them.
+            try {
+                client.destroy();
+            } catch (Exception ex) {
+                log.warn("[removeFileClient][释放客户端失败 configId={}] {}", configId, ex.getMessage());
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

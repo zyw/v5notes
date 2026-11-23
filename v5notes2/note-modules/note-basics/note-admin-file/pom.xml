@@ -21,6 +21,13 @@
             <artifactId>note-base-file</artifactId>
             <version>${revision}</version>
         </dependency>
+        <!-- 附件存储适配器实现 VaultAssetStorage SPI（设计 §4.3）。
+             note-vault-sync 不反向依赖 basics，因此不构成循环。 -->
+        <dependency>
+            <groupId>xin.v5ai</groupId>
+            <artifactId>note-vault-sync</artifactId>
+            <version>${revision}</version>
+        </dependency>
     </dependencies>
 
 </project>

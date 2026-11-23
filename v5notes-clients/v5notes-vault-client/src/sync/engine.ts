@@ -16,12 +16,11 @@ import { vaultFs as defaultVaultFs } from '../vault/vaultFs'
 import { createVaultSyncApi, toNumericBytes, VaultSyncApiError, type VaultSyncApi } from './api'
 import {
   attachmentBadgeLabel,
-  base64ToBytes,
-  bytesToBase64,
   classifyFileKind,
   isAttachmentTooLarge,
   prefersTextBody,
 } from './attachments'
+import { downloadAttachment } from './download'
 import { planBootstrap } from './bootstrap'
 import { buildConflictCopyPath } from './conflict'
 import { describeFileHash as describeHash } from './diagnostics'
@@ -48,6 +47,16 @@ import type {
   VaultFileVersion,
   VaultQuota,
 } from './types'
+
+/** Leaf name of a vault path, used as the multipart filename. */
+function leafName(path: string): string {
+  return path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path
+}
+
+/** Absolute prefix for proxy download paths returned by the server. */
+function v3UrlPrefix(server: string): string {
+  return server.replace(/\/+$/, '')
+}
 
 export interface SyncEngineDeps {
   rootPath: string
@@ -220,7 +229,9 @@ export function createSyncEngine(deps: SyncEngineDeps) {
             files.push({
               displayPath: node.path,
               identityKey: node.identityKey,
-              base64Body: bytesToBase64(bytes),
+              // Bytes are uploaded through the multipart attachment endpoint (design D5);
+              // no base64 copy is built here any more.
+              bytes,
               hash: await sha256Hex(bytes),
               size,
               mtimeMs: Date.now(),
@@ -339,6 +350,18 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     file: LocalScanFile,
     entry: SyncFileEntry | undefined,
   ): Promise<SyncFileEntry> {
+    // Assets travel as multipart first, then commit a reference (design §4.1). A retry after a
+    // failed commit is cheap: the server deduplicates by content hash and returns the same id.
+    let asset: { assetId: string; sizeBytes: number } | undefined
+    if (file.kind === 'asset' && file.bytes) {
+      const uploaded = await api.uploadAsset(vaultId, {
+        bytes: file.bytes,
+        sha256: file.hash,
+        fileName: leafName(file.displayPath),
+      })
+      asset = { assetId: uploaded.assetId, sizeBytes: uploaded.sizeBytes }
+    }
+
     const meta = await api.putFile(vaultId, {
       path: file.displayPath,
       fileId: entry?.fileId,
@@ -346,7 +369,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       hash: file.hash,
       type: file.kind,
       body: file.content,
-      base64Body: file.base64Body,
+      asset,
     })
     return {
       fileId: meta.fileId,
@@ -401,7 +424,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     const localPath = localEntry?.[0]
     const local = localEntry?.[1]
 
-    const isBinary = Boolean(content.base64Body && !content.body)
+    const isAsset = Boolean(content.download)
     const remoteHash = change.contentHash
       ? normalizeContentHash(change.contentHash)
       : content.contentHash
@@ -489,8 +512,14 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       conflictPaths.push(copyPath)
     }
 
-    if (isBinary && content.base64Body) {
-      const bytes = base64ToBytes(content.base64Body)
+    if (isAsset && content.download) {
+      // Follow the descriptor: direct presigned link, or the vault proxy endpoint (design §3.3).
+      const auth = deps.getAuth()
+      const bytes = await downloadAttachment(content.download, {
+        baseUrl: v3UrlPrefix(auth.server),
+        token: auth.token,
+        transport: deps.transport,
+      })
       await fs.writeBytes(deps.rootPath, change.path, bytes)
       occupied.add(identityKey)
       state.files[change.path] = {

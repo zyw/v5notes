@@ -10,7 +10,7 @@ import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.domain.VaultChange;
 import xin.v5ai.vault.domain.VaultReplica;
 import xin.v5ai.vault.domain.VaultFile;
-import xin.v5ai.vault.domain.VaultFileBlob;
+import xin.v5ai.vault.domain.VaultAssetRef;
 import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.domain.bo.VaultBindBo;
 import xin.v5ai.vault.domain.bo.VaultCreateBo;
@@ -31,9 +31,9 @@ import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.exception.VaultConflictException;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
 import xin.v5ai.vault.mapper.VaultReplicaMapper;
-import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
+import xin.v5ai.vault.service.IVaultAssetService;
 import xin.v5ai.vault.service.IVaultSyncService;
 import xin.v5ai.vault.util.VaultContentHash;
 import xin.v5ai.vault.util.VaultPathRules;
@@ -41,10 +41,11 @@ import xin.v5ai.vault.util.VaultQuotaRules;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -57,8 +58,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     private final VaultSpaceMapper spaceMapper;
     private final VaultReplicaMapper replicaMapper;
     private final VaultFileMapper fileMapper;
-    private final VaultFileBlobMapper blobMapper;
     private final VaultChangeMapper changeMapper;
+    private final IVaultAssetService assetService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -179,8 +180,11 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setEmpty(!hasLiveFiles(vaultId));
         List<VaultChangeVo> items = new ArrayList<>(changes.size());
         long maxCursor = since;
+        // One query for the whole page instead of one per change: the per-change lookup used to
+        // read a full row (now including the note body) 500 times per page.
+        Map<Long, String> fileTypes = loadFileTypes(changes);
         for (VaultChange change : changes) {
-            items.add(toChangeVo(change));
+            items.add(toChangeVo(change, fileTypes));
             maxCursor = Math.max(maxCursor, change.getId());
         }
         vo.setChanges(items);
@@ -190,14 +194,25 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public VaultFileMetaVo putFile(Long userId, Long vaultId, VaultFilePutBo bo) {
         return putFileInternal(userId, vaultId, bo);
     }
 
+    /**
+     * Applies items one at a time, each in its own transaction.
+     *
+     * <p>Deliberately <b>not</b> wrapped in a single batch transaction. A commit item may reach
+     * out to the attachment backend (presign / stream), and holding a database transaction open
+     * across object-storage or FTP round-trips pins a pooled connection for the duration of slow
+     * network IO. Per-item transactions also make the failure semantics honest: callers learn
+     * which item failed instead of receiving a rollback that silently discarded earlier ones.</p>
+     *
+     * <p>The engine no longer calls this endpoint (it pushes one file at a time), so the change
+     * has no client-visible effect; it only removes the trap.</p>
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public List<VaultFileMetaVo> putBatch(Long userId, Long vaultId, List<VaultFilePutBo> files) {
-        // One transaction for the whole batch: item N failing rolls back items 1..N-1.
         List<VaultFileMetaVo> out = new ArrayList<>(files.size());
         for (VaultFilePutBo bo : files) {
             out.add(putFileInternal(userId, vaultId, bo));
@@ -213,20 +228,41 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         } catch (IllegalArgumentException ex) {
             throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, ex.getMessage());
         }
-        byte[] bytes = decodeBody(bo);
-        long size = bytes.length;
-        if (VaultQuotaRules.tooLarge(size, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
-            throw new VaultBusinessException(413, VaultErrorCodes.FILE_TOO_LARGE, "单文件超过上限");
-        }
+        String type = resolveType(bo.getType(), normalized.displayPath());
         String hash;
         try {
             hash = VaultContentHash.normalize(bo.getHash());
         } catch (IllegalArgumentException ex) {
             throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, ex.getMessage());
         }
-        String computed = VaultContentHash.ofBytes(bytes);
-        if (!VaultContentHash.equalsNormalized(hash, computed)) {
-            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.HASH_MISMATCH, "contentHash 与正文不一致");
+
+        // Assets carry bytes by reference (design D5); notes/config still travel as inline text.
+        boolean isAsset = "asset".equals(type);
+        byte[] bytes = null;
+        long size;
+        VaultAssetRef assetRef = null;
+        if (isAsset) {
+            VaultFilePutBo.AssetRef refBo = bo.getAsset();
+            if (refBo == null || refBo.getAssetId() == null || refBo.getAssetId().isBlank()) {
+                throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.ASSET_REQUIRED,
+                    "附件必须通过 /vault/v1/vaults/{vaultId}/assets 上传后再提交引用");
+            }
+            assetRef = assetService.findByHash(vaultId, hash);
+            if (assetRef == null) {
+                throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.ASSET_NOT_FOUND,
+                    "附件对象不存在，请先上传");
+            }
+            size = assetRef.getSizeBytes() == null ? 0L : assetRef.getSizeBytes();
+        } else {
+            bytes = decodeBody(bo);
+            size = bytes.length;
+            String computed = VaultContentHash.ofBytes(bytes);
+            if (!VaultContentHash.equalsNormalized(hash, computed)) {
+                throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.HASH_MISMATCH, "contentHash 与正文不一致");
+            }
+        }
+        if (VaultQuotaRules.tooLarge(size, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
+            throw new VaultBusinessException(413, VaultErrorCodes.FILE_TOO_LARGE, "单文件超过上限");
         }
 
         VaultFile liveByIdentity = findLiveByIdentity(vaultId, normalized.identityKey());
@@ -265,9 +301,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
                 "同步容量已超额；仍可 pull，本地编辑不受影响");
         }
 
-        ensureBlob(hash, bytes, size);
         Date now = new Date();
-        String type = resolveType(bo.getType(), normalized.displayPath());
         VaultFile file;
         if (byFileId == null) {
             if (liveByIdentity != null && (liveByIdentity.getDeleted() == null || liveByIdentity.getDeleted() == 0)) {
@@ -288,6 +322,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             file.setSizeBytes(size);
             file.setRev(1L);
             file.setDeleted(0);
+            // Text body lives on the row (design §4.2.1); assets keep content null.
+            file.setContent(isAsset ? null : new String(bytes, StandardCharsets.UTF_8));
             file.setCreateTime(now);
             file.setUpdateTime(now);
             fileMapper.insert(file);
@@ -300,8 +336,19 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             file.setSizeBytes(size);
             file.setRev(file.getRev() + 1);
             file.setDeleted(0);
+            file.setContent(isAsset ? null : new String(bytes, StandardCharsets.UTF_8));
             file.setUpdateTime(now);
             fileMapper.updateById(file);
+        }
+
+        if (isAsset) {
+            // Replace the previous storage link: content may have changed, and re-linking the
+            // same hash would violate the fileId primary key.
+            VaultAssetRef previous = assetService.findByFileId(file.getId());
+            if (previous != null) {
+                assetService.releaseReference(file.getId(), previous);
+            }
+            assetService.link(file.getId(), vaultId, assetRef);
         }
 
         space.setUsedBytes(Math.max(0, used + delta));
@@ -330,10 +377,6 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             // the client can decide to refetch instead of silently writing stale content.
             throw conflict(file);
         }
-        VaultFileBlob blob = blobMapper.selectById(file.getContentHash());
-        if (blob == null || blob.getContent() == null) {
-            throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.FILE_NOT_FOUND, "文件内容不存在");
-        }
         VaultFileContentVo vo = new VaultFileContentVo();
         vo.setFileId(String.valueOf(file.getId()));
         vo.setPath(file.getPath());
@@ -341,12 +384,22 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setContentHash(file.getContentHash());
         vo.setSize(file.getSizeBytes());
         vo.setType(file.getFileType());
-        byte[] content = blob.getContent();
-        if (isMostlyText(content)) {
-            vo.setBody(new String(content, StandardCharsets.UTF_8));
-        } else {
-            vo.setBase64Body(Base64.getEncoder().encodeToString(content));
+
+        if ("asset".equals(file.getFileType())) {
+            // Bytes live in the attachment backend; hand the client a fetch descriptor (design §3.3).
+            VaultAssetRef ref = assetService.findByFileId(file.getId());
+            if (ref == null) {
+                throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.ASSET_NOT_FOUND,
+                    "附件对象不存在");
+            }
+            vo.setDownload(assetService.download(vaultId, ref));
+            return vo;
         }
+
+        // Notes and configs read straight off the row (design §4.2.1). The body is fetched with
+        // a dedicated projection because the entity never loads it by default.
+        String body = fileMapper.selectContentById(file.getId());
+        vo.setBody(body == null ? "" : body);
         return vo;
     }
 
@@ -370,8 +423,14 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         long size = nullToZero(file.getSizeBytes());
         file.setDeleted(1);
         file.setRev(file.getRev() + 1);
+        // Drop the text body with the row's tombstone; it is no longer readable once deleted.
+        file.setContent(null);
         file.setUpdateTime(new Date());
         fileMapper.updateById(file);
+        // Storage is only released when the last reference disappears (design §6.1).
+        if ("asset".equals(file.getFileType())) {
+            assetService.releaseReference(file.getId(), assetService.findByFileId(file.getId()));
+        }
         space.setUsedBytes(Math.max(0, nullToZero(space.getUsedBytes()) - size));
         spaceMapper.updateById(space);
         VaultChange change = appendChange(vaultId, file.getId(), "delete", file.getPath(), null,
@@ -455,6 +514,14 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setPlanName("vault-default");
         vo.setOverQuota(used >= VaultQuotaRules.DEFAULT_QUOTA_BYTES);
         vo.setMaxFileBytes(VaultQuotaRules.DEFAULT_MAX_FILE_BYTES);
+        // Capability tells clients whether downloads are direct or proxied (design §5.3).
+        // An unconfigured backend leaves it null instead of failing /quota, so the client can
+        // still sync notes and report the attachment misconfiguration separately.
+        try {
+            vo.setAssetStorage(assetService.capability());
+        } catch (VaultBusinessException ex) {
+            vo.setAssetStorage(null);
+        }
         return vo;
     }
 
@@ -473,19 +540,6 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         change.setCreateTime(new Date());
         changeMapper.insert(change);
         return change;
-    }
-
-    private void ensureBlob(String hash, byte[] bytes, long size) {
-        VaultFileBlob existing = blobMapper.selectById(hash);
-        if (existing != null) {
-            return;
-        }
-        VaultFileBlob blob = new VaultFileBlob();
-        blob.setContentHash(hash);
-        blob.setContent(bytes);
-        blob.setSizeBytes(size);
-        blob.setCreateTime(new Date());
-        blobMapper.insert(blob);
     }
 
     private VaultFile findLiveByIdentity(Long vaultId, String identityKey) {
@@ -564,7 +618,33 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         return vo;
     }
 
-    private VaultChangeVo toChangeVo(VaultChange change) {
+    /**
+     * File types for every file referenced by this manifest page, in one query.
+     *
+     * <p>The projection names only the two columns needed, so the {@code content} column is
+     * never read while building a manifest.</p>
+     */
+    private Map<Long, String> loadFileTypes(List<VaultChange> changes) {
+        List<Long> ids = changes.stream()
+            .filter(c -> "upsert".equals(c.getOp()) || "rename".equals(c.getOp()))
+            .map(VaultChange::getFileId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        List<VaultFile> rows = fileMapper.selectList(new LambdaQueryWrapper<VaultFile>()
+            .select(VaultFile::getId, VaultFile::getFileType)
+            .in(VaultFile::getId, ids));
+        Map<Long, String> out = new HashMap<>(rows.size());
+        for (VaultFile row : rows) {
+            out.put(row.getId(), row.getFileType());
+        }
+        return out;
+    }
+
+    private VaultChangeVo toChangeVo(VaultChange change, Map<Long, String> fileTypes) {
         VaultChangeVo vo = new VaultChangeVo();
         vo.setOp(change.getOp());
         vo.setPath(change.getPath());
@@ -574,10 +654,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         vo.setContentHash(change.getContentHash());
         vo.setSize(change.getSizeBytes());
         if ("upsert".equals(change.getOp()) || "rename".equals(change.getOp())) {
-            VaultFile file = fileMapper.selectById(change.getFileId());
-            if (file != null) {
-                vo.setType(file.getFileType());
-            }
+            vo.setType(fileTypes.get(change.getFileId()));
         }
         return vo;
     }
@@ -594,16 +671,13 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         return vo;
     }
 
+    /**
+     * Text bodies only. Assets never travel inline (design D5), so a missing {@code body}
+     * on a non-asset is a plain parameter error rather than a fallback to base64.
+     */
     private static byte[] decodeBody(VaultFilePutBo bo) {
         if (bo.getBody() != null) {
             return bo.getBody().getBytes(StandardCharsets.UTF_8);
-        }
-        if (bo.getBase64Body() != null && !bo.getBase64Body().isBlank()) {
-            try {
-                return Base64.getDecoder().decode(bo.getBase64Body());
-            } catch (IllegalArgumentException ex) {
-                throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "base64Body 无效");
-            }
         }
         throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "缺少文件正文");
     }
@@ -645,17 +719,4 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         return value == null ? 0L : value;
     }
 
-    private static boolean isMostlyText(byte[] content) {
-        if (content == null || content.length == 0) {
-            return true;
-        }
-        int sample = Math.min(content.length, 512);
-        for (int i = 0; i < sample; i++) {
-            int b = content[i] & 0xff;
-            if (b == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
 }

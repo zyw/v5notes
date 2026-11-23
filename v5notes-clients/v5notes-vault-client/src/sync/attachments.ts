@@ -1,6 +1,9 @@
 /**
- * Attachment / binary sync helpers (Phase 5 / design §9.5).
- * OSS direct upload remains deferred; this slice uses PUT + base64Body.
+ * Attachment and file-kind helpers for the sync engine (design §9.5).
+ *
+ * <p>Attachment bytes no longer travel inside the file PUT: they are uploaded once through
+ * {@code POST /vault/v1/vaults/{id}/assets} and referenced from the commit (design D5). This
+ * module only classifies paths and decides which transport a file uses.</p>
  */
 
 import { DOC_KINDS, docKindOfPathIn, type DocKindSpec } from '../vault/docKinds'
@@ -67,6 +70,7 @@ export function isAttachmentTooLarge(
   return sizeBytes > maxFileBytes
 }
 
+/** Base64 encoder used for local {@code data:} previews; sync uploads send raw bytes. */
 export function bytesToBase64(bytes: Uint8Array): string {
   if (typeof Buffer !== 'undefined') {
     return Buffer.from(bytes).toString('base64')
@@ -77,16 +81,6 @@ export function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
   }
   return btoa(binary)
-}
-
-export function base64ToBytes(base64: string): Uint8Array {
-  if (typeof Buffer !== 'undefined') {
-    return new Uint8Array(Buffer.from(base64, 'base64'))
-  }
-  const binary = atob(base64)
-  const out = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i)
-  return out
 }
 
 export function attachmentBadgeLabel(path: string, maxFileBytes: number): string {

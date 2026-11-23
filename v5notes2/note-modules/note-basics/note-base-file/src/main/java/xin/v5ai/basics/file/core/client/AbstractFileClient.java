@@ -50,8 +50,27 @@ public abstract class AbstractFileClient<C extends FileClientConfig> implements 
         log.info("[refresh][配置({})发生变化，重新初始化]", config);
         this.config = config;
 
+        // Release whatever the previous configuration acquired before building the new one.
+        // A pooling client creates a fresh pool in doInit(), so skipping this would leak the old
+        // pool and every connection in it (design T1b).
+        doDestroy();
+
         // 重新初始化
         this.init();
+    }
+
+    /**
+     * Releases resources acquired by {@link #doInit()}. Default is a no-op; clients that hold
+     * pools or other owned handles override it. Called by {@link #refresh(C)} and by the factory
+     * when a config is removed.
+     */
+    protected void doDestroy() {
+        // nothing to release by default
+    }
+
+    /** Public entry so the factory can release a client it is about to discard. */
+    public final void destroy() {
+        doDestroy();
     }
 
     @Override

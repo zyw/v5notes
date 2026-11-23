@@ -36,6 +36,18 @@ public interface IFileConfigService {
     FileClient getMasterFileClient();
 
     /**
+     * 按用途取文件客户端（设计 D2）。
+     *
+     * <p>{@link #getMasterFileClient()} 的选路规则保持不变：图片库/头像仍取 {@code master=true} 那条。
+     * 同步附件走这里，两者互不影响。</p>
+     *
+     * @param purpose 用途
+     * @return 该用途下唯一启用配置对应的客户端
+     * @throws xin.v5ai.common.core.exception.ServiceException 该用途未配置或配置了多条
+     */
+    FileClient getByPurpose(xin.v5ai.basics.file.core.enums.FileConfigPurpose purpose);
+
+    /**
      * 新增文件配置
      */
     Boolean insertByBo(FileConfigBo bo);

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.basics.file.core.client.FileClient;
 import xin.v5ai.basics.file.core.client.FileClientConfig;
 import xin.v5ai.basics.file.core.client.FileClientFactory;
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.basics.file.core.enums.FileStorageEnum;
 import xin.v5ai.basics.file.domain.FileConfig;
 import xin.v5ai.basics.file.domain.bo.FileConfigBo;
@@ -173,6 +174,27 @@ public class FileConfigServiceImpl implements IFileConfigService {
     public FileClient getMasterFileClient() {
         FileConfig config = getMasterConfig();
         log.info("getMasterFileClient, config:{}", config);
+        return getFileClient(config.getId());
+    }
+
+    /**
+     * 按用途取客户端（设计 D2）。与 {@link #getMasterFileClient()} 完全独立：
+     * 图片库/头像的选路不因附件用途的存在而改变。
+     */
+    @Override
+    public FileClient getByPurpose(FileConfigPurpose purpose) {
+        if (purpose == null) {
+            throw new ServiceException("文件配置用途不能为空");
+        }
+        List<FileConfig> matched = baseMapper.selectList(new LambdaQueryWrapper<FileConfig>()
+            .eq(FileConfig::getPurpose, purpose.name()));
+        if (matched.isEmpty()) {
+            throw new ServiceException("未配置文件用途：" + purpose.name());
+        }
+        if (matched.size() > 1) {
+            throw new ServiceException("文件用途 " + purpose.name() + " 存在多条配置，请只保留一条");
+        }
+        FileConfig config = matched.get(0);
         return getFileClient(config.getId());
     }
 

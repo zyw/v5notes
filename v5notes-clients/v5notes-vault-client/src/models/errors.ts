@@ -18,6 +18,12 @@ export const VaultErrorCode = {
   FILE_TOO_LARGE: 'vault.file.too.large',
   RATE_LIMITED: 'vault.rate.limited',
   PATH_INVALID: 'vault.path.invalid',
+  /** type=asset without an asset reference (design D5); permanent, never retried. */
+  ASSET_REQUIRED: 'vault.asset.required',
+  /** Referenced attachment object is missing or owned by someone else. */
+  ASSET_NOT_FOUND: 'vault.asset.not.found',
+  /** Attachment storage backend is not configured; retryable later. */
+  ASSET_STORAGE_UNAVAILABLE: 'vault.asset.storage-unavailable',
 } as const
 
 export type VaultErrorCode = (typeof VaultErrorCode)[keyof typeof VaultErrorCode]
@@ -35,4 +41,7 @@ export const VaultErrorHttpStatus: Record<VaultErrorCode, number> = {
   [VaultErrorCode.FILE_TOO_LARGE]: 413,
   [VaultErrorCode.RATE_LIMITED]: 429,
   [VaultErrorCode.PATH_INVALID]: 400,
+  [VaultErrorCode.ASSET_REQUIRED]: 400,
+  [VaultErrorCode.ASSET_NOT_FOUND]: 404,
+  [VaultErrorCode.ASSET_STORAGE_UNAVAILABLE]: 503,
 }

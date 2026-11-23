@@ -10,9 +10,9 @@ import xin.v5ai.vault.domain.VaultFile;
 import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
 import xin.v5ai.vault.mapper.VaultReplicaMapper;
-import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
+import xin.v5ai.vault.service.IVaultAssetService;
 import xin.v5ai.vault.service.impl.VaultSyncServiceImpl;
 
 import java.util.ArrayList;
@@ -32,6 +32,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class VaultSyncManifestPaginationTest {
 
+    /**
+     * Lambda wrappers resolve column names through a TableInfo cache that the Spring context
+     * normally fills. Plain unit tests have to seed it once for the entities they query.
+     */
+    @org.junit.jupiter.api.BeforeAll
+    static void initTableInfo() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+            new org.apache.ibatis.builder.MapperBuilderAssistant(new org.apache.ibatis.session.Configuration(), ""),
+            VaultFile.class);
+    }
+
     @Mock
     private VaultSpaceMapper spaceMapper;
     @Mock
@@ -39,12 +50,12 @@ class VaultSyncManifestPaginationTest {
     @Mock
     private VaultFileMapper fileMapper;
     @Mock
-    private VaultFileBlobMapper blobMapper;
+    private IVaultAssetService assetService;
     @Mock
     private VaultChangeMapper changeMapper;
 
     private VaultSyncServiceImpl service() {
-        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, blobMapper, changeMapper);
+        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, changeMapper, assetService);
     }
 
     private VaultChange change(long id) {
@@ -72,6 +83,7 @@ class VaultSyncManifestPaginationTest {
         List<VaultChange> rows = List.of(change(1), change(2), change(3));
         when(changeMapper.selectList(any())).thenReturn(new ArrayList<>(rows));
         when(fileMapper.selectCount(any())).thenReturn(0L);
+        when(fileMapper.selectList(any())).thenReturn(new ArrayList<>());
 
         var vo = service().manifest(7L, 1L, "0");
         assertFalse(vo.getHasMore());
@@ -90,6 +102,7 @@ class VaultSyncManifestPaginationTest {
         }
         when(changeMapper.selectList(any())).thenReturn(rows);
         when(fileMapper.selectCount(any())).thenReturn(1L);
+        when(fileMapper.selectList(any())).thenReturn(new ArrayList<>());
 
         var vo = service().manifest(7L, 1L, "0");
         assertTrue(vo.getHasMore());
@@ -105,6 +118,7 @@ class VaultSyncManifestPaginationTest {
         when(fileMapper.selectCount(any())).thenReturn(0L);
 
         service().manifest(7L, 1L, "0");
+        // No changes ⇒ no type lookup at all.
 
         // The pagination probe relies on requesting LIMIT (page + 1) from the DB.
         @SuppressWarnings("unchecked")
@@ -116,6 +130,33 @@ class VaultSyncManifestPaginationTest {
         var lastSql = (com.baomidou.mybatisplus.core.conditions.SharedString) field.get(captor.getValue());
         assertTrue(String.valueOf(lastSql.getStringValue()).contains("LIMIT " + (VaultSyncServiceImpl.MANIFEST_PAGE_LIMIT + 1)),
             "expected probe limit, got: " + lastSql.getStringValue());
+    }
+
+    /**
+     * Regression for the per-change row lookup that used to run once per manifest entry.
+     * With the note body now living on the row, that pattern would read up to 500 bodies a page.
+     */
+    @Test
+    void fileTypesAreLoadedOncePerPageNotOncePerChange() {
+        stubOwnedVault();
+        List<VaultChange> rows = new ArrayList<>();
+        for (long i = 1; i <= 50; i++) {
+            rows.add(change(i));
+        }
+        when(changeMapper.selectList(any())).thenReturn(rows);
+        when(fileMapper.selectCount(any())).thenReturn(1L);
+
+        VaultFile typeRow = new VaultFile();
+        typeRow.setId(1L);
+        typeRow.setFileType("note");
+        when(fileMapper.selectList(any())).thenReturn(List.of(typeRow));
+
+        var vo = service().manifest(7L, 1L, "0");
+
+        // Exactly one batched lookup for the whole page, never one per change.
+        org.mockito.Mockito.verify(fileMapper, org.mockito.Mockito.times(1)).selectList(any());
+        org.mockito.Mockito.verify(fileMapper, org.mockito.Mockito.never()).selectById(any(Long.class));
+        assertEquals("note", vo.getChanges().get(0).getType());
     }
 
     @Test

@@ -1,15 +1,12 @@
 package xin.v5ai.basics.file.core.client.ftp;
 
-import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.ftp.FtpException;
-import cn.hutool.extra.ftp.FtpMode;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPReply;
-import org.apache.commons.net.ftp.FTPSClient;
-import org.apache.commons.net.util.TrustManagerUtils;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import xin.v5ai.basics.file.core.client.AbstractFileClient;
 import xin.v5ai.basics.file.core.client.FileUploadResult;
 
@@ -17,23 +14,30 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.io.OutputStream;
 
 /**
  * FTP / FTPS 文件客户端。
- * <p>直接使用 Apache Commons Net。控制连接字符集必须在 connect 之前设置，
- * 否则中文路径会变成 ???? 并触发 550。</p>
+ *
+ * <p>每个操作从连接池借出一条独占连接，用完归还（设计 D1）。此前整个客户端共享一个
+ * {@code FTPClient}，而 FTP 靠 {@code CWD} 定位文件，两个线程同时上传会互相切走工作目录，
+ * 结果是把文件写进别人的目录或者收到 550。池化之后连接与操作一一对应。</p>
+ *
+ * <p>连接建立、登录、FTPS 握手、UTF-8 协商与 basePath 校验都在 {@link FTPConnectionFactory}
+ * 里完成，每条连接一次。</p>
  *
  * @author 芋道源码
  */
 @Slf4j
 public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
 
-    private static final int CONNECT_TIMEOUT_MS = 10_000;
-    private static final int SO_TIMEOUT_MS = 30_000;
+    /** Design D1: the ceiling for this process, not a target concurrency. */
+    private static final int POOL_MAX_TOTAL = 8;
+    private static final int POOL_MAX_IDLE = 4;
+    private static final long POOL_MAX_WAIT_MS = 5_000L;
+    private static final long POOL_EVICTABLE_IDLE_MS = 30_000L;
 
-    private FTPClient client;
+    private GenericObjectPool<FTPClient> pool;
 
     public FTPFileClient(Long id, FTPFileClientConfig config) {
         super(id, config);
@@ -42,140 +46,103 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
     @Override
     protected void doInit() {
         config.setBasePath(normalizeDir(config.getBasePath()));
+        doDestroy();
+        this.pool = new GenericObjectPool<>(new FTPConnectionFactory(config), poolConfig());
+        log.info("[doInit][FTP 连接池就绪 host={}:{} basePath={} maxTotal={}]",
+            config.getHost(), config.getPort(), config.getBasePath(), POOL_MAX_TOTAL);
+    }
 
-        FtpMode mode = resolveMode();
-        String charset = resolveCharset();
-        try {
-            this.client = Boolean.TRUE.equals(config.getSslEnable()) ? connectFtps(charset) : connectFtp(charset);
-            applyTransferMode(mode);
-            enableUtf8IfNeeded(charset);
-            client.setFileType(FTP.BINARY_FILE_TYPE);
-
-            String pwd = client.printWorkingDirectory();
-            log.info("[doInit][FTP 登录成功 pwd={} basePath={} mode={} ssl={} charset={} reply={}]",
-                pwd, config.getBasePath(), mode, config.getSslEnable(), charset, compactReply());
-
-            if (!changeWorkingDirectory(config.getBasePath())) {
-                String hint = containsNonAscii(config.getBasePath())
-                    ? "路径含中文时请确认字符集（UTF-8/GBK）与 NAS 一致；reply 出现 ???? 基本是编码问题。"
-                    : "若账号已在 NAS 绑定存储目录，请按 FTP 客户端可见路径填写，例如 /共享目录/v5notes_attach/";
-                throw new FtpException(StrUtil.format(
-                    "无法进入基础路径 [{}]，当前 FTP 工作目录为 [{}]，charset={}，reply={}。{}",
-                    config.getBasePath(), pwd, charset, compactReply(), hint));
+    /**
+     * Releases pooled connections. Called before a re-init and when the config is removed, so
+     * changing a file config never leaks the previous pool (design T1b).
+     */
+    public void doDestroy() {
+        if (pool != null) {
+            try {
+                pool.close();
+            } finally {
+                pool = null;
             }
-            changeWorkingDirectory(StrUtil.blankToDefault(pwd, "/"));
-        } catch (IOException ex) {
-            disconnectQuietly();
-            throw new FtpException(StrUtil.format("FTP 初始化失败: {}:{} , {}",
-                config.getHost(), config.getPort(), ex.getMessage()), ex);
         }
     }
 
-    private FtpMode resolveMode() {
-        FtpMode mode = FtpMode.valueOf(config.getMode());
-        if (Boolean.TRUE.equals(config.getSslEnable()) && mode == FtpMode.Active) {
-            log.warn("[doInit][FTPS 下 Active 模式不稳定，已强制改为 Passive]");
-            mode = FtpMode.Passive;
-            config.setMode(FtpMode.Passive.name());
-        }
-        return mode;
+    private static GenericObjectPoolConfig<FTPClient> poolConfig() {
+        GenericObjectPoolConfig<FTPClient> cfg = new GenericObjectPoolConfig<>();
+        cfg.setMaxTotal(POOL_MAX_TOTAL);
+        cfg.setMaxIdle(POOL_MAX_IDLE);
+        cfg.setMinIdle(0);
+        cfg.setMaxWait(java.time.Duration.ofMillis(POOL_MAX_WAIT_MS));
+        cfg.setMinEvictableIdleTime(java.time.Duration.ofMillis(POOL_EVICTABLE_IDLE_MS));
+        // Borrowing never pays for a round trip; idle connections are probed in the background
+        // and again on borrow through validateObject only when a stale one is suspected.
+        cfg.setTestOnBorrow(false);
+        cfg.setTestWhileIdle(true);
+        cfg.setTimeBetweenEvictionRuns(java.time.Duration.ofSeconds(30));
+        return cfg;
     }
 
-    private String resolveCharset() {
-        String charset = StrUtil.blankToDefault(config.getCharset(), "UTF-8").trim();
-        // 校验合法性，非法时回退 UTF-8
+    private GenericObjectPool<FTPClient> requirePool() {
+        GenericObjectPool<FTPClient> current = pool;
+        if (current == null) {
+            throw new FtpException("FTP 连接池未初始化");
+        }
+        return current;
+    }
+
+    /** Runs one operation against an exclusively borrowed connection. */
+    private <T> T withClient(FtpOperation<T> operation) throws Exception {
+        GenericObjectPool<FTPClient> current = requirePool();
+        FTPClient client = current.borrowObject();
+        boolean healthy = false;
         try {
-            Charset.forName(charset);
-            return charset;
-        } catch (Exception ex) {
-            log.warn("[resolveCharset][非法字符集 {}，回退 UTF-8]", charset);
-            return "UTF-8";
+            T result = operation.run(client);
+            healthy = true;
+            return result;
+        } finally {
+            if (healthy) {
+                // Reset the position so the next borrower starts from the config base path.
+                try {
+                    client.changeWorkingDirectory(config.getBasePath());
+                } catch (Exception ignored) {
+                    // A stale directory is harmless: every operation sets its own.
+                }
+                current.returnObject(client);
+            } else {
+                current.invalidateObject(client);
+            }
         }
     }
 
-    private FTPClient connectFtp(String charset) throws IOException {
-        FTPClient ftpClient = new FTPClient();
-        // 必须在 connect 前设置，否则中文路径按 ISO-8859-1 发出变成 ????
-        ftpClient.setControlEncoding(charset);
-        ftpClient.setDefaultTimeout(CONNECT_TIMEOUT_MS);
-        ftpClient.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        ftpClient.connect(config.getHost(), config.getPort());
-        ftpClient.setSoTimeout(SO_TIMEOUT_MS);
-        assertConnected(ftpClient);
-        if (!ftpClient.login(config.getUsername(), config.getPassword())) {
-            throw new FtpException(StrUtil.format("FTP 登录失败: {}:{} , reply={}",
-                config.getHost(), config.getPort(), StrUtil.trim(ftpClient.getReplyString())));
-        }
-        return ftpClient;
-    }
-
-    private FTPSClient connectFtps(String charset) throws IOException {
-        FTPSClient ftpsClient = new FTPSClient(false);
-        ftpsClient.setControlEncoding(charset);
-        ftpsClient.setTrustManager(TrustManagerUtils.getAcceptAllTrustManager());
-        ftpsClient.setDefaultTimeout(CONNECT_TIMEOUT_MS);
-        ftpsClient.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        ftpsClient.connect(config.getHost(), config.getPort());
-        ftpsClient.setSoTimeout(SO_TIMEOUT_MS);
-        assertConnected(ftpsClient);
-        if (!ftpsClient.login(config.getUsername(), config.getPassword())) {
-            throw new FtpException(StrUtil.format("FTPS 登录失败: {}:{} , reply={}",
-                config.getHost(), config.getPort(), StrUtil.trim(ftpsClient.getReplyString())));
-        }
-        ftpsClient.execPBSZ(0);
-        ftpsClient.execPROT("P");
-        log.info("[connectFtps][FTPS 连接成功 host={} port={} charset={}]",
-            config.getHost(), config.getPort(), charset);
-        return ftpsClient;
-    }
-
-    private void enableUtf8IfNeeded(String charset) {
-        if (!StandardCharsets.UTF_8.name().equalsIgnoreCase(charset)) {
-            return;
-        }
-        try {
-            // 部分 NAS 需要显式打开 UTF-8，才能正确处理中文目录名
-            int reply = client.sendCommand("OPTS", "UTF8 ON");
-            log.info("[enableUtf8IfNeeded][OPTS UTF8 ON reply={} {}]", reply, compactReply());
-        } catch (IOException ex) {
-            log.warn("[enableUtf8IfNeeded][OPTS UTF8 ON 失败，继续使用控制连接编码] {}", ex.getMessage());
-        }
-    }
-
-    private void applyTransferMode(FtpMode mode) {
-        if (mode == FtpMode.Passive) {
-            client.enterLocalPassiveMode();
-        } else {
-            client.enterLocalActiveMode();
-        }
+    @FunctionalInterface
+    private interface FtpOperation<T> {
+        T run(FTPClient client) throws Exception;
     }
 
     @Override
     public FileUploadResult upload(byte[] content, String path, String type) throws Exception {
-        String filePath = getFilePath(path);
-        String fileName = FileUtil.getName(filePath);
-        String dir = normalizeDir(StrUtil.removeSuffix(filePath, fileName));
+        return uploadStream(new ByteArrayInputStream(content), content.length, path, type);
+    }
 
-        reconnectIfNeeded();
-        String pwd = client.printWorkingDirectory();
-        try {
-            ensureDirectory(dir);
-            if (!changeWorkingDirectory(dir)) {
+    @Override
+    public FileUploadResult uploadStream(InputStream in, long size, String path, String type) throws Exception {
+        String filePath = getFilePath(path);
+        String fileName = fileNameOf(filePath);
+        String dir = dirOf(filePath);
+
+        withClient(client -> {
+            ensureDirectory(client, dir);
+            if (!client.changeWorkingDirectory(dir)) {
                 throw new FtpException(StrUtil.format(
                     "切换到上传目录失败 [{}]，pwd=[{}]，reply={}",
-                    dir, client.printWorkingDirectory(), compactReply()));
+                    dir, client.printWorkingDirectory(), replyOf(client)));
             }
-            try (InputStream in = new ByteArrayInputStream(content)) {
-                boolean success = client.storeFile(fileName, in);
-                if (!success) {
-                    throw new FtpException(StrUtil.format(
-                        "上传文件失败 path={} reply={}", filePath, compactReply()));
-                }
+            if (!client.storeFile(fileName, in)) {
+                throw new FtpException(StrUtil.format(
+                    "上传文件失败 path={} reply={}", filePath, replyOf(client)));
             }
-            log.info("[upload][上传成功 path={} size={}]", filePath, content.length);
-        } finally {
-            changeWorkingDirectory(StrUtil.blankToDefault(pwd, "/"));
-        }
+            return null;
+        });
+        log.debug("[upload][上传成功 path={} size={}]", filePath, size);
 
         return FileUploadResult.builder()
             .url(super.formatFileUrl(config.getDomain(), path))
@@ -183,89 +150,125 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
             .build();
     }
 
-    private void ensureDirectory(String dir) throws IOException {
-        String normalized = StrUtil.removeSuffix(normalizeDir(dir), "/");
-        if (StrUtil.isBlank(normalized) || "/".equals(normalized)) {
-            return;
-        }
-        if (changeWorkingDirectory(normalized + "/")) {
-            return;
-        }
-
-        String pwd = client.printWorkingDirectory();
-        try {
-            if (!changeWorkingDirectory("/")) {
-                throw new FtpException("无法切换到 FTP 根目录 / ，reply=" + compactReply());
-            }
-            for (String part : normalized.split("/")) {
-                if (StrUtil.isBlank(part)) {
-                    continue;
-                }
-                if (changeWorkingDirectory(part)) {
-                    continue;
-                }
-                boolean created = client.makeDirectory(part);
-                if (!changeWorkingDirectory(part)) {
+    @Override
+    public byte[] getContent(String path) throws Exception {
+        return withClient(client -> {
+            String filePath = getFilePath(path);
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                changeToFileDir(client, filePath);
+                if (!client.retrieveFile(fileNameOf(filePath), out)) {
                     throw new FtpException(StrUtil.format(
-                        "创建目录 [{}] 失败，目标 [{}]，pwd=[{}]，created={}，reply={}",
-                        part, normalized, client.printWorkingDirectory(), created, compactReply()));
+                        "下载文件失败 path={} reply={}", filePath, replyOf(client)));
                 }
+                return out.toByteArray();
             }
-        } finally {
-            changeWorkingDirectory(StrUtil.blankToDefault(pwd, "/"));
-        }
+        });
+    }
+
+    /**
+     * Range read. FTP has no partial-retrieve call, so the offset goes through {@code REST} and
+     * the bytes are streamed out instead of being buffered whole.
+     */
+    @Override
+    public void getContentStream(String path, long offset, long length, OutputStream out) throws Exception {
+        String filePath = getFilePath(path);
+        withClient(client -> {
+            changeToFileDir(client, filePath);
+            if (offset > 0) {
+                client.setRestartOffset(offset);
+            }
+            try (InputStream remote = client.retrieveFileStream(fileNameOf(filePath))) {
+                if (remote == null) {
+                    throw new FtpException(StrUtil.format(
+                        "下载文件失败 path={} reply={}", filePath, replyOf(client)));
+                }
+                copyLimited(remote, out, length);
+            } finally {
+                client.setRestartOffset(0);
+                client.completePendingCommand();
+            }
+            return null;
+        });
     }
 
     @Override
     public void delete(String path) throws Exception {
         String filePath = getFilePath(path);
-        reconnectIfNeeded();
-        if (!client.deleteFile(filePath) && !client.deleteFile(StrUtil.removePrefix(filePath, "/"))) {
-            throw new FtpException(StrUtil.format("删除文件失败 path={} reply={}", filePath, compactReply()));
+        withClient(client -> {
+            if (!client.deleteFile(filePath) && !client.deleteFile(StrUtil.removePrefix(filePath, "/"))) {
+                throw new FtpException(StrUtil.format(
+                    "删除文件失败 path={} reply={}", filePath, replyOf(client)));
+            }
+            return null;
+        });
+    }
+
+    private void changeToFileDir(FTPClient client, String filePath) throws IOException {
+        String dir = dirOf(filePath);
+        if (!client.changeWorkingDirectory(dir)) {
+            throw new FtpException(StrUtil.format("下载时无法进入目录 [{}]，reply={}", dir, replyOf(client)));
         }
     }
 
-    @Override
-    public byte[] getContent(String path) throws Exception {
-        String filePath = getFilePath(path);
-        String fileName = FileUtil.getName(filePath);
-        String dir = normalizeDir(StrUtil.removeSuffix(filePath, fileName));
-        reconnectIfNeeded();
+    private void ensureDirectory(FTPClient client, String dir) throws IOException {
+        String normalized = StrUtil.removeSuffix(normalizeDir(dir), "/");
+        if (StrUtil.isBlank(normalized) || "/".equals(normalized)) {
+            return;
+        }
+        if (client.changeWorkingDirectory(normalized + "/")) {
+            return;
+        }
         String pwd = client.printWorkingDirectory();
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            if (!changeWorkingDirectory(dir)) {
-                throw new FtpException(StrUtil.format("下载时无法进入目录 [{}]，reply={}", dir, compactReply()));
-            }
-            if (!client.retrieveFile(fileName, out)) {
-                throw new FtpException(StrUtil.format("下载文件失败 path={} reply={}", filePath, compactReply()));
-            }
-            return out.toByteArray();
-        } finally {
-            changeWorkingDirectory(StrUtil.blankToDefault(pwd, "/"));
-        }
-    }
-
-    private void reconnectIfNeeded() throws IOException {
         try {
-            if (client != null && client.isConnected() && client.sendNoOp()) {
-                applyTransferMode(resolveMode());
-                return;
+            if (!client.changeWorkingDirectory("/")) {
+                throw new FtpException("无法切换到 FTP 根目录 / ，reply=" + replyOf(client));
             }
-        } catch (IOException ex) {
-            log.warn("[reconnectIfNeeded][连接不可用，准备重连] {}", ex.getMessage());
+            for (String part : normalized.split("/")) {
+                if (StrUtil.isBlank(part)) {
+                    continue;
+                }
+                if (client.changeWorkingDirectory(part)) {
+                    continue;
+                }
+                boolean created = client.makeDirectory(part);
+                if (!client.changeWorkingDirectory(part)) {
+                    throw new FtpException(StrUtil.format(
+                        "创建目录 [{}] 失败，目标 [{}]，pwd=[{}]，created={}，reply={}",
+                        part, normalized, client.printWorkingDirectory(), created, replyOf(client)));
+                }
+            }
+        } finally {
+            client.changeWorkingDirectory(StrUtil.blankToDefault(pwd, "/"));
         }
-        disconnectQuietly();
-        doInit();
     }
 
-    private boolean changeWorkingDirectory(String dir) throws IOException {
-        if (StrUtil.isBlank(dir)) {
-            return true;
+    private static void copyLimited(InputStream in, OutputStream out, long length) throws IOException {
+        byte[] buf = new byte[8192];
+        long remaining = length < 0 ? Long.MAX_VALUE : length;
+        while (remaining > 0) {
+            int want = (int) Math.min(buf.length, remaining);
+            int read = in.read(buf, 0, want);
+            if (read < 0) {
+                break;
+            }
+            out.write(buf, 0, read);
+            remaining -= read;
         }
-        return client.changeWorkingDirectory(dir);
     }
 
-    private String normalizeDir(String path) {
+    private static String replyOf(FTPClient client) {
+        return StrUtil.trim(StrUtil.blankToDefault(client.getReplyString(), String.valueOf(client.getReplyCode())));
+    }
+
+    private static String fileNameOf(String filePath) {
+        return cn.hutool.core.io.FileUtil.getName(filePath);
+    }
+
+    private static String dirOf(String filePath) {
+        return normalizeDir(StrUtil.removeSuffix(filePath, fileNameOf(filePath)));
+    }
+
+    private static String normalizeDir(String path) {
         String normalized = StrUtil.replace(StrUtil.blankToDefault(path, "/"), StrUtil.BACKSLASH, StrUtil.SLASH);
         if (!normalized.startsWith("/")) {
             normalized = "/" + normalized;
@@ -282,53 +285,5 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
     private String getFilePath(String path) {
         String relative = StrUtil.removePrefix(StrUtil.replace(path, StrUtil.BACKSLASH, StrUtil.SLASH), "/");
         return config.getBasePath() + relative;
-    }
-
-    private boolean containsNonAscii(String text) {
-        if (text == null) {
-            return false;
-        }
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) > 127) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void assertConnected(FTPClient ftpClient) throws IOException {
-        int reply = ftpClient.getReplyCode();
-        if (!FTPReply.isPositiveCompletion(reply)) {
-            String replyText = StrUtil.trim(ftpClient.getReplyString());
-            ftpClient.disconnect();
-            throw new FtpException(StrUtil.format("FTP 连接被拒绝 reply={}", replyText));
-        }
-    }
-
-    private String compactReply() {
-        if (client == null) {
-            return "";
-        }
-        return StrUtil.trim(StrUtil.blankToDefault(client.getReplyString(), String.valueOf(client.getReplyCode())));
-    }
-
-    private void disconnectQuietly() {
-        if (client == null) {
-            return;
-        }
-        try {
-            if (client.isConnected()) {
-                try {
-                    client.logout();
-                } catch (IOException ignored) {
-                    // ignore
-                }
-                client.disconnect();
-            }
-        } catch (IOException ignored) {
-            // ignore
-        } finally {
-            client = null;
-        }
     }
 }

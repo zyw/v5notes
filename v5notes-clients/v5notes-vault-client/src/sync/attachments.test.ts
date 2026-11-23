@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { DOC_KINDS } from '../vault/docKinds'
 import {
   attachmentBadgeLabel,
-  base64ToBytes,
   bytesToBase64,
   classifyFileKind,
   isAttachmentTooLarge,
@@ -41,8 +40,8 @@ describe('attachments', () => {
     expect(attachmentBadgeLabel('附件/大.zip', 25 * 1024 * 1024)).toContain('大.zip')
   })
 
-  it('round-trips base64', () => {
-    const bytes = new Uint8Array([0, 1, 2, 255, 10])
-    expect([...base64ToBytes(bytesToBase64(bytes))]).toEqual([...bytes])
+  it('encodes bytes for data URLs', () => {
+    // Only the encoder survives: sync uploads send raw bytes, local previews need a data URL.
+    expect(bytesToBase64(new Uint8Array([0, 1, 2, 255, 10]))).toBe('AAEC/wo=')
   })
 })

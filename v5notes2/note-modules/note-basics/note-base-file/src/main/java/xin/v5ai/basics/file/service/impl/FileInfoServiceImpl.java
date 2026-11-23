@@ -158,6 +158,32 @@ public class FileInfoServiceImpl implements IFileInfoService {
     }
 
     /**
+     * 上传到指定配置（设计 D2）。既有 {@link #uploadByBo} 写 master，行为保持不变。
+     */
+    @Override
+    public FileInfo uploadToConfig(Long configId, String name, String path, byte[] content) throws Exception {
+        Assert.notNull(configId, "configId 不能为空");
+        FileClient client = fileConfigService.getFileClient(configId);
+        Assert.notNull(client, "客户端({}) 不能为空", configId);
+
+        String type = FileTypeUtils.getMineType(content, name);
+        String targetPath = StrUtil.isEmpty(path) ? generatePath(name) : prefixUserDir(path);
+        String finalName = StrUtil.isEmpty(name) ? targetPath : name;
+
+        FileUploadResult uploadResult = client.upload(content, targetPath, type);
+
+        FileInfo file = new FileInfo();
+        file.setConfigId(client.getId());
+        file.setName(finalName);
+        file.setPath(uploadResult.getPath());
+        file.setUrl(uploadResult.getUrl());
+        file.setType(type);
+        file.setSize(content.length);
+        baseMapper.insert(file);
+        return file;
+    }
+
+    /**
      * 生成默认的文件相对路径：{userId}/yyyy/MM/dd/{uuid}.ext
      */
     private String generatePath(String name) {

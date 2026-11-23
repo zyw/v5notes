@@ -47,8 +47,17 @@ export class VaultSyncApiError extends Error {
     return this.businessCode === VaultErrorCode.HASH_MISMATCH
   }
 
+  /**
+   * A missing asset reference can never succeed on retry (design §7.6): the body is gone, so the
+   * same request would fail identically and only grow the queue.
+   */
+  get isAssetRequired(): boolean {
+    return this.businessCode === VaultErrorCode.ASSET_REQUIRED
+  }
+
   get isRetryable(): boolean {
     if (this.isQuota || this.isTooLarge || this.isConflict || this.isHashMismatch) return false
+    if (this.isAssetRequired) return false
     if (this.businessCode === VaultErrorCode.PATH_INVALID) return false
     if (this.httpStatus === 401) return false
     return this.httpStatus === 0 || this.httpStatus === 429 || this.httpStatus >= 500
@@ -145,6 +154,53 @@ export function createVaultSyncApi(
     return result.data as T
   }
 
+  /**
+   * Multipart variant of {@link call}.
+   *
+   * <p>{@code call} sets {@code Content-Type: application/json} whenever a body is present, which
+   * would break the multipart boundary. Everything else — auth header, error envelope, 401 hook —
+   * stays identical so callers see the same {@link VaultSyncApiError} shapes.</p>
+   */
+  async function callMultipart<T>(path: string, form: FormData): Promise<T> {
+    const { server, clientId, token } = config()
+    if (!token) {
+      throw new VaultSyncApiError('未登录', 401, VaultErrorCode.AUTH_UNAUTHORIZED)
+    }
+    const response = await transport(`${server.replace(/\/+$/, '')}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Language': 'zh_CN',
+        clientid: clientId,
+        Authorization: `Bearer ${token}`,
+      },
+      body: form,
+    })
+    const result = normalizeIds(await response.json()) as Envelope<T> & {
+      data?: { code?: string } | null
+    }
+    if (response.status === 401 || result.code === 401) {
+      onUnauthorized()
+      throw new VaultSyncApiError(result.msg || '登录已过期', 401, VaultErrorCode.AUTH_UNAUTHORIZED)
+    }
+    if (!response.ok || result.code !== 200) {
+      const nested = result.data && typeof result.data === 'object'
+        ? (result.data as { code?: string }).code ?? null
+        : null
+      const business =
+        nested
+        || (result.code === 409 ? VaultErrorCode.CONFLICT_REV : null)
+        || (result.code === 402 || result.code === 403 ? VaultErrorCode.QUOTA_EXCEEDED : null)
+        || (result.code === 413 ? VaultErrorCode.FILE_TOO_LARGE : null)
+      throw new VaultSyncApiError(
+        result.msg || `请求失败（${response.status || result.code}）`,
+        typeof result.code === 'number' ? result.code : response.status,
+        business,
+        result.data,
+      )
+    }
+    return result.data as T
+  }
+
   return {
     createVault: (name: string) =>
       call<VaultSpaceSummary>('/vault/v1/vaults', {
@@ -177,7 +233,8 @@ export function createVaultSyncApi(
         hash: string
         type?: string
         body?: string
-        base64Body?: string
+        /** Required when type is 'asset' (design D5); bytes are uploaded separately. */
+        asset?: { assetId: string; sizeBytes: number }
       },
     ) =>
       call<VaultFileMeta>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/files`, {
@@ -198,7 +255,7 @@ export function createVaultSyncApi(
         hash: string
         type?: string
         body?: string
-        base64Body?: string
+        asset?: { assetId: string; sizeBytes: number }
       }>,
     ) =>
       call<VaultFileMeta[]>(`/vault/v1/vaults/${encodeURIComponent(vaultId)}/files/batch`, {
@@ -228,6 +285,24 @@ export function createVaultSyncApi(
         method: 'POST',
         body: JSON.stringify(body),
       }),
+    /**
+     * Uploads one attachment body (design §4.3.1).
+     *
+     * <p>Multipart rather than JSON: a 25MB asset must not become a 33MB base64 string, and the
+     * server hashes the stream instead of buffering it. Re-uploading identical bytes returns the
+     * same {@code assetId} with {@code deduped: true}, so a retried push is idempotent.</p>
+     */
+    uploadAsset: (vaultId: string, body: { bytes: Uint8Array; sha256: string; fileName?: string }) => {
+      const form = new FormData()
+      // Copy into a fresh buffer: TypeScript's Uint8Array may be a view over a larger ArrayBuffer.
+      const blob = new Blob([new Uint8Array(body.bytes)], { type: 'application/octet-stream' })
+      form.append('file', blob, body.fileName || 'attachment')
+      form.append('sha256', body.sha256)
+      return callMultipart<{ assetId: string; sha256: string; sizeBytes: number; deduped: boolean }>(
+        `/vault/v1/vaults/${encodeURIComponent(vaultId)}/assets`,
+        form,
+      )
+    },
     quota: () => call<VaultQuota>('/vault/v1/quota'),
   }
 }

@@ -44,9 +44,22 @@ public interface IFileInfoService {
     List<FileUploadVo> queryByIds(List<Long> asList);
 
     /**
-     * 上传文件
+     * 上传文件（写入 master 配置，既有行为不变）
      */
     FileInfo uploadByBo(String name, String path, byte[] content) throws Exception;
+
+    /**
+     * 上传文件到指定文件配置（设计 D2）。
+     *
+     * <p>与 {@link #uploadByBo} 的唯一差别是目标客户端由 {@code configId} 决定，
+     * 而不是 master。路径仍强制落在当前用户目录下。</p>
+     *
+     * @param configId 目标文件配置
+     * @param name     原始文件名（可为空，则用 path 填充）
+     * @param path     相对路径；为空时按 {userId}/yyyy/MM/dd/{uuid}.ext 生成
+     * @param content  文件字节
+     */
+    FileInfo uploadToConfig(Long configId, String name, String path, byte[] content) throws Exception;
 
     /**
      * 校验并批量删除文件路径信息

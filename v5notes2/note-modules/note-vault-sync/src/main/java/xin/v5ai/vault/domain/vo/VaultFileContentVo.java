@@ -1,6 +1,7 @@
 package xin.v5ai.vault.domain.vo;
 
 import lombok.Data;
+import xin.v5ai.vault.service.model.VaultAssetDownload;
 
 @Data
 public class VaultFileContentVo {
@@ -17,8 +18,9 @@ public class VaultFileContentVo {
 
     private String type;
 
-    /** UTF-8 text when decodable; otherwise null and use base64Body. */
+    /** UTF-8 body for {@code note} / {@code config}; always null for assets (design §4.2.1). */
     private String body;
 
-    private String base64Body;
+    /** Set for {@code type=asset}: where to fetch the bytes (direct presigned link or proxy path). */
+    private VaultAssetDownload download;
 }

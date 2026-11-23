@@ -8,15 +8,14 @@ import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.domain.VaultChange;
 import xin.v5ai.vault.domain.VaultFile;
-import xin.v5ai.vault.domain.VaultFileBlob;
 import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.domain.bo.VaultFilePutBo;
 import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.mapper.VaultChangeMapper;
 import xin.v5ai.vault.mapper.VaultReplicaMapper;
-import xin.v5ai.vault.mapper.VaultFileBlobMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
+import xin.v5ai.vault.service.IVaultAssetService;
 import xin.v5ai.vault.service.impl.VaultSyncServiceImpl;
 import xin.v5ai.vault.util.VaultContentHash;
 
@@ -47,12 +46,12 @@ class VaultSyncPutBatchTest {
     @Mock
     private VaultFileMapper fileMapper;
     @Mock
-    private VaultFileBlobMapper blobMapper;
+    private IVaultAssetService assetService;
     @Mock
     private VaultChangeMapper changeMapper;
 
     private VaultSyncServiceImpl service() {
-        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, blobMapper, changeMapper);
+        return new VaultSyncServiceImpl(spaceMapper, replicaMapper, fileMapper, changeMapper, assetService);
     }
 
     private void stubOwnedVault() {
@@ -101,23 +100,4 @@ class VaultSyncPutBatchTest {
         verify(fileMapper, never()).insert(any(VaultFile.class));
     }
 
-    @Test
-    void blobReuseDoesNotReinsert() {
-        String text = "# shared";
-        String hash = VaultContentHash.ofBytes(text.getBytes(StandardCharsets.UTF_8));
-        VaultFileBlob existing = new VaultFileBlob();
-        existing.setContentHash(hash);
-        existing.setContent(text.getBytes(StandardCharsets.UTF_8));
-        when(blobMapper.selectById(hash)).thenReturn(existing);
-
-        // ensureBlob is private; exercise it through a real first upload of shared content.
-        when(fileMapper.selectOne(any())).thenReturn(null)
-            .thenReturn(null);
-        stubOwnedVault();
-        when(changeMapper.insert(any(VaultChange.class))).thenAnswer(inv -> 1);
-        service().putFile(7L, 1L, putBo("shared.md", text));
-        verify(blobMapper, never()).insert(any(VaultFileBlob.class));
-        verify(blobMapper, never()).updateById(any(VaultFileBlob.class));
-        verify(blobMapper, never()).insert(any(VaultFileBlob.class));
-    }
 }

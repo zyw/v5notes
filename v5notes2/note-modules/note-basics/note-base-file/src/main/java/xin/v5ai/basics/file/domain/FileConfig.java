@@ -39,6 +39,11 @@ public class FileConfig extends BaseEntity {
     private String name;
 
     /**
+     * 用途：GENERIC(图片库/头像) / VAULT_ASSET(同步附件)，见 {@link xin.v5ai.basics.file.core.enums.FileConfigPurpose}
+     */
+    private String purpose;
+
+    /**
      * 存储器
      */
     private Integer storage;

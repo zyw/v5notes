@@ -1,6 +1,7 @@
 package xin.v5ai.vault.domain.vo;
 
 import lombok.Data;
+import xin.v5ai.vault.service.model.VaultAssetCapability;
 
 @Data
 public class VaultQuotaVo {
@@ -26,4 +27,7 @@ public class VaultQuotaVo {
     private boolean overQuota;
 
     private long maxFileBytes;
+
+    /** Attachment transport capability (design §5.3); null when asset storage is unconfigured. */
+    private VaultAssetCapability assetStorage;
 }

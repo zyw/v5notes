@@ -24,10 +24,27 @@ public class VaultFilePutBo {
     private String type;
 
     /**
-     * UTF-8 text body (Phase 4). Binary assets may use base64Body instead.
+     * UTF-8 text body for {@code note} / {@code config}. Assets never travel inline any more
+     * (design D5): they reference a previously uploaded object through {@link #asset}.
      */
     private String body;
 
-    /** Optional base64 for binary; ignored when body is set. */
-    private String base64Body;
+    /**
+     * Required when {@code type=asset} (design D5). Removed the former {@code base64Body}
+     * transport entirely; a missing reference is a permanent 400.
+     */
+    private AssetRef asset;
+
+    @Data
+    public static class AssetRef {
+
+        /** {@code basics_file.id} returned by {@code POST /vault/v1/vaults/{id}/assets}. */
+        @NotBlank
+        private String assetId;
+
+        private Long sizeBytes;
+
+        @Size(max = 128)
+        private String mimeType;
+    }
 }

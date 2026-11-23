@@ -21,6 +21,18 @@ public final class VaultErrorCodes {
     public static final String RATE_LIMITED = "vault.rate.limited";
     public static final String PATH_INVALID = "vault.path.invalid";
 
+    /**
+     * {@code type=asset} arrived without an {@code asset} reference (design D5).
+     * Retrying the same body can never succeed, so clients must not enqueue it.
+     */
+    public static final String ASSET_REQUIRED = "vault.asset.required";
+
+    /** The asset object named by {@code asset.assetId} does not exist or is not owned by the caller. */
+    public static final String ASSET_NOT_FOUND = "vault.asset.not.found";
+
+    /** Attachment storage backend is not configured for this deployment (no VAULT_ASSET file config). */
+    public static final String ASSET_STORAGE_UNAVAILABLE = "vault.asset.storage-unavailable";
+
     private VaultErrorCodes() {
     }
 }

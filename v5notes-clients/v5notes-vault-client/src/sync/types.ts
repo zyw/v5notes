@@ -69,8 +69,15 @@ export interface VaultFileContent {
   contentHash: string
   size: number
   type?: string
+  /** UTF-8 body for note/config; null for assets (design §4.2.1). */
   body?: string | null
-  base64Body?: string | null
+  /** Set for assets: where to fetch the bytes (design §3.3). */
+  download?: {
+    mode: 'direct' | 'proxy' | string
+    url: string
+    expiresIn?: number
+    supportsRange?: boolean
+  } | null
 }
 
 export interface VaultQuota {
@@ -117,8 +124,8 @@ export interface LocalScanFile {
   identityKey: string
   /** UTF-8 text body when prefersTextBody. */
   content?: string
-  /** Binary payload for attachments. */
-  base64Body?: string
+  /** Raw bytes for attachments; streamed to the upload endpoint, never base64-encoded. */
+  bytes?: Uint8Array
   hash: string
   size: number
   mtimeMs: number
