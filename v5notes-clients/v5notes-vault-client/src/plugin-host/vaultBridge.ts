@@ -1,5 +1,14 @@
 import type { VaultAdapter, WorkspaceApi } from '@v5notes/vault-plugin-api'
+import { V5NOTES_DIR } from '../vault/skeleton'
 import { vaultFs } from '../vault/vaultFs'
+
+function assertNotInternalMetaPath(path: string): void {
+  const clean = path.replace(/\\/g, '/').replace(/^\/+/, '')
+  const first = clean.split('/')[0]?.toLowerCase()
+  if (first === V5NOTES_DIR.toLowerCase()) {
+    throw new Error(`插件禁止直接访问库内部元数据目录 ${V5NOTES_DIR}`)
+  }
+}
 
 /**
  * Vault access for plugin code. Plugin packages, enable state and plugin data
@@ -17,18 +26,24 @@ export function createVaultAdapter(rootPath: string): VaultAdapter {
       return (node?.children || []).map((c) => c.path)
     },
     async read(path: string) {
+      assertNotInternalMetaPath(path)
       return vaultFs.readText(rootPath, path)
     },
     async write(path: string, data: string) {
+      assertNotInternalMetaPath(path)
       await vaultFs.writeText(rootPath, path, data)
     },
     async delete(path: string) {
+      assertNotInternalMetaPath(path)
       await vaultFs.delete(rootPath, path)
     },
     async rename(from: string, to: string) {
+      assertNotInternalMetaPath(from)
+      assertNotInternalMetaPath(to)
       await vaultFs.rename(rootPath, from, to)
     },
     async exists(path: string) {
+      assertNotInternalMetaPath(path)
       return vaultFs.exists(rootPath, path)
     },
   }

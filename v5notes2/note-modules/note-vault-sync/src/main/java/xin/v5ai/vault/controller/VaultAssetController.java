@@ -108,6 +108,10 @@ public class VaultAssetController extends BaseController {
             response.setHeader("X-Content-Type-Options", "nosniff");
             if (ref.getMimeType() != null && !ref.getMimeType().isBlank()) {
                 response.setContentType(ref.getMimeType());
+                String lowerMime = ref.getMimeType().toLowerCase(java.util.Locale.ROOT);
+                if (lowerMime.contains("html") || lowerMime.contains("svg") || lowerMime.contains("javascript")) {
+                    response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment");
+                }
             }
             response.setContentLengthLong(window[1]);
 

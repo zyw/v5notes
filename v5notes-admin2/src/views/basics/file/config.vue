@@ -86,7 +86,14 @@
         <el-table-column :label="$t('common.operate')" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip v-if="purposeTargetFor(scope.row as FileConfigVO)" :content="$t('file.config.useFor', { purpose: purposeLabel(purposeTargetFor(scope.row as FileConfigVO)) })" placement="top">
-              <el-button v-hasPermi="['basics:fileConfig:edit']" link type="primary" icon="Switch" @click="handleSwitchPurpose(scope.row as FileConfigVO)" />
+              <el-button
+                v-hasPermi="['basics:fileConfig:edit']"
+                link
+                type="primary"
+                icon="Switch"
+                :aria-label="$t('file.config.useFor', { purpose: purposeLabel(purposeTargetFor(scope.row as FileConfigVO)) })"
+                @click="handleSwitchPurpose(scope.row as FileConfigVO)"
+              />
             </el-tooltip>
             <el-tooltip :content="scope.row.master ? $t('file.config.currentMaster') : $t('file.config.setMaster')" placement="top">
               <el-button
@@ -468,6 +475,7 @@ const handleUpdate = async (row?: FileConfigVO) => {
   const configId = row?.id || ids.value[0];
   const res = await getFileConfig(configId);
   Object.assign(form.value, res.data);
+  form.value.purpose = form.value.purpose || 'GENERIC';
   dialog.visible = true;
   dialog.title = t('file.config.editTitle');
 };

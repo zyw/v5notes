@@ -175,7 +175,6 @@ function onKeydown(event: KeyboardEvent): void {
               <option v-for="id in darkThemes" :key="id" :value="id">{{ EDITOR_THEME_LABELS[id] }}</option>
             </optgroup>
           </select>
-          <span class="palette-theme-note">仅影响编辑器，导出仍用 Paper（待开发）</span>
         </div>
         <div ref="list" class="palette-list">
           <template v-for="group in groups" :key="group.name">
@@ -199,7 +198,6 @@ function onKeydown(event: KeyboardEvent): void {
         </div>
         <div class="palette-foot">
           <span>↑↓ 选择 · ↵ 执行 · esc 关闭</span>
-          <span>只列出当前状态可用的命令</span>
         </div>
       </section>
     </div>

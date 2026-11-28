@@ -946,33 +946,6 @@ watch(publishDraft, () => {
       <div class="settings-inner">
         <!-- ========== 全局设置 ========== -->
         <div v-if="scope === 'global'" class="global-page">
-          <ul class="status-strip" aria-label="当前状态">
-            <li>
-              <span class="status-chip">
-                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg></span>
-                <span class="status-copy"><span>账号</span><b><i :class="{ g: account.loggedIn.value }"></i>{{ account.loggedIn.value ? '已登录' : '未登录' }}</b></span>
-              </span>
-            </li>
-            <li>
-              <span class="status-chip">
-                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg></span>
-                <span class="status-copy"><span>扩展</span><b>{{ plugins.length ? plugins.length + ' 个已安装' : '未安装' }}</b></span>
-              </span>
-            </li>
-            <li>
-              <span class="status-chip">
-                <span class="status-ico" aria-hidden="true" :class="{ on: safeMode }"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 3.6 4.6v3.3c0 2.8 1.9 4.8 4.4 5.5 2.5-.7 4.4-2.7 4.4-5.5V4.6L8 2.6z"/></svg></span>
-                <span class="status-copy"><span>安全模式</span><b>{{ safeMode ? '开' : '关' }}</b></span>
-              </span>
-            </li>
-            <li>
-              <button type="button" class="status-chip" @click="requestVault">
-                <span class="status-ico" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 5.2 8 2.6l4.8 2.6v5.6L8 13.4 3.2 10.8V5.2z"/><path d="M3.2 5.2 8 7.8l4.8-2.6M8 7.8v5.6"/></svg></span>
-                <span class="status-copy"><span>库</span><b>{{ vaultRows.length }} 个{{ vault?.name ? ' · ' + vault.name : '' }}</b></span>
-              </button>
-            </li>
-          </ul>
-
           <div class="panel-stack">
             <section class="panel" id="g-account" aria-labelledby="g-account-title">
               <div class="p-head">

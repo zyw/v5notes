@@ -353,6 +353,12 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
           if (result.kind.id !== docKind) {
             throw new Error(`文档类型声明 ${result.kind.id} 与 docKind ${docKind} 不一致`)
           }
+          for (const [ownerId, existing] of customKinds.entries()) {
+            if (ownerId === pluginId) continue
+            if (existing.id === result.kind.id || existing.extension.toLowerCase() === result.kind.extension.toLowerCase()) {
+              throw new Error(`文档类型 ${result.kind.id}（${result.kind.extension}）已被插件 ${ownerId} 占用`)
+            }
+          }
           customKinds.set(pluginId, result.kind)
         }
         editors.set(spec.id, {

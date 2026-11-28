@@ -1994,7 +1994,7 @@ defineExpose({
             <button
               type="button"
               class="search-hit"
-              @click="openNote({ path: hit.path, identityKey: hit.identityKey, name: hit.title + '.md', kind: 'note' })"
+              @click="openNote({ path: hit.path, identityKey: hit.identityKey, name: hit.path.split('/').pop() || hit.title, kind: 'note' })"
             >
               <TreeIcon kind="note" />
               <span class="search-hit-copy">
