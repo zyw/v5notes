@@ -16,16 +16,23 @@ export const vaultAssetContentPath = (vaultId: string, assetId: string): string 
   return `/vault/admin/spaces/${vaultId}/assets/${assetId}/content`;
 };
 
+const hasExtension = (name: string): boolean => {
+  const lastDot = name.lastIndexOf('.');
+  return lastDot > 0 && lastDot < name.length - 1;
+};
+
 export const resolveVaultAssetFileName = (
   asset: Pick<VaultAdminAsset, 'assetId' | 'fileName' | 'samplePath' | 'mimeType'>
 ): string => {
   const sampleLeaf = asset.samplePath
     ? asset.samplePath.slice(asset.samplePath.lastIndexOf('/') + 1).trim()
     : '';
-  const base = (asset.fileName || '').trim() || sampleLeaf || asset.assetId;
-  const lastDot = base.lastIndexOf('.');
-  const hasExt = lastDot > 0 && lastDot < base.length - 1;
-  if (hasExt) return base;
+  const storedName = (asset.fileName || '').trim();
+  const base = sampleLeaf || storedName || asset.assetId;
+  if (hasExtension(base)) return base;
+  if (storedName && hasExtension(storedName)) {
+    return `${base}${storedName.slice(storedName.lastIndexOf('.'))}`;
+  }
   const ext = suffixFromMimeType(asset.mimeType);
   return ext ? `${base}.${ext}` : base;
 };

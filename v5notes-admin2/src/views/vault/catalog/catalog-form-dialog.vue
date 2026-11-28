@@ -1,26 +1,44 @@
 <template>
-  <el-dialog
+  <FormDrawer
     :model-value="modelValue"
     :title="isEdit ? $t('vault.catalog.editTitle') : $t('vault.catalog.addTitle')"
-    width="860px"
-    top="5vh"
-    append-to-body
-    destroy-on-close
+    size="720px"
+    :hint="$t('system.user.requiredHint')"
+    :submitting="submitting"
     @update:model-value="emit('update:modelValue', $event)"
+    @submit="submit"
   >
-    <div v-loading="loading">
-      <div class="dialog-top-actions">
-        <el-upload
-          :show-file-list="false"
-          accept=".zip"
-          :http-request="handleZipUpload"
-        >
-          <el-button type="primary" plain icon="Upload" :loading="parsingZip">
-            {{ $t('vault.catalog.uploadZip') }}
-          </el-button>
-        </el-upload>
+    <template #hero>
+      <div class="catalog-hero">
+        <div class="catalog-hero__top">
+          <span class="catalog-hero__brand"><img :src="logoUrl" alt="" />V5Notes {{ $t('vault.catalog.title') }}</span>
+          <span class="catalog-hero__divider">·</span>
+          <span class="catalog-hero__action">{{ isEdit ? $t('vault.catalog.editTitle') : $t('vault.catalog.addTitle') }}</span>
+        </div>
+        <div class="catalog-hero__profile">
+          <div class="catalog-hero__avatar">{{ avatarText }}</div>
+          <div class="catalog-hero__info">
+            <div class="catalog-hero__name">{{ heroName }}</div>
+            <div class="catalog-hero__meta">
+              <span class="catalog-hero__tag">{{ form.kind === 'theme' ? $t('vault.catalog.kindTheme') : $t('vault.catalog.kindPlugin') }}</span>
+              <span v-if="form.version">v{{ form.version }}</span>
+            </div>
+          </div>
+          <el-upload
+            class="catalog-hero__upload"
+            :show-file-list="false"
+            accept=".zip"
+            :http-request="handleZipUpload"
+          >
+            <el-button class="catalog-hero__zip-btn" icon="Upload" :loading="parsingZip">
+              {{ $t('vault.catalog.uploadZip') }}
+            </el-button>
+          </el-upload>
+        </div>
       </div>
+    </template>
 
+    <div v-loading="loading" class="catalog-drawer-content">
       <el-alert
         v-for="(w, idx) in warnings"
         :key="idx"
@@ -28,126 +46,133 @@
         type="warning"
         show-icon
         :closable="false"
-        class="mb-2"
       />
 
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="116px">
-        <el-row :gutter="14">
-          <el-col :span="12">
-            <el-form-item :label="$t('vault.catalog.id')" prop="id">
-              <el-input v-model="form.id" :disabled="isEdit" placeholder="my-plugin" maxlength="64" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('vault.catalog.name')" prop="name">
-              <el-input v-model="form.name" maxlength="100" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item :label="$t('vault.catalog.kind')" prop="kind">
-              <el-select v-model="form.kind" style="width: 100%" @change="onKindChange">
-                <el-option :label="$t('vault.catalog.kindPlugin')" value="plugin" />
-                <el-option :label="$t('vault.catalog.kindTheme')" value="theme" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item :label="$t('vault.catalog.version')" prop="version">
-              <el-input v-model="form.version" placeholder="1.0.0" maxlength="32" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item :label="$t('vault.catalog.minAppVersion')">
-              <el-input v-model="form.minAppVersion" placeholder="0.1.0" maxlength="32" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item :label="$t('vault.catalog.author')">
-              <el-input v-model="form.author" maxlength="100" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="10">
-            <el-form-item :label="$t('vault.catalog.authorUrl')">
-              <el-input v-model="form.authorUrl" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item :label="$t('vault.catalog.sortOrder')">
-              <el-input-number v-model="form.sortOrder" :min="0" :max="9999" controls-position="right" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item :label="$t('vault.catalog.description')">
-              <el-input v-model="form.description" maxlength="500" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('vault.catalog.permissions')">
-              <el-select v-model="form.permissions" multiple filterable style="width: 100%">
-                <el-option v-for="perm in availablePermissions" :key="perm" :label="perm" :value="perm" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('vault.catalog.tags')">
-              <el-input v-model="tagsText" :placeholder="$t('vault.catalog.tagsPh')" />
-            </el-form-item>
-          </el-col>
-          <el-col v-if="form.permissions.includes('network:safe')" :span="24">
-            <el-form-item :label="$t('vault.catalog.networkAllowlist')">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="catalog-form">
+        <section class="form-section">
+          <h4>{{ $t('common.basicInfo') }}</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.id')" prop="id">
+                <el-input v-model="form.id" :disabled="isEdit" placeholder="my-plugin" maxlength="64" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.name')" prop="name">
+                <el-input v-model="form.name" maxlength="100" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.kind')" prop="kind">
+                <el-select v-model="form.kind" style="width: 100%" @change="onKindChange">
+                  <el-option :label="$t('vault.catalog.kindPlugin')" value="plugin" />
+                  <el-option :label="$t('vault.catalog.kindTheme')" value="theme" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.version')" prop="version">
+                <el-input v-model="form.version" placeholder="1.0.0" maxlength="32" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.minAppVersion')">
+                <el-input v-model="form.minAppVersion" placeholder="0.1.0" maxlength="32" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.sortOrder')">
+                <el-input-number v-model="form.sortOrder" :min="0" :max="9999" controls-position="right" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.author')">
+                <el-input v-model="form.author" maxlength="100" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.authorUrl')">
+                <el-input v-model="form.authorUrl" maxlength="255" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item :label="$t('vault.catalog.description')" class="mb-0">
+                <el-input v-model="form.description" maxlength="500" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <h4>{{ $t('vault.catalog.permSection') }}</h4>
+          <el-row :gutter="18">
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.permissions')" :class="{ 'mb-0': !form.permissions.includes('network:safe') }">
+                <el-select v-model="form.permissions" multiple filterable style="width: 100%">
+                  <el-option v-for="perm in availablePermissions" :key="perm" :label="perm" :value="perm" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item :label="$t('vault.catalog.tags')" :class="{ 'mb-0': !form.permissions.includes('network:safe') }">
+                <el-input v-model="tagsText" :placeholder="$t('vault.catalog.tagsPh')" />
+              </el-form-item>
+            </el-col>
+            <el-col v-if="form.permissions.includes('network:safe')" :span="24">
+              <el-form-item :label="$t('vault.catalog.networkAllowlist')" class="mb-0">
+                <el-input
+                  v-model="allowlistText"
+                  type="textarea"
+                  :rows="2"
+                  :placeholder="$t('vault.catalog.allowlistPh')"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </section>
+
+        <section class="form-section">
+          <div class="files-header">
+            <h4>{{ $t('vault.catalog.files') }}</h4>
+            <div class="files-add">
               <el-input
-                v-model="allowlistText"
-                type="textarea"
-                :rows="2"
-                :placeholder="$t('vault.catalog.allowlistPh')"
+                v-model="newFileName"
+                size="small"
+                :placeholder="$t('vault.catalog.fileNamePh')"
+                style="width: 190px"
+                @keyup.enter="addFileTab"
               />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <div class="files-header">
-          <span class="files-title">{{ $t('vault.catalog.files') }}</span>
-          <div class="files-add">
-            <el-input
-              v-model="newFileName"
-              size="small"
-              :placeholder="$t('vault.catalog.fileNamePh')"
-              style="width: 180px"
-              @keyup.enter="addFileTab"
-            />
-            <el-button size="small" icon="Plus" @click="addFileTab">{{ $t('vault.catalog.addFile') }}</el-button>
+              <el-button size="small" icon="Plus" @click="addFileTab">{{ $t('vault.catalog.addFile') }}</el-button>
+            </div>
           </div>
-        </div>
 
-        <el-tabs v-model="activeFile" type="card" @tab-remove="removeFileTab">
-          <el-tab-pane
-            v-for="name in fileNames"
-            :key="name"
-            :label="name"
-            :name="name"
-            :closable="name !== 'manifest.json'"
-          >
-            <el-input
-              v-model="form.files[name]"
-              type="textarea"
-              :rows="11"
-              class="code-textarea"
-            />
-          </el-tab-pane>
-        </el-tabs>
+          <el-tabs v-model="activeFile" type="card" class="files-tabs" @tab-remove="removeFileTab">
+            <el-tab-pane
+              v-for="name in fileNames"
+              :key="name"
+              :label="name"
+              :name="name"
+              :closable="name !== 'manifest.json'"
+            >
+              <el-input
+                v-model="form.files[name]"
+                type="textarea"
+                :rows="11"
+                class="code-textarea"
+              />
+            </el-tab-pane>
+          </el-tabs>
+        </section>
       </el-form>
     </div>
-
-    <template #footer>
-      <el-button @click="emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submit">{{ $t('common.confirm') }}</el-button>
-    </template>
-  </el-dialog>
+  </FormDrawer>
 </template>
 
 <script setup lang="ts">
 import type { UploadRequestOptions } from 'element-plus';
 import { useI18n } from 'vue-i18n';
+import logoUrl from '@/assets/logo/logo.png';
+import FormDrawer from '@/components/FormDrawer/index.vue';
 import {
   createVaultCatalog,
   getVaultCatalogDetail,
@@ -216,6 +241,12 @@ const createEmptyForm = () => ({
 const form = ref(createEmptyForm());
 
 const isEdit = computed(() => Boolean(props.editingId));
+const heroName = computed(() => form.value.name.trim() || (isEdit.value ? t('vault.catalog.editTitle') : t('vault.catalog.addTitle')));
+const avatarText = computed(() => {
+  const src = form.value.name.trim() || form.value.id.trim();
+  if (src) return src.slice(0, 1).toUpperCase();
+  return form.value.kind === 'theme' ? 'T' : 'P';
+});
 const fileNames = computed(() => Object.keys(form.value.files));
 const availablePermissions = computed(() => (form.value.kind === 'theme' ? THEME_PERMISSIONS : PLUGIN_PERMISSIONS));
 
@@ -292,7 +323,7 @@ const handleZipUpload = async (options: UploadRequestOptions) => {
     form.value.permissions = [...(d.permissions || [])];
     tagsText.value = (d.tags || []).join(', ');
     allowlistText.value = (d.networkAllowlist || []).join('\n');
-    form.value.files = { ...(d.files || {}) };
+    form.value.files = d.files ? { ...d.files } : {};
     warnings.value = d.warnings || [];
     activeFile.value = form.value.files['main.js'] != null ? 'main.js' : form.value.files['theme.css'] != null ? 'theme.css' : 'manifest.json';
     proxy?.$modal.msgSuccess(t('vault.catalog.zipParsed'));
@@ -362,7 +393,7 @@ watch(
         authorUrl: d.authorUrl || '',
         permissions: [...(d.permissions || [])],
         sortOrder: d.sortOrder ?? 0,
-        files: { ...(d.files || {}) }
+        files: d.files ? { ...d.files } : {}
       };
       tagsText.value = (d.tags || []).join(', ');
       allowlistText.value = (d.networkAllowlist || []).join('\n');
@@ -376,23 +407,198 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.dialog-top-actions {
+.catalog-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  color: #fff;
+  background: linear-gradient(148deg, #0f3d33 0%, #1c5a48 70%, #256a55 100%);
+}
+
+.catalog-hero::after {
+  content: '';
+  position: absolute;
+  top: -130px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.catalog-hero__top {
+  position: relative;
+  z-index: 1;
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dff1e8;
+  letter-spacing: 0.02em;
+}
+
+.catalog-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  img {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+}
+
+.catalog-hero__divider {
+  color: rgba(223, 241, 232, 0.5);
+}
+
+.catalog-hero__action {
+  color: #c9e4d7;
+}
+
+.catalog-hero__profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 24px;
+}
+
+.catalog-hero__avatar {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.catalog-hero__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.catalog-hero__name {
+  margin-bottom: 7px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c9e4d7;
+}
+
+.catalog-hero__tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eafff5;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.catalog-hero__upload {
+  flex: none;
+}
+
+.catalog-hero__zip-btn {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+
+  &:hover,
+  &:focus {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+  }
+}
+
+.catalog-drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.catalog-form {
+  :deep(.el-form-item) {
+    margin-bottom: 16px;
+  }
+
+  :deep(.el-form-item__label) {
+    padding-bottom: 6px;
+    line-height: 1.3;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #3f4a44;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper),
+  :deep(.el-textarea__inner) {
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 0 0 1px #dfe5e1 inset;
+  }
+
+  :deep(.el-input__wrapper:hover),
+  :deep(.el-select__wrapper:hover) {
+    box-shadow: 0 0 0 1px #b9c9c1 inset;
+  }
+
+  :deep(.mb-0) {
+    margin-bottom: 0;
+  }
+}
+
+.form-section {
+  padding: 0 0 15px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #edf0ef;
+
+  &:last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+  }
+
+  h4 {
+    margin: 0 0 13px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #6b7d74;
+  }
 }
 
 .files-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 0 8px;
-}
+  gap: 12px;
+  margin-bottom: 13px;
 
-.files-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
+  h4 {
+    margin: 0;
+  }
 }
 
 .files-add {
@@ -401,9 +607,17 @@ watch(
   gap: 6px;
 }
 
+.files-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 10px;
+  }
+}
+
 .code-textarea :deep(textarea) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.55;
+  background: #fff;
+  border-radius: 10px;
 }
 </style>

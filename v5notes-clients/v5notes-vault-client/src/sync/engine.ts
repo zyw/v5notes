@@ -605,6 +605,43 @@ export function createSyncEngine(deps: SyncEngineDeps) {
   }
 
   /**
+   * Drops queue entries that a cycle reaching its end has already resolved.
+   *
+   * Dead entries are never retried, so without this they outlive the failure that
+   * created them and keep resurfacing as the cycle's error message even after the
+   * file synced (e.g. pulled from another replica, or the server defect was fixed).
+   * - `cycle`: this cycle ran pull and push to completion, so earlier whole-cycle
+   *   failures no longer describe the vault.
+   * - `push`: the path is clean in sync-state and its on-disk hash matches, or the
+   *   path is gone from both disk and sync-state.
+   */
+  function pruneResolvedRetryItems(state: SyncStateJson, localFiles: LocalScanFile[]): void {
+    const localByPath = new Map(localFiles.map(f => [f.displayPath, f]))
+    for (const item of retryQueue.list()) {
+      if (item.kind === 'cycle') {
+        retryQueue.markSuccess(item.id)
+        continue
+      }
+      if (item.kind !== 'push' || !item.path) continue
+      const entry = state.files[item.path]
+      const local = localByPath.get(item.path)
+      if (!entry && !local) {
+        retryQueue.markSuccess(item.id)
+        continue
+      }
+      if (
+        entry && local
+        && entry.fileId
+        && entry.status === 'clean'
+        && entry.localHash
+        && normalizeContentHash(entry.localHash) === normalizeContentHash(local.hash)
+      ) {
+        retryQueue.markSuccess(item.id)
+      }
+    }
+  }
+
+  /**
    * One sync cycle: pull manifest, merge with conflict copies, push local dirty/new.
    */
   async function pushPull(): Promise<SyncEngineStatus> {
@@ -906,6 +943,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       }
 
       await writeSyncState(state)
+      pruneResolvedRetryItems(state, localFiles)
       await persistRetryQueue()
 
       if (conflictPaths.length) {

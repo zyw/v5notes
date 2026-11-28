@@ -717,6 +717,73 @@ describe('retry queue growth (§14 断网队列)', () => {
     expect(recoveredStatus.retryQueueSize).toBe(0)
     expect(engine.getRetryQueue()).toHaveLength(0)
   })
+
+  it('drops dead cycle entries once a full cycle completes', async () => {
+    const { fs } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    metaFiles.delete(`${ROOT}/.v5notes/sync-state.json`)
+    metaFiles.set(`${ROOT}/.v5notes/retry-queue.json`, JSON.stringify({
+      schemaVersion: 1,
+      items: [{
+        id: 'old-cycle',
+        kind: 'cycle',
+        attempts: 8,
+        nextAttemptAt: 0,
+        lastError: '附件下载内容哈希校验失败，已中止写入',
+        lastErrorCode: null,
+        createdAt: 0,
+        dead: true,
+      }],
+    }))
+    const api = makeApi({ manifests: [{ cursor: '10', hasMore: false, changes: [] }] })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    const status = await engine.pushPull()
+    expect(status.status).toBe('idle')
+    expect(status.message).toBe('同步完成')
+    expect(engine.getRetryQueue()).toHaveLength(0)
+    metaFiles.delete(`${ROOT}/.v5notes/retry-queue.json`)
+  })
+
+  it('drops a dead push entry when the file is already clean without being pushed this cycle', async () => {
+    const body = '# a'
+    const hash = await sha256Hex(body)
+    const { fs } = makeFs({ 'a.md': body })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    metaFiles.set(`${ROOT}/.v5notes/sync-state.json`, JSON.stringify({
+      schemaVersion: 1,
+      files: {
+        'a.md': {
+          fileId: 'f-a', identityKey: 'a.md', localHash: hash,
+          remoteRev: 1, status: 'clean', size: 3, mtimeMs: 0,
+        },
+      },
+    }))
+    metaFiles.set(`${ROOT}/.v5notes/retry-queue.json`, JSON.stringify({
+      schemaVersion: 1,
+      items: [{
+        id: 'old-push',
+        kind: 'push',
+        path: 'a.md',
+        attempts: 0,
+        nextAttemptAt: 0,
+        lastError: 'contentHash 与正文不一致',
+        lastErrorCode: 'vault.hash.mismatch',
+        createdAt: 0,
+        dead: true,
+      }],
+    }))
+    const api = makeApi({ manifests: [{ cursor: '10', hasMore: false, changes: [] }] })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    const status = await engine.pushPull()
+    expect(api.calls.some(c => c.startsWith('put:'))).toBe(false)
+    expect(status.status).toBe('idle')
+    expect(status.message).toBe('同步完成')
+    expect(engine.getRetryQueue()).toHaveLength(0)
+    metaFiles.delete(`${ROOT}/.v5notes/retry-queue.json`)
+    metaFiles.delete(`${ROOT}/.v5notes/sync-state.json`)
+  })
 })
 
 describe('replica identity in vault.json (§6.4)', () => {

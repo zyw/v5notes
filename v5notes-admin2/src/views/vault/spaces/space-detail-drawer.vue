@@ -161,8 +161,8 @@
           <el-table-column :label="$t('vault.assets.fileName')" min-width="200" :show-overflow-tooltip="true">
             <template #default="{ row }">
               <div class="asset-name-cell">
-                <span class="asset-name-primary">{{ resolveVaultAssetFileName(row) }}</span>
-                <span v-if="row.samplePath && row.samplePath !== resolveVaultAssetFileName(row)" class="asset-name-sub">
+                <span class="asset-name-primary">{{ assetDisplayName(row) }}</span>
+                <span v-if="row.samplePath && row.samplePath !== assetDisplayName(row)" class="asset-name-sub">
                   {{ row.samplePath }}
                 </span>
               </div>
@@ -512,18 +512,21 @@ const handleDeleteFile = async (row: any) => {
   }
 };
 
-const openAssetPreview = (row: VaultAdminAsset) => {
-  assetPreviewTarget.value = row;
+const assetDisplayName = (row: any) => resolveVaultAssetFileName(row as VaultAdminAsset);
+
+const openAssetPreview = (row: any) => {
+  assetPreviewTarget.value = row as VaultAdminAsset;
   assetPreviewOpen.value = true;
 };
 
-const handleDownloadAsset = async (row: VaultAdminAsset) => {
+const handleDownloadAsset = async (row: any) => {
   if (!props.space) return;
-  const blob = (await downloadVaultAssetBlob(props.space.vaultId, row.assetId)) as unknown as Blob;
+  const asset = row as VaultAdminAsset;
+  const blob = (await downloadVaultAssetBlob(props.space.vaultId, asset.assetId)) as unknown as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = resolveVaultAssetFileName(row);
+  a.download = resolveVaultAssetFileName(asset);
   a.click();
   URL.revokeObjectURL(url);
 };

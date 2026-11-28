@@ -64,8 +64,8 @@
         <el-table-column :label="$t('vault.assets.fileName')" min-width="220" :show-overflow-tooltip="true">
           <template #default="{ row }">
             <div class="asset-name-cell">
-              <span class="asset-name-primary">{{ resolveVaultAssetFileName(row) }}</span>
-              <span v-if="row.samplePath && row.samplePath !== resolveVaultAssetFileName(row)" class="asset-name-sub">
+              <span class="asset-name-primary">{{ assetDisplayName(row) }}</span>
+              <span v-if="row.samplePath && row.samplePath !== assetDisplayName(row)" class="asset-name-sub">
                 {{ row.samplePath }}
               </span>
             </div>
@@ -76,7 +76,9 @@
         </el-table-column>
         <el-table-column :label="$t('vault.assets.vaultName')" min-width="140" :show-overflow-tooltip="true">
           <template #default="{ row }">
-            <el-button link type="primary" @click="goSpace(row.vaultName)">{{ row.vaultName || row.vaultId }}</el-button>
+            <el-link type="primary" underline="never" class="vault-link" @click="goSpace(row.vaultName)">
+              {{ row.vaultName || row.vaultId }}
+            </el-link>
           </template>
         </el-table-column>
         <el-table-column :label="$t('vault.files.mimeType')" min-width="140" :show-overflow-tooltip="true">
@@ -231,17 +233,20 @@ const goSpace = (vaultName?: string) => {
   router.push({ path: '/vault/spaces', query: vaultName ? { name: vaultName } : undefined });
 };
 
-const openPreview = (row: VaultAdminAsset) => {
-  previewTarget.value = row;
+const assetDisplayName = (row: any) => resolveVaultAssetFileName(row as VaultAdminAsset);
+
+const openPreview = (row: any) => {
+  previewTarget.value = row as VaultAdminAsset;
   previewOpen.value = true;
 };
 
-const handleDownload = async (row: VaultAdminAsset) => {
-  const blob = (await downloadVaultAssetBlob(row.vaultId, row.assetId)) as unknown as Blob;
+const handleDownload = async (row: any) => {
+  const asset = row as VaultAdminAsset;
+  const blob = (await downloadVaultAssetBlob(asset.vaultId, asset.assetId)) as unknown as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = resolveVaultAssetFileName(row);
+  a.download = resolveVaultAssetFileName(asset);
   a.click();
   URL.revokeObjectURL(url);
 };
@@ -283,5 +288,16 @@ onMounted(() => {
 .mono-text {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+}
+
+.vault-link {
+  max-width: 100%;
+  justify-content: flex-start;
+
+  :deep(.el-link__inner) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>

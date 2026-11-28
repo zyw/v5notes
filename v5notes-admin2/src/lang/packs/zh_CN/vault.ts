@@ -216,6 +216,7 @@ export default {
       author: '作者',
       authorUrl: '作者链接',
       description: '简介',
+      permSection: '权限与标签',
       permissions: '声明权限',
       networkAllowlist: '网络白名单',
       allowlistPh: '每行或逗号分隔域名，如 httpbin.org',

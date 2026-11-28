@@ -216,6 +216,7 @@ export default {
       author: 'Author',
       authorUrl: 'Author URL',
       description: 'Description',
+      permSection: 'Permissions & Tags',
       permissions: 'Permissions',
       networkAllowlist: 'Network Allowlist',
       allowlistPh: 'One host per line or comma-separated',
