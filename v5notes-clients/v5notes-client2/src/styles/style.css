@@ -349,7 +349,10 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .editor-pane.is-resizing-outline .editor-header,
 .editor-pane.is-resizing-outline .editor-body,
 .editor-pane.is-resizing-outline .outline-sidebar { transition: none; }
-.v5md { min-height: 100%; }
+/* Keep .v5md as a block container (outline is hidden) so position:sticky on
+   .v5-toolbar spans the full document height in WebKit/WKWebView instead of
+   stopping at the flex-wrap line of @v5md/view's default row-wrap layout. */
+.v5md { display: block; min-height: 100%; }
 /* 纸感主题沿用客户端的暖白配色，其余主题完全交给 @v5md/view 的变量。 */
 .v5md[data-theme='paper'] {
   --v5-bg: #fffefa;

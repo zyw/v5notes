@@ -3117,11 +3117,18 @@ body {
   cursor: default;
 }
 
-.editor-body .v5md-host,
-.editor-body .v5md {
-  flex: 1;
+/* Let .v5md-host grow with the document (flex: 1 0 auto) and keep .v5md as a
+   block container so position:sticky on .v5-toolbar spans the full scroll. */
+.editor-body .v5md-host {
+  flex: 1 0 auto;
   width: 100%;
-  min-height: 0;
+  min-height: 100%;
+}
+
+.editor-body .v5md {
+  display: block;
+  width: 100%;
+  min-height: 100%;
 }
 
 .editor-body .v5md[data-theme='paper'] {
