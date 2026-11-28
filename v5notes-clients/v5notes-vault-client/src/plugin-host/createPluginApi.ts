@@ -40,7 +40,7 @@ export interface PluginHostHooks {
  * Account/Sync tokens must never appear on this object or its prototype chain.
  */
 export function createPluginApi(hooks: PluginHostHooks, manifest: PluginManifest): App {
-  const granted = manifest.permissions || []
+  const granted: readonly string[] = Object.freeze([...(manifest.permissions || [])])
 
   const vault: VaultAdapter = {
     async list(path) {
@@ -100,11 +100,11 @@ export function createPluginApi(hooks: PluginHostHooks, manifest: PluginManifest
   }
 
   if (granted.includes('network:safe')) {
-    const allowlist = manifest.networkAllowlist || []
+    const allowlist: readonly string[] = Object.freeze([...(manifest.networkAllowlist || [])])
     app.network = {
       async request(url, options) {
         assertPermission(granted, 'network:safe', '发起网络请求')
-        return safeNetworkRequest(url, allowlist, {
+        return safeNetworkRequest(url, [...allowlist], {
           method: options?.method,
           headers: options?.headers,
           body: options?.body,
@@ -125,7 +125,11 @@ export function attachDataMethods(
   instance: Plugin,
   hooks: PluginHostHooks,
   pluginId: string,
+  grantedPermissions?: readonly string[],
 ): void {
+  const granted: readonly string[] = Object.freeze([
+    ...(grantedPermissions ?? instance.manifest.permissions ?? []),
+  ])
   // Defaults to the vault tier: settings usually describe this vault's notes.
   instance.loadData = async <T = unknown>(scope: PluginDataScope = 'vault') => {
     const data = await hooks.loadData(scope, pluginId)
@@ -137,35 +141,35 @@ export function attachDataMethods(
 
   const originalAdd = instance.addCommand.bind(instance)
   instance.addCommand = (command: PluginCommand) => {
-    assertPermission(instance.manifest.permissions || [], 'ui:commands', '注册命令')
+    assertPermission(granted, 'ui:commands', '注册命令')
     originalAdd(command)
     hooks.registerCommand(pluginId, command)
   }
 
   const originalRibbon = instance.addRibbonIcon.bind(instance)
   instance.addRibbonIcon = (spec: RibbonIconSpec) => {
-    assertPermission(instance.manifest.permissions || [], 'ui:ribbon', '注册 Ribbon')
+    assertPermission(granted, 'ui:ribbon', '注册 Ribbon')
     originalRibbon(spec)
     hooks.registerRibbon?.(pluginId, spec)
   }
 
   const originalTab = instance.addSettingTab.bind(instance)
   instance.addSettingTab = (spec: SettingTabSpec) => {
-    assertPermission(instance.manifest.permissions || [], 'ui:settings', '注册设置页')
+    assertPermission(granted, 'ui:settings', '注册设置页')
     originalTab(spec)
     hooks.registerSettingTab?.(pluginId, spec)
   }
 
   const originalView = instance.registerView.bind(instance)
   instance.registerView = (spec: ViewSpec) => {
-    assertPermission(instance.manifest.permissions || [], 'ui:views', '注册视图')
+    assertPermission(granted, 'ui:views', '注册视图')
     originalView(spec)
     hooks.registerView?.(pluginId, spec)
   }
 
   const originalEditor = instance.registerEditorProvider.bind(instance)
   instance.registerEditorProvider = (spec: EditorProviderSpec) => {
-    assertPermission(instance.manifest.permissions || [], 'editor:provide', '提供编辑器')
+    assertPermission(granted, 'editor:provide', '提供编辑器')
     originalEditor(spec)
     hooks.registerEditorProvider?.(pluginId, spec)
   }

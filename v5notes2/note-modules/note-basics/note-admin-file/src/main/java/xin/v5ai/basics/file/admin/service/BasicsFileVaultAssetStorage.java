@@ -49,12 +49,12 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     private final IFileConfigService fileConfigService;
 
     @Override
-    public VaultStoredObject store(Long configId, InputStream content, long sizeBytes, String mimeType)
+    public VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes, String mimeType)
         throws Exception {
         Long target = configId == null ? targetConfigId() : configId;
         byte[] bytes = content.readAllBytes();
         String sha256 = sha256Hex(bytes);
-        String objectKey = buildKey(LoginHelper.getUserId(), sha256);
+        String objectKey = buildKey(LoginHelper.getUserId(), vaultId, sha256);
 
         FileInfo info = fileInfoService.uploadToConfig(target, leafOf(objectKey), objectKey, bytes);
         return new VaultStoredObject(
@@ -65,6 +65,38 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
             bytes.length,
             mimeType
         );
+    }
+
+    @Override
+    public Optional<VaultStoredObject> lookup(Long userId, Long vaultId, String assetId) {
+        if (assetId == null || assetId.isBlank() || vaultId == null) {
+            return Optional.empty();
+        }
+        long id;
+        try {
+            id = Long.parseLong(assetId.trim());
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
+        var info = fileInfoService.queryById(id);
+        if (info == null || info.getPath() == null) {
+            return Optional.empty();
+        }
+        String expectedPrefix = (userId == null ? "anonymous" : String.valueOf(userId))
+            + "/" + KEY_SEGMENT + "/" + vaultId + "/";
+        if (!info.getPath().startsWith(expectedPrefix)) {
+            return Optional.empty();
+        }
+        String leaf = leafOf(info.getPath());
+        long size = info.getSize() == null ? 0L : info.getSize();
+        return Optional.of(new VaultStoredObject(
+            String.valueOf(info.getId()),
+            info.getConfigId(),
+            info.getPath(),
+            "sha256:" + leaf,
+            size,
+            info.getType()
+        ));
     }
 
     @Override
@@ -129,15 +161,17 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     }
 
     /**
-     * {@code {userId}/vault/{sha256[:2]}/{sha256}}.
+     * {@code {userId}/vault/{vaultId}/{sha256[:2]}/{sha256}}.
      *
-     * <p>Extension-less and ASCII-only on purpose: FTP paths with non-ASCII names depend on the
-     * NAS charset negotiation, and a hash needs none of it. The MIME type travels in the database.</p>
+     * <p>Scoped by {@code vaultId} so deleting an attachment in one vault never removes the
+     * physical object referenced by another vault. Extension-less and ASCII-only on purpose:
+     * FTP paths with non-ASCII names depend on the NAS charset negotiation.</p>
      */
-    static String buildKey(Long userId, String sha256) {
+    static String buildKey(Long userId, Long vaultId, String sha256) {
         String user = userId == null ? "anonymous" : String.valueOf(userId);
+        String vault = vaultId == null ? "0" : String.valueOf(vaultId);
         String two = sha256.length() >= 2 ? sha256.substring(0, 2) : sha256;
-        return user + "/" + KEY_SEGMENT + "/" + two + "/" + sha256;
+        return user + "/" + KEY_SEGMENT + "/" + vault + "/" + two + "/" + sha256;
     }
 
     private static String leafOf(String objectKey) {

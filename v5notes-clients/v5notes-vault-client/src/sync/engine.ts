@@ -188,7 +188,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
   async function listSyncableFiles(): Promise<LocalScanFile[]> {
     const patterns = await readIgnorePatterns()
-    const tree = await fs.listTree(deps.rootPath, docKinds())
+    const tree = await fs.listTree(deps.rootPath, docKinds(), { includeAttachments: true })
     const files: LocalScanFile[] = []
 
     async function walk(nodes: Awaited<ReturnType<VaultFs['listTree']>>) {
@@ -204,7 +204,9 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         const kind = decision.reason === 'intent-config'
           ? 'config' as const
           : classifyFileKind(node.path, docKinds())
-        const useText = prefersTextBody(node.path, docKinds())
+        // Backend requires all `asset` files (including .svg/.json/.csv) to go through
+        // multipart `/assets` upload + asset reference commit (design §4.2.1 / D5).
+        const useText = kind === 'note' || kind === 'config'
 
         try {
           if (useText) {
@@ -393,7 +395,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
   /** Find an on-disk file whose identity key matches, for bootstrap conflict copies. */
   async function findOnDiskPathByIdentity(identityKey: string): Promise<string | null> {
     try {
-      const tree = await fs.listTree(deps.rootPath, docKinds())
+      const tree = await fs.listTree(deps.rootPath, docKinds(), { includeAttachments: true })
       const stack = [...tree]
       while (stack.length > 0) {
         const node = stack.pop()!
@@ -417,7 +419,17 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     replicaId: string | null,
   ): Promise<void> {
     if (!change.path) return
-    const content = await api.getContent(vaultId, change.path, change.remoteRev)
+    let content
+    try {
+      content = await api.getContent(vaultId, change.path, change.remoteRev)
+    } catch (err) {
+      // Requested rev is no longer current (design §8.2 / §9.2): skip this change
+      // without writing stale bytes to disk; the newer rev in this or next cycle lands cleanly.
+      if (err instanceof VaultSyncApiError && err.isConflict) {
+        return
+      }
+      throw err
+    }
     const identityKey = toIdentityKey(change.path)
     const localEntry = Object.entries(state.files).find(([, e]) => e.identityKey === identityKey
       || (e.fileId && e.fileId === change.fileId))
@@ -741,10 +753,12 @@ export function createSyncEngine(deps: SyncEngineDeps) {
           pullCursor = manifest.cursor
           continue
         }
-        // Final page (or stale hasMore with an empty page): commit the cursor.
+        // Final page (or stale hasMore with an empty page): commit sync-state before cursor
+        // so an interruption during push never advances lastCursor ahead of sync-state.json.
         config.binding.lastCursor = manifest.cursor
         break
       }
+      await writeSyncState(state)
       await writeVaultJson(config)
 
       // Push local
@@ -771,6 +785,11 @@ export function createSyncEngine(deps: SyncEngineDeps) {
           if (candidate.tooLarge) return false
           if (candidate.kind !== classifyFileKind(path, docKinds())) return false
           if (renamedLocally.has(candidate.identityKey)) return false
+          // Require matching content hash so delete A + create unrelated B is never
+          // misclassified as a rename that silently drops B's body.
+          if (entry.localHash && normalizeContentHash(candidate.hash) !== normalizeContentHash(entry.localHash)) {
+            return false
+          }
           const candidateEntry = state.files[candidate.displayPath]
             || Object.values(state.files).find(e => e.identityKey === candidate.identityKey)
           // Untracked only: a tracked-but-dirty file is an edit, not a rename target.
@@ -778,7 +797,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         })
         try {
           if (renameTarget) {
-            await api.rename(vaultId, {
+            const renamedMeta = await api.rename(vaultId, {
               from: path,
               to: renameTarget.displayPath,
               baseRev: entry.remoteRev ?? 0,
@@ -789,7 +808,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
               fileId: entry.fileId,
               identityKey: renameTarget.identityKey,
               localHash: renameTarget.hash,
-              remoteRev: entry.remoteRev,
+              remoteRev: renamedMeta?.remoteRev ?? entry.remoteRev,
               status: 'clean',
               size: renameTarget.size,
               mtimeMs: renameTarget.mtimeMs,

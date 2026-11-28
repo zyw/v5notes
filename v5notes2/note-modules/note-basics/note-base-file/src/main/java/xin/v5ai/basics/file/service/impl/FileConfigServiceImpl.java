@@ -138,7 +138,10 @@ public class FileConfigServiceImpl implements IFileConfigService {
     @Transactional(rollbackFor = Exception.class)
     public Boolean updateFileConfigMaster(Long id) {
         // 校验存在
-        validateFileConfigExists(id);
+        FileConfig target = validateFileConfigExists(id);
+        if (FileConfigPurpose.VAULT_ASSET.name().equals(resolvePurpose(parsePurpose(target.getPurpose())))) {
+            throw new ServiceException("同步附件专用配置不能设为主配置");
+        }
         // 获取主配置
         FileConfig config = getMasterConfig();
         int flag = 1;
@@ -175,6 +178,11 @@ public class FileConfigServiceImpl implements IFileConfigService {
             throw new ServiceException(MessageUtils.message("file.config.purpose.already", purpose.name(), target.getName()));
         }
 
+        if (Boolean.TRUE.equals(target.getMaster())) {
+            throw new ServiceException(
+                MessageUtils.message("file.config.purpose.held.by.master", purpose.name(), target.getName()));
+        }
+
         FileConfig holder = findUniqueByPurpose(purpose.name());
         if (holder != null && holder.getId().equals(id)) {
             return true;
@@ -206,8 +214,16 @@ public class FileConfigServiceImpl implements IFileConfigService {
      */
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if(isValid){
-            //TODO 做一些业务上的校验,判断是否需要校验
+        if (isValid && ids != null && !ids.isEmpty()) {
+            List<FileConfig> targets = baseMapper.selectByIds(ids);
+            for (FileConfig cfg : targets) {
+                if (Boolean.TRUE.equals(cfg.getMaster())) {
+                    throw new ServiceException("不能删除主配置，请先切换主配置后再删除");
+                }
+                if (FileConfigPurpose.VAULT_ASSET.name().equals(cfg.getPurpose())) {
+                    throw new ServiceException("不能删除当前同步附件配置，请先切换同步附件用途后再删除");
+                }
+            }
         }
         boolean flag = baseMapper.deleteByIds(ids) > 0;
 
@@ -240,7 +256,7 @@ public class FileConfigServiceImpl implements IFileConfigService {
         }
         FileConfig config = findUniqueByPurpose(purpose.name());
         if (config == null && purpose != FileConfigPurpose.GENERIC) {
-            config = findUniqueByPurpose(FileConfigPurpose.GENERIC.name());
+            config = findGenericFallback();
         }
         if (config == null && purpose != FileConfigPurpose.GENERIC) {
             config = getMasterConfig();
@@ -249,6 +265,24 @@ public class FileConfigServiceImpl implements IFileConfigService {
             throw new ServiceException("未配置文件用途：" + purpose.name());
         }
         return getFileClient(config.getId());
+    }
+
+    /**
+     * 回退到 GENERIC 时允许存在多条历史配置：优先选主配置，否则仅在唯一一条时选用。
+     */
+    private FileConfig findGenericFallback() {
+        List<FileConfig> matched = baseMapper.selectList(new LambdaQueryWrapper<FileConfig>()
+            .eq(FileConfig::getPurpose, FileConfigPurpose.GENERIC.name()));
+        if (matched.isEmpty()) {
+            return null;
+        }
+        if (matched.size() == 1) {
+            return matched.get(0);
+        }
+        return matched.stream()
+            .filter(c -> Boolean.TRUE.equals(c.getMaster()))
+            .findFirst()
+            .orElse(null);
     }
 
     /**
@@ -279,8 +313,11 @@ public class FileConfigServiceImpl implements IFileConfigService {
      * 保存前的数据校验
      */
     private void validEntityBeforeSave(FileConfig entity){
-        // 同一用途只能有一条配置：{@link #getByPurpose} 按用途取唯一客户端，
-        // 出现多条会让附件上传直接失败，因此在保存入口就挡掉。
+        // 非 GENERIC 用途（如 VAULT_ASSET）全表仅允许一条；GENERIC 允许保留多条
+        // （用于新增备选配置执行用途切换，以及保留历史附件读取配置，设计 §7.4 / §7.5）。
+        if (FileConfigPurpose.GENERIC.name().equals(entity.getPurpose())) {
+            return;
+        }
         Long duplicated = baseMapper.selectCount(Wrappers.<FileConfig>lambdaQuery()
             .eq(FileConfig::getPurpose, entity.getPurpose())
             .ne(entity.getId() != null, FileConfig::getId, entity.getId()));

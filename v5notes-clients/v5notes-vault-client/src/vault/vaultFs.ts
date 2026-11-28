@@ -46,7 +46,11 @@ export function touchLocalWriteGuard(rootPath: string, relativePath?: string | n
 
 export interface VaultFs {
   /** `kinds` adds plugin-declared document kinds to the note/file split. */
-  listTree(rootPath: string, kinds?: readonly DocKindSpec[]): Promise<VaultTreeNode[]>
+  listTree(
+    rootPath: string,
+    kinds?: readonly DocKindSpec[],
+    options?: { includeAttachments?: boolean },
+  ): Promise<VaultTreeNode[]>
   readText(rootPath: string, relativePath: string): Promise<string>
   writeText(rootPath: string, relativePath: string, content: string): Promise<void>
   /** Binary read for attachment sync (Phase 5). */
@@ -74,6 +78,7 @@ async function readChildren(
   rootPath: string,
   dirRel: string | null,
   kinds: readonly DocKindSpec[] = DOC_KINDS,
+  includeAttachments = false,
 ): Promise<VaultTreeNode[]> {
   const dirAbs = dirRel ? (await abs(rootPath, dirRel)).absPath : rootPath
   let entries
@@ -91,8 +96,8 @@ async function readChildren(
     if (!name || HIDDEN_ROOT_SKIP.has(name)) continue
     // Skip vault metadata dir in the note tree (still exists on disk).
     if (!dirRel && name === V5NOTES_DIR) continue
-    // Attachment folder is managed implicitly by the editor; never listed.
-    if (!dirRel && toIdentityKey(name) === toIdentityKey(ATTACHMENT_DIR_REL)) continue
+    // Attachment folder is hidden from the sidebar tree by default, but included for sync scans.
+    if (!includeAttachments && !dirRel && toIdentityKey(name) === toIdentityKey(ATTACHMENT_DIR_REL)) continue
     if (entry.isSymlink) continue
 
     const rel = dirRel ? `${dirRel}/${name}` : name
@@ -105,7 +110,7 @@ async function readChildren(
     }
 
     if (entry.isDirectory) {
-      const children = await readChildren(rootPath, normalized.displayPath, kinds)
+      const children = await readChildren(rootPath, normalized.displayPath, kinds, includeAttachments)
       nodes.push({
         path: normalized.displayPath,
         identityKey: normalized.identityKey,
@@ -155,8 +160,12 @@ function tmpNameFor(displayPath: string): string {
 }
 
 export const vaultFs: VaultFs = {
-  async listTree(rootPath: string, kinds: readonly DocKindSpec[] = DOC_KINDS) {
-    return readChildren(rootPath, null, kinds)
+  async listTree(
+    rootPath: string,
+    kinds: readonly DocKindSpec[] = DOC_KINDS,
+    options?: { includeAttachments?: boolean },
+  ) {
+    return readChildren(rootPath, null, kinds, Boolean(options?.includeAttachments))
   },
 
   async readText(rootPath, relativePath) {

@@ -371,12 +371,19 @@ export function createPluginHost(deps: PluginHostDeps): PluginHost {
     Factory: typeof Plugin | (new (app: import('@v5notes/vault-plugin-api').App, m: PluginManifest) => Plugin),
     core: boolean,
   ) {
-    const app = createPluginApi(hooks(), manifest)
+    const frozenPermissions = manifest.permissions ? Object.freeze([...manifest.permissions]) : undefined
+    const frozenManifest: PluginManifest = Object.freeze({
+      ...manifest,
+      permissions: frozenPermissions as PluginManifest['permissions'],
+      networkAllowlist: manifest.networkAllowlist ? Object.freeze([...manifest.networkAllowlist]) as string[] : undefined,
+      tags: manifest.tags ? Object.freeze([...manifest.tags]) as string[] : undefined,
+    })
+    const app = createPluginApi(hooks(), frozenManifest)
     const instance = new (Factory as new (
       app: import('@v5notes/vault-plugin-api').App,
       m: PluginManifest,
-    ) => Plugin)(app, manifest)
-    attachDataMethods(instance, hooks(), manifest.id)
+    ) => Plugin)(app, frozenManifest)
+    attachDataMethods(instance, hooks(), frozenManifest.id, frozenPermissions)
 
     const seen = community.userEnableSeen?.[manifest.id]
     if (!seen && typeof instance.onUserEnable === 'function') {

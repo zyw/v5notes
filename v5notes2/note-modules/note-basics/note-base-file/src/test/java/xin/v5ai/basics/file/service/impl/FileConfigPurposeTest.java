@@ -283,6 +283,35 @@ class FileConfigPurposeTest {
         verify(mapper, never()).update(any(), any());
     }
 
+    @Test
+    void insertAllowsMultipleGenericConfigs() {
+        when(mapper.insert(any(FileConfig.class))).thenReturn(1);
+
+        assertDoesNotThrow(() -> service.insertByBo(bo(FileConfigPurpose.GENERIC)));
+        verify(mapper, never()).selectCount(any());
+        verify(mapper).insert(any(FileConfig.class));
+    }
+
+    @Test
+    void switchRefusesToTakeOverFromTargetMasterConfig() {
+        when(mapper.selectById(ID)).thenReturn(config(ID, "GENERIC", true));
+
+        assertThrows(ServiceException.class,
+            () -> service.updateFileConfigPurpose(ID, FileConfigPurpose.VAULT_ASSET));
+        verify(mapper, never()).update(any(), any());
+    }
+
+    @Test
+    void deleteRefusesMasterAndVaultAssetConfigs() {
+        when(mapper.selectByIds(List.of(1L))).thenReturn(List.of(config(1L, "GENERIC", true)));
+        assertThrows(ServiceException.class, () -> service.deleteWithValidByIds(List.of(1L), true));
+
+        when(mapper.selectByIds(List.of(2L))).thenReturn(List.of(config(2L, "VAULT_ASSET", false)));
+        assertThrows(ServiceException.class, () -> service.deleteWithValidByIds(List.of(2L), true));
+
+        verify(mapper, never()).deleteByIds(any());
+    }
+
     private static FileConfigBo bo(FileConfigPurpose purpose) {
         FileConfigBo bo = new FileConfigBo();
         bo.setName("测试配置");

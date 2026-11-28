@@ -2,9 +2,11 @@ package xin.v5ai.vault.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.domain.VaultChange;
@@ -49,7 +51,6 @@ import java.util.Map;
 import java.util.Objects;
 
 @Service
-@RequiredArgsConstructor
 public class VaultSyncServiceImpl implements IVaultSyncService {
 
     /** Max changes per manifest page; client pages via hasMore until exhausted (design §8.2). */
@@ -60,6 +61,30 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     private final VaultFileMapper fileMapper;
     private final VaultChangeMapper changeMapper;
     private final IVaultAssetService assetService;
+    private final ObjectProvider<TransactionTemplate> transactionTemplateProvider;
+
+    public VaultSyncServiceImpl(VaultSpaceMapper spaceMapper,
+                                VaultReplicaMapper replicaMapper,
+                                VaultFileMapper fileMapper,
+                                VaultChangeMapper changeMapper,
+                                IVaultAssetService assetService) {
+        this(spaceMapper, replicaMapper, fileMapper, changeMapper, assetService, null);
+    }
+
+    @Autowired
+    public VaultSyncServiceImpl(VaultSpaceMapper spaceMapper,
+                                VaultReplicaMapper replicaMapper,
+                                VaultFileMapper fileMapper,
+                                VaultChangeMapper changeMapper,
+                                IVaultAssetService assetService,
+                                ObjectProvider<TransactionTemplate> transactionTemplateProvider) {
+        this.spaceMapper = spaceMapper;
+        this.replicaMapper = replicaMapper;
+        this.fileMapper = fileMapper;
+        this.changeMapper = changeMapper;
+        this.assetService = assetService;
+        this.transactionTemplateProvider = transactionTemplateProvider;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -213,9 +238,15 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
      */
     @Override
     public List<VaultFileMetaVo> putBatch(Long userId, Long vaultId, List<VaultFilePutBo> files) {
+        TransactionTemplate txTemplate = transactionTemplateProvider == null
+            ? null : transactionTemplateProvider.getIfAvailable();
         List<VaultFileMetaVo> out = new ArrayList<>(files.size());
         for (VaultFilePutBo bo : files) {
-            out.add(putFileInternal(userId, vaultId, bo));
+            if (txTemplate != null) {
+                out.add(txTemplate.execute(status -> putFileInternal(userId, vaultId, bo)));
+            } else {
+                out.add(putFileInternal(userId, vaultId, bo));
+            }
         }
         return out;
     }
@@ -247,7 +278,7 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
                 throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.ASSET_REQUIRED,
                     "附件必须通过 /vault/v1/vaults/{vaultId}/assets 上传后再提交引用");
             }
-            assetRef = assetService.findByHash(vaultId, hash);
+            assetRef = assetService.resolveForCommit(userId, vaultId, refBo.getAssetId(), hash);
             if (assetRef == null) {
                 throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.ASSET_NOT_FOUND,
                     "附件对象不存在，请先上传");
@@ -342,13 +373,15 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         }
 
         if (isAsset) {
-            // Replace the previous storage link: content may have changed, and re-linking the
-            // same hash would violate the fileId primary key.
+            // Keep existing link untouched when the asset object did not change;
+            // releasing before re-linking the same sole reference would delete the physical object.
             VaultAssetRef previous = assetService.findByFileId(file.getId());
-            if (previous != null) {
+            if (previous == null) {
+                assetService.link(file.getId(), vaultId, assetRef);
+            } else if (!Objects.equals(previous.getAssetId(), assetRef.getAssetId())) {
                 assetService.releaseReference(file.getId(), previous);
+                assetService.link(file.getId(), vaultId, assetRef);
             }
-            assetService.link(file.getId(), vaultId, assetRef);
         }
 
         space.setUsedBytes(Math.max(0, used + delta));

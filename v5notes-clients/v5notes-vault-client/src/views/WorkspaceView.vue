@@ -660,7 +660,8 @@ async function ensureEditorMounted() {
     destroyEditorSession()
     return
   }
-  const provider = getActiveEditorProvider(docKindOfPath(path)?.id)
+  const kind = docKindOfPathIn(listDocKinds(), path)
+  const provider = kind ? getActiveEditorProvider(kind.id) : null
   editorUnavailable.value = !provider
   if (!provider) {
     destroyEditorSession()

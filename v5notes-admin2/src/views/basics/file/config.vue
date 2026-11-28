@@ -512,15 +512,14 @@ const getDictData = async () => {
 };
 
 /**
- * 卡片上的切换入口只在该行能承接的用途上出现：GENERIC 行可以去做 VAULT_ASSET，
- * 已被占用的用途不出现入口 —— 先把当前持有者改回，再让这一行接手。
+ * 卡片上的切换入口只在该行能承接的用途上出现：非主配置的 GENERIC 行可以接管 VAULT_ASSET，
+ * 服务端会原子完成交接并把原持有者退回 GENERIC（设计 §7.5）。
  */
 const purposeTargetFor = (row: FileConfigVO): FileConfigPurpose | undefined => {
-  if (row.purpose !== 'GENERIC') {
+  if (row.purpose !== 'GENERIC' || row.master) {
     return undefined;
   }
-  const taken = fileConfigList.value.some((item) => item.purpose === 'VAULT_ASSET');
-  return taken ? undefined : 'VAULT_ASSET';
+  return 'VAULT_ASSET';
 };
 
 /** 切换用途 */

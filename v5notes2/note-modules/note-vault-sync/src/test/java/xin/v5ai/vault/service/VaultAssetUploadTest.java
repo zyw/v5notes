@@ -9,8 +9,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.VaultHttpStatus;
 import xin.v5ai.vault.domain.VaultAssetRef;
+import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.mapper.VaultAssetRefMapper;
+import xin.v5ai.vault.mapper.VaultSpaceMapper;
 import xin.v5ai.vault.service.impl.VaultAssetServiceImpl;
 import xin.v5ai.vault.service.model.VaultAssetDownload;
 import xin.v5ai.vault.service.model.VaultAssetCapability;
@@ -45,13 +47,23 @@ class VaultAssetUploadTest {
     private VaultAssetRefMapper refMapper;
 
     @Mock
+    private VaultSpaceMapper spaceMapper;
+
+    @Mock
     private ObjectProvider<VaultAssetStorage> storageProvider;
 
     @Mock
     private VaultAssetStorage storage;
 
     private VaultAssetServiceImpl service() {
-        return new VaultAssetServiceImpl(refMapper, storageProvider);
+        return new VaultAssetServiceImpl(refMapper, spaceMapper, storageProvider);
+    }
+
+    private void stubOwnedVault(long userId, long vaultId) {
+        VaultSpace space = new VaultSpace();
+        space.setId(vaultId);
+        space.setUserId(userId);
+        lenient().when(spaceMapper.selectById(vaultId)).thenReturn(space);
     }
 
     private static byte[] bytes(String text) {
@@ -60,26 +72,59 @@ class VaultAssetUploadTest {
 
     @Test
     void storesAndVerifiesStreamedHash() throws Exception {
+        stubOwnedVault(1L, 2L);
         byte[] body = bytes("attachment-body");
         String sha = VaultContentHash.ofBytes(body);
         when(storageProvider.getIfAvailable()).thenReturn(storage);
         when(storage.targetConfigId()).thenReturn(9L);
         when(storage.capability()).thenReturn(VaultAssetCapability.of("ftp", 25L * 1024 * 1024));
         when(refMapper.selectOne(any())).thenReturn(null);
-        when(storage.store(eq(9L), any(), eq((long) body.length), any()))
-            .thenReturn(new VaultStoredObject("77", 9L, "1/vault/ab/ab", sha, body.length, "image/png"));
+        when(storage.store(eq(2L), eq(9L), any(), eq((long) body.length), any()))
+            .thenReturn(new VaultStoredObject("77", 9L, "1/vault/2/ab/ab", sha, body.length, "image/png"));
         lenient().when(storage.capability()).thenReturn(VaultAssetCapability.of("ftp", 25L * 1024 * 1024));
 
-        IVaultAssetService.StoredResult result = service().upload(
+        VaultAssetServiceImpl svc = service();
+        IVaultAssetService.StoredResult result = svc.upload(
             1L, 2L, new ByteArrayInputStream(body), body.length, sha, "image/png");
 
         assertEquals("77", result.assetId());
         assertEquals(sha, result.sha256());
         assertTrue(!result.deduped());
+
+        // Uploaded object must be resolvable for the subsequent PUT /files commit.
+        VaultAssetRef resolved = svc.resolveForCommit(1L, 2L, "77", sha);
+        assertEquals(77L, resolved.getAssetId());
+        assertEquals("1/vault/2/ab/ab", resolved.getStorageKey());
+    }
+
+    @Test
+    void uploadRejectsUnownedVault() {
+        stubOwnedVault(999L, 2L);
+        byte[] body = bytes("attachment-body");
+        String sha = VaultContentHash.ofBytes(body);
+
+        VaultBusinessException ex = assertThrows(VaultBusinessException.class, () ->
+            service().upload(1L, 2L, new ByteArrayInputStream(body), body.length, sha, "image/png"));
+
+        assertEquals(VaultErrorCodes.NOT_FOUND, ex.getBusinessCode());
+        assertEquals(404, ex.getHttpStatus());
+        verify(storageProvider, never()).getIfAvailable();
+    }
+
+    @Test
+    void requireOwnedRejectsUnownedVault() {
+        stubOwnedVault(999L, 2L);
+
+        VaultBusinessException ex = assertThrows(VaultBusinessException.class, () ->
+            service().requireOwned(1L, 2L, "77"));
+
+        assertEquals(VaultErrorCodes.NOT_FOUND, ex.getBusinessCode());
+        assertEquals(404, ex.getHttpStatus());
     }
 
     @Test
     void mismatchDeletesTheStoredObject() throws Exception {
+        stubOwnedVault(1L, 2L);
         byte[] body = bytes("real");
         String wrong = VaultContentHash.ofBytes(bytes("declared"));
         when(storageProvider.getIfAvailable()).thenReturn(storage);
@@ -87,19 +132,20 @@ class VaultAssetUploadTest {
         when(refMapper.selectOne(any())).thenReturn(null);
         // Storage reports a hash that does not match the declared one.
         String actual = VaultContentHash.ofBytes(body);
-        when(storage.store(anyLong(), any(), anyLong(), any()))
-            .thenReturn(new VaultStoredObject("88", 9L, "1/vault/cd/cd", actual, body.length, "image/png"));
+        when(storage.store(eq(2L), anyLong(), any(), anyLong(), any()))
+            .thenReturn(new VaultStoredObject("88", 9L, "1/vault/2/cd/cd", actual, body.length, "image/png"));
 
         VaultBusinessException ex = assertThrows(VaultBusinessException.class, () ->
             service().upload(1L, 2L, new ByteArrayInputStream(body), body.length, wrong, "image/png"));
 
         assertEquals(VaultErrorCodes.HASH_MISMATCH, ex.getBusinessCode());
         assertEquals(409, ex.getHttpStatus());
-        verify(storage).delete(eq(9L), eq("1/vault/cd/cd"));
+        verify(storage).delete(eq(9L), eq("1/vault/2/cd/cd"));
     }
 
     @Test
     void dedupHitSkipsTheBackend() throws Exception {
+        stubOwnedVault(1L, 2L);
         byte[] body = bytes("same-bytes");
         String sha = VaultContentHash.ofBytes(body);
         VaultAssetRef existing = new VaultAssetRef();
@@ -118,6 +164,7 @@ class VaultAssetUploadTest {
 
     @Test
     void oversizeIsRejectedBeforeTouchingStorage() {
+        stubOwnedVault(1L, 2L);
         VaultBusinessException ex = assertThrows(VaultBusinessException.class, () ->
             service().upload(1L, 2L, new ByteArrayInputStream(new byte[0]),
                 26L * 1024 * 1024, VaultContentHash.ofBytes(new byte[0]), "image/png"));
@@ -194,6 +241,7 @@ class VaultAssetUploadTest {
 
     @Test
     void invalidDeclaredHashIsBadRequest() {
+        stubOwnedVault(1L, 2L);
         VaultBusinessException ex = assertThrows(VaultBusinessException.class, () ->
             service().upload(1L, 2L, new ByteArrayInputStream(new byte[0]), 0, "not-a-hash", null));
         assertEquals(VaultErrorCodes.PATH_INVALID, ex.getBusinessCode());

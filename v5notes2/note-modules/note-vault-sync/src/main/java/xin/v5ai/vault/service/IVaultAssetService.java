@@ -25,6 +25,14 @@ public interface IVaultAssetService {
     /** Looks up the reference previously stored for this vault + hash, if any (used by commit). */
     VaultAssetRef findByHash(Long vaultId, String sha256);
 
+    /**
+     * Resolves an uploaded or already-committed attachment reference for {@code PUT /files} commit,
+     * checking existing refs, recent upload staging, and storage lookup in order.
+     */
+    default VaultAssetRef resolveForCommit(Long userId, Long vaultId, String assetId, String sha256) {
+        return findByHash(vaultId, sha256);
+    }
+
     /** The storage reference for one file row, or null when the file has no stored object. */
     VaultAssetRef findByFileId(Long fileId);
 

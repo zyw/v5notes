@@ -20,11 +20,20 @@ public interface VaultAssetStorage {
     /**
      * Stores one object, streaming the body straight into the backend.
      *
+     * @param vaultId  owning vault id, used to isolate object keys per vault
      * @param configId backend to write to; callers pass {@link #targetConfigId()}
      * @param mimeType content type, may be null
      * @return the stored object descriptor, including the id the client references later
      */
-    VaultStoredObject store(Long configId, InputStream content, long sizeBytes, String mimeType) throws Exception;
+    VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes, String mimeType) throws Exception;
+
+    /**
+     * Looks up a previously uploaded (not yet committed) object by its storage assetId,
+     * scoped to {@code userId} and {@code vaultId}. Enables multi-instance or post-restart commits.
+     */
+    default Optional<VaultStoredObject> lookup(Long userId, Long vaultId, String assetId) {
+        return Optional.empty();
+    }
 
     /**
      * Presigned direct URL for {@code objectKey}, when the backend supports it.

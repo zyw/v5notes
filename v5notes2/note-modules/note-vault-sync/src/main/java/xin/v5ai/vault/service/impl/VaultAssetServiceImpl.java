@@ -4,13 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import xin.v5ai.common.core.constant.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import xin.v5ai.common.core.constant.HttpStatus;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.VaultHttpStatus;
 import xin.v5ai.vault.domain.VaultAssetRef;
+import xin.v5ai.vault.domain.VaultSpace;
 import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.mapper.VaultAssetRefMapper;
+import xin.v5ai.vault.mapper.VaultSpaceMapper;
 import xin.v5ai.vault.service.IVaultAssetService;
 import xin.v5ai.vault.service.VaultAssetStorage;
 import xin.v5ai.vault.service.model.VaultAssetCapability;
@@ -21,8 +25,10 @@ import xin.v5ai.vault.util.VaultQuotaRules;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Attachment objects: content-addressed storage with per-vault dedup (design §4.1).
@@ -35,12 +41,22 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class VaultAssetServiceImpl implements IVaultAssetService {
 
+    private static final int MAX_STAGED_REFS = 4096;
+
     private final VaultAssetRefMapper refMapper;
+    private final VaultSpaceMapper spaceMapper;
     private final ObjectProvider<VaultAssetStorage> storageProvider;
+
+    /**
+     * Bridges {@code POST /assets} and {@code PUT /files} on the same node before {@code file_id}
+     * exists; cross-node or post-restart commits fall back to {@link VaultAssetStorage#lookup}.
+     */
+    private final Map<String, VaultAssetRef> stagedRefs = new ConcurrentHashMap<>();
 
     @Override
     public StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
                                String declaredSha256, String mimeType) throws Exception {
+        requireOwnedVault(userId, vaultId);
         if (VaultQuotaRules.tooLarge(sizeBytes, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
             throw new VaultBusinessException(VaultHttpStatus.PAYLOAD_TOO_LARGE, VaultErrorCodes.FILE_TOO_LARGE,
                 "单文件超过上限");
@@ -59,7 +75,7 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
 
         // The storage layer hashes exactly the bytes it wrote, which is the only implementation
         // that stays correct no matter how a backend consumes the stream.
-        VaultStoredObject stored = storage.store(configId, content, sizeBytes, mimeType);
+        VaultStoredObject stored = storage.store(vaultId, configId, content, sizeBytes, mimeType);
         String actual = VaultContentHash.normalize(stored.sha256());
 
         if (!actual.equalsIgnoreCase(declared)) {
@@ -79,8 +95,55 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
         ref.setConfigId(configId);
         // Config id is what reads follow (§7.4); backend is informational for diagnostics.
         ref.setBackend(backendFor(storage));
-        // fileId is the primary key and is only known at commit time, so it stays null here.
+        if (stagedRefs.size() >= MAX_STAGED_REFS) {
+            stagedRefs.clear();
+        }
+        stagedRefs.put(stagingKey(vaultId, stored.assetId()), ref);
         return new StoredResult(stored.assetId(), actual, stored.sizeBytes(), false);
+    }
+
+    @Override
+    public VaultAssetRef resolveForCommit(Long userId, Long vaultId, String assetId, String sha256) {
+        VaultAssetRef committed = findByHash(vaultId, sha256);
+        if (committed != null) {
+            return committed;
+        }
+        if (assetId == null || assetId.isBlank()) {
+            return null;
+        }
+        String trimmedAssetId = assetId.trim();
+        VaultAssetRef staged = stagedRefs.get(stagingKey(vaultId, trimmedAssetId));
+        if (staged != null && sha256 != null && sha256.equalsIgnoreCase(staged.getSha256())) {
+            return staged;
+        }
+        VaultAssetStorage storage = storageProvider.getIfAvailable();
+        if (storage == null) {
+            return null;
+        }
+        Optional<VaultStoredObject> lookedUp = storage.lookup(userId, vaultId, trimmedAssetId);
+        if (lookedUp.isEmpty()) {
+            return null;
+        }
+        VaultStoredObject stored = lookedUp.get();
+        String storedHash;
+        try {
+            storedHash = VaultContentHash.normalize(stored.sha256());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        if (sha256 == null || !sha256.equalsIgnoreCase(storedHash)) {
+            return null;
+        }
+        VaultAssetRef ref = new VaultAssetRef();
+        ref.setVaultId(vaultId);
+        ref.setAssetId(Long.parseLong(stored.assetId()));
+        ref.setSha256(storedHash);
+        ref.setSizeBytes(stored.sizeBytes());
+        ref.setMimeType(stored.mimeType());
+        ref.setStorageKey(stored.objectKey());
+        ref.setConfigId(stored.configId());
+        ref.setBackend(backendFor(storage));
+        return ref;
     }
 
     @Override
@@ -106,6 +169,7 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
 
     @Override
     public void requireOwned(Long userId, Long vaultId, String assetId) {
+        requireOwnedVault(userId, vaultId);
         VaultAssetRef ref = findByAssetId(vaultId, assetId);
         if (ref == null) {
             throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.ASSET_NOT_FOUND,
@@ -153,12 +217,24 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
             log.warn("[releaseReference][存储未配置，跳过对象删除][assetId({})]", ref.getAssetId());
             return;
         }
-        try {
-            storage.delete(ref.getConfigId(), ref.getStorageKey());
-        } catch (Exception ex) {
-            // Metadata is already gone; an orphan sweep reclaims the object later (§6.3).
-            log.warn("[releaseReference][对象删除失败，留给孤儿回收][assetId({}) key({})] {}",
-                ref.getAssetId(), ref.getStorageKey(), ex.getMessage());
+        Runnable deleteAction = () -> {
+            try {
+                storage.delete(ref.getConfigId(), ref.getStorageKey());
+            } catch (Exception ex) {
+                // Metadata is already gone; an orphan sweep reclaims the object later (§6.3).
+                log.warn("[releaseReference][对象删除失败，留给孤儿回收][assetId({}) key({})] {}",
+                    ref.getAssetId(), ref.getStorageKey(), ex.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deleteAction.run();
+                }
+            });
+        } else {
+            deleteAction.run();
         }
     }
 
@@ -180,6 +256,20 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
         row.setConfigId(ref.getConfigId());
         row.setBackend(ref.getBackend());
         refMapper.insert(row);
+        if (ref.getAssetId() != null) {
+            stagedRefs.remove(stagingKey(vaultId, String.valueOf(ref.getAssetId())));
+        }
+    }
+
+    private void requireOwnedVault(Long userId, Long vaultId) {
+        VaultSpace space = vaultId == null ? null : spaceMapper.selectById(vaultId);
+        if (space == null || !Objects.equals(space.getUserId(), userId)) {
+            throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.NOT_FOUND, "云端库不存在");
+        }
+    }
+
+    private static String stagingKey(Long vaultId, String assetId) {
+        return vaultId + ":" + assetId;
     }
 
     private VaultAssetRef findByAssetId(Long vaultId, String assetId) {

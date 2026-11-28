@@ -11,7 +11,7 @@
 
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { STORAGE_KEYS } from './constants'
-import { DEVICE_KEYS, removeDeviceScopedItem, writeDeviceScopedItem } from './deviceStorage'
+import { DEVICE_KEYS, removeDeviceScopedItem } from './deviceStorage'
 
 export interface SessionSecrets {
   token: string
@@ -113,10 +113,6 @@ export function createPersistentStore(
   device: CredentialStore,
   keychain: CredentialStore = createKeychainStore('session'),
 ): CredentialStore {
-  function writeLocal(secrets: SessionSecrets): void {
-    writeDeviceScopedItem('token', secrets.token)
-    writeDeviceScopedItem('refreshToken', secrets.refreshToken)
-  }
   return {
     async load() {
       const [fromKeychain, fromDevice] = await Promise.all([keychain.load(), device.load()])
@@ -128,7 +124,6 @@ export function createPersistentStore(
       return fromDevice
     },
     async save(secrets) {
-      writeLocal(secrets)
       await Promise.all([device.save(secrets), keychain.save(secrets)])
     },
     async clear() {
@@ -141,9 +136,20 @@ export function createPersistentStore(
 
 let active: CredentialStore | null = null
 
-/** The app-wide credential store: keychain under Tauri, localStorage otherwise. */
+/**
+ * The app-wide credential store:
+ * - Production Tauri: OS keychain only (never mirror plaintext tokens into localStorage,
+ *   which is shared with `new Function` plugins in the same WebView origin).
+ * - Unsigned `tauri dev`: persistent store with localStorage fallback so dev reloads survive
+ *   shared keychain overwrites.
+ * - Browser preview: localStorage fallback.
+ */
 export function getSessionStore(): CredentialStore {
   if (active) return active
+  if (isTauri() && !import.meta.env.DEV) {
+    active = createKeychainStore('session')
+    return active
+  }
   const device = createFallbackStore({ token: DEVICE_KEYS.token, refreshToken: DEVICE_KEYS.refreshToken })
   active = isTauri()
     ? createPersistentStore(device)
