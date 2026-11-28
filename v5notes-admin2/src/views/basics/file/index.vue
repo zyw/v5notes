@@ -77,19 +77,20 @@
         <el-table-column :label="$t('file.list.fileName')" align="center" prop="path" />
         <el-table-column :label="$t('file.list.suffix')" align="center" prop="suffix">
           <template #default="scope">
-            <el-tag type="primary">{{ scope.row.suffix }}</el-tag>
+            <el-tag v-if="scope.row.suffix" type="primary">{{ scope.row.suffix }}</el-tag>
+            <span v-else class="text-gray-400">-</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('file.list.display')" align="center" prop="url">
           <template #default="scope">
             <ImagePreview
-              v-if="previewListResource && checkFileSuffix(scope.row.suffix)"
+              v-if="previewListResource && isImageFile(scope.row)"
               :width="100"
               :height="100"
               :src="scope.row.url"
               :preview-src-list="[scope.row.url]"
             />
-            <el-tooltip v-if="!checkFileSuffix(scope.row.suffix) || !previewListResource" :content="scope.row.url" placement="top">
+            <el-tooltip v-if="!isImageFile(scope.row) || !previewListResource" :content="scope.row.url" placement="top">
               <svg-icon :icon-class="scope.row.suffix" style="width: 2.2em; height: 2.2em" />
             </el-tooltip>
           </template>
@@ -126,6 +127,7 @@
       :file-id="previewTarget?.id"
       :file-name="previewTarget?.name"
       :suffix="previewTarget?.suffix"
+      :mime-type="previewTarget?.type"
       :url="previewTarget?.url"
       @download="previewTarget && handleDownload(previewTarget)"
     />
@@ -177,6 +179,7 @@ import animateConfig from '@/animate';
 import download from '@/plugins/download';
 import modal from '@/plugins/modal';
 import { addDateRange, parseTime } from '@/utils/ruoyi';
+import { resolvePreviewKind } from '@/utils/filePreview';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -246,10 +249,8 @@ const getList = async () => {
   showTable.value = true;
 };
 
-function checkFileSuffix(fileSuffix: string | string[]) {
-  const arr = ['png', 'jpg', 'jpeg'];
-  const suffixArray = Array.isArray(fileSuffix) ? fileSuffix : [fileSuffix];
-  return suffixArray.some((suffix) => arr.includes(suffix.toLowerCase()));
+function isImageFile(row: FileVO) {
+  return resolvePreviewKind(row.suffix, row.name, row.type) === 'image';
 }
 
 /** 取消按钮 */

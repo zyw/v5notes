@@ -65,6 +65,7 @@ const props = defineProps<{
   fileId?: string | number;
   fileName?: string;
   suffix?: string;
+  mimeType?: string;
   /** 公网可访问 URL；鉴权失败时可作兜底 */
   url?: string;
 }>();
@@ -98,7 +99,7 @@ const viewerOptions = {
 const fileName = computed(() => props.fileName || t('file.preview.unnamed'));
 const title = computed(() => fileName.value);
 const subtitle = computed(() => {
-  const ext = normalizeSuffix(props.suffix, props.fileName);
+  const ext = normalizeSuffix(props.suffix, props.fileName, props.mimeType);
   return ext ? `.${ext}` : t('file.preview.hint');
 });
 
@@ -166,7 +167,7 @@ const loadPreview = async () => {
     return;
   }
 
-  kind.value = resolvePreviewKind(props.suffix, props.fileName);
+  kind.value = resolvePreviewKind(props.suffix, props.fileName, props.mimeType);
   if (kind.value === 'unsupported') {
     return;
   }
@@ -174,11 +175,17 @@ const loadPreview = async () => {
   loading.value = true;
   try {
     const blob = await fetchBlob(props.fileId);
-    const ext = normalizeSuffix(props.suffix, props.fileName);
-    const safeName = props.fileName || `preview.${ext || 'bin'}`;
+    const ext = normalizeSuffix(props.suffix, props.fileName, props.mimeType);
+    const baseName = props.fileName || `preview.${ext || 'bin'}`;
+    const safeName =
+      ext && !baseName.toLowerCase().endsWith(`.${ext}`) ? `${baseName}.${ext}` : baseName;
 
     if (kind.value === 'image') {
-      objectUrl.value = URL.createObjectURL(blob);
+      const imageBlob =
+        props.mimeType && (!blob.type || blob.type === 'application/octet-stream')
+          ? new Blob([blob], { type: props.mimeType })
+          : blob;
+      objectUrl.value = URL.createObjectURL(imageBlob);
       return;
     }
 

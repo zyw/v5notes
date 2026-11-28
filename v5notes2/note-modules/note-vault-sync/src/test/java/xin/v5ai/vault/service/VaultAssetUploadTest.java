@@ -98,6 +98,28 @@ class VaultAssetUploadTest {
     }
 
     @Test
+    void forwardsOriginalFilenameWhenProvided() throws Exception {
+        stubOwnedVault(1L, 2L);
+        byte[] body = bytes("photo-bytes");
+        String sha = VaultContentHash.ofBytes(body);
+        when(storageProvider.getIfAvailable()).thenReturn(storage);
+        when(storage.targetConfigId()).thenReturn(9L);
+        when(storage.capability()).thenReturn(VaultAssetCapability.of("local", 25L * 1024 * 1024));
+        when(refMapper.selectOne(any())).thenReturn(null);
+        when(storage.store(eq(2L), eq(9L), any(), eq((long) body.length), eq("application/octet-stream"), eq("photo.png")))
+            .thenReturn(new VaultStoredObject("78", 9L, "1/vault/2/ab/ab", sha, body.length, "image/png"));
+
+        VaultAssetServiceImpl svc = service();
+        IVaultAssetService.StoredResult result = svc.upload(
+            1L, 2L, new ByteArrayInputStream(body), body.length, sha, "application/octet-stream", "photo.png");
+
+        assertEquals("78", result.assetId());
+        verify(storage).store(eq(2L), eq(9L), any(), eq((long) body.length), eq("application/octet-stream"), eq("photo.png"));
+        VaultAssetRef resolved = svc.resolveForCommit(1L, 2L, "78", sha);
+        assertEquals("image/png", resolved.getMimeType());
+    }
+
+    @Test
     void uploadRejectsUnownedVault() {
         stubOwnedVault(999L, 2L);
         byte[] body = bytes("attachment-body");

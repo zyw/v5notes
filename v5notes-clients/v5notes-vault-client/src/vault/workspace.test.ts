@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The scan only needs readDir/stat; stub the Tauri host with the temp vaults.
 const mtimes: Record<string, number> = {
@@ -9,6 +9,37 @@ const mtimes: Record<string, number> = {
   '/tmp/v5vaulttest/v4/cover.png': Date.parse('2026-05-01T00:00:00Z'),
   '/tmp/v5vaulttest/v5/data.csv': Date.parse('2026-06-01T00:00:00Z'),
 }
+
+const vaultConfigs: Record<string, { schemaVersion: number; localVaultId: string; name: string; createdAt: string }> = {
+  '/tmp/v5vaulttest/v1/.v5notes/vault.json': {
+    schemaVersion: 1,
+    localVaultId: 'vault-1',
+    name: 'New测试2',
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+}
+
+const invokeMock = vi.fn(async () => undefined)
+const existsMock = vi.fn(
+  async (path: string) =>
+    Object.prototype.hasOwnProperty.call(mtimes, path) ||
+    Object.prototype.hasOwnProperty.call(vaultConfigs, path) ||
+    path.includes('/v'),
+)
+const readTextFileMock = vi.fn(async (path: string) => {
+  const cfg = vaultConfigs[path]
+  return cfg ? JSON.stringify(cfg) : ''
+})
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: invokeMock,
+}))
+
+vi.mock('@tauri-apps/api/path', () => ({
+  appDataDir: async () => '/tmp/v5vaulttest/appdata',
+  join: async (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),
+  basename: async (path: string) => path.split('/').filter(Boolean).pop() ?? '',
+}))
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readDir: async (path: string) => {
@@ -24,14 +55,21 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     if (mtime === undefined) throw new Error('missing ' + path)
     return { size: 1, mtime: new Date(mtime), isFile: true, isDirectory: false }
   },
-  readTextFile: async () => '',
+  readTextFile: readTextFileMock,
   writeTextFile: async () => undefined,
   mkdir: async () => undefined,
-  exists: async (path: string) => Object.prototype.hasOwnProperty.call(mtimes, path) || path.includes('/v'),
+  exists: existsMock,
   remove: async () => undefined,
   rename: async () => undefined,
   writeFile: async () => undefined,
 }))
+
+beforeEach(() => {
+  invokeMock.mockReset()
+  invokeMock.mockResolvedValue(undefined)
+  existsMock.mockClear()
+  readTextFileMock.mockClear()
+})
 
 describe('vault last note change', () => {
   it('reports the newest note mtime and ignores .v5notes', async () => {
@@ -68,5 +106,43 @@ describe('vault last note change', () => {
     expect(await vaultWorkspace.lastNoteChange('/tmp/v5vaulttest/v5', [...DOC_KINDS, csv])).toBe(
       Date.parse('2026-06-01T00:00:00Z'),
     )
+  })
+
+  it('scopes the vault directory before calling exists and tolerates soft scope failure', async () => {
+    const { vaultWorkspace } = await import('./workspace')
+    const rootPath = '/tmp/v5vaulttest/v1'
+    expect(await vaultWorkspace.lastNoteChange(rootPath)).toBe(Date.parse('2026-01-01T00:00:00Z'))
+    expect(invokeMock).toHaveBeenCalledWith('allow_vault_directory', { path: rootPath })
+    expect(invokeMock.mock.invocationCallOrder[0]).toBeLessThan(existsMock.mock.invocationCallOrder[0])
+
+    invokeMock.mockRejectedValueOnce(new Error('non-tauri preview'))
+    expect(await vaultWorkspace.lastNoteChange(rootPath)).toBe(Date.parse('2026-01-01T00:00:00Z'))
+  })
+})
+
+describe('vault openForSettings', () => {
+  it('authorizes the vault directory before checking existence and reading config', async () => {
+    const { vaultWorkspace } = await import('./workspace')
+    const rootPath = '/tmp/v5vaulttest/v1'
+    const opened = await vaultWorkspace.openForSettings(rootPath)
+
+    expect(invokeMock).toHaveBeenCalledWith('allow_vault_directory', { path: rootPath })
+    expect(invokeMock.mock.invocationCallOrder[0]).toBeLessThan(existsMock.mock.invocationCallOrder[0])
+    expect(opened).toEqual({
+      rootPath,
+      name: 'New测试2',
+      config: vaultConfigs['/tmp/v5vaulttest/v1/.v5notes/vault.json'],
+    })
+  })
+
+  it('throws VaultPathError and skips exists when directory authorization fails', async () => {
+    const { vaultWorkspace } = await import('./workspace')
+    const { VaultPathError } = await import('../path/identity')
+    invokeMock.mockRejectedValueOnce(new Error('permission denied'))
+
+    await expect(vaultWorkspace.openForSettings('/tmp/v5vaulttest/v1')).rejects.toThrow(VaultPathError)
+    invokeMock.mockRejectedValueOnce(new Error('permission denied'))
+    await expect(vaultWorkspace.openForSettings('/tmp/v5vaulttest/v1')).rejects.toThrow('无法授权访问该目录')
+    expect(existsMock).not.toHaveBeenCalled()
   })
 })

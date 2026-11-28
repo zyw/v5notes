@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import xin.v5ai.basics.file.core.utils.FileTypeUtils;
 import xin.v5ai.basics.file.domain.FileInfo;
 import xin.v5ai.basics.file.domain.bo.FileUploadBo;
 import xin.v5ai.basics.file.domain.vo.FileInfoVo;
@@ -141,9 +142,13 @@ public class FileBaseController extends BaseController {
     @GetMapping("/download/{id}")
     public void download(HttpServletResponse response,@PathVariable("id") Long id) throws Exception {
         FileInfoVo fileInfoVo = fileInfoService.queryById(id);
+        if (fileInfoVo == null) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            return;
+        }
         Long configId = fileInfoVo.getConfigId();
         String path = fileInfoVo.getPath();
-        String name = fileInfoVo.getName();
+        String name = FileTypeUtils.appendSuffixIfMissing(fileInfoVo.getName(), fileInfoVo.getSuffix());
         // 读取内容
         byte[] content = fileInfoService.getFileContent(configId, path);
         if (content == null) {

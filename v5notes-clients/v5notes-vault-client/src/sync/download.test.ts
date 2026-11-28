@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { downloadAttachment } from './download'
+import { describe, expect, it, vi } from 'vitest'
+import { DownloadError, downloadAttachment } from './download'
 
 function bodyOf(text: string): ArrayBuffer {
   return new TextEncoder().encode(text).buffer as ArrayBuffer
 }
 
 describe('downloadAttachment', () => {
-  it('fetches a direct link without the bearer token', async () => {
+  it('fetches a direct link without the bearer token or clientid', async () => {
     const calls: Array<{ url: string; headers: Record<string, string> }> = []
     const transport = (async (url: string, init?: RequestInit) => {
       calls.push({ url, headers: (init?.headers as Record<string, string>) ?? {} })
@@ -15,16 +15,17 @@ describe('downloadAttachment', () => {
 
     const bytes = await downloadAttachment(
       { mode: 'direct', url: 'https://oss.example/a.png' },
-      { transport, token: 'secret' },
+      { transport, token: 'secret', clientId: 'cid-1' },
     )
 
     expect(new TextDecoder().decode(bytes)).toBe('hello')
     expect(calls[0].url).toBe('https://oss.example/a.png')
-    // Direct links carry their own signature; sending our token would leak it to the bucket host.
+    // Direct links carry their own signature; sending our token or clientid would leak them to the bucket host.
     expect(calls[0].headers.Authorization).toBeUndefined()
+    expect(calls[0].headers.clientid).toBeUndefined()
   })
 
-  it('authenticates proxy requests and resolves relative paths (H4)', async () => {
+  it('authenticates proxy requests with token and clientid and resolves relative paths (H4)', async () => {
     const calls: Array<{ url: string; headers: Record<string, string> }> = []
     const transport = (async (url: string, init?: RequestInit) => {
       calls.push({ url, headers: (init?.headers as Record<string, string>) ?? {} })
@@ -33,11 +34,62 @@ describe('downloadAttachment', () => {
 
     await downloadAttachment(
       { mode: 'proxy', url: '/vault/v1/vaults/1/assets/9/content' },
-      { transport, token: 'tok', baseUrl: 'https://api.example' },
+      { transport, token: 'tok', clientId: 'cid-1', baseUrl: 'https://api.example' },
     )
 
     expect(calls[0].url).toBe('https://api.example/vault/v1/vaults/1/assets/9/content')
     expect(calls[0].headers.Authorization).toBe('Bearer tok')
+    expect(calls[0].headers.clientid).toBe('cid-1')
+  })
+
+  it('treats proxy HTTP 200 JSON 401 envelope as non-retryable auth failure', async () => {
+    let attempts = 0
+    const onUnauthorized = vi.fn()
+    const transport = (async () => {
+      attempts += 1
+      return new Response(JSON.stringify({ code: 401, msg: '认证失败，无法访问系统资源', data: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as unknown as typeof fetch
+
+    let caught: unknown
+    try {
+      await downloadAttachment(
+        { mode: 'proxy', url: '/vault/v1/vaults/1/assets/9/content' },
+        { transport, token: 'tok', clientId: 'cid-1', baseUrl: 'https://api.example', onUnauthorized },
+      )
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(DownloadError)
+    expect((caught as DownloadError).message).toBe('认证失败，无法访问系统资源')
+    expect((caught as DownloadError).retryable).toBe(false)
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    expect(attempts).toBe(1)
+  })
+
+  it('returns genuine JSON attachment bytes when X-Content-Hash header is present', async () => {
+    const payload = JSON.stringify({ code: 401 })
+    const onUnauthorized = vi.fn()
+    const transport = (async () => {
+      return new Response(bodyOf(payload), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Content-Hash': '0'.repeat(64),
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const bytes = await downloadAttachment(
+      { mode: 'proxy', url: '/vault/v1/vaults/1/assets/9/content' },
+      { transport, token: 'tok', clientId: 'cid-1', baseUrl: 'https://api.example', onUnauthorized },
+    )
+
+    expect(new TextDecoder().decode(bytes)).toBe(payload)
+    expect(onUnauthorized).not.toHaveBeenCalled()
   })
 
   it('resumes from the partial bytes with a Range header (H5)', async () => {

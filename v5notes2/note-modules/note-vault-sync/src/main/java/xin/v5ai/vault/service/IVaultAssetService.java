@@ -22,6 +22,14 @@ public interface IVaultAssetService {
     StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
                         String declaredSha256, String mimeType) throws Exception;
 
+    /**
+     * Stores an attachment body while preserving the caller's original filename for display/suffix metadata.
+     */
+    default StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
+                                String declaredSha256, String mimeType, String originalFileName) throws Exception {
+        return upload(userId, vaultId, content, sizeBytes, declaredSha256, mimeType);
+    }
+
     /** Looks up the reference previously stored for this vault + hash, if any (used by commit). */
     VaultAssetRef findByHash(Long vaultId, String sha256);
 

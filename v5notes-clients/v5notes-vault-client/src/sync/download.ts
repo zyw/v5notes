@@ -18,6 +18,10 @@ export interface DownloadOptions {
   baseUrl?: string
   /** Bearer token, required for proxy mode. */
   token?: string
+  /** Client id paired with the token, required by Sa-Token on proxy endpoints. */
+  clientId?: string
+  /** Invoked when the proxy endpoint rejects the session (HTTP 401 or 200 JSON code 401). */
+  onUnauthorized?: () => void
   /** Bytes already on disk for resuming; range requests start here. */
   previous?: Uint8Array
   transport?: typeof fetch
@@ -57,6 +61,38 @@ function isSameOriginAsBase(resolvedUrl: string, baseUrl?: string): boolean {
   }
 }
 
+const MAX_PROXY_ERROR_ENVELOPE_BYTES = 16 * 1024
+
+/**
+ * SaTokenExceptionHandler and global advices return HTTP 200 with a JSON `R` envelope
+ * (`{"code":401,"msg":"..."}`) instead of raw bytes. Genuine `.json` attachments streamed
+ * by VaultAssetController always carry `X-Content-Hash`, so they are never treated as errors.
+ */
+function parseProxyErrorEnvelope(
+  response: Response,
+  bytes: Uint8Array,
+): { code: number; msg: string } | null {
+  if (response.headers?.get('X-Content-Hash')) return null
+  const contentType = (response.headers?.get('Content-Type') ?? '').toLowerCase()
+  if (!contentType.includes('application/json')) return null
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_PROXY_ERROR_ENVELOPE_BYTES) return null
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
+      code?: unknown
+      msg?: unknown
+    }
+    if (parsed && typeof parsed === 'object' && typeof parsed.code === 'number' && parsed.code !== 200) {
+      return {
+        code: parsed.code,
+        msg: typeof parsed.msg === 'string' ? parsed.msg : '',
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
 export async function downloadAttachment(
   descriptor: DownloadDescriptor,
   options: DownloadOptions = {},
@@ -67,14 +103,15 @@ export async function downloadAttachment(
   const canResume = Boolean(descriptor.supportsRange) && Boolean(previous)
   const retries = options.retries ?? 2
 
-  const headers: Record<string, string> = {}
-  // Proxy mode talks to our own endpoint; never send bearer token to third-party origins.
-  if (
-    options.token
-    && descriptor.mode !== 'direct'
+  const isProxyAuthTarget =
+    descriptor.mode !== 'direct'
     && (!/^https?:\/\//i.test(descriptor.url) || isSameOriginAsBase(url, options.baseUrl))
-  ) {
-    headers.Authorization = `Bearer ${options.token}`
+
+  const headers: Record<string, string> = {}
+  // Proxy mode talks to our own endpoint; never send bearer token or clientid to third-party origins.
+  if (isProxyAuthTarget) {
+    if (options.token) headers.Authorization = `Bearer ${options.token}`
+    if (options.clientId) headers.clientid = options.clientId
   }
   if (canResume) {
     headers.Range = `bytes=${previous!.byteLength}-`
@@ -92,11 +129,26 @@ export async function downloadAttachment(
         return merged
       }
       if (response.status === 200) {
-        return new Uint8Array(await response.arrayBuffer())
+        const bytes = new Uint8Array(await response.arrayBuffer())
+        if (isProxyAuthTarget) {
+          const envelope = parseProxyErrorEnvelope(response, bytes)
+          if (envelope) {
+            if (envelope.code === 401) {
+              options.onUnauthorized?.()
+              throw new DownloadError(envelope.msg || '登录已过期', false)
+            }
+            const retryable = envelope.code >= 500 || envelope.code === 429
+            throw new DownloadError(envelope.msg || `下载失败（${envelope.code}）`, retryable)
+          }
+        }
+        return bytes
       }
       // A resume that the backend refuses (416) is not worth retrying: start over instead.
       if (response.status === 416 && canResume) {
         return downloadAttachment(descriptor, { ...options, previous: undefined })
+      }
+      if (response.status === 401 && isProxyAuthTarget) {
+        options.onUnauthorized?.()
       }
       const body = await response.text().catch(() => '')
       const retryable = response.status >= 500 || response.status === 429

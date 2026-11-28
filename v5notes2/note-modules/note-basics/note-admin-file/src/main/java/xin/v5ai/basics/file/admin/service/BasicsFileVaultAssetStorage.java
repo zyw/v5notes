@@ -1,8 +1,10 @@
 package xin.v5ai.basics.file.admin.service;
 
+import cn.hutool.core.io.file.FileNameUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import xin.v5ai.basics.file.core.utils.FileTypeUtils;
 import xin.v5ai.basics.file.core.client.FileClient;
 import xin.v5ai.basics.file.core.client.db.DBFileClient;
 import xin.v5ai.basics.file.core.client.ftp.FTPFileClient;
@@ -54,20 +56,64 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     @Override
     public VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes, String mimeType)
         throws Exception {
+        return store(vaultId, configId, content, sizeBytes, mimeType, null);
+    }
+
+    @Override
+    public VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes,
+                                   String mimeType, String originalFileName) throws Exception {
         Long target = configId == null ? targetConfigId() : configId;
         byte[] bytes = readBounded(content, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES);
         String sha256 = sha256Hex(bytes);
         String objectKey = buildKey(LoginHelper.getUserId(), vaultId, sha256);
+        String displayName = resolveDisplayName(originalFileName, objectKey, bytes);
 
-        FileInfo info = fileInfoService.uploadToConfig(target, leafOf(objectKey), objectKey, bytes);
+        FileInfo info = fileInfoService.uploadToConfig(target, displayName, objectKey, bytes);
+        String detectedMime = info.getType();
+        String resolvedMime = (detectedMime != null && !detectedMime.isBlank()
+            && !"application/octet-stream".equalsIgnoreCase(detectedMime))
+            ? detectedMime
+            : (mimeType != null && !mimeType.isBlank() ? mimeType : detectedMime);
         return new VaultStoredObject(
             String.valueOf(info.getId()),
             info.getConfigId(),
             objectKey,
             "sha256:" + sha256,
             bytes.length,
-            mimeType
+            resolvedMime
         );
+    }
+
+    static String resolveDisplayName(String originalFileName, String objectKey, byte[] bytes) {
+        String sanitized = sanitizeOriginalFileName(originalFileName);
+        if (sanitized != null) {
+            String existingExt = FileNameUtil.getSuffix(sanitized);
+            if (existingExt != null && !existingExt.isBlank()) {
+                return sanitized;
+            }
+        }
+        String base = sanitized != null ? sanitized : leafOf(objectKey);
+        String detectedMime = FileTypeUtils.getMineType(bytes, base);
+        String ext = FileTypeUtils.getExtensionByMimeType(detectedMime);
+        return (ext == null || ext.isBlank()) ? base : base + "." + ext;
+    }
+
+    private static String sanitizeOriginalFileName(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        int slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+        String leaf = slash >= 0 ? trimmed.substring(slash + 1).trim() : trimmed;
+        if (leaf.isEmpty() || ".".equals(leaf) || "..".equals(leaf) || "attachment".equalsIgnoreCase(leaf)) {
+            return null;
+        }
+        for (int i = 0; i < leaf.length(); i++) {
+            if (Character.isISOControl(leaf.charAt(i))) {
+                return null;
+            }
+        }
+        return leaf;
     }
 
     @Override

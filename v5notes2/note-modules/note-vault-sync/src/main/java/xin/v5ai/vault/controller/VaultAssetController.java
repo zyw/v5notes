@@ -64,7 +64,7 @@ public class VaultAssetController extends BaseController {
         }
         try (InputStream in = file.getInputStream()) {
             IVaultAssetService.StoredResult stored = assetService.upload(
-                userId, id, in, file.getSize(), sha256, file.getContentType());
+                userId, id, in, file.getSize(), sha256, file.getContentType(), file.getOriginalFilename());
             return R.ok(stored);
         }
     }

@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 文件路径Service业务层处理
@@ -56,7 +57,11 @@ public class FileInfoServiceImpl implements IFileInfoService {
      */
     @Override
     public FileInfoVo queryById(Long id){
-        return baseMapper.selectVoById(id);
+        FileInfoVo vo = baseMapper.selectVoById(id);
+        if (vo != null) {
+            vo.setSuffix(resolveSuffix(vo));
+        }
+        return vo;
     }
 
     /**
@@ -66,9 +71,23 @@ public class FileInfoServiceImpl implements IFileInfoService {
     public PageResult<FileInfoVo> queryPageList(FileInfoSearchBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<FileInfo> lqw = buildQueryWrapper(bo);
         Page<FileInfoVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
-        result.getRecords().forEach(item -> item.setSuffix(FileNameUtil.getSuffix(item.getPath())));
+        result.getRecords().forEach(item -> item.setSuffix(resolveSuffix(item)));
         result.getRecords().forEach(item -> item.setUrl(matchingUrl(item).getUrl()));
         return PageResult.build(result.getRecords(), result.getTotal());
+    }
+
+    static String resolveSuffix(FileInfoVo item) {
+        if (item == null) {
+            return "";
+        }
+        String suffix = FileNameUtil.getSuffix(item.getPath());
+        if (StrUtil.isBlank(suffix)) {
+            suffix = FileNameUtil.getSuffix(item.getName());
+        }
+        if (StrUtil.isBlank(suffix)) {
+            suffix = FileTypeUtils.getExtensionByMimeType(item.getType());
+        }
+        return StrUtil.blankToDefault(suffix, "").toLowerCase(Locale.ROOT);
     }
 
     /**

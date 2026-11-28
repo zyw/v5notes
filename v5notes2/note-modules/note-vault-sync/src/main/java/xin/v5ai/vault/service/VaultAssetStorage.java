@@ -28,6 +28,14 @@ public interface VaultAssetStorage {
     VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes, String mimeType) throws Exception;
 
     /**
+     * Stores one object while preserving the caller's original filename for display metadata.
+     */
+    default VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes,
+                                    String mimeType, String originalFileName) throws Exception {
+        return store(vaultId, configId, content, sizeBytes, mimeType);
+    }
+
+    /**
      * Looks up a previously uploaded (not yet committed) object by its storage assetId,
      * scoped to {@code userId} and {@code vaultId}. Enables multi-instance or post-restart commits.
      */

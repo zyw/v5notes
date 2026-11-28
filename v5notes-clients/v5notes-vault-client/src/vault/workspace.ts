@@ -60,13 +60,17 @@ async function readVaultConfig(rootPath: string): Promise<VaultJson> {
   return parsed
 }
 
-async function scopeVaultRoot(rootPath: string, options?: { required?: boolean }): Promise<void> {
+async function scopeVaultRoot(
+  rootPath: string,
+  options?: { required?: boolean; errorPrefix?: string },
+): Promise<void> {
   try {
     await invoke('allow_vault_directory', { path: rootPath })
   } catch (error) {
     if (options?.required) {
+      const prefix = options.errorPrefix ?? '无法授权访问该目录'
       throw new VaultPathError(
-        `无法授权访问该目录: ${error instanceof Error ? error.message : String(error)}`,
+        `${prefix}: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
     // Dialog-picked folders are already scoped; soft invoke is for recent/default reopen.
@@ -74,30 +78,13 @@ async function scopeVaultRoot(rootPath: string, options?: { required?: boolean }
 }
 
 async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
-  try {
-    await scopeVaultRoot(rootPath, { required: true })
-  } catch (error) {
-    throw new VaultPathError(
-      `无法授权访问该目录（可能已移盘或权限失效）: ${error instanceof Error ? error.message : String(error)}`,
-    )
-  }
-  const rootOk = await vaultFs.exists(rootPath)
-  if (!rootOk) {
-    throw new VaultPathError('库路径不存在或不可访问（可能已移动）')
-  }
-  const hasMeta = await vaultFs.exists(rootPath, VAULT_JSON_REL)
-  if (!hasMeta) {
-    throw new VaultPathError('所选文件夹不是 Vault（缺少 .v5notes/vault.json）')
-  }
-  const config = await readVaultConfig(rootPath)
-  const opened: OpenedVault = {
-    rootPath,
-    name: config.name || (await vaultRootName(rootPath)),
-    config,
-  }
+  const opened = await readVaultForSettings(rootPath)
   rememberRecentVault({ rootPath: opened.rootPath, name: opened.name })
   // Durable registry: every open refreshes the record and clears "hidden".
-  registerVault({ rootPath: opened.rootPath, name: opened.name, createdAt: config.createdAt }, 'opened')
+  registerVault(
+    { rootPath: opened.rootPath, name: opened.name, createdAt: opened.config.createdAt },
+    'opened',
+  )
   return opened
 }
 
@@ -107,6 +94,10 @@ async function openExistingRoot(rootPath: string): Promise<OpenedVault> {
  * untouched, so the list does not reshuffle every time someone looks at it.
  */
 async function readVaultForSettings(rootPath: string): Promise<OpenedVault> {
+  await scopeVaultRoot(rootPath, {
+    required: true,
+    errorPrefix: '无法授权访问该目录（可能已移盘或权限失效）',
+  })
   if (!(await vaultFs.exists(rootPath))) {
     throw new VaultPathError('库路径不存在或不可访问（可能已移动）')
   }
@@ -177,6 +168,7 @@ async function newestNoteMtime(
     }
   }
 
+  await scopeVaultRoot(rootPath)
   if (!(await vaultFs.exists(rootPath))) return null
   await walk(rootPath, 0)
   return newest

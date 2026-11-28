@@ -74,6 +74,12 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
     @Override
     public StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
                                String declaredSha256, String mimeType) throws Exception {
+        return upload(userId, vaultId, content, sizeBytes, declaredSha256, mimeType, null);
+    }
+
+    @Override
+    public StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
+                               String declaredSha256, String mimeType, String originalFileName) throws Exception {
         requireOwnedVault(userId, vaultId);
         long maxFileBytes = resolveMaxFileBytes(userId);
         if (VaultQuotaRules.tooLarge(sizeBytes, maxFileBytes)) {
@@ -94,7 +100,9 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
 
         // The storage layer hashes exactly the bytes it wrote, which is the only implementation
         // that stays correct no matter how a backend consumes the stream.
-        VaultStoredObject stored = storage.store(vaultId, configId, content, sizeBytes, mimeType);
+        VaultStoredObject stored = (originalFileName != null && !originalFileName.isBlank())
+            ? storage.store(vaultId, configId, content, sizeBytes, mimeType, originalFileName)
+            : storage.store(vaultId, configId, content, sizeBytes, mimeType);
         String actual = VaultContentHash.normalize(stored.sha256());
 
         if (!actual.equalsIgnoreCase(declared)) {
@@ -104,12 +112,16 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
                 "声明的内容哈希与实际字节不一致");
         }
 
+        String resolvedMime = (stored.mimeType() != null && !stored.mimeType().isBlank())
+            ? stored.mimeType()
+            : mimeType;
+
         VaultAssetRef ref = new VaultAssetRef();
         ref.setVaultId(vaultId);
         ref.setAssetId(Long.parseLong(stored.assetId()));
         ref.setSha256(actual);
         ref.setSizeBytes(stored.sizeBytes());
-        ref.setMimeType(mimeType);
+        ref.setMimeType(resolvedMime);
         ref.setStorageKey(stored.objectKey());
         ref.setConfigId(configId);
         // Config id is what reads follow (§7.4); backend is informational for diagnostics.

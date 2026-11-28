@@ -745,3 +745,106 @@ describe('replica identity in vault.json (§6.4)', () => {
     expect(copy).toContain('device')
   })
 })
+
+describe('proxy attachment download auth', () => {
+  it('passes Authorization and clientid when pulling a proxy attachment', async () => {
+    metaFiles.clear()
+    const payload = 'binary-attachment-payload'
+    const payloadHash = await sha256Hex(payload)
+    const { fs, files } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+
+    const calls: Array<{ url: string; headers: Record<string, string> }> = []
+    const transport = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, headers: (init?.headers as Record<string, string>) ?? {} })
+      return new Response(new TextEncoder().encode(payload), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-Content-Hash': payloadHash.replace(/^sha256:/, ''),
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'attachments/pic.png', type: 'asset', contentHash: payloadHash, size: payload.length })],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: payloadHash,
+        size: payload.length,
+        type: 'asset',
+        body: null,
+        download: {
+          mode: 'proxy',
+          url: '/vault/v1/vaults/9001/assets/42/content',
+          supportsRange: true,
+        },
+      }),
+    })
+
+    const engine = createSyncEngine(makeDeps(fs, api, { transport }))
+    const status = await engine.pushPull()
+
+    expect(status.status).toBe('idle')
+    expect(files.get('attachments/pic.png')).toBe(payload)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe('https://api.example.com/vault/v1/vaults/9001/assets/42/content')
+    expect(calls[0].headers.Authorization).toBe('Bearer tok')
+    expect(calls[0].headers.clientid).toBe('c1')
+  })
+
+  it('surfaces auth failure instead of hash mismatch when proxy returns HTTP 200 code 401', async () => {
+    metaFiles.clear()
+    const payloadHash = 'sha256:' + 'a'.repeat(64)
+    const { fs, files } = makeFs()
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    const onUnauthorized = vi.fn()
+
+    const transport = (async () => {
+      return new Response(JSON.stringify({ code: 401, msg: '认证失败，无法访问系统资源', data: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as unknown as typeof fetch
+
+    const api = makeApi({
+      manifests: [
+        {
+          cursor: '10',
+          hasMore: false,
+          changes: [change({ path: 'attachments/pic.png', type: 'asset', contentHash: payloadHash, size: 100 })],
+        },
+      ],
+      onGetContent: (path, rev) => ({
+        fileId: 'f-' + path,
+        path,
+        remoteRev: rev ?? 1,
+        contentHash: payloadHash,
+        size: 100,
+        type: 'asset',
+        body: null,
+        download: {
+          mode: 'proxy',
+          url: '/vault/v1/vaults/9001/assets/42/content',
+          supportsRange: true,
+        },
+      }),
+    })
+
+    const engine = createSyncEngine(makeDeps(fs, api, { transport, onUnauthorized }))
+    const status = await engine.pushPull()
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    expect(status.status).toBe('error')
+    expect(status.message).toBe('认证失败，无法访问系统资源')
+    expect(files.has('attachments/pic.png')).toBe(false)
+  })
+})

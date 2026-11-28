@@ -538,6 +538,8 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       const bytes = await downloadAttachment(content.download, {
         baseUrl: v3UrlPrefix(auth.server),
         token: auth.token,
+        clientId: auth.clientId,
+        onUnauthorized: deps.onUnauthorized,
         transport: deps.transport,
       })
       const actualHash = normalizeContentHash(await sha256Hex(bytes))
@@ -914,7 +916,12 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     } catch (err) {
       const code = err instanceof VaultSyncApiError ? err.businessCode : null
       const msg = err instanceof Error ? err.message : String(err)
-      if (!(err instanceof VaultSyncApiError) || err.isRetryable || err.httpStatus === 0) {
+      const retryable = err instanceof VaultSyncApiError
+        ? err.isRetryable || err.httpStatus === 0
+        : err instanceof DownloadError
+          ? err.retryable
+          : true
+      if (retryable) {
         await enqueueTransientFailure(err, 'cycle')
         setStatus(isOnline() ? 'retrying' : 'offline', msg, code)
       } else {
