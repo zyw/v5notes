@@ -16,6 +16,21 @@
         </div>
       </template>
 
+      <template v-else-if="!loading && kind === 'video'">
+        <div class="preview-video-wrap">
+          <video
+            v-if="objectUrl"
+            ref="videoRef"
+            :src="objectUrl"
+            class="preview-video"
+            controls
+            playsinline
+            preload="metadata"
+            @error="handleVideoError"
+          />
+        </div>
+      </template>
+
       <template v-else-if="!loading && kind === 'text'">
         <div v-if="textContent.length" class="preview-text">
           <pre class="preview-text__gutter" aria-hidden="true">{{ textGutter }}</pre>
@@ -44,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { FileViewer } from '@file-viewer/vue3';
 import officePreset from '@file-viewer/preset-office';
@@ -52,7 +67,7 @@ import { archiveRenderer } from '@file-viewer/renderer-archive';
 import '@file-viewer/vue3/dist/file-viewer3.css';
 import FormDrawer from '@/components/FormDrawer/index.vue';
 import { globalHeaders } from '@/utils/request';
-import { normalizeSuffix, resolvePreviewKind, type FilePreviewKind } from '@/utils/filePreview';
+import { normalizeSuffix, resolvePreviewKind, videoMimeFromSuffix, type FilePreviewKind } from '@/utils/filePreview';
 
 const { t } = useI18n();
 
@@ -88,6 +103,8 @@ const objectUrl = ref('');
 const textContent = ref('');
 const textGutter = ref('');
 const previewFile = ref<File | null>(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
+let loadSeq = 0;
 
 const viewerOptions = {
   preset: officePreset,
@@ -105,13 +122,15 @@ const subtitle = computed(() => {
 });
 
 const revokeObjectUrl = () => {
-  if (objectUrl.value) {
+  if (objectUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(objectUrl.value);
-    objectUrl.value = '';
   }
+  objectUrl.value = '';
 };
 
 const resetState = () => {
+  loadSeq += 1;
+  videoRef.value?.pause();
   loading.value = false;
   error.value = '';
   kind.value = 'unsupported';
@@ -120,6 +139,8 @@ const resetState = () => {
   previewFile.value = null;
   revokeObjectUrl();
 };
+
+onBeforeUnmount(resetState);
 
 const buildTextGutter = (text: string) => {
   const lines = text.length ? text.split('\n').length : 0;
@@ -164,8 +185,18 @@ const fetchBlob = async (): Promise<Blob> => {
   return blob;
 };
 
+const handleVideoError = () => {
+  if (objectUrl.value.startsWith('blob:') && props.url) {
+    revokeObjectUrl();
+    objectUrl.value = props.url;
+    return;
+  }
+  error.value = t('file.preview.loadFail');
+};
+
 const loadPreview = async () => {
   resetState();
+  const seq = loadSeq;
   if (!props.fetchUrl && !props.fileId) {
     error.value = t('file.preview.missingId');
     return;
@@ -179,6 +210,7 @@ const loadPreview = async () => {
   loading.value = true;
   try {
     const blob = await fetchBlob();
+    if (seq !== loadSeq) return;
     const ext = normalizeSuffix(props.suffix, props.fileName, props.mimeType);
     const baseName = props.fileName || `preview.${ext || 'bin'}`;
     const safeName =
@@ -193,8 +225,21 @@ const loadPreview = async () => {
       return;
     }
 
+    if (kind.value === 'video') {
+      const resolvedMime =
+        blob.type && blob.type !== 'application/octet-stream'
+          ? blob.type
+          : props.mimeType && props.mimeType.toLowerCase().startsWith('video/')
+            ? props.mimeType
+            : videoMimeFromSuffix(ext);
+      const videoBlob = resolvedMime && blob.type !== resolvedMime ? new Blob([blob], { type: resolvedMime }) : blob;
+      objectUrl.value = URL.createObjectURL(videoBlob);
+      return;
+    }
+
     if (kind.value === 'text') {
       const text = (await blob.text()).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (seq !== loadSeq) return;
       textContent.value = text;
       textGutter.value = buildTextGutter(text);
       return;
@@ -205,15 +250,18 @@ const loadPreview = async () => {
       type: blob.type || 'application/octet-stream'
     });
   } catch (e: any) {
-    // 图片可尝试直接用公网 url
-    if (kind.value === 'image' && props.url) {
+    if (seq !== loadSeq) return;
+    // 图片与视频可尝试直接用公网 url
+    if ((kind.value === 'image' || kind.value === 'video') && props.url) {
       objectUrl.value = props.url;
       error.value = '';
       return;
     }
     error.value = e?.message || t('file.preview.loadFail');
   } finally {
-    loading.value = false;
+    if (seq === loadSeq) {
+      loading.value = false;
+    }
   }
 };
 
@@ -273,6 +321,29 @@ watch(
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(15, 61, 51, 0.08);
+}
+
+.preview-video-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+  background: #101614;
+  border-radius: 12px;
+}
+
+.preview-video {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #000;
+  outline: none;
 }
 
 .preview-text {

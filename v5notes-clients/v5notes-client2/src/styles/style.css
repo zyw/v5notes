@@ -734,12 +734,15 @@ kbd { margin-left: 5px; padding: 2px 4px; border: 1px solid #ffffff44; border-ra
 .image-library-item { display: grid; gap: 6px; padding: 6px; border: 1px solid #e1e6df; border-radius: 10px; background: #f7f6f1; text-align: left; }
 .image-library-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 7px; background: #fff; }
 .media-thumb { position: relative; width: 100%; aspect-ratio: 1; border-radius: 7px; overflow: hidden; background: #fff; }
-.media-thumb-video video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.media-play-badge { position: absolute; right: 6px; bottom: 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(24, 34, 29, .72); pointer-events: none; }
+.media-thumb-video { background: #eef1ec; }
+.media-video-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #526355; }
+.media-thumb-video video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .16s ease; }
+.media-thumb-video video.is-ready { opacity: 1; }
+.media-play-badge { position: absolute; z-index: 1; right: 6px; bottom: 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(24, 34, 29, .72); pointer-events: none; }
 .media-thumb-audio { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #526355; }
 .media-ext-badge { padding: 1px 7px; border-radius: 999px; background: rgba(49, 91, 74, .12); color: #315b4a; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
 .media-preview-audio { width: 100%; height: 34px; margin-top: 12px; }
-.image-library-item span { overflow: hidden; color: #526355; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.image-library-item > span { overflow: hidden; color: #526355; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
 .image-library-item.is-selected { border-color: #315b4a; box-shadow: 0 0 0 2px #315b4a2e; }
 .image-library-pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; color: #718176; font-size: 12px; }
 .image-library-pager button { padding: 6px 10px; border: 1px solid #e1e6df; border-radius: 7px; background: #fffefa; }

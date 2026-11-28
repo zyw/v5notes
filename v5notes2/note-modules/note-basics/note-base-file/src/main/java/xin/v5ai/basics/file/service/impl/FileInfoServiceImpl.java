@@ -15,9 +15,12 @@ import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.basics.file.core.client.FileClient;
 import xin.v5ai.basics.file.core.client.FileUploadResult;
 import xin.v5ai.basics.file.core.client.s3.S3FileClient;
+import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.basics.file.core.utils.FileTypeUtils;
 import xin.v5ai.basics.file.domain.FileInfo;
+import xin.v5ai.basics.file.domain.bo.FileConfigSearchBo;
 import xin.v5ai.basics.file.domain.bo.FileInfoSearchBo;
+import xin.v5ai.basics.file.domain.vo.FileConfigVo;
 import xin.v5ai.basics.file.domain.vo.FileInfoVo;
 import xin.v5ai.basics.file.domain.vo.FileUploadVo;
 import xin.v5ai.basics.file.mapper.FileInfoMapper;
@@ -35,6 +38,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * 文件路径Service业务层处理
@@ -117,11 +121,35 @@ public class FileInfoServiceImpl implements IFileInfoService {
                 return PageResult.build();
             }
         }
+        // 隔离 Vault 同步附件：
+        // 1) 按路径排除 `{userId}/vault/{vaultId}/...`（涵盖历史配置或回退到 GENERIC 时同步的文件）；
+        // 2) 按存储用途排除当前指向 VAULT_ASSET 的配置，防止专桶文件混入 Cloud 媒体库。
+        lqw.and(w -> w.isNull(FileInfo::getPath).or().notLike(FileInfo::getPath, "/vault/"));
+        List<Long> vaultConfigIds = listVaultAssetConfigIds();
+        if (!vaultConfigIds.isEmpty()) {
+            lqw.and(w -> w.isNull(FileInfo::getConfigId).or().notIn(FileInfo::getConfigId, vaultConfigIds));
+        }
         lqw.like(StringUtils.isNotBlank(name), FileInfo::getName, name);
         lqw.orderByDesc(FileInfo::getCreateTime);
         Page<FileInfoVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
         result.getRecords().forEach(item -> item.setUrl(matchingUrl(item).getUrl()));
         return PageResult.build(result.getRecords(), result.getTotal());
+    }
+
+    private List<Long> listVaultAssetConfigIds() {
+        if (fileConfigService == null) {
+            return List.of();
+        }
+        FileConfigSearchBo searchBo = new FileConfigSearchBo();
+        searchBo.setPurpose(FileConfigPurpose.VAULT_ASSET);
+        List<FileConfigVo> configs = fileConfigService.queryList(searchBo);
+        if (configs == null || configs.isEmpty()) {
+            return List.of();
+        }
+        return configs.stream()
+            .map(FileConfigVo::getId)
+            .filter(Objects::nonNull)
+            .toList();
     }
 
     /**

@@ -40,6 +40,7 @@ const selectedId = ref('')
 const loading = ref(false)
 const uploading = ref(false)
 const error = ref('')
+const readyVideoIds = ref<Set<string>>(new Set())
 
 const copyScope = computed(() =>
   props.kind === 'video' ? 'videos' : props.kind === 'audio' ? 'audios' : 'images',
@@ -61,6 +62,7 @@ watch([open, () => props.kind], ([visible]) => {
   name.value = ''
   selectedId.value = ''
   error.value = ''
+  readyVideoIds.value = new Set()
   void load()
   void nextTick(() => dialogRef.value?.focus())
 })
@@ -68,6 +70,7 @@ watch([open, () => props.kind], ([visible]) => {
 async function load(): Promise<void> {
   loading.value = true
   error.value = ''
+  readyVideoIds.value = new Set()
   try {
     const page = await api.listMyMedia(props.kind, pageNum.value, name.value)
     images.value = page.rows
@@ -128,6 +131,27 @@ function extensionLabel(fileName: string): string {
   return ext || (props.kind === 'audio' ? 'AUDIO' : 'VIDEO')
 }
 
+function videoPreviewSrc(url: string): string {
+  if (!url || url.includes('#')) return url
+  return `${url}#t=0.001`
+}
+
+function onVideoLoadedData(id: string, event: Event): void {
+  const video = event.currentTarget as HTMLVideoElement | null
+  if (!video || video.videoWidth <= 0) return
+  if (readyVideoIds.value.has(id)) return
+  const next = new Set(readyVideoIds.value)
+  next.add(id)
+  readyVideoIds.value = next
+}
+
+function onVideoError(id: string): void {
+  if (!readyVideoIds.value.has(id)) return
+  const next = new Set(readyVideoIds.value)
+  next.delete(id)
+  readyVideoIds.value = next
+}
+
 function confirmInsert(): void {
   if (!selected.value || uploading.value) return
   emit('insert', selected.value)
@@ -156,8 +180,23 @@ function confirmInsert(): void {
           <button v-for="item in images" :key="item.id" type="button" role="option" class="image-library-item" :class="{ 'is-selected': item.id === selectedId }" :aria-selected="item.id === selectedId" :title="item.name" @click="selectedId = item.id" @dblclick="selectedId = item.id; confirmInsert()">
             <img v-if="kind === 'image'" :src="item.url" :alt="item.name" />
             <div v-else-if="kind === 'video'" class="media-thumb media-thumb-video">
-              <video :src="item.url" preload="metadata" muted playsinline />
-              <span class="media-play-badge" aria-hidden="true">
+              <div v-if="!readyVideoIds.has(item.id)" class="media-video-fallback" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M10 9.2v5.6L15 12l-5-2.8Z" fill="currentColor" />
+                </svg>
+                <span class="media-ext-badge">{{ extensionLabel(item.name) }}</span>
+              </div>
+              <video
+                :src="videoPreviewSrc(item.url)"
+                preload="metadata"
+                muted
+                playsinline
+                :class="{ 'is-ready': readyVideoIds.has(item.id) }"
+                @loadeddata="onVideoLoadedData(item.id, $event)"
+                @error="onVideoError(item.id)"
+              />
+              <span v-if="readyVideoIds.has(item.id)" class="media-play-badge" aria-hidden="true">
                 <svg viewBox="0 0 16 16" width="12" height="12"><path d="M5 3.4v9.2L12.6 8 5 3.4Z" fill="currentColor" /></svg>
               </span>
             </div>
