@@ -120,6 +120,8 @@ export default {
     文件正文预览: 'Preview file content',
     文件墓碑删除: 'Tombstone delete file',
     副本强制解绑: 'Unbind replica',
+    附件同步: 'Synced Assets',
+    附件预览下载: 'Preview & download assets',
     配额与策略: 'Quota & Policy',
     配额策略编辑: 'Edit quota policy',
     存储维护执行: 'Run maintenance',

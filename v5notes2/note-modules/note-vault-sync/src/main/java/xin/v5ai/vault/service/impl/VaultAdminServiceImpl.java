@@ -357,11 +357,29 @@ public class VaultAdminServiceImpl implements IVaultAdminService {
 
     @Override
     public PageResult<VaultAdminAssetVo> listAssets(Long vaultId, String keyword, PageQuery pageQuery) {
-        requireSpace(vaultId);
+        return listAssets(vaultId, keyword, null, null, pageQuery);
+    }
+
+    @Override
+    public PageResult<VaultAdminAssetVo> listAssets(Long vaultId, String keyword, String backend,
+                                                  String mimePrefix, PageQuery pageQuery) {
+        if (vaultId != null) {
+            requireSpace(vaultId);
+        }
+        String normBackend = blankToNull(backend);
+        if (normBackend != null) {
+            normBackend = normBackend.toLowerCase(Locale.ROOT);
+        }
+        String normMimePrefix = blankToNull(mimePrefix);
+        if (normMimePrefix != null) {
+            normMimePrefix = normMimePrefix.toLowerCase(Locale.ROOT);
+        }
         Page<VaultAdminAssetVo> page = adminMapper.selectAssetPage(
             pageQuery.build(),
             vaultId,
-            blankToNull(keyword)
+            blankToNull(keyword),
+            normBackend,
+            normMimePrefix
         );
         return PageResult.build(page.getRecords(), page.getTotal());
     }

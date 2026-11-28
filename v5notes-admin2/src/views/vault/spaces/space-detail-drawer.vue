@@ -158,7 +158,17 @@
         </el-form>
 
         <el-table v-loading="assetLoading" :data="assets" class="data-table">
-          <el-table-column :label="$t('vault.files.hash')" prop="sha256" min-width="200" :show-overflow-tooltip="true" />
+          <el-table-column :label="$t('vault.assets.fileName')" min-width="200" :show-overflow-tooltip="true">
+            <template #default="{ row }">
+              <div class="asset-name-cell">
+                <span class="asset-name-primary">{{ resolveVaultAssetFileName(row) }}</span>
+                <span v-if="row.samplePath && row.samplePath !== resolveVaultAssetFileName(row)" class="asset-name-sub">
+                  {{ row.samplePath }}
+                </span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('vault.files.hash')" prop="sha256" min-width="180" :show-overflow-tooltip="true" />
           <el-table-column :label="$t('vault.files.mimeType')" prop="mimeType" min-width="130" :show-overflow-tooltip="true" />
           <el-table-column :label="$t('vault.files.size')" width="100" align="right">
             <template #default="{ row }">{{ formatBytes(row.sizeBytes) }}</template>
@@ -169,12 +179,24 @@
               <el-tag size="small">{{ row.backend || '-' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('vault.files.configId')" prop="configId" width="100" align="center" />
-          <el-table-column :label="$t('common.operate')" width="76" align="center">
+          <el-table-column :label="$t('vault.files.configId')" min-width="120" align="center" :show-overflow-tooltip="true">
+            <template #default="{ row }">{{ row.configName || row.configId || '-' }}</template>
+          </el-table-column>
+          <el-table-column :label="$t('common.operate')" width="96" align="center">
             <template #default="{ row }">
+              <el-tooltip :content="$t('vault.assets.preview')" placement="top">
+                <el-button
+                  v-hasPermi="['vault:file:content', 'vault:asset:content']"
+                  link
+                  type="primary"
+                  icon="View"
+                  :aria-label="$t('vault.assets.preview')"
+                  @click="openAssetPreview(row)"
+                />
+              </el-tooltip>
               <el-tooltip :content="$t('vault.files.downloadAsset')" placement="top">
                 <el-button
-                  v-hasPermi="['vault:file:content']"
+                  v-hasPermi="['vault:file:content', 'vault:asset:content']"
                   link
                   type="primary"
                   icon="Download"
@@ -258,11 +280,21 @@
       :vault-id="space?.vaultId || ''"
       :file-id="previewFileId"
     />
+
+    <FilePreviewDrawer
+      v-model="assetPreviewOpen"
+      :fetch-url="assetPreviewTarget && space ? vaultAssetContentPath(space.vaultId, assetPreviewTarget.assetId) : undefined"
+      :file-name="assetPreviewTarget ? resolveVaultAssetFileName(assetPreviewTarget) : undefined"
+      :mime-type="assetPreviewTarget?.mimeType"
+      @download="assetPreviewTarget && handleDownloadAsset(assetPreviewTarget)"
+    />
   </el-drawer>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import FilePreviewDrawer from '@/components/FilePreviewDrawer/index.vue';
+import { resolveVaultAssetFileName, vaultAssetContentPath } from '@/api/vault/assets';
 import { kickVaultReplica, listVaultReplicas } from '@/api/vault/replicas';
 import type { VaultAdminReplica } from '@/api/vault/replicas/types';
 import {
@@ -297,6 +329,8 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const activeTab = ref('replicas');
 const previewOpen = ref(false);
 const previewFileId = ref('');
+const assetPreviewOpen = ref(false);
+const assetPreviewTarget = ref<VaultAdminAsset | null>(null);
 
 const replicaLoading = ref(false);
 const replicas = ref<VaultAdminReplica[]>([]);
@@ -478,13 +512,18 @@ const handleDeleteFile = async (row: any) => {
   }
 };
 
-const handleDownloadAsset = async (row: any) => {
+const openAssetPreview = (row: VaultAdminAsset) => {
+  assetPreviewTarget.value = row;
+  assetPreviewOpen.value = true;
+};
+
+const handleDownloadAsset = async (row: VaultAdminAsset) => {
   if (!props.space) return;
   const blob = (await downloadVaultAssetBlob(props.space.vaultId, row.assetId)) as unknown as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${row.assetId}`;
+  a.download = resolveVaultAssetFileName(row);
   a.click();
   URL.revokeObjectURL(url);
 };
@@ -518,5 +557,26 @@ watch(
 
 .tab-filter {
   margin-bottom: 8px;
+}
+
+.asset-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asset-name-primary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-name-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

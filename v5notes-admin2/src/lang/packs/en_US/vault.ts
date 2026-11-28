@@ -25,6 +25,7 @@ export default {
       modeDirect: 'S3 Direct',
       modeProxy: 'Stream Proxy',
       maxFileSize: 'Max file {size}',
+      viewAssets: 'Synced Assets',
       manageStorage: 'File Config',
       topTitle: 'Top Storage Users',
       viewSpaces: 'Vaults'
@@ -118,6 +119,26 @@ export default {
       kickConfirm: 'Unbind replica "{name}"? The client directory must re-bind to sync again.',
       kickBatchConfirm: 'Unbind {count} selected replicas? They must re-bind to sync again.',
       kickSuccess: 'Replica unbound'
+    },
+    assets: {
+      kicker: 'VAULT ASSETS',
+      title: 'Synced Assets',
+      keyword: 'Keyword',
+      keywordPh: 'Name / Path / User / Vault / SHA-256',
+      backend: 'Backend',
+      allBackends: 'All backends',
+      mimeType: 'Type',
+      allMimeTypes: 'All types',
+      mimeImage: 'Image',
+      mimePdf: 'PDF',
+      mimeText: 'Text',
+      mimeAudio: 'Audio',
+      mimeVideo: 'Video',
+      fileName: 'Attachment',
+      vaultName: 'Vault',
+      syncTime: 'Synced At',
+      preview: 'Preview',
+      download: 'Download'
     },
     quota: {
       kicker: 'VAULT QUOTA',

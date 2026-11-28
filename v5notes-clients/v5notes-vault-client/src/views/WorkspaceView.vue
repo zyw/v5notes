@@ -72,6 +72,7 @@ import {
   docKindsRevision,
   getActiveEditorProvider,
   listDocKinds,
+  liveDocKinds,
   listHostRibbons,
   setExtensionNoticeHandler,
   setExtensionWorkspaceHandlers,
@@ -617,6 +618,8 @@ watch(dirty, value => emit('dirtyChange', value), { immediate: true })
 // Enabling or disabling a plugin can change which kinds count as notes.
 watch(docKindsRevision, () => {
   void refreshTree()
+  // A note opened before its editor registered shows as unavailable; retry now.
+  if (selectedPath.value && editorUnavailable.value) void ensureEditorMounted()
 })
 
 watch(sidebarOpen, open => {
@@ -1014,7 +1017,7 @@ watch([nameDialog, moveDialog, confirmDialog, attachmentOpen], ([name, move, con
 
 
 async function refreshTree() {
-  tree.value = await vaultFs.listTree(props.vault.rootPath, creatableKinds.value)
+  tree.value = await vaultFs.listTree(props.vault.rootPath, noteKinds.value)
 }
 
 function findTreeNode(nodes: VaultTreeNode[], identityKey: string): VaultTreeNode | null {
@@ -1027,7 +1030,7 @@ function findTreeNode(nodes: VaultTreeNode[], identityKey: string): VaultTreeNod
 }
 
 async function refreshTrash() {
-  trashEntries.value = await listTrash(props.vault.rootPath, creatableKinds.value)
+  trashEntries.value = await listTrash(props.vault.rootPath, noteKinds.value)
 }
 
 async function openNote(node: VaultTreeNode) {
@@ -1429,8 +1432,26 @@ function requestClose() {
   }
 }
 
-/** Document kinds the user can create right now, core first then plugin kinds. */
-const creatableKinds = computed<DocKindSpec[]>(() => listDocKinds())
+/**
+ * Document kinds the user can create right now, core first then plugin kinds.
+ * `listDocKinds()` reads the (non-reactive) plugin host, so depend on the
+ * revision explicitly; otherwise the empty table cached before the extension
+ * runtime starts would stick for the whole session.
+ */
+const creatableKinds = computed<DocKindSpec[]>(() => {
+  void docKindsRevision.value
+  return listDocKinds()
+})
+
+/**
+ * Kinds that make a file a note for tree / trash / search. Falls back to the
+ * core kinds while the extension runtime is still loading, so `.md` files are
+ * never shown as unopenable assets on first launch.
+ */
+const noteKinds = computed<DocKindSpec[]>(() => {
+  void docKindsRevision.value
+  return liveDocKinds()
+})
 
 const createMenuOpen = ref(false)
 
@@ -1502,7 +1523,7 @@ async function runSearch(query: string) {
   searchBusy.value = true
   try {
     searchHits.value = query.trim()
-      ? await vaultSearch.search(props.vault.rootPath, query, { kinds: creatableKinds.value })
+      ? await vaultSearch.search(props.vault.rootPath, query, { kinds: noteKinds.value })
       : []
   } catch (error) {
     emit('error', error instanceof Error ? error.message : String(error))

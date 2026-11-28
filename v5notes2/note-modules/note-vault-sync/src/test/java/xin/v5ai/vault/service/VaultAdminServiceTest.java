@@ -1,5 +1,6 @@
 package xin.v5ai.vault.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,11 +8,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import xin.v5ai.common.core.domain.PageResult;
+import xin.v5ai.common.mybatis.core.page.PageQuery;
 import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.domain.VaultAssetRef;
 import xin.v5ai.vault.domain.VaultChange;
 import xin.v5ai.vault.domain.VaultFile;
 import xin.v5ai.vault.domain.VaultSpace;
+import xin.v5ai.vault.domain.vo.admin.VaultAdminAssetVo;
 import xin.v5ai.vault.domain.vo.admin.VaultAdminFileContentVo;
 import xin.v5ai.vault.domain.vo.admin.VaultAdminOverviewVo;
 import xin.v5ai.vault.domain.vo.admin.VaultCleanupResultVo;
@@ -32,6 +36,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -239,5 +245,37 @@ class VaultAdminServiceTest {
         when(adminMapper.deleteExpiredTombstones(any())).thenReturn(5);
         VaultCleanupResultVo tombstoneRes = withStorage.cleanupExpiredTombstones();
         assertEquals(5L, tombstoneRes.getDeletedCount());
+    }
+
+    @Test
+    void listAssetsGlobalNormalizesFiltersWithoutSpaceCheck() {
+        VaultAdminAssetVo row = new VaultAdminAssetVo();
+        row.setAssetId("1001");
+        row.setVaultId("2001");
+        row.setVaultName("Work");
+        row.setFileName("pic.png");
+        Page<VaultAdminAssetVo> page = new Page<>(1, 20);
+        page.setRecords(List.of(row));
+        page.setTotal(1L);
+        when(adminMapper.selectAssetPage(any(), isNull(), eq("pic"), eq("s3"), eq("image/"))).thenReturn(page);
+
+        PageQuery query = new PageQuery(20, 1);
+        PageResult<VaultAdminAssetVo> res = service.listAssets(null, "  pic ", " S3 ", " Image/ ", query);
+
+        assertEquals(1L, res.getTotal());
+        assertEquals(1, res.getRows().size());
+        assertEquals("1001", res.getRows().iterator().next().getAssetId());
+        verify(spaceMapper, never()).selectById(any());
+        verify(adminMapper).selectAssetPage(any(), isNull(), eq("pic"), eq("s3"), eq("image/"));
+    }
+
+    @Test
+    void listAssetsScopedRejectsMissingVault() {
+        when(spaceMapper.selectById(999L)).thenReturn(null);
+        PageQuery query = new PageQuery(20, 1);
+        VaultBusinessException ex = assertThrows(VaultBusinessException.class,
+            () -> service.listAssets(999L, null, null, null, query));
+        assertEquals(VaultErrorCodes.NOT_FOUND, ex.getBusinessCode());
+        verify(adminMapper, never()).selectAssetPage(any(), any(), any(), any(), any());
     }
 }

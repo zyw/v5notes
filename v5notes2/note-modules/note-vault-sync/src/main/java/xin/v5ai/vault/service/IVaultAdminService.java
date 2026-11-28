@@ -45,6 +45,9 @@ public interface IVaultAdminService {
 
     PageResult<VaultAdminAssetVo> listAssets(Long vaultId, String keyword, PageQuery pageQuery);
 
+    PageResult<VaultAdminAssetVo> listAssets(Long vaultId, String keyword, String backend,
+                                             String mimePrefix, PageQuery pageQuery);
+
     PageResult<VaultAdminChangeVo> listChanges(Long vaultId, String op, String keyword, PageQuery pageQuery);
 
     PageResult<VaultAdminReplicaVo> listReplicas(Long vaultId, String keyword, String deviceId,

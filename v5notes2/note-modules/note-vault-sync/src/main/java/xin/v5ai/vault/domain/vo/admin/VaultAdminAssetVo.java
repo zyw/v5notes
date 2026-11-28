@@ -14,6 +14,14 @@ public class VaultAdminAssetVo {
 
     private String vaultId;
 
+    private String vaultName;
+
+    private String userId;
+
+    private String userName;
+
+    private String nickName;
+
     private String sha256;
 
     private long sizeBytes;
@@ -24,7 +32,13 @@ public class VaultAdminAssetVo {
 
     private String configId;
 
+    private String configName;
+
     private String backend;
+
+    private String fileName;
+
+    private String samplePath;
 
     private long refCount;
 

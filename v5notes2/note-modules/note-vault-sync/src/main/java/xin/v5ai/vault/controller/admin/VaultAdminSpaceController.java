@@ -1,6 +1,7 @@
 package xin.v5ai.vault.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -91,7 +92,7 @@ public class VaultAdminSpaceController extends BaseController {
     /**
      * 管理员受控流式下载附件（不暴露免鉴权基础文件端点）。
      */
-    @SaCheckPermission("vault:file:content")
+    @SaCheckPermission(value = {"vault:file:content", "vault:asset:content"}, mode = SaMode.OR)
     @Log(title = "Vault附件下载", businessType = BusinessType.OTHER, isSaveResponseData = false)
     @GetMapping("/{vaultId}/assets/{assetId}/content")
     public void assetContent(@PathVariable String vaultId,

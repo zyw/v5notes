@@ -164,7 +164,7 @@ const queryParams = ref<VaultSpaceQuery>({
   pageNum: 1,
   pageSize: 20,
   keyword: typeof route.query.keyword === 'string' ? route.query.keyword : undefined,
-  name: undefined,
+  name: typeof route.query.name === 'string' ? route.query.name : undefined,
   status: undefined
 });
 

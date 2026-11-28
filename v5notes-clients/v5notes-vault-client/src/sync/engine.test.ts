@@ -680,6 +680,43 @@ describe('retry queue growth (§14 断网队列)', () => {
     await engine.pushPull()
     expect(engine.getStatus().retryQueueSize).toBe(1)
   })
+
+  it('reports permanent failure status and clears stale dead push entries once recovered', async () => {
+    const { fs } = makeFs({ 'a.md': '# a' })
+    metaFiles.set(`${ROOT}/.v5notes/vault.json`, JSON.stringify(makeVaultJson()))
+    let fail = true
+    const api = makeApi({
+      manifests: [{ cursor: '10', hasMore: false, changes: [] }],
+      onPut: (args) => {
+        if (fail) {
+          throw new VaultSyncApiError('contentHash 与正文不一致', 400, 'vault.hash.mismatch')
+        }
+        return {
+          fileId: 'f-' + args.path,
+          path: args.path,
+          remoteRev: 1,
+          contentHash: 'sha256:' + '0'.repeat(64),
+          size: 3,
+          type: 'note',
+          cursor: '11',
+        }
+      },
+    })
+    const engine = createSyncEngine(makeDeps(fs, api))
+
+    const failedStatus = await engine.pushPull()
+    expect(failedStatus.status).toBe('error')
+    expect(failedStatus.lastErrorCode).toBe('vault.hash.mismatch')
+    expect(failedStatus.message).toBe('contentHash 与正文不一致')
+    expect(engine.getRetryQueue()).toHaveLength(1)
+    expect(engine.getRetryQueue()[0]?.dead).toBe(true)
+
+    fail = false
+    const recoveredStatus = await engine.pushPull()
+    expect(recoveredStatus.status).toBe('idle')
+    expect(recoveredStatus.retryQueueSize).toBe(0)
+    expect(engine.getRetryQueue()).toHaveLength(0)
+  })
 })
 
 describe('replica identity in vault.json (§6.4)', () => {

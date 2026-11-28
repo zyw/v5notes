@@ -71,12 +71,19 @@ export interface VaultAssetQuery {
 export interface VaultAdminAsset {
   assetId: string;
   vaultId: string;
+  vaultName?: string;
+  userId?: string;
+  userName?: string;
+  nickName?: string;
   sha256: string;
   sizeBytes: number;
   mimeType?: string;
   storageKey?: string;
   configId?: string;
+  configName?: string;
   backend?: string;
+  fileName?: string;
+  samplePath?: string;
   refCount: number;
   createTime?: string;
 }

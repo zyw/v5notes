@@ -23,18 +23,19 @@
 
 ## 2. 信息架构与菜单规划
 
-在 `v5notes-admin2` 侧边栏新增一级目录菜单 **`Vault 同步`**（`path: 'vault'`，排在「云笔记」之后），下设 5 个页面：
+在 `v5notes-admin2` 侧边栏新增一级目录菜单 **`Vault 同步`**（`path: 'vault'`，排在「云笔记」之后），下设 6 个页面：
 
 ```
 Vault 同步 (/vault)
 ├── 同步概览 (/vault/overview)          # 指标、趋势、存储后端状态、用户占用 Top
 ├── 云端库管理 (/vault/spaces)          # 库列表 + 详情抽屉（副本 / 文件 / 附件 / 变更日志）
 ├── 副本管理 (/vault/replicas)          # 跨库副本全局检索与强制解绑
+├── 附件同步 (/vault/assets)            # 跨库附件同步列表、筛选、只读预览与受控下载
 ├── 配额与策略 (/vault/quota)           # 全局默认策略 + 用户级配额覆盖 + 维护任务
 └── 扩展市场 (/vault/catalog)           # 官方插件与主题目录的上传、校验与上下架
 ```
 
-> **交互组织**：不把「文件」「附件」「变更日志」拆成 3 个孤立的大表格平铺在左侧菜单，而是以**云端库**为核心入口，点击某库后在右侧抽屉通过 Tab 下钻查看（`副本` / `文件` / `附件` / `变更日志`），同时保留跨库高频运维入口「副本管理」。
+> **交互组织**：以**云端库**为核心入口，点击某库后在右侧抽屉通过 Tab 下钻查看（`副本` / `文件` / `附件` / `变更日志`），同时保留跨库高频运维入口「副本管理」与「附件同步」。
 
 ---
 
@@ -215,13 +216,14 @@ CREATE TABLE IF NOT EXISTS vault_catalog_item
 | `GET /vault/admin/spaces/{vaultId}/assets` | `vault:file:list` | 分页查询库内 `vault_asset_ref` 及引用计数 |
 | `GET /vault/admin/spaces/{vaultId}/changes` | `vault:space:query` | 分页倒序查询 `vault_change` 变更审计日志 |
 
-### 5.3 副本管理（`VaultAdminReplicaController`）
+### 5.3 副本与附件管理（`VaultAdminReplicaController` / `VaultAdminAssetController`）
 
 | 方法与路径 | 权限点 | 说明 |
 |---|---|---|
 | `GET /vault/admin/replicas/list` | `vault:replica:list` | 跨库分页查询已绑定副本（支持按 `vaultId` 过滤，库详情抽屉直接复用此接口） |
 | `DELETE /vault/admin/replicas/{id}` | `vault:replica:remove` | 强制解绑单个副本 |
 | `DELETE /vault/admin/replicas/batch/{ids}` | `vault:replica:remove` | 批量解绑过期/异常副本 |
+| `GET /vault/admin/assets/list` | `vault:asset:list` / `vault:file:list` | 跨库分页查询已同步附件（支持关键字、`backend`、`mimePrefix`、`vaultId` 筛选） |
 
 ### 5.4 配额、策略与维护（`VaultAdminQuotaController`）
 
@@ -260,6 +262,7 @@ v5notes-admin2/src/
 │   ├── overview/   (index.ts, types.ts)
 │   ├── spaces/     (index.ts, types.ts)
 │   ├── replicas/   (index.ts, types.ts)
+│   ├── assets/     (index.ts, types.ts)
 │   ├── quota/      (index.ts, types.ts)
 │   └── catalog/    (index.ts, types.ts)
 ├── views/vault/
@@ -269,6 +272,7 @@ v5notes-admin2/src/
 │   │   ├── space-detail-drawer.vue    # 抽屉容器（副本 / 文件 / 附件 / 变更日志 4 Tab）
 │   │   └── file-preview-dialog.vue    # 只读正文 / 附件详情预览
 │   ├── replicas/index.vue
+│   ├── assets/index.vue               # 跨库附件同步列表 + 在线预览
 │   ├── quota/
 │   │   ├── index.vue                  # 全局策略 + 用户覆盖 + 维护任务
 │   │   └── user-quota-dialog.vue      # 用户配额编辑弹窗

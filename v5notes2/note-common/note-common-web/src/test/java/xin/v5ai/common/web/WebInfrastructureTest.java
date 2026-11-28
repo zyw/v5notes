@@ -111,7 +111,11 @@ class WebInfrastructureTest {
     @DisplayName("按请求方法和排除路径执行 XSS 包装")
     void shouldApplyXssWrapperOnlyToIncludedWriteRequests() throws Exception {
         XssProperties properties = new XssProperties();
-        properties.setExcludeUrls(List.of("/upload/**"));
+        properties.setExcludeUrls(List.of(
+            "/upload/**",
+            "/vault/v1/vaults/*/files",
+            "/vault/v1/vaults/*/files/batch"
+        ));
         XssFilter filter = new XssFilter(properties);
         filter.init(null);
         AtomicReference<ServletRequest> forwarded = new AtomicReference<>();
@@ -125,6 +129,14 @@ class WebInfrastructureTest {
         MockHttpServletRequest excludedRequest = request("POST", "/upload/avatar", null);
         filter.doFilter(excludedRequest, response, chain);
         assertSame(excludedRequest, forwarded.get());
+
+        MockHttpServletRequest vaultPut = request("PUT", "/vault/v1/vaults/2124471526135001090/files", MediaType.APPLICATION_JSON_VALUE);
+        filter.doFilter(vaultPut, response, chain);
+        assertSame(vaultPut, forwarded.get());
+
+        MockHttpServletRequest vaultBatch = request("POST", "/vault/v1/vaults/2124471526135001090/files/batch", MediaType.APPLICATION_JSON_VALUE);
+        filter.doFilter(vaultBatch, response, chain);
+        assertSame(vaultBatch, forwarded.get());
 
         MockHttpServletRequest writeRequest = request("POST", "/users", null);
         filter.doFilter(writeRequest, response, chain);

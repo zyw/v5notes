@@ -226,22 +226,50 @@
         SELECT
             r.asset_id AS assetId,
             r.vault_id AS vaultId,
+            s.name AS vaultName,
+            s.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
             r.sha256 AS sha256,
             MAX(r.size_bytes) AS sizeBytes,
             MAX(r.mime_type) AS mimeType,
             MAX(r.storage_key) AS storageKey,
             MAX(r.config_id) AS configId,
+            MAX(fc.name) AS configName,
             MAX(r.backend) AS backend,
-            COUNT(r.file_id) AS refCount,
+            MAX(bf.name) AS fileName,
+            MIN(f.path) AS samplePath,
+            (SELECT COUNT(*)
+             FROM vault_asset_ref r2
+             WHERE r2.asset_id = r.asset_id AND r2.vault_id = r.vault_id) AS refCount,
             MIN(r.create_time) AS createTime
         FROM vault_asset_ref r
-        WHERE r.vault_id = #{vaultId}
+        INNER JOIN vault_space s ON s.id = r.vault_id AND s.del_flag = '0'
+        LEFT JOIN sys_user u ON u.user_id = s.user_id
+        LEFT JOIN vault_file f ON f.id = r.file_id AND f.deleted = 0
+        LEFT JOIN basics_file bf ON bf.id = r.asset_id
+        LEFT JOIN basics_file_config fc ON fc.id = r.config_id
+        WHERE 1 = 1
+        <if test="vaultId != null">
+            AND r.vault_id = #{vaultId}
+        </if>
         <if test="keyword != null and keyword != ''">
-            AND (r.sha256 LIKE CONCAT('%', #{keyword}, '%')
+            AND (u.user_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.nick_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.path LIKE CONCAT('%', #{keyword}, '%')
+                 OR bf.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.sha256 LIKE CONCAT('%', #{keyword}, '%')
                  OR r.mime_type LIKE CONCAT('%', #{keyword}, '%')
                  OR r.storage_key LIKE CONCAT('%', #{keyword}, '%'))
         </if>
-        GROUP BY r.asset_id, r.vault_id, r.sha256
+        <if test="backend != null and backend != ''">
+            AND LOWER(r.backend) = #{backend}
+        </if>
+        <if test="mimePrefix != null and mimePrefix != ''">
+            AND LOWER(r.mime_type) LIKE CONCAT(#{mimePrefix}, '%')
+        </if>
+        GROUP BY r.asset_id, r.vault_id, s.name, s.user_id, u.user_name, u.nick_name, r.sha256
         ORDER BY createTime DESC, assetId DESC
     </select>
 

@@ -69,7 +69,7 @@ public class XssFilter implements Filter {
      * @return true 表示跳过过滤
      */
     private boolean handleExcludeURL(HttpServletRequest request, HttpServletResponse response) {
-        String url = request.getServletPath();
+        String url = StringUtils.blankToDefault(request.getServletPath(), request.getRequestURI());
         String method = request.getMethod();
         // GET DELETE 不过滤
         if (method == null || HttpMethod.GET.matches(method) || HttpMethod.DELETE.matches(method)) {

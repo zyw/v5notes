@@ -60,7 +60,12 @@
             </template>
             <el-tag v-else size="small" type="warning">{{ $t('vault.overview.backendUnconfigured') }}</el-tag>
           </div>
-          <el-button link type="primary" @click="goFileConfig">{{ $t('vault.overview.manageStorage') }}</el-button>
+          <div class="backend-actions">
+            <el-button v-hasPermi="['vault:asset:list', 'vault:file:list']" link type="primary" @click="goAssets">
+              {{ $t('vault.overview.viewAssets') }}
+            </el-button>
+            <el-button link type="primary" @click="goFileConfig">{{ $t('vault.overview.manageStorage') }}</el-button>
+          </div>
         </div>
       </el-card>
 
@@ -231,6 +236,10 @@ const goSpaces = (keyword?: string) => {
   router.push({ path: '/vault/spaces', query: keyword ? { keyword } : undefined });
 };
 
+const goAssets = () => {
+  router.push({ path: '/vault/assets' });
+};
+
 const goFileConfig = () => {
   router.push({ path: '/basics/file-config/index' });
 };
@@ -293,6 +302,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.backend-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .backend-title {

@@ -25,6 +25,7 @@ export default {
       modeDirect: 'S3 直連',
       modeProxy: '串流代理',
       maxFileSize: '單檔上限 {size}',
+      viewAssets: '附件同步',
       manageStorage: '檔案設定',
       topTitle: '使用者同步佔用排行',
       viewSpaces: '查看庫'
@@ -118,6 +119,26 @@ export default {
       kickConfirm: '確認強制解綁副本「{name}」？解綁後該目錄需重新綁定才能同步。',
       kickBatchConfirm: '確認批次解綁選取的 {count} 個副本？解綁後需重新綁定才能同步。',
       kickSuccess: '已解除副本綁定'
+    },
+    assets: {
+      kicker: 'VAULT ASSETS',
+      title: '附件同步',
+      keyword: '關鍵字',
+      keywordPh: '檔名 / 路徑 / 使用者 / 庫名 / SHA-256',
+      backend: '儲存後端',
+      allBackends: '全部後端',
+      mimeType: '類型',
+      allMimeTypes: '全部類型',
+      mimeImage: '圖片',
+      mimePdf: 'PDF',
+      mimeText: '文字',
+      mimeAudio: '音訊',
+      mimeVideo: '視訊',
+      fileName: '附件',
+      vaultName: '所屬雲端庫',
+      syncTime: '同步時間',
+      preview: '預覽',
+      download: '下載'
     },
     quota: {
       kicker: 'VAULT QUOTA',

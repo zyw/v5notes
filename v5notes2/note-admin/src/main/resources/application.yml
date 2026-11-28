@@ -203,6 +203,9 @@ xss:
   # 排除链接
   excludeUrls:
     - /system/notice
+    # Vault 文件同步会校验原文 SHA-256，不能被 XSS 过滤器改写 Markdown/代码块中的尖括号与标签
+    - /vault/v1/vaults/*/files
+    - /vault/v1/vaults/*/files/batch
 
 --- # 分布式锁 lock4j 全局配置
 lock4j:

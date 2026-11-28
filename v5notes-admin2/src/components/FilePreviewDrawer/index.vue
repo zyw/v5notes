@@ -38,7 +38,7 @@
 
     <template #footer>
       <el-button @click="visible = false">{{ $t('common.close') }}</el-button>
-      <el-button v-if="fileId" type="primary" @click="emit('download')">{{ $t('common.download') }}</el-button>
+      <el-button v-if="fileId || fetchUrl" type="primary" @click="emit('download')">{{ $t('common.download') }}</el-button>
     </template>
   </FormDrawer>
 </template>
@@ -63,6 +63,7 @@ defineOptions({
 const props = defineProps<{
   modelValue: boolean;
   fileId?: string | number;
+  fetchUrl?: string;
   fileName?: string;
   suffix?: string;
   mimeType?: string;
@@ -142,9 +143,12 @@ const parseApiError = async (blob: Blob): Promise<string | null> => {
   return null;
 };
 
-const fetchBlob = async (id: string | number): Promise<Blob> => {
+const fetchBlob = async (): Promise<Blob> => {
   const baseURL = import.meta.env.VITE_APP_BASE_API as string;
-  const response = await fetch(`${baseURL}/basics/admin/file/download/${id}`, {
+  const targetUrl = props.fetchUrl
+    ? `${baseURL}${props.fetchUrl}`
+    : `${baseURL}/basics/admin/file/download/${props.fileId}`;
+  const response = await fetch(targetUrl, {
     headers: globalHeaders()
   });
   const blob = await response.blob();
@@ -162,7 +166,7 @@ const fetchBlob = async (id: string | number): Promise<Blob> => {
 
 const loadPreview = async () => {
   resetState();
-  if (!props.fileId) {
+  if (!props.fetchUrl && !props.fileId) {
     error.value = t('file.preview.missingId');
     return;
   }
@@ -174,7 +178,7 @@ const loadPreview = async () => {
 
   loading.value = true;
   try {
-    const blob = await fetchBlob(props.fileId);
+    const blob = await fetchBlob();
     const ext = normalizeSuffix(props.suffix, props.fileName, props.mimeType);
     const baseName = props.fileName || `preview.${ext || 'bin'}`;
     const safeName =
@@ -214,7 +218,7 @@ const loadPreview = async () => {
 };
 
 watch(
-  () => [props.modelValue, props.fileId] as const,
+  () => [props.modelValue, props.fileId, props.fetchUrl] as const,
   ([open]) => {
     if (open) {
       void loadPreview();

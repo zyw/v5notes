@@ -868,6 +868,11 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         }
         try {
           state.files[file.displayPath] = await pushOne(vaultId, file, entry)
+          for (const item of retryQueue.list()) {
+            if (item.kind === 'push' && item.path === file.displayPath) {
+              retryQueue.markSuccess(item.id)
+            }
+          }
         } catch (err) {
           if (err instanceof VaultSyncApiError && err.isQuota) {
             overQuota = true
@@ -909,6 +914,13 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         setStatus('idle', `同步完成（${skippedTooLarge.length} 个附件超限已跳过）`)
       } else if (retryQueue.pendingCount() > 0 && !overQuota) {
         setStatus('retrying', `部分失败，已入重试队列（${retryQueue.pendingCount()}）`)
+      } else if (retryQueue.deadItems().length > 0 && !overQuota) {
+        const dead = retryQueue.deadItems()
+        setStatus(
+          'error',
+          dead[0]?.lastError || `部分文件同步失败（${dead.length}）`,
+          dead[0]?.lastErrorCode ?? null,
+        )
       } else if (!overQuota) {
         setStatus('idle', '同步完成')
       }

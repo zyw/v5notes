@@ -43,7 +43,9 @@ public interface VaultAdminMapper {
 
     Page<VaultAdminAssetVo> selectAssetPage(Page<VaultAdminAssetVo> page,
                                             @Param("vaultId") Long vaultId,
-                                            @Param("keyword") String keyword);
+                                            @Param("keyword") String keyword,
+                                            @Param("backend") String backend,
+                                            @Param("mimePrefix") String mimePrefix);
 
     List<Map<String, Object>> selectSysConfigsByPrefix(@Param("prefix") String prefix);
 
