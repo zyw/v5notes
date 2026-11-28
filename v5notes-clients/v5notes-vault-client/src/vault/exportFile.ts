@@ -239,6 +239,26 @@ async function inlineImages(
   return missing
 }
 
+function sanitizeExportHtml(html: string): string {
+  if (typeof DOMParser === 'undefined') return html
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const el of Array.from(doc.querySelectorAll('script, iframe, object, embed, link, base, meta'))) {
+    el.remove()
+  }
+  for (const el of Array.from(doc.body.querySelectorAll('*'))) {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase()
+      const val = attr.value.trim().toLowerCase()
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name)
+      } else if ((name === 'href' || name === 'src' || name === 'xlink:href') && /^(?:javascript|vbscript):/i.test(val)) {
+        el.removeAttribute(attr.name)
+      }
+    }
+  }
+  return doc.body.innerHTML
+}
+
 async function mountExportPage(
   html: string,
   width: number,
@@ -251,7 +271,7 @@ async function mountExportPage(
   // editor theme yet, so the rasterised page keeps the same colours as HTML.
   page.setAttribute('data-export-theme', EXPORT_HTML_THEME)
   page.setAttribute('style', `box-sizing:border-box;width:${width}px;padding:48px 56px;background:#ffffff;color:#2c2c2c;`)
-  page.innerHTML = html
+  page.innerHTML = sanitizeExportHtml(html)
   const missingImages = await inlineImages(page, resolveAsset, loadImage)
   const host = document.createElement('div')
   host.style.cssText = 'position:fixed;left:-12000px;top:0;pointer-events:none;'

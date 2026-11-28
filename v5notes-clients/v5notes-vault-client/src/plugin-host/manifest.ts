@@ -4,6 +4,14 @@ import { validateAllowlist } from './networkSafe'
 
 const ID_RE = /^[a-z0-9-]+$/
 
+function assertSafeEntryFile(field: string, value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\') || /[\x00-\x1f]/.test(trimmed)) {
+    throw new Error(`manifest.${field} 必须为单层文件名，不得包含路径分隔符或 ..: ${value}`)
+  }
+  return trimmed
+}
+
 /** Catalog / manifest tags that mean third-party publish — always reject. */
 export const FORBIDDEN_TAGS = new Set(['publishing', 'publish', 'publisher'])
 
@@ -55,8 +63,8 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
     if (permissions.includes('network:safe')) {
       throw new Error('主题不得申请 network:safe')
     }
-    const themeFile = String(data.theme || 'theme.css')
-    return {
+    const themeFile = assertSafeEntryFile('theme', String(data.theme || 'theme.css'))
+    const parsedTheme: ParsedManifest = {
       id,
       name,
       kind,
@@ -67,12 +75,14 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
       authorUrl: data.authorUrl ? String(data.authorUrl) : undefined,
       isDesktopOnly: Boolean(data.isDesktopOnly),
       permissions: permissions.length ? permissions : (['ui:theme'] as PluginPermission[]),
-      main: data.main ? String(data.main) : '',
+      main: data.main ? assertSafeEntryFile('main', String(data.main)) : '',
       theme: themeFile,
-      themeMeta: data.themeMeta ? String(data.themeMeta) : undefined,
+      themeMeta: data.themeMeta ? assertSafeEntryFile('themeMeta', String(data.themeMeta)) : undefined,
       networkAllowlist,
       tags: tags.length ? tags : undefined,
     }
+    assertThemePermissions(parsedTheme)
+    return parsedTheme
   }
 
   const check = validateRequestedPermissions(permissions, { allowNetworkSafe: true })
@@ -93,9 +103,9 @@ export function parseManifestJson(raw: string | unknown): ParsedManifest {
     authorUrl: data.authorUrl ? String(data.authorUrl) : undefined,
     isDesktopOnly: Boolean(data.isDesktopOnly),
     permissions,
-    main: String(data.main || 'main.js'),
-    theme: data.theme ? String(data.theme) : undefined,
-    themeMeta: data.themeMeta ? String(data.themeMeta) : undefined,
+    main: assertSafeEntryFile('main', String(data.main || 'main.js')),
+    theme: data.theme ? assertSafeEntryFile('theme', String(data.theme)) : undefined,
+    themeMeta: data.themeMeta ? assertSafeEntryFile('themeMeta', String(data.themeMeta)) : undefined,
     networkAllowlist,
     tags: tags.length ? tags : undefined,
   }

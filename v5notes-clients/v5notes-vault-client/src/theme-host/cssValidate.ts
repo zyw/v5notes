@@ -24,6 +24,7 @@ export interface CssValidationResult {
 }
 
 const DANGEROUS_PATTERNS: { re: RegExp; message: string }[] = [
+  { re: /\\/, message: '禁止 CSS 反斜杠转义序列' },
   { re: /@import\b/i, message: '禁止 @import' },
   { re: /expression\s*\(/i, message: '禁止 CSS expression()' },
   { re: /javascript\s*:/i, message: '禁止 javascript: URL' },
@@ -32,7 +33,7 @@ const DANGEROUS_PATTERNS: { re: RegExp; message: string }[] = [
   { re: /@\s*document\b/i, message: '禁止 @document' },
   { re: /position\s*:\s*fixed\b/i, message: '禁止 position:fixed（可能遮挡安全 UI）' },
   { re: /\*\s*\{[^}]*all\s*:\s*unset/i, message: '禁止通用选择器 all:unset 重置' },
-  { re: /url\s*\(\s*['"]?\s*https?:/i, message: '禁止远程 url()' },
+  { re: /url\s*\(\s*['"]?\s*(?:https?:|\/\/|data:|file:)/i, message: '禁止外部/协议相对/data/file url()' },
 ]
 
 export function stripCssComments(css: string): string {

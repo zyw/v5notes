@@ -86,6 +86,28 @@ interface Envelope<T> {
   data: T
 }
 
+function quoteLargeIntegers(raw: string): string {
+  return raw.replace(
+    /("(?:\\.|[^"\\])*")|(:[\s]*)(-?\d{16,})(?=[,\s}\]])/g,
+    (match, str: string | undefined, colon: string | undefined, num: string | undefined) => {
+      if (str !== undefined) return str
+      return `${colon}"${num}"`
+    },
+  )
+}
+
+async function parseJsonPreservingIds(response: Response): Promise<unknown> {
+  if (typeof response.text === 'function') {
+    const raw = await response.text()
+    try {
+      return normalizeIds(JSON.parse(quoteLargeIntegers(raw)))
+    } catch {
+      throw new VaultSyncApiError(`服务端返回非 JSON 响应（HTTP ${response.status}）`, response.status, null)
+    }
+  }
+  return normalizeIds(await response.json())
+}
+
 function normalizeIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeIds)
   if (value && typeof value === 'object') {
@@ -128,7 +150,7 @@ export function createVaultSyncApi(
       ...init,
       headers: { ...headers, ...(init.headers as Record<string, string> | undefined) },
     })
-    const result = normalizeIds(await response.json()) as Envelope<T> & {
+    const result = await parseJsonPreservingIds(response) as Envelope<T> & {
       data?: { code?: string } | null
     }
     if (response.status === 401 || result.code === 401) {
@@ -175,7 +197,7 @@ export function createVaultSyncApi(
       },
       body: form,
     })
-    const result = normalizeIds(await response.json()) as Envelope<T> & {
+    const result = await parseJsonPreservingIds(response) as Envelope<T> & {
       data?: { code?: string } | null
     }
     if (response.status === 401 || result.code === 401) {

@@ -46,6 +46,30 @@ export function hostMatchesAllowlist(hostname: string, allowlist: string[]): boo
   return false
 }
 
+const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/
+
+function isDisallowedHost(host: string): boolean {
+  const lower = host.toLowerCase()
+  if (lower === 'localhost' || lower.endsWith('.localhost') || lower.endsWith('.local')) {
+    return true
+  }
+  if (lower.startsWith('[') || lower.includes(':')) {
+    return true
+  }
+  if (IPV4_RE.test(lower)) {
+    const [a, b] = lower.split('.').map(Number)
+    if (
+      a === 0 || a === 10 || a === 127
+      || (a === 169 && b === 254)
+      || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 export function validateAllowlist(allowlist: string[] | undefined): string[] {
   if (!allowlist || allowlist.length === 0) {
     throw new Error('network:safe 需要非空 networkAllowlist')
@@ -57,6 +81,13 @@ export function validateAllowlist(allowlist: string[] | undefined): string[] {
   for (const h of cleaned) {
     if (h.includes('/') || h.includes(':') || h.includes(' ')) {
       throw new Error(`networkAllowlist 项无效（仅 host 或 *.domain）: ${h}`)
+    }
+    const target = h.startsWith('*.') ? h.slice(2) : h
+    if (h.startsWith('*.') && !target.includes('.')) {
+      throw new Error(`networkAllowlist 通配符过宽（至少两级域名）: ${h}`)
+    }
+    if (isDisallowedHost(target)) {
+      throw new Error(`networkAllowlist 禁止内网/本地地址: ${h}`)
     }
   }
   return cleaned
@@ -72,10 +103,19 @@ export function assertUrlAllowed(urlString: string, allowlist: string[]): URL {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(`仅允许 http/https: ${url.protocol}`)
   }
+  if (isDisallowedHost(url.hostname)) {
+    throw new Error(`禁止访问内网/本地地址: ${url.hostname}`)
+  }
   if (!hostMatchesAllowlist(url.hostname, allowlist)) {
     throw new Error(`host 不在白名单: ${url.hostname}`)
   }
-  if (PUBLISH_PATH_RE.test(url.pathname)) {
+  let decodedPath = url.pathname
+  try {
+    decodedPath = decodeURIComponent(url.pathname)
+  } catch {
+    // malformed escape sequence — keep raw pathname
+  }
+  if (PUBLISH_PATH_RE.test(decodedPath) || PUBLISH_PATH_RE.test(`/${url.hostname}${decodedPath}`)) {
     throw new Error('拒绝疑似发布类 endpoint（第三方无 publish）')
   }
   return url
@@ -165,13 +205,16 @@ export async function safeNetworkRequest(
   }
 
   let current = assertUrlAllowed(urlString, hosts)
+  let currentMethod: SafeMethod = method
+  let currentBody = body
+  let currentHeaders = init.headers ? { ...init.headers } : undefined
   let redirects = 0
 
   for (;;) {
     const response = await fetchImpl(current.toString(), {
-      method,
-      headers: init.headers,
-      body: method === 'POST' ? body : undefined,
+      method: currentMethod,
+      headers: currentHeaders,
+      body: currentMethod === 'POST' ? currentBody : undefined,
       redirect: 'manual',
     })
 
@@ -184,13 +227,27 @@ export async function safeNetworkRequest(
       if (redirects > MAX_REDIRECTS) {
         throw new Error('重定向次数过多')
       }
-      const next = new URL(location, current)
-      current = assertUrlAllowed(next.toString(), hosts)
+      const next = assertUrlAllowed(new URL(location, current).toString(), hosts)
+      if (next.origin !== current.origin && currentHeaders) {
+        for (const key of Object.keys(currentHeaders)) {
+          const lower = key.toLowerCase()
+          if (lower === 'authorization' || lower === 'cookie') {
+            delete currentHeaders[key]
+          }
+        }
+      }
+      if (
+        (response.status === 303 || ((response.status === 301 || response.status === 302) && currentMethod === 'POST'))
+      ) {
+        currentMethod = 'GET'
+        currentBody = undefined
+      }
+      current = next
       continue
     }
 
     const text =
-      method === 'HEAD' ? '' : await readBodyCapped(response, maxResponse)
+      currentMethod === 'HEAD' ? '' : await readBodyCapped(response, maxResponse)
 
     return {
       ok: response.ok,

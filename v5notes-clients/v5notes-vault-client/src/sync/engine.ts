@@ -4,7 +4,7 @@
  */
 
 import { join } from '@tauri-apps/api/path'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { readDir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import type { SyncFileEntry, SyncStateJson } from '../models/sync-state'
 import { SYNC_STATE_SCHEMA_VERSION } from '../models/sync-state'
 import type { VaultJson } from '../models/vault'
@@ -20,7 +20,7 @@ import {
   isAttachmentTooLarge,
   prefersTextBody,
 } from './attachments'
-import { downloadAttachment } from './download'
+import { downloadAttachment, DownloadError } from './download'
 import { planBootstrap } from './bootstrap'
 import { buildConflictCopyPath } from './conflict'
 import { describeFileHash as describeHash } from './diagnostics'
@@ -249,11 +249,19 @@ export function createSyncEngine(deps: SyncEngineDeps) {
 
     await walk(tree)
 
-    for (const rel of [
-      '.v5notes/appearance.json',
-      '.v5notes/plugins/community-plugins.json',
-      '.v5notes/themes/community-themes.json',
-    ]) {
+    const configCandidates = ['.v5notes/appearance.json']
+    try {
+      const pluginDirs = await readDir(await join(deps.rootPath, '.v5notes', 'plugins'))
+      for (const dir of pluginDirs) {
+        if (dir.isDirectory && dir.name && !dir.name.startsWith('.')) {
+          configCandidates.push(`.v5notes/plugins/${dir.name}/data.json`)
+        }
+      }
+    } catch {
+      // .v5notes/plugins is optional
+    }
+
+    for (const rel of configCandidates) {
       if (!applySyncIgnore(rel, patterns).sync) continue
       try {
         const content = await readTextFile(await join(deps.rootPath, rel))
@@ -532,12 +540,16 @@ export function createSyncEngine(deps: SyncEngineDeps) {
         token: auth.token,
         transport: deps.transport,
       })
+      const actualHash = normalizeContentHash(await sha256Hex(bytes))
+      if (remoteHash && actualHash !== remoteHash) {
+        throw new DownloadError('附件下载内容哈希校验失败，已中止写入', true)
+      }
       await fs.writeBytes(deps.rootPath, change.path, bytes)
       occupied.add(identityKey)
       state.files[change.path] = {
         fileId: change.fileId,
         identityKey,
-        localHash: remoteHash ?? await sha256Hex(bytes),
+        localHash: remoteHash ?? actualHash,
         remoteRev: change.remoteRev,
         status: 'clean',
         size: change.size ?? bytes.byteLength,
@@ -678,27 +690,20 @@ export function createSyncEngine(deps: SyncEngineDeps) {
               if (!isCopyPath(path) && e.identityKey === identityKey) delete state.files[path]
             }
           } else if (change.op === 'rename' && change.from && change.path) {
-            try {
-              await fs.rename(deps.rootPath, change.from, change.path)
-            } catch {
-              // may already be at target after prior pull
-            }
             const fromKey = toIdentityKey(change.from)
             // Conflict-copy paths are local-only records; never treat one as
             // the renamed file's own state entry.
             const entry = Object.entries(state.files).find(
               ([path, e]) => !isCopyPath(path) && (e.identityKey === fromKey || toIdentityKey(path) === fromKey),
             )
+            // Preserve local edits BEFORE moving change.from away (§9.3 rename×edit);
+            // checking change.from after fs.rename would always see it missing.
             if (entry) {
               const [, meta] = entry
-              delete state.files[entry[0]]
-              // Local edits at the source survive as a conflict copy (§9.3
-              // rename×edit); never push them over the renamed cloud body.
-              let copyPath: string | null = null
               if ((meta.status === 'dirty' || meta.status === 'conflict') && meta.fileId) {
                 try {
                   if (await fs.exists(deps.rootPath, change.from)) {
-                    copyPath = buildConflictCopyPath(change.from, config.binding.replicaId, occupied, toIdentityKey)
+                    const copyPath = buildConflictCopyPath(change.from, config.binding.replicaId, occupied, toIdentityKey)
                     occupied.add(toIdentityKey(copyPath))
                     if (prefersTextBody(change.from, docKinds())) {
                       const localContent = await fs.readText(deps.rootPath, change.from)
@@ -731,15 +736,15 @@ export function createSyncEngine(deps: SyncEngineDeps) {
                   // unreadable source — proceed; nothing is lost from the cloud side
                 }
               }
-              // Body at the target is stale until the rename's follow-up upsert
-              // change refetches it (backend logs rename as metadata-only). The
-              // disk content moved with the path, so keep meta.localHash — the
-              // pull's clean-vs-remote hash check detects staleness there.
-              // Marking dirty (not clean) prevents this cycle's push from
-              // mistaking the renamed file for a vanished local rename/tombstone
-              // while its body is still pending; the upsert rewrites the entry
-              // clean when the new rev's content lands. Local edits were
-              // preserved above as a conflict copy (§9.3 rename×edit).
+            }
+            try {
+              await fs.rename(deps.rootPath, change.from, change.path)
+            } catch {
+              // may already be at target after prior pull
+            }
+            if (entry) {
+              const [, meta] = entry
+              delete state.files[entry[0]]
               state.files[change.path] = {
                 ...meta,
                 identityKey: toIdentityKey(change.path),
@@ -932,12 +937,21 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       return pushPull()
     }
     setStatus('retrying', `重试队列 ${ready.length || retryQueue.pendingCount()} 项…`)
-    // Full cycle recovers cursor + dirty files; individual push items are covered by rescan.
-    for (const item of ready) {
-      retryQueue.markSuccess(item.id)
+    // Run the cycle first; only clear ready items on success so exponential backoff
+    // and maxAttempts are preserved across consecutive failures.
+    const snap = await pushPull()
+    if (snap.status === 'idle' || snap.status === 'conflict') {
+      for (const item of ready) {
+        retryQueue.markSuccess(item.id)
+      }
+      await persistRetryQueue()
+    } else if (ready.length > 0) {
+      for (const item of ready) {
+        retryQueue.markFailure(item.id, snap.message || '重试失败')
+      }
+      await persistRetryQueue()
     }
-    await persistRetryQueue()
-    return pushPull()
+    return snap
   }
 
   function startBackgroundSync(): () => void {

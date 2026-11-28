@@ -48,6 +48,15 @@ function absoluteUrl(descriptor: DownloadDescriptor, baseUrl?: string): string {
  * for {@code bytes=<n>-} and the result is concatenated. A full sha-256 check runs upstream in the
  * engine; this module only guarantees "as much as was asked for, no more".</p>
  */
+function isSameOriginAsBase(resolvedUrl: string, baseUrl?: string): boolean {
+  if (!baseUrl) return !/^https?:\/\//i.test(resolvedUrl)
+  try {
+    return new URL(resolvedUrl).origin === new URL(baseUrl).origin
+  } catch {
+    return false
+  }
+}
+
 export async function downloadAttachment(
   descriptor: DownloadDescriptor,
   options: DownloadOptions = {},
@@ -59,8 +68,12 @@ export async function downloadAttachment(
   const retries = options.retries ?? 2
 
   const headers: Record<string, string> = {}
-  // Proxy mode talks to our own endpoint, which authenticates like every other vault call.
-  if (options.token && descriptor.mode !== 'direct') {
+  // Proxy mode talks to our own endpoint; never send bearer token to third-party origins.
+  if (
+    options.token
+    && descriptor.mode !== 'direct'
+    && (!/^https?:\/\//i.test(descriptor.url) || isSameOriginAsBase(url, options.baseUrl))
+  ) {
     headers.Authorization = `Bearer ${options.token}`
   }
   if (canResume) {

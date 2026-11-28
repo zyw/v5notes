@@ -106,6 +106,18 @@ public class LocalFileClient extends AbstractFileClient<LocalFileClientConfig> {
     }
 
     private String getFilePath(String path) {
-        return config.getBasePath() + path;
+        if (path == null) {
+            throw new IllegalArgumentException("文件路径不能为空");
+        }
+        String rel = path.replace('\\', '/');
+        while (rel.startsWith("/")) {
+            rel = rel.substring(1);
+        }
+        java.nio.file.Path base = java.nio.file.Paths.get(config.getBasePath()).toAbsolutePath().normalize();
+        java.nio.file.Path resolved = base.resolve(rel).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new IllegalArgumentException("非法文件路径: " + path);
+        }
+        return resolved.toString();
     }
 }

@@ -64,21 +64,28 @@ export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandle
     lastSyncMessage.value = ''
   }
 
-  /** Apply a status push to shared state; quota copy refreshes with it. */
+  /** Apply a status push to shared state; quota copy refreshes on terminal states. */
   function applyStatus(status: SyncEngineStatus) {
     syncStatus.value = status
     if (status.message) lastSyncMessage.value = status.message
-    // Keeps plan-backed rows fresh after background cycles; failures are
-    // surfaced by the account layer itself, not the sync path.
-    void account.refreshProfileAndPlan().catch(() => {})
+    if (status.status === 'idle' || status.status === 'over-quota' || status.status === 'conflict') {
+      // Keeps plan-backed rows fresh after background cycles; failures are
+      // surfaced by the account layer itself, not the sync path.
+      void account.refreshProfileAndPlan().catch(() => {})
+    }
   }
 
   /** Guarded cycle: skip when one is already running, count toward `syncing`. */
   async function guardedCycle(run: (active: SyncEngine) => Promise<SyncEngineStatus>) {
     if (activeCycles.value > 0) return
+    const active = engine.value
+    if (!active) return
     activeCycles.value += 1
     try {
-      await run(engine.value!).then(applyStatus)
+      const next = await run(active)
+      if (engine.value === active) {
+        applyStatus(next)
+      }
     } catch {
       /* engine reports via subscribe/error status; never throw out of events */
     } finally {

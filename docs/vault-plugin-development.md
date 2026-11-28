@@ -60,17 +60,10 @@ SettingsView        plugins = listPluginInfos()
 
 **这些跳过是静默的**，不会在界面上留下任何一条「装错了」的提示。这是「我明明装了却看不见」最常见的两个原因：目录名对不上、manifest 解析失败。
 
-### 2.2 「安装示例扩展」——写死在前端源码里的示例
+### 2.2 内置主题与示例源码
 
-它**不联网**。点击后执行三件事：
-
-1. 把 `HELLO_WORLD_MANIFEST` + `HELLO_WORLD_MAIN_JS` 写成 `extensions/plugins/hello-world/{manifest.json,main.js}`；
-2. 把 `SAFE_FETCH_MANIFEST` + `SAFE_FETCH_MAIN_JS` 写成 `extensions/plugins/safe-fetch-demo/…`；
-3. 写入 `forest-ink`、`wanqing` 两个主题，并把两个示例插件 id 加进 `community-plugins.json` 的 `enabled`。
-
-源码常量在 `src/plugin-host/samples/helloWorld.ts` 和 `samples/safeFetch.ts`。它是一组「写入即可用的参照物」，不是插件来源。
-
-> 写文件用的是**覆盖写**。手改过 `extensions/plugins/hello-world/` 的文件后，再点一次这个按钮，你的改动会被源码里的常量盖掉。
+- `forest-ink`（林墨）与 `wanqing`（晚晴）已作为**原生内置主题**随应用发布，无需安装即可在「外观」中直接切换。
+- 示例插件源码位于 `src/plugin-host/samples/helloWorld.ts` 与 `samples/safeFetch.ts`，可作为本地开发参照物或通过插件目录种子安装。
 
 ### 2.3 「插件目录」——catalog
 
@@ -365,7 +358,10 @@ npm run install:app    # 拷到 <应用配置目录>/extensions/themes/ink-night
 
 ## 七、安装到 Vault Client
 
-宿主**没有**「从文件夹导入」或「拖 zip 进来」的入口。开发期只有一条路：**把文件夹放进应用配置目录，然后启用**。
+桌面端支持两种本地安装方式：
+
+- **本地 `.zip` 导入**：在 设置 → 插件与安全 点击「导入本地扩展」，选择打包好的 `.zip`（经 `read_extension_zip` 解包暂存到 `extensions/pending/<id>/`），随后在列表中安装并启用；已安装的社区扩展也支持在设置页直接卸载。
+- **开发期直拷目录**：把包含 `manifest.json` 和 `main.js` 的目录放入应用配置目录 `extensions/plugins/<id>/`，再在设置页启用。
 
 ### 7.1 开发期：自动安装（推荐）
 

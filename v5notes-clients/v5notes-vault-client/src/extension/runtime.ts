@@ -259,6 +259,8 @@ async function activateInstalled(result: { id: string; kind: 'plugin' | 'theme' 
   }
   if (result.kind === 'plugin') {
     await pluginHost.setEnabled(result.id, true)
+    await syncRememberedKinds()
+    docKindsRevision.value += 1
   } else {
     await themeHost.start()
   }

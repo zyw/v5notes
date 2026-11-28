@@ -75,6 +75,14 @@ export async function importExtensionZip(zipPath: string): Promise<CatalogItem> 
 }
 
 export async function writePendingPackage(id: string, files: Record<string, string>): Promise<void> {
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    throw new Error('非法扩展 id: ' + id)
+  }
+  for (const name of Object.keys(files)) {
+    if (!name || name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('非法包内文件名: ' + name)
+    }
+  }
   const store = getAppStore()
   const dir = await pendingPath(id)
   await store.mkdir(dir)

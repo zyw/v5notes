@@ -42,15 +42,19 @@ export async function installCatalogPackage(
     throw new Error('包 id ' + pkg.id + ' 与 manifest.id ' + manifest.id + ' 不一致')
   }
 
+  // Validate every entry filename before creating directories or writing files.
+  for (const name of Object.keys(pkg.files)) {
+    if (!name || name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('非法包内文件名: ' + name)
+    }
+  }
+
   const baseDir = manifest.kind === 'theme' ? 'themes' : 'plugins'
   const store = getAppStore()
   const dir = await extensionPath([baseDir, manifest.id])
   await store.mkdir(dir)
 
   for (const [name, content] of Object.entries(pkg.files)) {
-    if (!name || name.includes('..') || name.includes('/') || name.includes('\\')) {
-      throw new Error('非法包内文件名: ' + name)
-    }
     const text = content.endsWith('\n') ? content : content + '\n'
     await store.writeText(dir + '/' + name, text)
   }

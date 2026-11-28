@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import xin.v5ai.basics.file.core.client.FileClient;
+import xin.v5ai.basics.file.core.client.db.DBFileClient;
+import xin.v5ai.basics.file.core.client.ftp.FTPFileClient;
 import xin.v5ai.basics.file.core.client.s3.S3FileClient;
+import xin.v5ai.basics.file.core.client.sftp.SFTPFileClient;
 import xin.v5ai.basics.file.core.enums.FileConfigPurpose;
 import xin.v5ai.basics.file.domain.FileInfo;
 import xin.v5ai.basics.file.service.IFileConfigService;
@@ -52,7 +55,7 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     public VaultStoredObject store(Long vaultId, Long configId, InputStream content, long sizeBytes, String mimeType)
         throws Exception {
         Long target = configId == null ? targetConfigId() : configId;
-        byte[] bytes = content.readAllBytes();
+        byte[] bytes = readBounded(content, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES);
         String sha256 = sha256Hex(bytes);
         String objectKey = buildKey(LoginHelper.getUserId(), vaultId, sha256);
 
@@ -131,10 +134,42 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     @Override
     public VaultAssetCapability capability() {
         FileClient client = requirePurposeClient();
-        String backend = client instanceof S3FileClient
-            ? VaultAssetCapability.BACKEND_S3
-            : VaultAssetCapability.BACKEND_LOCAL;
+        if (client instanceof S3FileClient s3) {
+            boolean direct = AccessPolicy.PRIVATE == s3.getAccessPolicy();
+            return new VaultAssetCapability(
+                VaultAssetCapability.BACKEND_S3,
+                direct,
+                VaultQuotaRules.DEFAULT_MAX_FILE_BYTES,
+                direct ? VaultAssetCapability.CONCURRENT_DIRECT : VaultAssetCapability.CONCURRENT_PROXY
+            );
+        }
+        String backend;
+        if (client instanceof FTPFileClient) {
+            backend = VaultAssetCapability.BACKEND_FTP;
+        } else if (client instanceof SFTPFileClient) {
+            backend = VaultAssetCapability.BACKEND_SFTP;
+        } else if (client instanceof DBFileClient) {
+            backend = VaultAssetCapability.BACKEND_DB;
+        } else {
+            backend = VaultAssetCapability.BACKEND_LOCAL;
+        }
         return VaultAssetCapability.of(backend, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES);
+    }
+
+    private static byte[] readBounded(InputStream in, long maxBytes) throws Exception {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        long total = 0;
+        int n;
+        while ((n = in.read(buf)) != -1) {
+            total += n;
+            if (total > maxBytes) {
+                throw new VaultBusinessException(VaultHttpStatus.PAYLOAD_TOO_LARGE,
+                    VaultErrorCodes.FILE_TOO_LARGE, "单文件超过上限");
+            }
+            out.write(buf, 0, n);
+        }
+        return out.toByteArray();
     }
 
     @Override

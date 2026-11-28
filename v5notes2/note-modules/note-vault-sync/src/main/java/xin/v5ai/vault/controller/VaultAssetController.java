@@ -41,7 +41,11 @@ import java.io.OutputStream;
 @RequestMapping("/vault/v1/vaults/{vaultId}/assets")
 public class VaultAssetController extends BaseController {
 
+    private static final int MAX_CONCURRENT_DOWNLOADS_PER_USER = 4;
+
     private final IVaultAssetService assetService;
+    private final java.util.concurrent.ConcurrentHashMap<Long, java.util.concurrent.Semaphore> downloadPermits =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Stores an attachment body, deduplicating by content hash within the vault.
@@ -54,7 +58,7 @@ public class VaultAssetController extends BaseController {
                        @RequestParam("file") MultipartFile file,
                        @RequestParam("sha256") String sha256) throws Exception {
         Long userId = LoginHelper.getUserId();
-        Long id = Long.parseLong(vaultId);
+        Long id = parseVaultId(vaultId);
         if (file == null || file.isEmpty()) {
             throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "缺少文件内容");
         }
@@ -78,31 +82,49 @@ public class VaultAssetController extends BaseController {
                         @RequestHeader(value = HttpHeaders.RANGE, required = false) String range,
                         HttpServletResponse response) throws Exception {
         Long userId = LoginHelper.getUserId();
-        Long id = Long.parseLong(vaultId);
+        Long id = parseVaultId(vaultId);
         assetService.requireOwned(userId, id, assetId);
 
         VaultAssetRef ref = assetService.findByAssetIdForRead(id, assetId);
         if (ref == null) {
             throw new VaultBusinessException(HttpStatus.NOT_FOUND, VaultErrorCodes.ASSET_NOT_FOUND, "附件对象不存在");
         }
-        long total = ref.getSizeBytes() == null ? 0L : ref.getSizeBytes();
-        long[] window = parseRange(range, total);
-
-        if (window[0] > 0 || window[1] < total) {
-            response.setStatus(VaultHttpStatus.PARTIAL_CONTENT);
-            response.setHeader(HttpHeaders.CONTENT_RANGE,
-                "bytes " + window[0] + "-" + (window[0] + window[1] - 1) + "/" + total);
+        java.util.concurrent.Semaphore sem = downloadPermits.computeIfAbsent(
+            userId, k -> new java.util.concurrent.Semaphore(MAX_CONCURRENT_DOWNLOADS_PER_USER));
+        if (!sem.tryAcquire()) {
+            throw new VaultBusinessException(429, VaultErrorCodes.RATE_LIMITED, "附件下载并发过多，请稍后重试");
         }
-        response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
-        response.setHeader("X-Content-Hash", ref.getSha256());
-        if (ref.getMimeType() != null && !ref.getMimeType().isBlank()) {
-            response.setContentType(ref.getMimeType());
-        }
-        response.setContentLengthLong(window[1]);
+        try {
+            long total = ref.getSizeBytes() == null ? 0L : ref.getSizeBytes();
+            long[] window = parseRange(range, total);
 
-        try (OutputStream out = response.getOutputStream()) {
-            assetService.streamTo(ref, window[0], window[1], out);
-            out.flush();
+            if (window[0] > 0 || window[1] < total) {
+                response.setStatus(VaultHttpStatus.PARTIAL_CONTENT);
+                response.setHeader(HttpHeaders.CONTENT_RANGE,
+                    "bytes " + window[0] + "-" + (window[0] + window[1] - 1) + "/" + total);
+            }
+            response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
+            response.setHeader("X-Content-Hash", ref.getSha256());
+            response.setHeader("X-Content-Type-Options", "nosniff");
+            if (ref.getMimeType() != null && !ref.getMimeType().isBlank()) {
+                response.setContentType(ref.getMimeType());
+            }
+            response.setContentLengthLong(window[1]);
+
+            try (OutputStream out = response.getOutputStream()) {
+                assetService.streamTo(ref, window[0], window[1], out);
+                out.flush();
+            }
+        } finally {
+            sem.release();
+        }
+    }
+
+    private static Long parseVaultId(String vaultId) {
+        try {
+            return Long.parseLong(vaultId);
+        } catch (NumberFormatException ex) {
+            throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, "vaultId 无效");
         }
     }
 

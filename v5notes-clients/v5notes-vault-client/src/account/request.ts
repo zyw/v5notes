@@ -11,7 +11,28 @@ interface Envelope<T> {
   data: T
 }
 
-/** 将响应中疑似雪花 ID 的 number 转 string，避免精度丢失。 */
+/** Quote unquoted 16+ digit integer tokens before JSON.parse so 64-bit snowflake IDs never lose precision. */
+function quoteLargeIntegers(raw: string): string {
+  return raw.replace(
+    /("(?:\\.|[^"\\])*")|(:[\s]*)(-?\d{16,})(?=[,\s}\]])/g,
+    (match, str: string | undefined, colon: string | undefined, num: string | undefined) => {
+      if (str !== undefined) return str
+      return `${colon}"${num}"`
+    },
+  )
+}
+
+async function parseJsonPreservingIds(response: Response): Promise<unknown> {
+  if (typeof response.text === 'function') {
+    const raw = await response.text()
+    try {
+      return normalizeIds(JSON.parse(quoteLargeIntegers(raw)))
+    } catch {
+      throw new Error(`服务端返回非 JSON 响应（HTTP ${response.status}）`)
+    }
+  }
+  return normalizeIds(await response.json())
+}
 function normalizeIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeIds)
   if (value && typeof value === 'object') {
@@ -51,7 +72,7 @@ export function createRequest(
       ...init,
       headers: { ...headers, ...init.headers },
     })
-    const result = normalizeIds(await response.json()) as Envelope<T>
+    const result = await parseJsonPreservingIds(response) as Envelope<T>
     if (response.status === 401 || result.code === 401) {
       if (authenticated && !retried && refresh) {
         const refreshed = await refresh()

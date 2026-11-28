@@ -37,7 +37,7 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
     private static final long POOL_MAX_WAIT_MS = 5_000L;
     private static final long POOL_EVICTABLE_IDLE_MS = 30_000L;
 
-    private GenericObjectPool<FTPClient> pool;
+    private volatile GenericObjectPool<FTPClient> pool;
 
     public FTPFileClient(Long id, FTPFileClientConfig config) {
         super(id, config);
@@ -100,13 +100,14 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
             return result;
         } finally {
             if (healthy) {
-                // Reset the position so the next borrower starts from the config base path.
+                // Reset the position so the next borrower starts from the config base path;
+                // a failed CWD indicates a broken control channel, so invalidate instead of pooling it.
                 try {
                     client.changeWorkingDirectory(config.getBasePath());
-                } catch (Exception ignored) {
-                    // A stale directory is harmless: every operation sets its own.
+                    current.returnObject(client);
+                } catch (Exception ex) {
+                    current.invalidateObject(client);
                 }
-                current.returnObject(client);
             } else {
                 current.invalidateObject(client);
             }
@@ -177,15 +178,24 @@ public class FTPFileClient extends AbstractFileClient<FTPFileClientConfig> {
             if (offset > 0) {
                 client.setRestartOffset(offset);
             }
+            boolean opened = false;
+            boolean completeOk = true;
             try (InputStream remote = client.retrieveFileStream(fileNameOf(filePath))) {
                 if (remote == null) {
                     throw new FtpException(StrUtil.format(
                         "下载文件失败 path={} reply={}", filePath, replyOf(client)));
                 }
+                opened = true;
                 copyLimited(remote, out, length);
             } finally {
                 client.setRestartOffset(0);
-                client.completePendingCommand();
+                if (opened) {
+                    completeOk = client.completePendingCommand();
+                }
+            }
+            if (!completeOk) {
+                throw new FtpException(StrUtil.format(
+                    "下载文件结束确认失败 path={} reply={}", filePath, replyOf(client)));
             }
             return null;
         });
