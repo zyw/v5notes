@@ -3,6 +3,8 @@ import {
   attachmentFromInsertUrl,
   attachmentRelFromImageUrl,
   attachmentUrlText,
+  guessMimeTypeFromExtension,
+  isAttachmentExtensionForKind,
   isInlineImageExtension,
   isVaultRelativeImageUrl,
   sanitizeAttachmentName,
@@ -97,5 +99,44 @@ describe('attachmentFromInsertUrl', () => {
   it('round-trips through attachmentUrlText', () => {
     const rel = 'attachments/my pic-1.png'
     expect(attachmentFromInsertUrl(attachmentUrlText(rel), 0).rel).toBe(rel)
+  })
+})
+
+describe('isAttachmentExtensionForKind', () => {
+  it('separates image, video, and audio extensions cleanly', () => {
+    expect(isAttachmentExtensionForKind('clip.MP4', 'video')).toBe(true)
+    expect(isAttachmentExtensionForKind('clip.mov', 'video')).toBe(true)
+    expect(isAttachmentExtensionForKind('clip.mp3', 'video')).toBe(false)
+
+    expect(isAttachmentExtensionForKind('song.MP3', 'audio')).toBe(true)
+    expect(isAttachmentExtensionForKind('song.flac', 'audio')).toBe(true)
+    expect(isAttachmentExtensionForKind('song.mp4', 'audio')).toBe(false)
+
+    expect(isAttachmentExtensionForKind('pic.webp', 'image')).toBe(true)
+    expect(isAttachmentExtensionForKind('pic.mp4', 'image')).toBe(false)
+  })
+})
+
+describe('sanitizeAttachmentName for video and audio', () => {
+  it('preserves valid video/audio extensions and falls back via mime hint or default', () => {
+    expect(sanitizeAttachmentName('演示录屏.mp4', 'video/mp4', 'video')).toBe('演示录屏.mp4')
+    expect(sanitizeAttachmentName('clip', 'video/quicktime', 'video')).toBe('clip.mov')
+    expect(sanitizeAttachmentName('clip', undefined, 'video')).toBe('clip.mp4')
+
+    expect(sanitizeAttachmentName('播客.m4a', 'audio/mp4', 'audio')).toBe('播客.m4a')
+    expect(sanitizeAttachmentName('track', 'audio/wav', 'audio')).toBe('track.wav')
+    expect(sanitizeAttachmentName('track', undefined, 'audio')).toBe('track.mp3')
+  })
+})
+
+describe('guessMimeTypeFromExtension', () => {
+  it('maps image, video, and audio extensions', () => {
+    expect(guessMimeTypeFromExtension('.png')).toBe('image/png')
+    expect(guessMimeTypeFromExtension('.MP4')).toBe('video/mp4')
+    expect(guessMimeTypeFromExtension('.mov')).toBe('video/quicktime')
+    expect(guessMimeTypeFromExtension('.mp3')).toBe('audio/mpeg')
+    expect(guessMimeTypeFromExtension('.m4a')).toBe('audio/mp4')
+    expect(guessMimeTypeFromExtension('.flac')).toBe('audio/flac')
+    expect(guessMimeTypeFromExtension('.unknown')).toBe('application/octet-stream')
   })
 })

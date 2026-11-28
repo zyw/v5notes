@@ -17,6 +17,13 @@ export {
 export { createSyncEngine, type SyncEngine, type SyncEngineDeps } from './engine'
 export { useSyncCoordinator, type SyncCoordinatorHandles } from './coordinator'
 export {
+  describeWorkspaceSyncButton,
+  workspaceSyncToastMessage,
+  type WorkspaceSyncButtonInput,
+  type WorkspaceSyncButtonState,
+  type WorkspaceSyncTone,
+} from './workspaceSyncAction'
+export {
   buildDeviceLabel,
   buildVaultDeviceLabel,
   describeDeviceLabel,

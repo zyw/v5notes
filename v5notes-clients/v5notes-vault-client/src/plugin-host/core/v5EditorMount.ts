@@ -1,5 +1,5 @@
 import { createApp, h, nextTick, ref, watch } from 'vue'
-import { createVideoPlugin } from '@v5md/plugin-video'
+import { createVideoPlugin, serializeVideoBlock, type VideoApi } from '@v5md/plugin-video'
 import { V5Editor } from '@v5md/vue'
 import type { Editor, V5mdPlugin } from '@v5md/view'
 import type {
@@ -8,6 +8,7 @@ import type {
   EditorMountOptions,
   EditorSession,
   PickedImage,
+  PickedMedia,
 } from '@v5notes/vault-plugin-api'
 import { RelativeImageRewriter } from './relativeImages'
 
@@ -31,6 +32,33 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
     resolve: (relativePath) => options.resolveVaultAsset?.(relativePath) ?? Promise.resolve(''),
   })
 
+  const baseVideoPlugin = createVideoPlugin({ locale: options.locale ?? 'zh-CN' })
+  const videoPlugin: V5mdPlugin = {
+    ...(baseVideoPlugin as unknown as V5mdPlugin),
+    commands: {
+      ...baseVideoPlugin.commands,
+      'video.pick': {
+        isEnabled: (state) => state.editable && !state.sourceMode,
+        run: (ctx, ...args) => {
+          if (options.onPickVideo && options.onPickVideo() !== false) return true
+          return baseVideoPlugin.commands?.['video.insert']?.run(ctx as never, ...args) ?? false
+        },
+      },
+      'audio.pick': {
+        isEnabled: (state) => state.editable && !state.sourceMode,
+        run: (ctx, ...args) => {
+          if (options.onPickAudio && options.onPickAudio() !== false) return true
+          return baseVideoPlugin.commands?.['video.insert']?.run(ctx as never, ...args) ?? false
+        },
+      },
+    },
+    toolbar: baseVideoPlugin.toolbar?.map((item) => {
+      if (item.id === 'video.insert') return { ...item, command: 'video.pick' }
+      if (item.id === 'video.insert.audio') return { ...item, command: 'audio.pick' }
+      return item
+    }),
+  }
+
   const app = createApp({
     name: 'V5EditorMount',
     setup() {
@@ -46,7 +74,7 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
           locale: options.locale ?? 'zh-CN',
           theme: theme.value,
           placeholder: options.placeholder ?? '开始写作…',
-          plugins: [createVideoPlugin({ locale: options.locale ?? 'zh-CN' }) as unknown as V5mdPlugin],
+          plugins: [videoPlugin],
           onUploadImage: options.onUploadImage,
           // Claim the toolbar image button for the host's attachment picker.
           // The library opens its hidden system file input only when this
@@ -149,6 +177,21 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
       // Editor not ready yet — splice into the Markdown at the end.
       const label = name.replace(/[[\]\r\n]/g, '').trim()
       const next = `${markdown.value}\n![${label}](${target})\n`
+      markdown.value = next
+      options.onChange(next)
+    },
+    insertMedia({ kind, url, name }: PickedMedia) {
+      const target = url.trim()
+      if (!target) return
+      const title = name.replace(/[\r\n"]/g, '').trim() || undefined
+      if (editor) {
+        editor.focus()
+        const videoApi = editor.getPlugin<VideoApi>('video')?.api
+        if (videoApi?.insert(target, { audio: kind === 'audio', title })) return
+      }
+      const lang = kind === 'audio' ? 'audio' : 'video'
+      const body = serializeVideoBlock(target, { audio: kind === 'audio', title })
+      const next = `${markdown.value}\n\`\`\`${lang}\n${body}\n\`\`\`\n`
       markdown.value = next
       options.onChange(next)
     },

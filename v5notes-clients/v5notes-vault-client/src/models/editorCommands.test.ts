@@ -30,6 +30,7 @@ function actions(): CommandActions {
     changeFontSize: vi.fn(),
     exportNote: vi.fn(),
     copyMarkdown: vi.fn(),
+    syncVault: vi.fn(),
     openSettings: vi.fn(),
   }
 }
@@ -118,10 +119,22 @@ describe('editor commands', () => {
     const commands = buildEditorCommands(list)
     await commands.find(command => command.id === 'mode.edit')!.run()
     await commands.find(command => command.id === 'export.markdown')!.run()
+    await commands.find(command => command.id === 'app.sync')!.run()
     await commands.find(command => command.id === 'app.settings')!.run()
     expect(list.enterEdit).toHaveBeenCalledTimes(1)
     expect(list.exportNote).toHaveBeenCalledWith('markdown')
+    expect(list.syncVault).toHaveBeenCalledTimes(1)
     expect(list.openSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows sync command only when sync is available and idle, and carries status badge', () => {
+    const list = actions()
+    const commands = buildEditorCommands(list)
+    const syncCmd = commands.find(command => command.id === 'app.sync')!
+    expect(syncCmd.available(editContext)).toBe(false)
+    expect(syncCmd.available({ ...editContext, syncAvailable: true, syncing: true })).toBe(false)
+    expect(syncCmd.available({ ...editContext, syncAvailable: true, syncing: false })).toBe(true)
+    expect(syncCmd.badge?.({ ...editContext, syncAvailable: true, syncBadge: '离线' })).toBe('离线')
   })
 })
 

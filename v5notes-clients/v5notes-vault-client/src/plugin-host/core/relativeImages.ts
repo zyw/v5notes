@@ -11,11 +11,24 @@ export interface RelativeImageRewriterOptions {
   resolve(relativePath: string): Promise<string>
 }
 
+type MediaSrcElement = HTMLImageElement | HTMLSourceElement | HTMLVideoElement | HTMLAudioElement
+
+const MEDIA_SELECTOR = 'img, source, video, audio'
+
+function isMediaSrcElement(node: unknown): node is MediaSrcElement {
+  return (
+    node instanceof HTMLImageElement ||
+    node instanceof HTMLSourceElement ||
+    node instanceof HTMLVideoElement ||
+    node instanceof HTMLAudioElement
+  )
+}
+
 export class RelativeImageRewriter {
   private readonly container: HTMLElement
   private readonly resolve: (relativePath: string) => Promise<string>
   private readonly pending = new Map<string, Promise<void>>()
-  private readonly waiters = new Map<string, HTMLImageElement[]>()
+  private readonly waiters = new Map<string, MediaSrcElement[]>()
   private readonly observer: MutationObserver
 
   constructor(container: HTMLElement, options: RelativeImageRewriterOptions) {
@@ -35,39 +48,41 @@ export class RelativeImageRewriter {
   }
 
   private onError = (event: Event): void => {
-    const img = event.target
-    if (img instanceof HTMLImageElement) this.handle(img)
+    if (isMediaSrcElement(event.target)) this.handle(event.target)
   }
 
   private scan(records: MutationRecord[]): void {
     for (const record of records) {
       if (record.type === 'attributes') {
-        const target = record.target
-        if (target instanceof HTMLImageElement) this.handle(target)
+        if (isMediaSrcElement(record.target)) this.handle(record.target)
         continue
       }
       for (const node of Array.from(record.addedNodes)) {
-        if (node instanceof HTMLImageElement) this.handle(node)
+        if (isMediaSrcElement(node)) this.handle(node)
         else if (node instanceof Element) {
-          for (const img of Array.from(node.querySelectorAll('img'))) this.handle(img)
+          for (const el of Array.from(node.querySelectorAll(MEDIA_SELECTOR))) {
+            if (isMediaSrcElement(el)) this.handle(el)
+          }
         }
       }
     }
   }
 
   scanAll(): void {
-    for (const img of Array.from(this.container.querySelectorAll('img'))) this.handle(img)
+    for (const el of Array.from(this.container.querySelectorAll(MEDIA_SELECTOR))) {
+      if (isMediaSrcElement(el)) this.handle(el)
+    }
   }
 
-  handle(img: HTMLImageElement): void {
-    const rel = attachmentRelFromImageUrl(img.getAttribute('src'))
+  handle(el: MediaSrcElement): void {
+    const rel = attachmentRelFromImageUrl(el.getAttribute('src'))
     if (!rel) return
 
     const list = this.waiters.get(rel)
     if (list) {
-      if (!list.includes(img)) list.push(img)
+      if (!list.includes(el)) list.push(el)
     } else {
-      this.waiters.set(rel, [img])
+      this.waiters.set(rel, [el])
     }
     if (this.pending.has(rel)) return
 
@@ -79,11 +94,15 @@ export class RelativeImageRewriter {
         const nodes = this.waiters.get(rel) ?? []
         this.waiters.delete(rel)
         if (!url) {
-          console.warn('[v5md] 无法解析库内图片:', rel)
+          console.warn('[v5md] 无法解析库内附件:', rel)
           return
         }
         for (const node of nodes) {
-          if (node.isConnected && attachmentRelFromImageUrl(node.getAttribute('src'))) node.src = url
+          if (!node.isConnected || !attachmentRelFromImageUrl(node.getAttribute('src'))) continue
+          node.src = url
+          if (node instanceof HTMLSourceElement && node.parentElement instanceof HTMLMediaElement) {
+            node.parentElement.load()
+          }
         }
       })
     this.pending.set(rel, promise)

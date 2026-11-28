@@ -118,4 +118,37 @@ describe('sync coordinator', () => {
     expect(coord.lastSyncMessage.value).toBe('ok')
     scope.stop()
   })
+
+  it('exposes loggedIn reactively and runs syncNow exclusively without re-entrancy', async () => {
+    const scope = effectScope()
+    const account = fakeAccount()
+    const coord = scope.run(() => useSyncCoordinator(account))!
+    expect(coord.loggedIn.value).toBe(true)
+
+    // No engine bound yet -> syncNow returns null
+    expect(await coord.syncNow()).toBeNull()
+
+    coord.vault.value = vaultA
+    await nextTick()
+
+    // While an exclusive cycle is already running, syncNow skips instead of re-entering.
+    let duringExclusive: SyncEngineStatus | null | undefined
+    await coord.runExclusive(async () => {
+      duringExclusive = await coord.syncNow()
+    })
+    expect(duringExclusive).toBeNull()
+    expect(engineDouble.pushPullCalls).toBe(0)
+
+    const result = await coord.syncNow()
+    expect(result?.status).toBe('idle')
+    expect(engineDouble.pushPullCalls).toBe(1)
+    expect(coord.syncing.value).toBe(false)
+
+    // Logout updates loggedIn and tears down the engine so syncNow returns null.
+    account.token.value = ''
+    await nextTick()
+    expect(coord.loggedIn.value).toBe(false)
+    expect(await coord.syncNow()).toBeNull()
+    scope.stop()
+  })
 })

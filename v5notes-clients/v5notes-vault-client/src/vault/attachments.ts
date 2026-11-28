@@ -38,6 +38,10 @@ export function attachmentRelFromImageUrl(src: string | null | undefined): strin
 
 /** Extensions the editor renders inline; others still insert but preview as links. */
 const INLINE_IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.avif', '.ico'])
+const INLINE_VIDEO_EXTS = new Set(['.mp4', '.m4v', '.webm', '.ogv', '.ogg', '.mov'])
+const INLINE_AUDIO_EXTS = new Set(['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.oga', '.opus', '.flac', '.webm'])
+
+export type AttachmentKind = 'image' | 'video' | 'audio'
 
 export class AttachmentError extends Error {}
 
@@ -45,8 +49,46 @@ export function isInlineImageExtension(name: string): boolean {
   return INLINE_IMAGE_EXTS.has(extensionOf(name))
 }
 
-/** Filesystem-safe leaf name for an uploaded image, keeping original case. */
-export function sanitizeAttachmentName(name: string, mimeHint?: string): string {
+export function isAttachmentExtensionForKind(name: string, kind: AttachmentKind): boolean {
+  const ext = extensionOf(name)
+  if (kind === 'video') return INLINE_VIDEO_EXTS.has(ext)
+  if (kind === 'audio') return INLINE_AUDIO_EXTS.has(ext)
+  return INLINE_IMAGE_EXTS.has(ext)
+}
+
+function defaultExtensionForKind(kind: AttachmentKind, mimeHint?: string): string {
+  const mime = mimeHint?.toLowerCase().trim()
+  if (kind === 'video') {
+    if (mime === 'video/webm') return '.webm'
+    if (mime === 'video/ogg') return '.ogg'
+    if (mime === 'video/quicktime') return '.mov'
+    return '.mp4'
+  }
+  if (kind === 'audio') {
+    if (mime === 'audio/mp4' || mime === 'audio/x-m4a') return '.m4a'
+    if (mime === 'audio/aac') return '.aac'
+    if (mime === 'audio/wav' || mime === 'audio/x-wav') return '.wav'
+    if (mime === 'audio/ogg') return '.ogg'
+    if (mime === 'audio/opus') return '.opus'
+    if (mime === 'audio/flac') return '.flac'
+    if (mime === 'audio/webm') return '.webm'
+    return '.mp3'
+  }
+  if (mime?.startsWith('image/')) {
+    let ext = `.${mime.split('/').pop()}`
+    if (ext === '.svg+xml') ext = '.svg'
+    if (ext === '.x-icon' || ext === '.vnd.microsoft.icon') ext = '.ico'
+    if (INLINE_IMAGE_EXTS.has(ext)) return ext
+  }
+  return '.png'
+}
+
+/** Filesystem-safe leaf name for an uploaded attachment, keeping original case. */
+export function sanitizeAttachmentName(
+  name: string,
+  mimeHint?: string,
+  kind: AttachmentKind = 'image',
+): string {
   const base = name.includes('/') ? name.slice(name.lastIndexOf('/') + 1) : name
   // NFC like the path layer; strip chars illegal on any supported OS.
   let candidate = base
@@ -57,19 +99,19 @@ export function sanitizeAttachmentName(name: string, mimeHint?: string): string 
     .slice(0, 80)
 
   let ext = extensionOf(candidate)
-  if (!ext || !isInlineImageExtension(ext)) {
+  if (!ext || !isAttachmentExtensionForKind(ext, kind)) {
     // The display-name sanitizer rejects a bare ".png", so drop it before appending.
     if (ext) candidate = candidate.slice(0, candidate.length - ext.length).replace(/[.\s]+$/g, '')
-    ext = mimeHint?.startsWith('image/') ? `.${mimeHint.split('/').pop()}` : '.png'
-    if (ext === '.svg+xml') ext = '.svg'
+    ext = defaultExtensionForKind(kind, mimeHint)
   }
-  candidate = candidate || 'image'
+  const fallbackStem = kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'
+  candidate = candidate || fallbackStem
 
   try {
     normalizeVaultPath(`${ATTACHMENT_DIR_REL}/${candidate}${ext}`)
     return `${candidate}${ext}`
   } catch {
-    return `image-${Date.now()}${ext}`
+    return `${fallbackStem}-${Date.now()}${ext}`
   }
 }
 
@@ -132,8 +174,11 @@ export interface VaultAttachment {
   modifiedAt: number | null
 }
 
-/** List images in `attachments/` (newest first); missing folder reads as empty. */
-export async function listVaultAttachments(rootPath: string): Promise<VaultAttachment[]> {
+/** List attachments of `kind` in `attachments/` (newest first); missing folder reads as empty. */
+export async function listVaultAttachments(
+  rootPath: string,
+  kind: AttachmentKind = 'image',
+): Promise<VaultAttachment[]> {
   const dirAbs = await vaultFs.absolute(rootPath, ATTACHMENT_DIR_REL)
   let entries
   try {
@@ -144,7 +189,7 @@ export async function listVaultAttachments(rootPath: string): Promise<VaultAttac
   const out: VaultAttachment[] = []
   for (const entry of entries) {
     const name = entry.name
-    if (!name || !entry.isFile || !isInlineImageExtension(name)) continue
+    if (!name || !entry.isFile || !isAttachmentExtensionForKind(name, kind)) continue
     const fileAbs = await join(dirAbs, name)
     let sizeBytes = 0
     let modifiedAt: number | null = null
@@ -165,7 +210,7 @@ export async function listVaultAttachments(rootPath: string): Promise<VaultAttac
 export async function deleteVaultAttachment(rootPath: string, relativePath: string): Promise<void> {
   const { displayPath } = normalizeVaultPath(relativePath)
   if (attachmentRelFromImageUrl(displayPath) === null) {
-    throw new AttachmentError('只能删除附件目录内的图片')
+    throw new AttachmentError('只能删除附件目录内的文件')
   }
   const fromAbs = await vaultFs.absolute(rootPath, displayPath)
   try {
@@ -185,13 +230,43 @@ export async function deleteVaultAttachment(rootPath: string, relativePath: stri
   }
 }
 
+/** Import an OS-picked attachment file into `attachments/`; returns its record. */
+export async function importAttachmentFileToVault(
+  rootPath: string,
+  file: File,
+  kind: AttachmentKind = 'image',
+): Promise<VaultAttachment> {
+  const urlText = await saveAttachmentToVault(rootPath, file, kind)
+  return attachmentFromInsertUrl(urlText, file.size)
+}
+
 /** Import an OS-picked image file into `attachments/`; returns its record. */
 export async function importImageFileToVault(
   rootPath: string,
   file: File,
 ): Promise<VaultAttachment> {
-  const urlText = await saveImageToVault(rootPath, file)
-  return attachmentFromInsertUrl(urlText, file.size)
+  return importAttachmentFileToVault(rootPath, file, 'image')
+}
+
+/**
+ * Write an attachment into the vault and return a URL usable in Markdown.
+ * Throws when the file exceeds the vault quota or cannot be stored.
+ */
+export async function saveAttachmentToVault(
+  rootPath: string,
+  file: File,
+  kind: AttachmentKind = 'image',
+): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  if (isAttachmentTooLarge(bytes.byteLength, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
+    const kindLabel = kind === 'video' ? '视频' : kind === 'audio' ? '音频' : '图片'
+    throw new AttachmentError(`${kindLabel}超过 ${Math.round(VaultQuotaRules.DEFAULT_MAX_FILE_BYTES / (1024 * 1024))}MB 上限，未插入`)
+  }
+  const fallbackName = kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'
+  const name = sanitizeAttachmentName(file.name || fallbackName, file.type, kind)
+  const rel = await uniqueAttachmentPath(rootPath, name)
+  await vaultFs.writeBytes(rootPath, rel, bytes)
+  return attachmentUrlText(rel)
 }
 
 /**
@@ -199,14 +274,7 @@ export async function importImageFileToVault(
  * Throws when the file exceeds the vault quota or cannot be stored.
  */
 export async function saveImageToVault(rootPath: string, file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  if (isAttachmentTooLarge(bytes.byteLength, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
-    throw new AttachmentError(`图片超过 ${Math.round(VaultQuotaRules.DEFAULT_MAX_FILE_BYTES / (1024 * 1024))}MB 上限，未插入`)
-  }
-  const name = sanitizeAttachmentName(file.name || 'image', file.type)
-  const rel = await uniqueAttachmentPath(rootPath, name)
-  await vaultFs.writeBytes(rootPath, rel, bytes)
-  return attachmentUrlText(rel)
+  return saveAttachmentToVault(rootPath, file, 'image')
 }
 
 /**
@@ -222,7 +290,7 @@ export async function vaultAssetUrl(rootPath: string, relativePath: string): Pro
 }
 
 export function guessMimeTypeFromExtension(ext: string): string {
-  switch (ext) {
+  switch (ext.toLowerCase()) {
     case '.png':
       return 'image/png'
     case '.jpg':
@@ -238,6 +306,31 @@ export function guessMimeTypeFromExtension(ext: string): string {
       return 'image/bmp'
     case '.avif':
       return 'image/avif'
+    case '.ico':
+      return 'image/x-icon'
+    case '.mp4':
+    case '.m4v':
+      return 'video/mp4'
+    case '.webm':
+      return 'video/webm'
+    case '.ogv':
+    case '.ogg':
+      return 'video/ogg'
+    case '.mov':
+      return 'video/quicktime'
+    case '.mp3':
+      return 'audio/mpeg'
+    case '.m4a':
+      return 'audio/mp4'
+    case '.aac':
+      return 'audio/aac'
+    case '.wav':
+      return 'audio/wav'
+    case '.oga':
+    case '.opus':
+      return 'audio/ogg'
+    case '.flac':
+      return 'audio/flac'
     default:
       return 'application/octet-stream'
   }

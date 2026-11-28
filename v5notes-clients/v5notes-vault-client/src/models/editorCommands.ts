@@ -28,6 +28,9 @@ export interface CommandContext {
   outlineTab: 'outline' | 'find'
   trashOpen: boolean
   fontSize: number
+  syncAvailable?: boolean
+  syncing?: boolean
+  syncBadge?: string
 }
 
 export interface CommandActions {
@@ -43,6 +46,7 @@ export interface CommandActions {
   changeFontSize: (delta: number) => void
   exportNote: (format: ExportFormat) => void
   copyMarkdown: () => void
+  syncVault?: () => void
   openSettings: () => void
 }
 
@@ -275,6 +279,18 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       keywords: '复制 剪贴板 copy clipboard',
       available: context => context.hasNote,
       run: () => actions.copyMarkdown(),
+    },
+    {
+      id: 'app.sync',
+      group: 'app',
+      label: '立即同步',
+      hint: '与云端同步当前库；有未保存内容时会先保存',
+      shortcut: modShortcut('⇧S'),
+      keywords: '同步 云端 推送 拉取 sync push pull',
+      badgeTone: 'state',
+      badge: context => context.syncBadge,
+      available: context => Boolean(context.syncAvailable && actions.syncVault) && !context.syncing,
+      run: () => actions.syncVault?.(),
     },
     {
       id: 'app.settings',

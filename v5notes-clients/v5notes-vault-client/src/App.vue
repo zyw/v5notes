@@ -281,6 +281,7 @@ onUnmounted(() => {
           v-else-if="page === 'workspace' && vault"
           ref="workspaceRef"
           :vault="vault"
+          :sync="sync"
           @close="closeVault"
           @error="banner = $event"
           @dirty-change="workspaceDirty = $event"

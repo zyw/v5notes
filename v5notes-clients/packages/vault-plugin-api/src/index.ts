@@ -186,6 +186,10 @@ export interface EditorMountOptions {
   onUploadImage?: (file: File) => string | Promise<string>
   /** Handles the toolbar image button; return false to keep the system file picker. */
   onPickImage?: () => void | false
+  /** Handles the toolbar video button; return false to fall back to the default insert command. */
+  onPickVideo?: () => void | false
+  /** Handles the toolbar audio button; return false to fall back to the default insert command. */
+  onPickAudio?: () => void | false
   /** Resolve a vault-relative resource path to a displayable URL, or '' when missing. */
   resolveVaultAsset?: (relativePath: string) => Promise<string>
   onReady?: () => void
@@ -196,6 +200,15 @@ export interface PickedImage {
   /** Alt text shown in the inserted Markdown link. */
   name: string
   /** Markdown URL text — relative (`attachments/x.png`) or absolute. */
+  url: string
+}
+
+/** A stored video or audio asset the host offers for insertion. */
+export interface PickedMedia {
+  kind: 'video' | 'audio'
+  /** Display title written into the block metadata. */
+  name: string
+  /** Vault-relative (`attachments/x.mp4`) or absolute media URL. */
   url: string
 }
 
@@ -214,6 +227,8 @@ export interface EditorSession {
   focusAt(offset: number): void
   /** Insert an image at the caret; hosts may offer this after a pick dialog. */
   insertImage(image: PickedImage): void
+  /** Optional: insert a video or audio block at the caret. */
+  insertMedia?(media: PickedMedia): void
   getOutline(): EditorOutlineEntry[]
   selectFindMatch(from: number, to: number): void
   replaceNextMatch(query: string, replacement: string, options?: EditorFindOptions): EditorFindResult

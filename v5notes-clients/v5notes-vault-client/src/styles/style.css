@@ -2647,6 +2647,62 @@ body {
   stroke-linejoin: round;
 }
 
+.sync-btn {
+  position: relative;
+}
+
+.sync-btn svg {
+  stroke-width: 1.75;
+}
+
+.sync-btn.is-unauthenticated {
+  opacity: 0.62;
+}
+
+.sync-btn.is-unauthenticated:hover {
+  opacity: 1;
+}
+
+.sync-btn.is-spinning {
+  color: var(--accent);
+  cursor: progress;
+}
+
+.sync-btn.is-spinning svg {
+  animation: v5-sync-spin 1s linear infinite;
+}
+
+@keyframes v5-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-btn.is-spinning svg {
+    animation: none;
+  }
+}
+
+.sync-btn-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--ws-paper);
+  pointer-events: none;
+}
+
+.sync-btn.is-danger .sync-btn-dot {
+  background: var(--danger, #c44a3a);
+}
+
+.sync-btn.is-warn .sync-btn-dot {
+  background: #c08a4e;
+}
+
 .editor-title {
   flex: 1;
   min-width: 0;

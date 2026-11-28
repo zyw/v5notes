@@ -24,6 +24,8 @@ import { DEFAULT_CLIENT_ID } from '../account/constants'
 export interface SyncCoordinatorHandles {
   /** The opened vault; set by App.vue when a library opens/closes. */
   vault: Ref<OpenedVault | null>
+  /** Whether the user currently holds a valid account session. */
+  loggedIn: ComputedRef<boolean>
   /** Engine for action buttons; null when nothing is bindable right now. */
   currentEngine(): SyncEngine | null
   /** Latest status pushed by the engine (manual or background cycles). */
@@ -34,6 +36,8 @@ export interface SyncCoordinatorHandles {
   syncing: ComputedRef<boolean>
   /** Wrap a manual cycle so the shared busy indicator covers it too. */
   runExclusive<T>(fn: () => Promise<T>): Promise<T>
+  /** Trigger an immediate push/pull sync cycle using the bound engine. */
+  syncNow(): Promise<SyncEngineStatus | null>
 }
 
 export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandles {
@@ -47,6 +51,7 @@ export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandle
   let eventCleanups: Array<() => void> = []
   let boundRootPath: string | null = null
 
+  const loggedIn = computed(() => account.loggedIn.value)
   const syncing = computed(() => activeCycles.value > 0)
 
   function canSync(): boolean {
@@ -172,12 +177,31 @@ export function useSyncCoordinator(account: AccountState): SyncCoordinatorHandle
     }
   }
 
+  async function syncNow(): Promise<SyncEngineStatus | null> {
+    if (activeCycles.value > 0) return null
+    const active = engine.value
+    if (!active) return null
+    return await runExclusive(async () => {
+      try {
+        const next = await active.pushPull()
+        if (engine.value === active) applyStatus(next)
+        return next
+      } catch (cause) {
+        const msg = cause instanceof Error ? cause.message : '同步失败'
+        if (engine.value === active) lastSyncMessage.value = msg
+        throw cause
+      }
+    })
+  }
+
   return {
     vault,
+    loggedIn,
     currentEngine: () => engine.value,
     syncStatus,
     lastSyncMessage,
     syncing,
     runExclusive,
+    syncNow,
   }
 }

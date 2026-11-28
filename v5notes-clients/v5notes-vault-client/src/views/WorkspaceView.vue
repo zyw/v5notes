@@ -51,10 +51,11 @@ import { APPEARANCE_REL } from '../vault/skeleton'
 import {
   attachmentUrlText,
   deleteVaultAttachment,
-  importImageFileToVault,
+  importAttachmentFileToVault,
   listVaultAttachments,
   saveImageToVault,
   vaultAssetUrl,
+  type AttachmentKind,
   type VaultAttachment,
 } from '../vault/attachments'
 import { vaultSearch, type SearchHit } from '../vault/search'
@@ -83,11 +84,18 @@ import {
 } from '../extension/runtime'
 import type { HostRibbon } from '../plugin-host'
 import { isEditorReserialization } from './editorReserialization'
+import { modShortcut } from '../models/platform'
+import {
+  describeWorkspaceSyncButton,
+  workspaceSyncToastMessage,
+  type SyncCoordinatorHandles,
+} from '../sync'
 import { join } from '@tauri-apps/api/path'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 
 const props = defineProps<{
   vault: OpenedVault
+  sync?: SyncCoordinatorHandles | null
 }>()
 
 const emit = defineEmits<{
@@ -111,18 +119,19 @@ const SIDEBAR_WIDTH_KEY = 'v5notes.vault.sidebar-width.v1'
 const sidebarWidth = ref(readSidebarWidth())
 const resizingSidebar = ref(false)
 const externalNotice = ref<string | null>(null)
-/* ---------- 附件选择对话框（编辑器工具栏「图片」入口） ---------- */
+/* ---------- 附件选择对话框（编辑器工具栏「图片 / 视频 / 音频」入口） ---------- */
 const attachmentPickerRef = ref<InstanceType<typeof AttachmentPickerDialog> | null>(null)
 const attachmentOpen = ref(false)
+const attachmentKind = ref<AttachmentKind>('image')
 const attachmentBusy = ref(false)
 const attachmentList = ref<VaultAttachment[]>([])
 /** Attachments the open note references — stale rows warn that a delete broke them. */
 const referencedAttachments = computed(() => {
   const refs = new Set<string>()
-  const pattern = /!\[[^\]]*\]\(([^)\s]+)/g
+  const pattern = /(?:src\s*=\s*"((?:attachments|附件)\/[^"]+)"|src\s*=\s*'((?:attachments|附件)\/[^']+)'|!\[[^\]]*\]\(([^)\s]+)|(?:^|[\s(])((?:attachments|附件)\/[^\s"')>]+))/gm
   let match: RegExpExecArray | null
   while ((match = pattern.exec(content.value)) !== null) {
-    const raw = match[1]
+    const raw = match[1] ?? match[2] ?? match[3] ?? match[4]
     if (!raw) continue
     try {
       const rel = decodeURIComponent(raw)
@@ -380,6 +389,16 @@ function applyFontSize(size: number): void {
   }
 }
 
+const syncButtonState = computed(() =>
+  describeWorkspaceSyncButton({
+    loggedIn: Boolean(props.sync?.loggedIn.value),
+    syncing: Boolean(props.sync?.syncing.value),
+    status: props.sync?.syncStatus.value ?? null,
+    lastMessage: props.sync?.lastSyncMessage.value,
+    shortcut: modShortcut('⇧S'),
+  }),
+)
+
 const commandContext = computed<CommandContext>(() => ({
   mode: editorMode.value,
   hasNote: Boolean(selectedPath.value),
@@ -390,6 +409,9 @@ const commandContext = computed<CommandContext>(() => ({
   outlineTab: outlineTab.value,
   trashOpen: showTrash.value,
   fontSize: fontSize.value,
+  syncAvailable: Boolean(props.sync),
+  syncing: Boolean(props.sync?.syncing.value),
+  syncBadge: syncButtonState.value.badge,
 }))
 
 const commandActions: CommandActions = {
@@ -405,6 +427,7 @@ const commandActions: CommandActions = {
   changeFontSize: delta => applyFontSize(fontSize.value + delta),
   exportNote: format => { void exportNote(format) },
   copyMarkdown: () => { void copyNoteMarkdown() },
+  syncVault: () => { void triggerSync() },
   openSettings: () => emit('settings'),
 }
 
@@ -561,6 +584,31 @@ async function runRibbon(r: HostRibbon) {
   }
 }
 
+async function triggerSync(): Promise<void> {
+  if (!props.sync || props.sync.syncing.value) return
+  if (!props.sync.loggedIn.value) {
+    showToast('请先登录账号后再同步')
+    emit('settings')
+    return
+  }
+  if (dirty.value) {
+    const saved = await saveCurrent()
+    if (!saved || dirty.value) {
+      showToast('当前笔记保存失败，已取消同步')
+      return
+    }
+  }
+  try {
+    const result = await props.sync.syncNow()
+    if (result) {
+      showToast(workspaceSyncToastMessage(result))
+      if (result.status === 'idle') void refreshTree()
+    }
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '同步失败')
+  }
+}
+
 const nameDialog = ref<{
   mode: 'note' | 'dir' | 'rename'
   parentPath: string | null
@@ -698,8 +746,14 @@ async function ensureEditorMounted() {
       }
     },
     onPickImage: () => {
-      // Toolbar image button → the vault attachment picker, never the OS dialog.
-      void openAttachmentDialog()
+      // Toolbar media buttons → the vault attachment picker, never the OS dialog.
+      void openAttachmentDialog('image')
+    },
+    onPickVideo: () => {
+      void openAttachmentDialog('video')
+    },
+    onPickAudio: () => {
+      void openAttachmentDialog('audio')
     },
     resolveVaultAsset: async (relativePath) => {
       try {
@@ -725,14 +779,15 @@ async function ensureEditorMounted() {
 
 async function refreshAttachments() {
   try {
-    attachmentList.value = await listVaultAttachments(props.vault.rootPath)
+    attachmentList.value = await listVaultAttachments(props.vault.rootPath, attachmentKind.value)
   } catch (error) {
     emit('error', error instanceof Error ? error.message : String(error))
   }
 }
 
-async function openAttachmentDialog() {
-  if (attachmentOpen.value) return
+async function openAttachmentDialog(kind: AttachmentKind = 'image') {
+  if (attachmentOpen.value && attachmentKind.value === kind) return
+  attachmentKind.value = kind
   attachmentOpen.value = true
   closeTreeMenu()
   await refreshAttachments()
@@ -754,11 +809,13 @@ async function onAttachmentLoadUrl(item: VaultAttachment) {
 }
 
 async function onAttachmentInsert(item: VaultAttachment) {
+  const kind = attachmentKind.value
+  const kindLabel = kind === 'video' ? '视频' : kind === 'audio' ? '音频' : '图片'
   if (!selectedPath.value) {
-    status.value = '请先打开一篇笔记再插入图片'
+    status.value = `请先打开一篇笔记再插入${kindLabel}`
     return
   }
-  // The stored file is the source of truth — a missing image must not leave a
+  // The stored file is the source of truth — a missing file must not leave a
   // dangling reference behind.
   if (!(await vaultFs.exists(props.vault.rootPath, item.rel))) {
     attachmentPickerRef.value?.fail(`「${item.name}」已不在附件目录中`)
@@ -768,17 +825,26 @@ async function onAttachmentInsert(item: VaultAttachment) {
   const url = attachmentUrlText(item.rel)
   const name = item.name.replace(/\.[^.]+$/, '')
   if (editorMode.value === 'preview' && selectedPath.value) {
-    // No caret in preview: switch to edit so the image lands where the user
+    // No caret in preview: switch to edit so the media lands where the user
     // was reading, not at a forced end-of-document position.
     await enterEdit()
   }
   if (editorMode.value !== 'preview' && editorSession.value) {
-    // Focus returns to the caret inside insertImageUrl — no manual refocus.
-    editorSession.value.insertImage({ name, url })
-    attachmentOpen.value = false
+    if (kind === 'image') {
+      // Focus returns to the caret inside insertImageUrl — no manual refocus.
+      editorSession.value.insertImage({ name, url })
+      attachmentOpen.value = false
+      return
+    }
+    if (editorSession.value.insertMedia) {
+      editorSession.value.insertMedia({ kind, name, url })
+      attachmentOpen.value = false
+      return
+    }
+    status.value = `当前编辑器不支持插入${kindLabel}`
     return
   }
-  status.value = '无法进入编辑模式，未插入图片'
+  status.value = `无法进入编辑模式，未插入${kindLabel}`
 }
 
 async function onAttachmentRemove(item: VaultAttachment) {
@@ -797,12 +863,13 @@ async function onAttachmentRemove(item: VaultAttachment) {
 
 async function onAttachmentImportFiles(files: File[]) {
   const picker = attachmentPickerRef.value
+  const kind = attachmentKind.value
   attachmentBusy.value = true
   const failures: string[] = []
   try {
     for (const file of files) {
       try {
-        await importImageFileToVault(props.vault.rootPath, file)
+        await importAttachmentFileToVault(props.vault.rootPath, file, kind)
       } catch (error) {
         failures.push(`${file.name}：${error instanceof Error ? error.message : String(error)}`)
       }
@@ -819,7 +886,8 @@ async function onAttachmentImportFiles(files: File[]) {
   }
   if (failures.length) picker?.fail(`部分导入失败：${failures.join('；')}`)
   picker?.importDone(true)
-  status.value = `已导入 ${files.length - failures.length} 张图片`
+  const unit = kind === 'video' ? '个视频' : kind === 'audio' ? '段音频' : '张图片'
+  status.value = `已导入 ${files.length - failures.length} ${unit}`
 }
 
 watch(content, (value) => {
@@ -1594,7 +1662,12 @@ function onKeydown(event: KeyboardEvent) {
     if (searchOpen.value) closeSearch()
   }
   const modalBlocking = !!nameDialog.value || !!confirmDialog.value || attachmentOpen.value
-  if (meta && event.key.toLowerCase() === 's') {
+  if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 's' && !modalBlocking) {
+    event.preventDefault()
+    void triggerSync()
+    return
+  }
+  if (meta && !event.shiftKey && event.key.toLowerCase() === 's') {
     event.preventDefault()
     void saveCurrent()
   }
@@ -2181,6 +2254,30 @@ defineExpose({
             </div>
 
             <button
+              v-if="props.sync"
+              type="button"
+              class="toolbar-icon sync-btn"
+              :class="`is-${syncButtonState.tone}`"
+              :disabled="syncButtonState.tone === 'spinning'"
+              :aria-busy="syncButtonState.tone === 'spinning' || undefined"
+              :aria-label="syncButtonState.ariaLabel"
+              :title="syncButtonState.title"
+              @click="triggerSync"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.25 12a7.75 7.75 0 0 1 14.1-4.45" />
+                <path d="M18.35 3.8v3.75h-3.75" />
+                <path d="M19.75 12a7.75 7.75 0 0 1-14.1 4.45" />
+                <path d="M5.65 20.2v-3.75h3.75" />
+              </svg>
+              <span
+                v-if="syncButtonState.tone === 'danger' || syncButtonState.tone === 'warn'"
+                class="sync-btn-dot"
+                aria-hidden="true"
+              />
+            </button>
+
+            <button
               type="button"
               class="command-btn"
               aria-haspopup="dialog"
@@ -2487,6 +2584,7 @@ defineExpose({
     <AttachmentPickerDialog
       ref="attachmentPickerRef"
       :is-open="attachmentOpen"
+      :kind="attachmentKind"
       :busy="attachmentBusy"
       :attachments="attachmentList"
       :referenced="referencedAttachments"
