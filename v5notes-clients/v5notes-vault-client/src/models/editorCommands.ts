@@ -1,4 +1,5 @@
-import { modShortcut } from './platform'
+import { detectShortcutPlatform, type ShortcutPlatform } from './platform'
+import { getFormattedShortcut, type ShortcutActionId } from './shortcuts'
 
 /**
  * Editor command palette model, ported from v5notes-client2's `editorCommands`.
@@ -109,14 +110,20 @@ export const EDITOR_THEME_LABELS: Record<string, string> = {
   'rose-pine-dawn': 'Rosé Pine Dawn',
 }
 
-export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
+export function buildEditorCommands(
+  actions: CommandActions,
+  platform: ShortcutPlatform = detectShortcutPlatform(),
+): EditorCommand[] {
+  const hintFor = (id: ShortcutActionId): string | undefined =>
+    getFormattedShortcut(id, platform) || undefined
+
   return [
     {
       id: 'mode.edit',
       group: 'mode',
       label: '进入编辑',
       hint: '所见即所得，继续修改正文',
-      shortcut: modShortcut('E'),
+      shortcut: hintFor('mode.edit'),
       keywords: '编辑 修改 所见即所得 wysiwyg write edit',
       available: context => context.mode !== 'edit',
       run: () => actions.enterEdit(),
@@ -126,7 +133,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'mode',
       label: '源码模式',
       hint: '直接编辑 Markdown 原文',
-      shortcut: modShortcut('2'),
+      shortcut: hintFor('mode.source'),
       keywords: '源码 markdown source 文本',
       available: context => context.mode !== 'source',
       run: () => actions.enterSource(),
@@ -136,7 +143,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'mode',
       label: '预览',
       hint: '只读，按发布的样子看；切换前先保存',
-      shortcut: modShortcut('R'),
+      shortcut: hintFor('mode.preview'),
       keywords: '预览 阅读 完成 preview readonly',
       available: context => context.mode !== 'preview',
       run: () => actions.leaveEdit(),
@@ -146,7 +153,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'view',
       label: '保存',
       hint: '写入本机文件；没有改动时不会重复写盘',
-      shortcut: modShortcut('S'),
+      shortcut: hintFor('file.save'),
       keywords: '保存 落盘 save write',
       badgeTone: 'state',
       badge: context => (context.dirty ? '未保存' : '已保存'),
@@ -158,6 +165,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'view',
       label: '侧栏',
       hint: '目录树与搜索',
+      shortcut: hintFor('view.sidebar'),
       keywords: '侧栏 目录 树 显示 隐藏 sidebar tree',
       badgeTone: 'state',
       badge: context => (context.sidebarOpen ? '已显示' : '已隐藏'),
@@ -169,6 +177,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'view',
       label: '大纲',
       hint: '标题层级与查找',
+      shortcut: hintFor('view.outline'),
       keywords: '大纲 标题 目录 outline',
       badgeTone: 'state',
       badge: context => (context.outlineOpen && context.outlineTab === 'outline' ? '已显示' : undefined),
@@ -180,7 +189,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'view',
       label: '查找',
       hint: '在当前笔记中查找与替换',
-      shortcut: modShortcut('F'),
+      shortcut: hintFor('view.find'),
       keywords: '查找 搜索 替换 find search replace',
       badgeTone: 'state',
       badge: context => (context.outlineOpen && context.outlineTab === 'find' ? '已显示' : undefined),
@@ -212,7 +221,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'type',
       label: '增大字号',
       hint: '每次增加 1 px',
-      shortcut: modShortcut('+'),
+      shortcut: hintFor('font.increase'),
       keywords: '字号 放大 font',
       badge: context => `${context.fontSize} px`,
       keepOpen: true,
@@ -224,7 +233,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'type',
       label: '减小字号',
       hint: `最小 ${FONT_MIN} px`,
-      shortcut: modShortcut('−'),
+      shortcut: hintFor('font.decrease'),
       keywords: '字号 缩小 font',
       badge: context => `${context.fontSize} px`,
       keepOpen: true,
@@ -285,7 +294,7 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       group: 'app',
       label: '立即同步',
       hint: '与云端同步当前库；有未保存内容时会先保存',
-      shortcut: modShortcut('⇧S'),
+      shortcut: hintFor('app.sync'),
       keywords: '同步 云端 推送 拉取 sync push pull',
       badgeTone: 'state',
       badge: context => context.syncBadge,
@@ -296,8 +305,9 @@ export function buildEditorCommands(actions: CommandActions): EditorCommand[] {
       id: 'app.settings',
       group: 'app',
       label: '设置',
-      hint: '外观、同步与插件',
-      keywords: '设置 偏好 选项 settings preferences',
+      hint: '外观、快捷键、同步与插件',
+      shortcut: hintFor('app.settings'),
+      keywords: '设置 偏好 选项 快捷键 settings preferences shortcuts',
       available: () => true,
       run: () => actions.openSettings(),
     },

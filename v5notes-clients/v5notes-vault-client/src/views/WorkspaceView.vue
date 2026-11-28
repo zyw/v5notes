@@ -84,7 +84,13 @@ import {
 } from '../extension/runtime'
 import type { HostRibbon } from '../plugin-host'
 import { isEditorReserialization } from './editorReserialization'
-import { modShortcut } from '../models/platform'
+import {
+  getFormattedShortcut,
+  getFormattedShortcutParts,
+  getShortcutChord,
+  isRecordingShortcut,
+  matchesShortcut,
+} from '../models/shortcuts'
 import {
   describeWorkspaceSyncButton,
   workspaceSyncToastMessage,
@@ -389,13 +395,21 @@ function applyFontSize(size: number): void {
   }
 }
 
+const syncShortcut = computed(() => getFormattedShortcut('app.sync'))
+const paletteShortcut = computed(() => getFormattedShortcut('palette.open'))
+const sidebarShortcut = computed(() => getFormattedShortcut('view.sidebar'))
+const outlineShortcut = computed(() => getFormattedShortcut('view.outline'))
+const saveShortcutParts = computed(() => getFormattedShortcutParts('file.save'))
+const newShortcutParts = computed(() => getFormattedShortcutParts('file.new'))
+const newChooserShortcutParts = computed(() => getFormattedShortcutParts('file.newChooser'))
+
 const syncButtonState = computed(() =>
   describeWorkspaceSyncButton({
     loggedIn: Boolean(props.sync?.loggedIn.value),
     syncing: Boolean(props.sync?.syncing.value),
     status: props.sync?.syncStatus.value ?? null,
     lastMessage: props.sync?.lastSyncMessage.value,
-    shortcut: modShortcut('⇧S'),
+    shortcut: syncShortcut.value || undefined,
   }),
 )
 
@@ -637,7 +651,6 @@ const noteTitle = computed(() => {
   const name = selectedPath.value.split('/').pop() ?? selectedPath.value
   return displayNameOfIn(creatableKinds.value, name)
 })
-const modKey = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'
 
 watch(
   () => props.vault.rootPath,
@@ -1655,54 +1668,78 @@ async function persistAppearanceIntent(prefs: AppearancePrefs) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  const meta = event.metaKey || event.ctrlKey
+  if (isRecordingShortcut() || event.isComposing) return
   if (event.key === 'Escape') {
     if (sidebarMenuOpen.value) sidebarMenuOpen.value = false
     if (createMenuOpen.value) closeCreateMenu()
     if (searchOpen.value) closeSearch()
   }
   const modalBlocking = !!nameDialog.value || !!confirmDialog.value || attachmentOpen.value
-  if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 's' && !modalBlocking) {
+  if (!modalBlocking && matchesShortcut(event, getShortcutChord('app.sync'))) {
     event.preventDefault()
     void triggerSync()
     return
   }
-  if (meta && !event.shiftKey && event.key.toLowerCase() === 's') {
+  if (matchesShortcut(event, getShortcutChord('file.save'))) {
     event.preventDefault()
     void saveCurrent()
+    return
   }
-  if (meta && event.key.toLowerCase() === 'n' && !modalBlocking) {
-    // ⌘N repeats the last note kind; ⌘⇧N opens the kind chooser.
+  if (!modalBlocking && matchesShortcut(event, getShortcutChord('file.newChooser'))) {
     event.preventDefault()
-    if (event.shiftKey) openCreateMenu()
-    else createNoteWithPreferredKind()
+    openCreateMenu()
+    return
   }
-  if (meta && event.key.toLowerCase() === 'k' && !modalBlocking) {
+  if (!modalBlocking && matchesShortcut(event, getShortcutChord('file.new'))) {
+    event.preventDefault()
+    createNoteWithPreferredKind()
+    return
+  }
+  if (!modalBlocking && matchesShortcut(event, getShortcutChord('palette.open'))) {
     event.preventDefault()
     paletteOpen.value = !paletteOpen.value
     return
   }
-  // Editor mode shortcuts mirror the palette chips: ⌘E edit, ⌘2 source, ⌘R preview.
-  if (meta && !event.shiftKey && !event.altKey && selectedPath.value && !modalBlocking) {
-    if (event.key.toLowerCase() === 'e' || event.key === '1') {
+  if (!modalBlocking && matchesShortcut(event, getShortcutChord('view.sidebar'))) {
+    event.preventDefault()
+    sidebarOpen.value = !sidebarOpen.value
+    return
+  }
+  if (selectedPath.value && !modalBlocking) {
+    if (matchesShortcut(event, getShortcutChord('mode.edit'))) {
       event.preventDefault()
       void enterEdit()
       return
     }
-    if (event.key === '2') {
+    if (matchesShortcut(event, getShortcutChord('mode.source'))) {
       event.preventDefault()
       void enterSource()
       return
     }
-    if (event.key.toLowerCase() === 'r') {
+    if (matchesShortcut(event, getShortcutChord('mode.preview'))) {
       event.preventDefault()
       void leaveEdit()
       return
     }
-  }
-  if (meta && event.key.toLowerCase() === 'f' && selectedPath.value && !modalBlocking) {
-    event.preventDefault()
-    openFind()
+    if (matchesShortcut(event, getShortcutChord('view.find'))) {
+      event.preventDefault()
+      openFind()
+      return
+    }
+    if (matchesShortcut(event, getShortcutChord('view.outline'))) {
+      event.preventDefault()
+      toggleOutlinePanel()
+      return
+    }
+    if (matchesShortcut(event, getShortcutChord('font.increase'))) {
+      event.preventDefault()
+      applyFontSize(fontSize.value + 1)
+      return
+    }
+    if (matchesShortcut(event, getShortcutChord('font.decrease'))) {
+      event.preventDefault()
+      applyFontSize(fontSize.value - 1)
+    }
   }
 }
 
@@ -2206,7 +2243,7 @@ defineExpose({
             type="button"
             class="toolbar-icon"
             :aria-label="sidebarOpen ? '隐藏侧栏' : '显示侧栏'"
-            :title="sidebarOpen ? '隐藏侧栏' : '显示侧栏'"
+            :title="(sidebarOpen ? '隐藏侧栏' : '显示侧栏') + (sidebarShortcut ? `（${sidebarShortcut}）` : '')"
             @click="sidebarOpen = !sidebarOpen"
           >
             <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -2282,12 +2319,12 @@ defineExpose({
               class="command-btn"
               aria-haspopup="dialog"
               :aria-expanded="paletteOpen"
-              :aria-label="`命令面板（${modKey}K）`"
-              :title="`命令面板（${modKey}K）`"
+              :aria-label="paletteShortcut ? `命令面板（${paletteShortcut}）` : '命令面板'"
+              :title="paletteShortcut ? `命令面板（${paletteShortcut}）` : '命令面板'"
               @click.stop="paletteOpen = true"
             >
               <svg class="command-btn-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4 4"/></svg>
-              命令 <kbd>{{ modKey }}K</kbd>
+              命令 <kbd v-if="paletteShortcut">{{ paletteShortcut }}</kbd>
             </button>
 
             <button
@@ -2295,7 +2332,7 @@ defineExpose({
               type="button"
               class="toolbar-icon outline-toggle"
               :aria-pressed="outlineOpen && outlineTab === 'outline'"
-              :title="outlineOpen && outlineTab === 'outline' ? '隐藏大纲' : '显示大纲'"
+              :title="(outlineOpen && outlineTab === 'outline' ? '隐藏大纲' : '显示大纲') + (outlineShortcut ? `（${outlineShortcut}）` : '')"
               :aria-label="outlineOpen && outlineTab === 'outline' ? '隐藏大纲' : '显示大纲'"
               @click="toggleOutlinePanel"
             >
@@ -2352,16 +2389,22 @@ defineExpose({
             <button type="button" class="secondary" @click="openCreateDir(null)">新建目录</button>
           </div>
           <p class="empty-shortcuts">
-            <kbd>{{ modKey }}</kbd><kbd>S</kbd> 保存
-            <span>·</span>
-            <kbd>{{ modKey }}</kbd><kbd>N</kbd> 新建
+            <template v-if="saveShortcutParts.length">
+              <kbd v-for="(part, idx) in saveShortcutParts" :key="`save-${idx}`">{{ part }}</kbd> 保存
+            </template>
+            <template v-if="saveShortcutParts.length && newShortcutParts.length">
+              <span>·</span>
+            </template>
+            <template v-if="newShortcutParts.length">
+              <kbd v-for="(part, idx) in newShortcutParts" :key="`new-${idx}`">{{ part }}</kbd> 新建
+            </template>
             <button
-              v-if="creatableKinds.length > 1"
+              v-if="creatableKinds.length > 1 && newChooserShortcutParts.length"
               type="button"
               class="shortcut-choice"
               @click="openCreateMenu"
             >
-              <kbd>{{ modKey }}</kbd><kbd>⇧</kbd><kbd>N</kbd> 选择类型
+              <kbd v-for="(part, idx) in newChooserShortcutParts" :key="`chooser-${idx}`">{{ part }}</kbd> 选择类型
             </button>
           </p>
         </div>

@@ -26,6 +26,8 @@ import {
 } from '../vault/recent'
 import { vaultWorkspace } from '../vault/workspace'
 import { updateAppearanceFile } from '../theme-host'
+import { modShortcut } from '../models/platform'
+import { getFormattedShortcut } from '../models/shortcuts'
 
 const emit = defineEmits<{
   opened: [vault: OpenedVault]
@@ -42,6 +44,7 @@ const hideTarget = ref<RecentVaultEntry | null>(null)
 const recent = ref<RecentVaultEntry[]>(vaultWorkspace.listRecent())
 const pending = ref<VaultColorSwatch>(getPendingWelcomeColor())
 const inTauri = isTauri()
+const paletteShortcut = computed(() => getFormattedShortcut('palette.open') || modShortcut('K'))
 
 const canUseFs = computed(() => inTauri)
 
@@ -347,7 +350,7 @@ async function openFromRegistry(rootPath: string) {
             </span>
             <strong>今日</strong>
             <em class="preview-mode">预览中</em>
-            <span class="preview-command">命令 ⌘K</span>
+            <span class="preview-command">命令 {{ paletteShortcut }}</span>
             <span class="preview-outline-toggle">
               <svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M12 4v12" /></svg>
             </span>

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_FONT_SIZE,
   clampFontSize,
@@ -15,6 +15,7 @@ import {
   type CommandActions,
   type CommandContext,
 } from './editorCommands'
+import { resetAllShortcuts, setShortcutChord } from './shortcuts'
 
 function actions(): CommandActions {
   return {
@@ -198,5 +199,25 @@ describe('palette helpers', () => {
     expect(clampFontSize(4)).toBe(13)
     expect(clampFontSize(99)).toBe(26)
     expect(clampFontSize(18.6)).toBe(19)
+  })
+})
+
+describe('custom shortcuts in editor commands', () => {
+  afterEach(() => {
+    resetAllShortcuts()
+  })
+
+  it('reflects customized and cleared shortcuts per platform', () => {
+    setShortcutChord('file.save', 'Mod+Alt+S')
+    setShortcutChord('view.find', '')
+
+    const macCmds = buildEditorCommands(actions(), 'mac')
+    expect(macCmds.find(c => c.id === 'file.save')?.shortcut).toBe('⌘⌥S')
+    expect(macCmds.find(c => c.id === 'view.find')?.shortcut).toBeUndefined()
+    expect(macCmds.find(c => c.id === 'app.sync')?.shortcut).toBe('⌘⇧S')
+
+    const winCmds = buildEditorCommands(actions(), 'win')
+    expect(winCmds.find(c => c.id === 'file.save')?.shortcut).toBe('Ctrl+Alt+S')
+    expect(winCmds.find(c => c.id === 'app.sync')?.shortcut).toBe('Ctrl+Shift+S')
   })
 })

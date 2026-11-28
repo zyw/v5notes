@@ -14,6 +14,12 @@ import { vaultWorkspace } from './vault/workspace'
 import { attachExtensionRuntimeVault } from './extension/runtime'
 import UpdateDialog from './components/UpdateDialog.vue'
 import { useAppUpdate } from './update'
+import {
+  getFormattedShortcut,
+  getShortcutChord,
+  isRecordingShortcut,
+  matchesShortcut,
+} from './models/shortcuts'
 
 type Page = 'welcome' | 'workspace' | 'settings'
 const page = ref<Page>('welcome')
@@ -207,13 +213,25 @@ const {
   savePristine,
 })
 
+const settingsShortcut = computed(() => getFormattedShortcut('app.settings'))
+
+function onWindowKeydown(event: KeyboardEvent) {
+  if (isRecordingShortcut() || event.isComposing) return
+  if (page.value !== 'settings' && matchesShortcut(event, getShortcutChord('app.settings'))) {
+    event.preventDefault()
+    void goSettings()
+  }
+}
+
 onMounted(() => {
   applyAppearance(loadAppearancePrefs())
   window.addEventListener('beforeunload', onBeforeUnload)
+  window.addEventListener('keydown', onWindowKeydown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', onBeforeUnload)
+  window.removeEventListener('keydown', onWindowKeydown)
 })
 </script>
 
@@ -248,7 +266,7 @@ onUnmounted(() => {
       <button
         type="button"
         class="ribbon-btn"
-        title="设置"
+        :title="settingsShortcut ? `设置（${settingsShortcut}）` : '设置'"
         :aria-current="page === 'settings' ? 'page' : undefined"
         @click="goSettings"
       >

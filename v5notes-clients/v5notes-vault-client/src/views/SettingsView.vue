@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import AccountPanel from '../components/AccountPanel.vue'
+import ShortcutsPanel from '../components/ShortcutsPanel.vue'
 import brandIcon from '../assets/brand-icon.png'
+import { detectShortcutPlatform } from '../models/platform'
+import { hasAnyCustomShortcut, resetAllShortcuts } from '../models/shortcuts'
 import type { AccountState } from '../account'
 import type { SyncCoordinatorHandles } from '../sync'
 import {
@@ -204,8 +207,17 @@ function rowColor(path: string): string {
   return resolveVaultColor(path).color
 }
 
+const shortcutPlatformLabel = detectShortcutPlatform() === 'mac' ? 'macOS' : 'Windows'
+
 function showScope(next: SettingsScope): void {
   scope.value = next
+}
+
+function goGlobalSection(id: string): void {
+  scope.value = 'global'
+  void nextTick(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 /**
@@ -900,11 +912,12 @@ watch(publishDraft, () => {
           <span class="side-group-chevron" :class="{ open: globalOpen }" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg></span>
         </button>
         <div v-show="globalOpen" id="side-global-items" class="side-items" role="group" aria-label="全局设置">
-          <button type="button" class="side-nav-item" :class="{ on: scope === 'global' }" @click="scope = 'global'"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>账户</button>
-          <a class="side-nav-item" href="#g-appearance"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg>主题与明暗</a>
-          <a class="side-nav-item" href="#g-plugins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>插件与安全</a>
-          <a class="side-nav-item" href="#g-catalog"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>插件列表</a>
-          <a class="side-nav-item" href="#g-about"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>关于本机</a>
+          <button type="button" class="side-nav-item" :class="{ on: scope === 'global' }" @click="goGlobalSection('g-account')"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.4"/><path d="M3.6 13c.4-2.4 2.2-3.8 4.4-3.8s4 1.4 4.4 3.8"/></svg>账户</button>
+          <a class="side-nav-item" href="#g-appearance" @click.prevent="goGlobalSection('g-appearance')"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="11.2" height="7.2" rx="1"/><path d="M6 13h4M8 10.4V13"/></svg>主题与明暗</a>
+          <a class="side-nav-item" href="#g-shortcuts" @click.prevent="goGlobalSection('g-shortcuts')"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.4"/><path d="M4.5 6.8h1M7.5 6.8h1M10.5 6.8h1M5.2 9.4h5.6"/></svg>快捷键</a>
+          <a class="side-nav-item" href="#g-plugins" @click.prevent="goGlobalSection('g-plugins')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.2h3.6v2.4H12v3.6h-2.2v2.4H6.2v-2.4H4V5.6h2.2z"/></svg>插件与安全</a>
+          <a class="side-nav-item" href="#g-catalog" @click.prevent="goGlobalSection('g-catalog')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4h9.6M3.2 8h9.6M3.2 12h6"/></svg>插件列表</a>
+          <a class="side-nav-item" href="#g-about" @click.prevent="goGlobalSection('g-about')"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4"/><path d="M8 7.2v3.2M8 5.2h.01"/></svg>关于本机</a>
         </div>
       </div>
 
@@ -1016,6 +1029,25 @@ watch(publishDraft, () => {
                   </div>
                 </div>
                 <p v-if="themeError" class="book-small" role="status">{{ themeError }}</p>
+              </div>
+            </section>
+
+            <section class="panel" id="g-shortcuts" aria-labelledby="g-shortcuts-title">
+              <div class="p-head">
+                <span class="ico"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.4"/><path d="M4.5 6.8h1M7.5 6.8h1M10.5 6.8h1M5.2 9.4h5.6"/></svg></span>
+                <h3 id="g-shortcuts-title">快捷键</h3>
+                <span class="state">{{ shortcutPlatformLabel }}</span>
+                <button
+                  v-if="hasAnyCustomShortcut()"
+                  type="button"
+                  class="book-ghost book-ghost--sm p-head-reset"
+                  @click="resetAllShortcuts"
+                >
+                  恢复默认
+                </button>
+              </div>
+              <div class="p-body">
+                <ShortcutsPanel />
               </div>
             </section>
 
@@ -2674,6 +2706,7 @@ button.status-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--a
 }
 .p-head-action:has(svg.spinning) { color: var(--accent); }
 @keyframes settings-spin { to { transform: rotate(360deg); } }
+.p-head-reset { order: 1; flex: none; }
 .p-body { padding: 4px 22px 20px; }
 .p-body:deep(.account-panel) { margin: 0; }
 

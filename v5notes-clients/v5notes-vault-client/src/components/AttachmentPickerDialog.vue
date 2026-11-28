@@ -15,6 +15,7 @@ import {
   type AttachmentKind,
   type VaultAttachment,
 } from '../vault/attachments'
+import { matchesShortcut } from '../models/shortcuts'
 
 interface KindMeta {
   title: string
@@ -274,7 +275,7 @@ function onKeydown(event: KeyboardEvent) {
     emit('cancel')
     return
   }
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'i' && selectedItem.value) {
+  if (matchesShortcut(event, 'Mod+I') && selectedItem.value) {
     event.preventDefault()
     onInsertClick()
   }
