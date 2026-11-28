@@ -36,7 +36,9 @@ import xin.v5ai.vault.mapper.VaultReplicaMapper;
 import xin.v5ai.vault.mapper.VaultFileMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
 import xin.v5ai.vault.service.IVaultAssetService;
+import xin.v5ai.vault.service.IVaultQuotaService;
 import xin.v5ai.vault.service.IVaultSyncService;
+import xin.v5ai.vault.service.model.ResolvedVaultQuota;
 import xin.v5ai.vault.util.VaultContentHash;
 import xin.v5ai.vault.util.VaultPathRules;
 import xin.v5ai.vault.util.VaultQuotaRules;
@@ -62,13 +64,14 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
     private final VaultChangeMapper changeMapper;
     private final IVaultAssetService assetService;
     private final ObjectProvider<TransactionTemplate> transactionTemplateProvider;
+    private final ObjectProvider<IVaultQuotaService> quotaServiceProvider;
 
     public VaultSyncServiceImpl(VaultSpaceMapper spaceMapper,
                                 VaultReplicaMapper replicaMapper,
                                 VaultFileMapper fileMapper,
                                 VaultChangeMapper changeMapper,
                                 IVaultAssetService assetService) {
-        this(spaceMapper, replicaMapper, fileMapper, changeMapper, assetService, null);
+        this(spaceMapper, replicaMapper, fileMapper, changeMapper, assetService, null, null);
     }
 
     @Autowired
@@ -77,13 +80,15 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
                                 VaultFileMapper fileMapper,
                                 VaultChangeMapper changeMapper,
                                 IVaultAssetService assetService,
-                                ObjectProvider<TransactionTemplate> transactionTemplateProvider) {
+                                ObjectProvider<TransactionTemplate> transactionTemplateProvider,
+                                ObjectProvider<IVaultQuotaService> quotaServiceProvider) {
         this.spaceMapper = spaceMapper;
         this.replicaMapper = replicaMapper;
         this.fileMapper = fileMapper;
         this.changeMapper = changeMapper;
         this.assetService = assetService;
         this.transactionTemplateProvider = transactionTemplateProvider;
+        this.quotaServiceProvider = quotaServiceProvider;
     }
 
     @Override
@@ -125,7 +130,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         int replicaUsed = Math.toIntExact(replicaMapper.selectCount(new LambdaQueryWrapper<VaultReplica>()
             .eq(VaultReplica::getVaultId, vaultId)));
         boolean alreadyBound = existing != null;
-        if (VaultQuotaRules.wouldExceedReplicas(replicaUsed, alreadyBound, VaultQuotaRules.DEFAULT_REPLICA_LIMIT)) {
+        ResolvedVaultQuota resolvedQuota = resolveQuota(userId);
+        if (VaultQuotaRules.wouldExceedReplicas(replicaUsed, alreadyBound, resolvedQuota.replicaLimit())) {
             throw new VaultBusinessException(HttpStatus.FORBIDDEN, VaultErrorCodes.QUOTA_DEVICES_EXCEEDED,
                 "同步副本数已达上限，请停止旧副本的同步或升级套餐");
         }
@@ -292,7 +298,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
                 throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.HASH_MISMATCH, "contentHash 与正文不一致");
             }
         }
-        if (VaultQuotaRules.tooLarge(size, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
+        ResolvedVaultQuota resolvedQuota = resolveQuota(userId);
+        if (VaultQuotaRules.tooLarge(size, resolvedQuota.maxFileBytes())) {
             throw new VaultBusinessException(413, VaultErrorCodes.FILE_TOO_LARGE, "单文件超过上限");
         }
 
@@ -327,7 +334,8 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         long previousSize = byFileId == null ? 0L : nullToZero(byFileId.getSizeBytes());
         long delta = size - previousSize;
         long used = nullToZero(space.getUsedBytes());
-        if (VaultQuotaRules.wouldExceedCapacity(used, delta, VaultQuotaRules.DEFAULT_QUOTA_BYTES)) {
+        long userTotalUsed = Math.max(used, sumUserSpacesUsedBytes(userId));
+        if (VaultQuotaRules.wouldExceedCapacity(userTotalUsed, delta, resolvedQuota.quotaBytes())) {
             throw new VaultBusinessException(402, VaultErrorCodes.QUOTA_EXCEEDED,
                 "同步容量已超额；仍可 pull，本地编辑不受影响");
         }
@@ -537,16 +545,17 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
             replicas += bound.size();
             devices += (int) bound.stream().map(VaultReplica::getDeviceId).distinct().count();
         }
+        ResolvedVaultQuota resolvedQuota = resolveQuota(userId);
         VaultQuotaVo vo = new VaultQuotaVo();
         vo.setAvailable(true);
         vo.setUsedBytes(used);
-        vo.setQuotaBytes(VaultQuotaRules.DEFAULT_QUOTA_BYTES);
-        vo.setReplicaLimit(VaultQuotaRules.DEFAULT_REPLICA_LIMIT);
+        vo.setQuotaBytes(resolvedQuota.quotaBytes());
+        vo.setReplicaLimit(resolvedQuota.replicaLimit());
         vo.setReplicaUsed(replicas);
         vo.setDeviceUsed(devices);
-        vo.setPlanName("vault-default");
-        vo.setOverQuota(used >= VaultQuotaRules.DEFAULT_QUOTA_BYTES);
-        vo.setMaxFileBytes(VaultQuotaRules.DEFAULT_MAX_FILE_BYTES);
+        vo.setPlanName(resolvedQuota.planName());
+        vo.setOverQuota(used >= resolvedQuota.quotaBytes());
+        vo.setMaxFileBytes(resolvedQuota.maxFileBytes());
         // Capability tells clients whether downloads are direct or proxied (design §5.3).
         // An unconfigured backend leaves it null instead of failing /quota, so the client can
         // still sync notes and report the attachment misconfiguration separately.
@@ -746,6 +755,29 @@ public class VaultSyncServiceImpl implements IVaultSyncService {
         } catch (Exception ex) {
             throw new VaultBusinessException(HttpStatus.BAD_REQUEST, VaultErrorCodes.PATH_INVALID, label + " 无效");
         }
+    }
+
+    private ResolvedVaultQuota resolveQuota(Long userId) {
+        IVaultQuotaService quotaService = quotaServiceProvider == null ? null : quotaServiceProvider.getIfAvailable();
+        if (quotaService != null) {
+            return quotaService.resolveForUser(userId);
+        }
+        return new ResolvedVaultQuota(
+            VaultQuotaRules.DEFAULT_QUOTA_BYTES,
+            VaultQuotaRules.DEFAULT_REPLICA_LIMIT,
+            VaultQuotaRules.DEFAULT_MAX_FILE_BYTES,
+            "vault-default",
+            false
+        );
+    }
+
+    private long sumUserSpacesUsedBytes(Long userId) {
+        List<VaultSpace> spaces = spaceMapper.selectList(new LambdaQueryWrapper<VaultSpace>()
+            .eq(VaultSpace::getUserId, userId));
+        if (spaces == null || spaces.isEmpty()) {
+            return 0L;
+        }
+        return spaces.stream().mapToLong(s -> nullToZero(s.getUsedBytes())).sum();
     }
 
     private static long nullToZero(Long value) {

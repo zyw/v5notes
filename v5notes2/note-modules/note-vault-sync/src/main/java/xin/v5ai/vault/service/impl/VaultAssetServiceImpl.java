@@ -1,9 +1,9 @@
 package xin.v5ai.vault.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -16,6 +16,7 @@ import xin.v5ai.vault.exception.VaultBusinessException;
 import xin.v5ai.vault.mapper.VaultAssetRefMapper;
 import xin.v5ai.vault.mapper.VaultSpaceMapper;
 import xin.v5ai.vault.service.IVaultAssetService;
+import xin.v5ai.vault.service.IVaultQuotaService;
 import xin.v5ai.vault.service.VaultAssetStorage;
 import xin.v5ai.vault.service.model.VaultAssetCapability;
 import xin.v5ai.vault.service.model.VaultAssetDownload;
@@ -38,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class VaultAssetServiceImpl implements IVaultAssetService {
 
     private static final int MAX_STAGED_REFS = 4096;
@@ -46,6 +46,24 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
     private final VaultAssetRefMapper refMapper;
     private final VaultSpaceMapper spaceMapper;
     private final ObjectProvider<VaultAssetStorage> storageProvider;
+    private final ObjectProvider<IVaultQuotaService> quotaServiceProvider;
+
+    public VaultAssetServiceImpl(VaultAssetRefMapper refMapper,
+                                 VaultSpaceMapper spaceMapper,
+                                 ObjectProvider<VaultAssetStorage> storageProvider) {
+        this(refMapper, spaceMapper, storageProvider, null);
+    }
+
+    @Autowired
+    public VaultAssetServiceImpl(VaultAssetRefMapper refMapper,
+                                 VaultSpaceMapper spaceMapper,
+                                 ObjectProvider<VaultAssetStorage> storageProvider,
+                                 ObjectProvider<IVaultQuotaService> quotaServiceProvider) {
+        this.refMapper = refMapper;
+        this.spaceMapper = spaceMapper;
+        this.storageProvider = storageProvider;
+        this.quotaServiceProvider = quotaServiceProvider;
+    }
 
     /**
      * Bridges {@code POST /assets} and {@code PUT /files} on the same node before {@code file_id}
@@ -57,7 +75,8 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
     public StoredResult upload(Long userId, Long vaultId, InputStream content, long sizeBytes,
                                String declaredSha256, String mimeType) throws Exception {
         requireOwnedVault(userId, vaultId);
-        if (VaultQuotaRules.tooLarge(sizeBytes, VaultQuotaRules.DEFAULT_MAX_FILE_BYTES)) {
+        long maxFileBytes = resolveMaxFileBytes(userId);
+        if (VaultQuotaRules.tooLarge(sizeBytes, maxFileBytes)) {
             throw new VaultBusinessException(VaultHttpStatus.PAYLOAD_TOO_LARGE, VaultErrorCodes.FILE_TOO_LARGE,
                 "单文件超过上限");
         }
@@ -286,6 +305,11 @@ public class VaultAssetServiceImpl implements IVaultAssetService {
             .eq(VaultAssetRef::getVaultId, vaultId)
             .eq(VaultAssetRef::getAssetId, id)
             .last("LIMIT 1"));
+    }
+
+    private long resolveMaxFileBytes(Long userId) {
+        IVaultQuotaService quotaService = quotaServiceProvider == null ? null : quotaServiceProvider.getIfAvailable();
+        return quotaService == null ? VaultQuotaRules.DEFAULT_MAX_FILE_BYTES : quotaService.resolveForUser(userId).maxFileBytes();
     }
 
     private VaultAssetStorage requireStorage() {

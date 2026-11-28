@@ -132,6 +132,15 @@ public class BasicsFileVaultAssetStorage implements VaultAssetStorage {
     }
 
     @Override
+    public void deleteOrphan(Long assetId, Long configId, String objectKey) throws Exception {
+        if (assetId != null) {
+            fileInfoService.deleteWithValidByIds(java.util.List.of(assetId), false);
+            return;
+        }
+        delete(configId, objectKey);
+    }
+
+    @Override
     public VaultAssetCapability capability() {
         FileClient client = requirePurposeClient();
         if (client instanceof S3FileClient s3) {

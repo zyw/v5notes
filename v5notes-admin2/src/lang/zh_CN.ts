@@ -4,6 +4,7 @@ import monitor from './packs/zh_CN/monitor';
 import notes from './packs/zh_CN/notes';
 import shell from './packs/zh_CN/shell';
 import system from './packs/zh_CN/system';
+import vault from './packs/zh_CN/vault';
 import widgets from './packs/zh_CN/widgets';
 
 export default {
@@ -120,5 +121,6 @@ export default {
   ...system,
   ...monitor,
   ...file,
+  ...vault,
   ...widgets
 };

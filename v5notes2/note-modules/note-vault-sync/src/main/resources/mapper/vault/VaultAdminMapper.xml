@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.vault.mapper.VaultAdminMapper">
+
+    <select id="selectOverviewCounts" resultType="java.util.HashMap">
+        SELECT
+            (SELECT COUNT(*) FROM vault_space WHERE del_flag = '0') AS totalSpaces,
+            (SELECT COUNT(DISTINCT user_id) FROM vault_space WHERE del_flag = '0') AS activeUsers,
+            (SELECT COUNT(*)
+             FROM vault_replica r
+             INNER JOIN vault_space s ON s.id = r.vault_id AND s.del_flag = '0') AS totalReplicas,
+            (SELECT COUNT(DISTINCT r.device_id)
+             FROM vault_replica r
+             INNER JOIN vault_space s ON s.id = r.vault_id AND s.del_flag = '0') AS uniqueDevices,
+            (SELECT COUNT(*)
+             FROM vault_file f
+             INNER JOIN vault_space s ON s.id = f.vault_id AND s.del_flag = '0'
+             WHERE f.deleted = 0) AS totalFiles,
+            (SELECT COUNT(*)
+             FROM vault_file f
+             INNER JOIN vault_space s ON s.id = f.vault_id AND s.del_flag = '0'
+             WHERE f.deleted = 0 AND f.file_type = 'note') AS noteFiles,
+            (SELECT COUNT(*)
+             FROM vault_file f
+             INNER JOIN vault_space s ON s.id = f.vault_id AND s.del_flag = '0'
+             WHERE f.deleted = 0 AND f.file_type = 'asset') AS assetFiles,
+            (SELECT COUNT(*)
+             FROM vault_file f
+             INNER JOIN vault_space s ON s.id = f.vault_id AND s.del_flag = '0'
+             WHERE f.deleted = 0 AND f.file_type = 'config') AS configFiles,
+            (SELECT COALESCE(SUM(used_bytes), 0) FROM vault_space WHERE del_flag = '0') AS totalUsedBytes,
+            (SELECT COALESCE(SUM(dedup.size_bytes), 0)
+             FROM (
+                 SELECT r.asset_id, MAX(r.size_bytes) AS size_bytes
+                 FROM vault_asset_ref r
+                 INNER JOIN vault_space s ON s.id = r.vault_id AND s.del_flag = '0'
+                 GROUP BY r.asset_id
+             ) dedup) AS assetBytes,
+            (SELECT COUNT(*)
+             FROM (
+                 SELECT s.user_id
+                 FROM vault_space s
+                 LEFT JOIN vault_user_quota q ON q.user_id = s.user_id
+                 WHERE s.del_flag = '0'
+                 GROUP BY s.user_id, q.quota_bytes, q.expire_time
+                 HAVING COALESCE(SUM(s.used_bytes), 0) >= COALESCE(
+                     CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                     #{defaultQuotaBytes}
+                 )
+             ) oq) AS overQuotaUsers
+    </select>
+
+    <select id="selectChangeTrend" resultType="java.util.HashMap">
+        SELECT
+            CAST(c.create_time AS DATE) AS day,
+            c.op AS op,
+            COUNT(*) AS cnt
+        FROM vault_change c
+        INNER JOIN vault_space s ON s.id = c.vault_id AND s.del_flag = '0'
+        WHERE c.create_time >= #{since}
+        GROUP BY CAST(c.create_time AS DATE), c.op
+        ORDER BY day ASC
+    </select>
+
+    <select id="selectStorageRank" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminStorageRankVo">
+        SELECT
+            s.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
+            COUNT(s.id) AS spaceCount,
+            (SELECT COUNT(*)
+             FROM vault_replica r
+             INNER JOIN vault_space s2 ON s2.id = r.vault_id AND s2.del_flag = '0'
+             WHERE s2.user_id = s.user_id) AS replicaCount,
+            COALESCE(SUM(s.used_bytes), 0) AS usedBytes,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) AS quotaBytes,
+            CASE WHEN COALESCE(SUM(s.used_bytes), 0) >= COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) THEN 1 ELSE 0 END AS overQuota
+        FROM vault_space s
+        LEFT JOIN sys_user u ON u.user_id = s.user_id
+        LEFT JOIN vault_user_quota q ON q.user_id = s.user_id
+        WHERE s.del_flag = '0'
+        GROUP BY s.user_id, u.user_name, u.nick_name, q.quota_bytes, q.expire_time
+        ORDER BY usedBytes DESC, spaceCount DESC
+    </select>
+
+    <select id="selectSpacePage" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminSpaceVo">
+        SELECT
+            s.id AS vaultId,
+            s.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
+            s.name AS name,
+            COALESCE(s.used_bytes, 0) AS usedBytes,
+            COALESCE(ut.user_used_bytes, 0) AS userUsedBytes,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) AS quotaBytes,
+            CASE WHEN COALESCE(ut.user_used_bytes, 0) >= COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) THEN 1 ELSE 0 END AS overQuota,
+            (SELECT COUNT(*) FROM vault_file f WHERE f.vault_id = s.id AND f.deleted = 0) AS fileCount,
+            (SELECT COUNT(*) FROM vault_replica r WHERE r.vault_id = s.id) AS replicaCount,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.replica_limit ELSE NULL END,
+                #{defaultReplicaLimit}
+            ) AS replicaLimit,
+            (SELECT MAX(c.create_time) FROM vault_change c WHERE c.vault_id = s.id) AS lastSyncAt,
+            s.create_time AS createTime,
+            s.update_time AS updateTime
+        FROM vault_space s
+        LEFT JOIN sys_user u ON u.user_id = s.user_id
+        LEFT JOIN vault_user_quota q ON q.user_id = s.user_id
+        LEFT JOIN (
+            SELECT user_id, COALESCE(SUM(used_bytes), 0) AS user_used_bytes
+            FROM vault_space
+            WHERE del_flag = '0'
+            GROUP BY user_id
+        ) ut ON ut.user_id = s.user_id
+        WHERE s.del_flag = '0'
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.nick_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="name != null and name != ''">
+            AND s.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="status == 'over_quota'">
+            AND COALESCE(ut.user_used_bytes, 0) >= COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            )
+        </if>
+        <if test="status == 'normal'">
+            AND COALESCE(ut.user_used_bytes, 0) &lt; COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            )
+        </if>
+        ORDER BY s.update_time DESC, s.id DESC
+    </select>
+
+    <select id="selectSpaceById" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminSpaceVo">
+        SELECT
+            s.id AS vaultId,
+            s.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
+            s.name AS name,
+            COALESCE(s.used_bytes, 0) AS usedBytes,
+            COALESCE(ut.user_used_bytes, 0) AS userUsedBytes,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) AS quotaBytes,
+            CASE WHEN COALESCE(ut.user_used_bytes, 0) >= COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) THEN 1 ELSE 0 END AS overQuota,
+            (SELECT COUNT(*) FROM vault_file f WHERE f.vault_id = s.id AND f.deleted = 0) AS fileCount,
+            (SELECT COUNT(*) FROM vault_replica r WHERE r.vault_id = s.id) AS replicaCount,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.replica_limit ELSE NULL END,
+                #{defaultReplicaLimit}
+            ) AS replicaLimit,
+            (SELECT MAX(c.create_time) FROM vault_change c WHERE c.vault_id = s.id) AS lastSyncAt,
+            s.create_time AS createTime,
+            s.update_time AS updateTime
+        FROM vault_space s
+        LEFT JOIN sys_user u ON u.user_id = s.user_id
+        LEFT JOIN vault_user_quota q ON q.user_id = s.user_id
+        LEFT JOIN (
+            SELECT user_id, COALESCE(SUM(used_bytes), 0) AS user_used_bytes
+            FROM vault_space
+            WHERE del_flag = '0'
+            GROUP BY user_id
+        ) ut ON ut.user_id = s.user_id
+        WHERE s.id = #{vaultId} AND s.del_flag = '0'
+    </select>
+
+    <select id="selectReplicaPage" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminReplicaVo">
+        SELECT
+            r.id AS id,
+            r.vault_id AS vaultId,
+            s.name AS vaultName,
+            r.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
+            r.replica_id AS replicaId,
+            r.device_id AS deviceId,
+            r.client_info AS clientInfo,
+            r.last_seen_at AS lastSeenAt,
+            r.create_time AS boundAt
+        FROM vault_replica r
+        INNER JOIN vault_space s ON s.id = r.vault_id AND s.del_flag = '0'
+        LEFT JOIN sys_user u ON u.user_id = r.user_id
+        WHERE 1 = 1
+        <if test="vaultId != null">
+            AND r.vault_id = #{vaultId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.nick_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.client_info LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.replica_id LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="deviceId != null and deviceId != ''">
+            AND r.device_id LIKE CONCAT('%', #{deviceId}, '%')
+        </if>
+        <if test="inactiveBefore != null">
+            AND r.last_seen_at &lt; #{inactiveBefore}
+        </if>
+        ORDER BY r.last_seen_at DESC, r.id DESC
+    </select>
+
+    <select id="selectAssetPage" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminAssetVo">
+        SELECT
+            r.asset_id AS assetId,
+            r.vault_id AS vaultId,
+            r.sha256 AS sha256,
+            MAX(r.size_bytes) AS sizeBytes,
+            MAX(r.mime_type) AS mimeType,
+            MAX(r.storage_key) AS storageKey,
+            MAX(r.config_id) AS configId,
+            MAX(r.backend) AS backend,
+            COUNT(r.file_id) AS refCount,
+            MIN(r.create_time) AS createTime
+        FROM vault_asset_ref r
+        WHERE r.vault_id = #{vaultId}
+        <if test="keyword != null and keyword != ''">
+            AND (r.sha256 LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.mime_type LIKE CONCAT('%', #{keyword}, '%')
+                 OR r.storage_key LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        GROUP BY r.asset_id, r.vault_id, r.sha256
+        ORDER BY createTime DESC, assetId DESC
+    </select>
+
+    <select id="selectSysConfigsByPrefix" resultType="java.util.HashMap">
+        SELECT config_key AS configKey, config_value AS configValue
+        FROM sys_config
+        WHERE config_key LIKE CONCAT(#{prefix}, '%')
+    </select>
+
+    <update id="updateSysConfigValue">
+        UPDATE sys_config
+        SET config_value = #{configValue},
+            update_time = CURRENT_TIMESTAMP
+        WHERE config_key = #{configKey}
+    </update>
+
+    <select id="existsUserById" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_user
+        WHERE user_id = #{userId} AND del_flag = '0'
+    </select>
+
+    <select id="selectUserQuotaPage" resultType="xin.v5ai.vault.domain.vo.admin.VaultAdminUserQuotaVo">
+        SELECT
+            q.user_id AS userId,
+            u.user_name AS userName,
+            u.nick_name AS nickName,
+            q.quota_bytes AS quotaBytes,
+            q.replica_limit AS replicaLimit,
+            q.max_file_bytes AS maxFileBytes,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.quota_bytes ELSE NULL END,
+                #{defaultQuotaBytes}
+            ) AS effectiveQuotaBytes,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.replica_limit ELSE NULL END,
+                #{defaultReplicaLimit}
+            ) AS effectiveReplicaLimit,
+            COALESCE(
+                CASE WHEN q.expire_time IS NULL OR q.expire_time > CURRENT_TIMESTAMP THEN q.max_file_bytes ELSE NULL END,
+                #{defaultMaxFileBytes}
+            ) AS effectiveMaxFileBytes,
+            q.plan_name AS planName,
+            COALESCE(ut.used_bytes, 0) AS usedBytes,
+            COALESCE(ut.space_count, 0) AS spaceCount,
+            (SELECT COUNT(*)
+             FROM vault_replica r
+             INNER JOIN vault_space s2 ON s2.id = r.vault_id AND s2.del_flag = '0'
+             WHERE s2.user_id = q.user_id) AS replicaCount,
+            q.expire_time AS expireTime,
+            CASE WHEN q.expire_time IS NOT NULL AND q.expire_time &lt;= CURRENT_TIMESTAMP THEN 1 ELSE 0 END AS expired,
+            q.remark AS remark,
+            q.update_time AS updateTime
+        FROM vault_user_quota q
+        LEFT JOIN sys_user u ON u.user_id = q.user_id
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) AS space_count, COALESCE(SUM(used_bytes), 0) AS used_bytes
+            FROM vault_space
+            WHERE del_flag = '0'
+            GROUP BY user_id
+        ) ut ON ut.user_id = q.user_id
+        WHERE 1 = 1
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.nick_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR q.plan_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY q.update_time DESC, q.user_id DESC
+    </select>
+
+    <select id="selectExpiredTombstoneCount" resultType="long">
+        SELECT COUNT(*)
+        FROM vault_file
+        WHERE deleted = 1 AND update_time &lt; #{cutoff}
+    </select>
+
+    <delete id="deleteExpiredTombstones">
+        DELETE FROM vault_file
+        WHERE deleted = 1 AND update_time &lt; #{cutoff}
+    </delete>
+
+    <select id="selectOrphanAssetStats" resultType="java.util.HashMap">
+        SELECT
+            COUNT(*) AS orphanCount,
+            COALESCE(SUM(f.size), 0) AS orphanBytes
+        FROM basics_file f
+        LEFT JOIN vault_asset_ref r ON r.asset_id = f.id
+        WHERE f.del_flag = '0'
+          AND f.path LIKE '%/vault/%'
+          AND f.create_time &lt; #{cutoff}
+          AND r.file_id IS NULL
+    </select>
+
+    <select id="selectOrphanAssetCandidates" resultType="java.util.HashMap">
+        SELECT
+            f.id AS id,
+            f.config_id AS configId,
+            f.path AS path,
+            f.size AS size
+        FROM basics_file f
+        LEFT JOIN vault_asset_ref r ON r.asset_id = f.id
+        WHERE f.del_flag = '0'
+          AND f.path LIKE '%/vault/%'
+          AND f.create_time &lt; #{cutoff}
+          AND r.file_id IS NULL
+        ORDER BY f.create_time ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

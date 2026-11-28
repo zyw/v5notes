@@ -1,38 +1,82 @@
 package xin.v5ai.vault.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
+import xin.v5ai.vault.VaultErrorCodes;
 import xin.v5ai.vault.catalog.CatalogProtocol;
+import xin.v5ai.vault.catalog.VaultCatalogValidator;
+import xin.v5ai.vault.domain.VaultCatalogItem;
 import xin.v5ai.vault.domain.vo.VaultCatalogItemVo;
 import xin.v5ai.vault.domain.vo.VaultCatalogListVo;
 import xin.v5ai.vault.domain.vo.VaultCatalogPackageVo;
 import xin.v5ai.vault.exception.VaultBusinessException;
-import xin.v5ai.vault.VaultErrorCodes;
+import xin.v5ai.vault.mapper.VaultCatalogItemMapper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Seeded official catalog. Rejects publishing tags; never grants publish:* packages.
+ * Official plugin/theme catalog exposed to Vault Client ({@code /vault/v1/catalog/*}).
+ *
+ * <p>Reads published ({@code status = '1'}) entries from {@code vault_catalog_item}; falls back to
+ * in-memory seeds when constructed without a mapper (unit tests). Rejects publishing tags and
+ * forbidden permissions defensively.</p>
  */
 @Service
 public class VaultCatalogService {
 
-    private static final Set<String> FORBIDDEN_TAGS = Set.of("publishing", "publish", "publisher");
+    public static final String STATUS_PUBLISHED = "1";
 
-    private final List<SeedEntry> seeds = List.of(
-        seedPlugin(),
-        seedTheme()
-    );
+    private final VaultCatalogItemMapper itemMapper;
+    private final JsonMapper jsonMapper;
+    private final List<SeedEntry> seeds = List.of(seedPlugin(), seedTheme());
+
+    public VaultCatalogService() {
+        this.itemMapper = null;
+        this.jsonMapper = JsonMapper.builder().build();
+    }
+
+    @Autowired
+    public VaultCatalogService(VaultCatalogItemMapper itemMapper, ObjectProvider<JsonMapper> jsonMapperProvider) {
+        this.itemMapper = itemMapper;
+        JsonMapper provided = jsonMapperProvider == null ? null : jsonMapperProvider.getIfAvailable();
+        this.jsonMapper = provided != null ? provided : JsonMapper.builder().build();
+    }
 
     public VaultCatalogListVo list(String kind) {
         VaultCatalogListVo vo = new VaultCatalogListVo();
         vo.setCatalogProtocolVersion(CatalogProtocol.PROTOCOL_VERSION);
         vo.setFileSyncResource(false);
         List<VaultCatalogItemVo> items = new ArrayList<>();
+
+        if (itemMapper != null) {
+            LambdaQueryWrapper<VaultCatalogItem> lqw = new LambdaQueryWrapper<VaultCatalogItem>()
+                .eq(VaultCatalogItem::getStatus, STATUS_PUBLISHED);
+            if (kind != null && !kind.isBlank()) {
+                lqw.eq(VaultCatalogItem::getKind, kind.trim().toLowerCase(Locale.ROOT));
+            }
+            lqw.orderByAsc(VaultCatalogItem::getSortOrder).orderByAsc(VaultCatalogItem::getId);
+            List<VaultCatalogItem> rows = itemMapper.selectList(lqw);
+            if (rows != null) {
+                for (VaultCatalogItem row : rows) {
+                    VaultCatalogItemVo item = toItemVo(row);
+                    if (hasForbiddenTag(item.getTags()) || hasForbiddenPermission(item.getPermissions())) {
+                        continue;
+                    }
+                    items.add(item);
+                }
+            }
+            vo.setItems(items);
+            return vo;
+        }
+
         for (SeedEntry seed : seeds) {
             if (hasForbiddenTag(seed.item.getTags())) {
                 continue;
@@ -47,7 +91,13 @@ public class VaultCatalogService {
     }
 
     public VaultCatalogItemVo get(String id) {
-        SeedEntry seed = find(id);
+        if (itemMapper != null) {
+            VaultCatalogItem row = requirePublished(id);
+            VaultCatalogItemVo item = toItemVo(row);
+            assertSafe(item.getTags(), item.getPermissions());
+            return item;
+        }
+        SeedEntry seed = findSeed(id);
         if (hasForbiddenTag(seed.item.getTags())) {
             throw new VaultBusinessException(400, VaultErrorCodes.PATH_INVALID, "拒绝 publishing 类目录条目");
         }
@@ -55,7 +105,20 @@ public class VaultCatalogService {
     }
 
     public VaultCatalogPackageVo packageOf(String id) {
-        SeedEntry seed = find(id);
+        if (itemMapper != null) {
+            VaultCatalogItem row = requirePublished(id);
+            VaultCatalogItemVo item = toItemVo(row);
+            assertSafe(item.getTags(), item.getPermissions());
+            VaultCatalogPackageVo vo = new VaultCatalogPackageVo();
+            vo.setCatalogProtocolVersion(CatalogProtocol.PROTOCOL_VERSION);
+            vo.setFileSyncResource(false);
+            vo.setId(row.getId());
+            vo.setKind(row.getKind());
+            vo.setVersion(row.getVersion());
+            vo.setFiles(readFilesMap(row.getFilesJson()));
+            return vo;
+        }
+        SeedEntry seed = findSeed(id);
         if (hasForbiddenTag(seed.item.getTags())) {
             throw new VaultBusinessException(400, VaultErrorCodes.PATH_INVALID, "拒绝 publishing 类目录包");
         }
@@ -69,7 +132,66 @@ public class VaultCatalogService {
         return vo;
     }
 
-    private SeedEntry find(String id) {
+    private VaultCatalogItem requirePublished(String id) {
+        VaultCatalogItem row = id == null ? null : itemMapper.selectById(id.trim());
+        if (row == null || !STATUS_PUBLISHED.equals(row.getStatus())) {
+            throw new VaultBusinessException(404, VaultErrorCodes.NOT_FOUND, "catalog 条目不存在: " + id);
+        }
+        return row;
+    }
+
+    private static void assertSafe(List<String> tags, List<String> permissions) {
+        if (hasForbiddenTag(tags)) {
+            throw new VaultBusinessException(400, VaultErrorCodes.PATH_INVALID, "拒绝 publishing 类目录条目");
+        }
+        if (hasForbiddenPermission(permissions)) {
+            throw new VaultBusinessException(400, VaultErrorCodes.PATH_INVALID, "拒绝包含禁用权限的目录条目");
+        }
+    }
+
+    private VaultCatalogItemVo toItemVo(VaultCatalogItem row) {
+        VaultCatalogItemVo vo = new VaultCatalogItemVo();
+        vo.setId(row.getId());
+        vo.setName(row.getName());
+        vo.setKind(row.getKind());
+        vo.setVersion(row.getVersion());
+        vo.setDescription(row.getDescription());
+        vo.setAuthor(row.getAuthor());
+        vo.setMinAppVersion(row.getMinAppVersion());
+        vo.setPermissions(readStringList(row.getPermissionsJson()));
+        vo.setTags(readStringList(row.getTagsJson()));
+        vo.setNetworkAllowlist(readStringList(row.getAllowlistJson()));
+        vo.setPackagePath("/vault/v1/catalog/plugins/" + row.getId() + "/package");
+        return vo;
+    }
+
+    private List<String> readStringList(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            List<String> list = jsonMapper.readValue(json, new TypeReference<>() {
+            });
+            return list == null ? List.of() : list;
+        } catch (Exception ex) {
+            return List.of();
+        }
+    }
+
+    private Map<String, String> readFilesMap(String json) {
+        if (json == null || json.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            Map<String, String> map = jsonMapper.readValue(json, new TypeReference<>() {
+            });
+            return map == null ? new LinkedHashMap<>() : new LinkedHashMap<>(map);
+        } catch (Exception ex) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private SeedEntry findSeed(String id) {
         for (SeedEntry seed : seeds) {
             if (seed.item.getId().equals(id)) {
                 return seed;
@@ -78,12 +200,28 @@ public class VaultCatalogService {
         throw new VaultBusinessException(404, VaultErrorCodes.NOT_FOUND, "catalog 条目不存在: " + id);
     }
 
-    static boolean hasForbiddenTag(List<String> tags) {
+    public static boolean hasForbiddenTag(List<String> tags) {
         if (tags == null) {
             return false;
         }
         for (String tag : tags) {
-            if (tag != null && FORBIDDEN_TAGS.contains(tag.trim().toLowerCase(Locale.ROOT))) {
+            if (tag != null && VaultCatalogValidator.FORBIDDEN_TAGS.contains(tag.trim().toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasForbiddenPermission(List<String> permissions) {
+        if (permissions == null) {
+            return false;
+        }
+        for (String perm : permissions) {
+            if (perm == null) {
+                continue;
+            }
+            String p = perm.trim();
+            if (VaultCatalogValidator.FORBIDDEN_PERMISSIONS.contains(p) || p.startsWith("publish:")) {
                 return true;
             }
         }
@@ -204,13 +342,17 @@ public class VaultCatalogService {
             }
             """);
         files.put("theme.css", """
-            :root {
+            :root[data-community-theme='catalog-moss'] {
               --bg: #f3f6f1;
-              --surface: #ffffff;
+              --panel: #fbfdfa;
               --ink: #1e2a22;
               --muted: #5c6b60;
-              --accent: #3d6b4f;
               --line: #d5e0d6;
+              --accent: #3d6b4f;
+              --accent-hover: #31573f;
+              --surface: #e9efe9;
+              --danger: #8a3b2e;
+              --danger-bg: #f3e4e0;
             }
             """);
         return new SeedEntry(item, files);

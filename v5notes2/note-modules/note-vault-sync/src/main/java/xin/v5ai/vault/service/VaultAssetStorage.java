@@ -50,6 +50,13 @@ public interface VaultAssetStorage {
     /** Deletes the stored object; called only when the last reference disappears. */
     void delete(Long configId, String objectKey) throws Exception;
 
+    /**
+     * Removes an unreferenced orphan object and its underlying file metadata row.
+     */
+    default void deleteOrphan(Long assetId, Long configId, String objectKey) throws Exception {
+        delete(configId, objectKey);
+    }
+
     /** Backend used for new attachments. */
     VaultAssetCapability capability();
 

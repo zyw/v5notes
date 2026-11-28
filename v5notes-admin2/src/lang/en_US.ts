@@ -6,6 +6,7 @@ import monitor from './packs/en_US/monitor';
 import notes from './packs/en_US/notes';
 import shell from './packs/en_US/shell';
 import system from './packs/en_US/system';
+import vault from './packs/en_US/vault';
 import widgets from './packs/en_US/widgets';
 
 export default {
@@ -124,5 +125,6 @@ export default {
   ...system,
   ...monitor,
   ...file,
+  ...vault,
   ...widgets
 };

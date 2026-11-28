@@ -109,6 +109,25 @@ export default {
     定时任务查询: 'View jobs',
     定时任务手动补发: 'Replay job',
     AI会话: 'AI chat',
-    PLUS官网: 'PLUS site'
+    PLUS官网: 'PLUS site',
+    'Vault 同步': 'Vault Sync',
+    同步概览: 'Sync Overview',
+    云端库管理: 'Vault Spaces',
+    副本管理: 'Replicas',
+    库详情查询: 'View vault details',
+    强制删除库: 'Delete vault',
+    文件清单查询: 'View files',
+    文件正文预览: 'Preview file content',
+    文件墓碑删除: 'Tombstone delete file',
+    副本强制解绑: 'Unbind replica',
+    配额与策略: 'Quota & Policy',
+    配额策略编辑: 'Edit quota policy',
+    存储维护执行: 'Run maintenance',
+    扩展市场: 'Extension Catalog',
+    扩展详情查询: 'View extension details',
+    扩展新增: 'Add extension',
+    扩展编辑: 'Edit extension',
+    扩展上下架: 'Publish extension',
+    扩展删除: 'Delete extension'
   }
 };

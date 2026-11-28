@@ -6,6 +6,7 @@ import monitor from './packs/zh_TW/monitor';
 import notes from './packs/zh_TW/notes';
 import shell from './packs/zh_TW/shell';
 import system from './packs/zh_TW/system';
+import vault from './packs/zh_TW/vault';
 import widgets from './packs/zh_TW/widgets';
 
 export default {
@@ -120,5 +121,6 @@ export default {
   ...system,
   ...monitor,
   ...file,
+  ...vault,
   ...widgets
 };
