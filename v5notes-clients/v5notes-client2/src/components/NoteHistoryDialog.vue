@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createVideoPlugin } from '@v5md/plugin-video'
+import type { V5mdPlugin } from '@v5md/view'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
@@ -21,6 +23,7 @@ const compare = ref(false)
 const restoreError = ref('')
 const restoreBusy = ref(false)
 const diff = computed(() => selected.value ? diffLines(selected.value.content, draft.note?.content ?? '') : [])
+const editorPlugins = computed(() => [createVideoPlugin({ locale: editorLocale(locale.value) }) as unknown as V5mdPlugin])
 
 watch(historyOpen, open => {
   if (!open) {
@@ -151,7 +154,7 @@ function formatSize(size: number): string {
             <p v-for="(line, index) in diff" :key="index" :class="`diff-${line.kind}`"><span>{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' ' }}</span>{{ line.text || ' ' }}</p>
           </div>
           <div v-else-if="selected" class="history-rendered" aria-readonly="true">
-            <V5Editor :key="selected.id" :model-value="selected.content || ''" :locale="editorLocale(locale)" :theme="editorTheme" :editable="false" placeholder="" />
+            <V5Editor :key="selected.id" :model-value="selected.content || ''" :locale="editorLocale(locale)" :theme="editorTheme" :editable="false" :plugins="editorPlugins" placeholder="" />
           </div>
           <p v-else class="history-empty">{{ t('history.pick') }}</p>
         </div>

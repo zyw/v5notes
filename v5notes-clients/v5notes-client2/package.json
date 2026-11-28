@@ -15,6 +15,7 @@
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-updater": "^2.14.1",
     "@v5md/core": "0.0.8",
+    "@v5md/plugin-video": "0.0.8",
     "@v5md/view": "0.0.8",
     "@v5md/vue": "0.0.8",
     "crypto-js": "^4.2.0",

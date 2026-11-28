@@ -1,6 +1,7 @@
 import { createApp, h, nextTick, ref, watch } from 'vue'
+import { createVideoPlugin } from '@v5md/plugin-video'
 import { V5Editor } from '@v5md/vue'
-import type { Editor } from '@v5md/view'
+import type { Editor, V5mdPlugin } from '@v5md/view'
 import type {
   EditorFindOptions,
   EditorFindResult,
@@ -45,6 +46,7 @@ export function mountV5Editor(container: HTMLElement, options: EditorMountOption
           locale: options.locale ?? 'zh-CN',
           theme: theme.value,
           placeholder: options.placeholder ?? '开始写作…',
+          plugins: [createVideoPlugin({ locale: options.locale ?? 'zh-CN' }) as unknown as V5mdPlugin],
           onUploadImage: options.onUploadImage,
           // Claim the toolbar image button for the host's attachment picker.
           // The library opens its hidden system file input only when this

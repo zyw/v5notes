@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
+import { createVideoPlugin } from '@v5md/plugin-video'
+import type { V5mdPlugin } from '@v5md/view'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorModeDock from './EditorModeDock.vue'
@@ -38,6 +40,7 @@ const findOptions = computed<FindOptions>(() => ({
   regexp: useRegexp.value,
 }))
 const replacing = computed(() => canReplace(editorMode.value === 'edit'))
+const editorPlugins = computed(() => [createVideoPlugin({ locale: editorLocale(locale.value) }) as unknown as V5mdPlugin])
 const outlineEntries = computed(() => {
   void content.value
   return editorInstance.value?.getOutline() ?? []
@@ -606,7 +609,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
           <div class="editor-scroll" :class="{ 'preview-scroll': editorMode === 'preview', 'edit-scroll': editorMode === 'edit' }">
             <div class="editor-paper">
               <div class="editor-mount">
-                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :theme="editorTheme" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
+                <V5Editor :key="selectedId" v-model="content" :locale="editorLocale(locale)" :theme="editorTheme" :placeholder="t('editor.placeholder')" :editable="editorMode === 'edit'" :plugins="editorPlugins" :on-upload-image="api.upload" :on-pick-image="openImageLibrary" :on-ready="onEditorReady" :on-find-request="onFindRequest" />
               </div>
             </div>
           </div>
