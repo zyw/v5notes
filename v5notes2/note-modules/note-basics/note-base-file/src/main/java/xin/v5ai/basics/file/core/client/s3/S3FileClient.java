@@ -1,16 +1,19 @@
 package xin.v5ai.basics.file.core.client.s3;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpUtil;
 import xin.v5ai.basics.file.core.client.AbstractFileClient;
 import xin.v5ai.basics.file.core.client.FileUploadResult;
+import xin.v5ai.common.core.exception.ServiceException;
 import xin.v5ai.common.oss.client.DefaultOssClientImpl;
 import xin.v5ai.common.oss.client.OssClient;
 import xin.v5ai.common.oss.config.AccessControlPolicyConfig;
 import xin.v5ai.common.oss.config.OssClientConfig;
 import xin.v5ai.common.oss.enums.AccessPolicy;
+import xin.v5ai.common.oss.exception.S3StorageException;
 import xin.v5ai.common.oss.model.PutObjectResult;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.ByteArrayOutputStream;
 import java.time.Duration;
@@ -37,6 +40,11 @@ public class S3FileClient extends AbstractFileClient<S3FileClientConfig> {
         super(id, config);
     }
 
+    S3FileClient(Long id, S3FileClientConfig config, OssClient client) {
+        super(id, config);
+        this.client = client;
+    }
+
     @Override
     protected void doInit() {
         OssClientConfig clientConfig = OssClientConfig.builder()
@@ -56,23 +64,52 @@ public class S3FileClient extends AbstractFileClient<S3FileClientConfig> {
 
     @Override
     public FileUploadResult upload(byte[] content, String path, String type) throws Exception {
-        PutObjectResult result = client.upload(path, content);
-        return FileUploadResult.builder()
-            .url(result.url())
-            .path(path)
-            .build();
+        try {
+            PutObjectResult result = client.upload(path, content);
+            return FileUploadResult.builder()
+                .url(result.url())
+                .path(path)
+                .build();
+        } catch (S3StorageException ex) {
+            throw translateException(ex);
+        }
     }
 
     @Override
     public void delete(String path) throws Exception {
-        client.delete(path);
+        try {
+            client.delete(path);
+        } catch (S3StorageException ex) {
+            throw translateException(ex);
+        }
     }
 
     @Override
     public byte[] getContent(String path) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        client.download(path, out);
-        return out.toByteArray();
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            client.download(path, out);
+            return out.toByteArray();
+        } catch (S3StorageException ex) {
+            throw translateException(ex);
+        }
+    }
+
+    private RuntimeException translateException(S3StorageException ex) {
+        for (Throwable cur = ex; cur != null; cur = cur.getCause() == cur ? null : cur.getCause()) {
+            boolean isNoSuchBucket = cur instanceof NoSuchBucketException
+                || (cur instanceof S3Exception s3Ex
+                    && s3Ex.awsErrorDetails() != null
+                    && "NoSuchBucket".equalsIgnoreCase(s3Ex.awsErrorDetails().errorCode()));
+            if (isNoSuchBucket) {
+                String bucket = config != null ? config.getBucket() : null;
+                String message = StrUtil.isNotBlank(bucket)
+                    ? "存储桶 [" + bucket + "] 不存在，请先在对象存储服务中创建该存储桶或检查文件存储配置"
+                    : "存储桶不存在，请先在对象存储服务中创建该存储桶或检查文件存储配置";
+                return new ServiceException(message);
+            }
+        }
+        return ex;
     }
 
     /**
