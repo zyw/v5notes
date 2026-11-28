@@ -91,6 +91,21 @@ public class FileBaseController extends BaseController {
     }
 
     /**
+     * 按媒体类型（image / video / audio）查询当前登录用户上传的文件
+     */
+    @SaCheckLogin
+    @GetMapping("/media")
+    public R<PageResult<FileInfoVo>> media(@RequestParam(defaultValue = "image") String kind,
+                                           @RequestParam(required = false) String name,
+                                           PageQuery pageQuery) {
+        Long userId = LoginHelper.getUserId();
+        if (userId == null) {
+            return R.ok(PageResult.build());
+        }
+        return R.ok(fileInfoService.queryMyMedia(userId, kind, name, pageQuery));
+    }
+
+    /**
      * 删除文件路径
      *
      * @param ids 主键串

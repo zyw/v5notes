@@ -34,6 +34,11 @@ public interface IFileInfoService {
     PageResult<FileInfoVo> queryMyImages(Long userId, String name, PageQuery pageQuery);
 
     /**
+     * 按媒体类型（image / video / audio）分页查询指定用户上传的文件
+     */
+    PageResult<FileInfoVo> queryMyMedia(Long userId, String kind, String name, PageQuery pageQuery);
+
+    /**
      * 查询文件路径列表
      */
     List<FileInfoVo> queryList(FileInfoSearchBo bo);

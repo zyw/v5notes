@@ -166,6 +166,8 @@ export interface Page<T> {
   total: number
 }
 
+export type MediaKind = 'image' | 'video' | 'audio'
+
 export interface LibraryImage {
   id: string
   name: string
@@ -334,6 +336,15 @@ export function createApi(
       const keyword = name.trim()
       if (keyword) params.set('name', keyword)
       const page = await call<Page<LibraryImage>>(`/basics/base/file/images?${params}`)
+      return { rows: page?.rows ?? [], total: page?.total ?? 0 }
+    },
+    listMyMedia: async (kind: MediaKind, pageNum = 1, name = '') => {
+      const params = new URLSearchParams({ pageNum: String(pageNum), pageSize: '24' })
+      const keyword = name.trim()
+      if (keyword) params.set('name', keyword)
+      const endpoint = kind === 'image' ? '/basics/base/file/images' : '/basics/base/file/media'
+      if (kind !== 'image') params.set('kind', kind)
+      const page = await call<Page<LibraryImage>>(`${endpoint}?${params}`)
       return { rows: page?.rows ?? [], total: page?.total ?? 0 }
     },
     uploadProfileImage: async (file: File) => {

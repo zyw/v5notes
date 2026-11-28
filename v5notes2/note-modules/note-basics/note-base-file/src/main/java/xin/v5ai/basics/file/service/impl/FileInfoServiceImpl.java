@@ -95,12 +95,28 @@ public class FileInfoServiceImpl implements IFileInfoService {
      */
     @Override
     public PageResult<FileInfoVo> queryMyImages(Long userId, String name, PageQuery pageQuery) {
+        return queryMyMedia(userId, "image", name, pageQuery);
+    }
+
+    /**
+     * 按媒体类型（image / video / audio）分页查询指定用户上传的文件
+     */
+    @Override
+    public PageResult<FileInfoVo> queryMyMedia(Long userId, String kind, String name, PageQuery pageQuery) {
         if (userId == null) {
             return PageResult.build();
         }
+        String normalized = StringUtils.isBlank(kind) ? "image" : kind.trim().toLowerCase(Locale.ROOT);
         LambdaQueryWrapper<FileInfo> lqw = Wrappers.lambdaQuery();
         lqw.eq(FileInfo::getCreateBy, userId);
-        lqw.likeRight(FileInfo::getType, "image/");
+        switch (normalized) {
+            case "image" -> lqw.likeRight(FileInfo::getType, "image/");
+            case "video" -> lqw.likeRight(FileInfo::getType, "video/");
+            case "audio" -> lqw.and(w -> w.likeRight(FileInfo::getType, "audio/").or().eq(FileInfo::getType, "application/ogg"));
+            default -> {
+                return PageResult.build();
+            }
+        }
         lqw.like(StringUtils.isNotBlank(name), FileInfo::getName, name);
         lqw.orderByDesc(FileInfo::getCreateTime);
         Page<FileInfoVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);

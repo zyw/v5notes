@@ -69,6 +69,31 @@ describe('client API', () => {
     expect(page.rows[0]?.id).toBe('934509293439939393')
   })
 
+  it('loads the signed-in user video, audio, and image media library by kind', async () => {
+    const urls: string[] = []
+    const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
+      vi.fn(async (requestUrl: string) => {
+        urls.push(requestUrl)
+        return new Response(JSON.stringify({
+          code: 200,
+          data: { rows: [{ id: '934509293439939395', name: '演示.mp4', url: 'https://cdn.example/demo.mp4' }], total: 1 },
+        }))
+      }) as typeof fetch)
+
+    await api.listMyMedia('image', 1, '')
+    const videoPage = await api.listMyMedia('video', 2, ' 演示 ')
+    const audioPage = await api.listMyMedia('audio', 1, 'mp3')
+
+    expect(urls).toEqual([
+      'https://notes.test/basics/base/file/images?pageNum=1&pageSize=24',
+      'https://notes.test/basics/base/file/media?pageNum=2&pageSize=24&name=%E6%BC%94%E7%A4%BA&kind=video',
+      'https://notes.test/basics/base/file/media?pageNum=1&pageSize=24&name=mp3&kind=audio',
+    ])
+    expect(videoPage.total).toBe(1)
+    expect(videoPage.rows[0]?.url).toBe('https://cdn.example/demo.mp4')
+    expect(audioPage.total).toBe(1)
+  })
+
   it('reads the id from a create response that also carries the content hash', async () => {
     const api = createApi(() => ({ server: 'https://notes.test', clientId: 'client', token: 'token' }), () => {},
       vi.fn(async () => new Response(JSON.stringify({ code: 200, data: { id: '934509293439939393', contentHash: 'ab' } }))) as typeof fetch)

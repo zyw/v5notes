@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listMatches, type FindOptions } from '@v5md/core'
-import { createVideoPlugin } from '@v5md/plugin-video'
+import { createVideoPlugin, serializeVideoBlock, type VideoApi } from '@v5md/plugin-video'
 import type { V5mdPlugin } from '@v5md/view'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -11,7 +11,7 @@ import ImageLibraryDialog from './ImageLibraryDialog.vue'
 import { useWorkspaceContext } from '../hooks/workspaceContext'
 import { useEditorTheme } from '../hooks/useEditorTheme'
 import { editorLocale } from '../i18n'
-import type { LibraryImage } from '../service/api'
+import type { LibraryImage, MediaKind } from '../service/api'
 import { canReplace, closeFindView, findStatus, matchPreview, openFindView, type FindKind, type FindMatchPreview, type FindSidebarState, type SidebarView } from '../models/findSidebar'
 import { buildEditorCommands, modeSwitchLabel, type CommandActions, type CommandContext, type EditorCommand, type ExportFormat, type WorkspaceMode } from '../models/editorCommands'
 import { PDF_CONTENT_HEIGHT, PDF_CONTENT_WIDTH, buildMarkdownDocument, buildRenderedDocument, computePdfSlices, downloadBlob, downloadText, exportFileName, fetchImageDataUrl, renderNotePdf, renderNotePng, rewriteImageSources, snapshotRenderedHtml, type PdfBlock } from '../utils/exportFile'
@@ -34,13 +34,42 @@ const currentMatch = ref<{ from: number, to: number } | null>(null)
 const findInput = ref<HTMLInputElement | null>(null)
 const findList = ref<HTMLElement | null>(null)
 const libraryOpen = ref(false)
+const libraryKind = ref<MediaKind>('image')
 const findOptions = computed<FindOptions>(() => ({
   caseSensitive: caseSensitive.value,
   wholeWord: wholeWord.value,
   regexp: useRegexp.value,
 }))
 const replacing = computed(() => canReplace(editorMode.value === 'edit'))
-const editorPlugins = computed(() => [createVideoPlugin({ locale: editorLocale(locale.value) }) as unknown as V5mdPlugin])
+const editorPlugins = computed(() => {
+  const baseVideo = createVideoPlugin({ locale: editorLocale(locale.value) })
+  const wrappedVideo: V5mdPlugin = {
+    ...(baseVideo as unknown as V5mdPlugin),
+    commands: {
+      ...baseVideo.commands,
+      'video.pick': {
+        isEnabled: state => state.editable && !state.sourceMode,
+        run: () => {
+          openMediaLibrary('video')
+          return true
+        },
+      },
+      'audio.pick': {
+        isEnabled: state => state.editable && !state.sourceMode,
+        run: () => {
+          openMediaLibrary('audio')
+          return true
+        },
+      },
+    },
+    toolbar: baseVideo.toolbar?.map((item) => {
+      if (item.id === 'video.insert') return { ...item, command: 'video.pick' }
+      if (item.id === 'video.insert.audio') return { ...item, command: 'audio.pick' }
+      return item
+    }),
+  }
+  return [wrappedVideo]
+})
 const outlineEntries = computed(() => {
   void content.value
   return editorInstance.value?.getOutline() ?? []
@@ -309,14 +338,37 @@ function onGlobalKeydown(event: KeyboardEvent): void {
   }
 }
 
-function openImageLibrary(): void {
-  if (editorMode.value !== 'edit') return
+function openMediaLibrary(kind: MediaKind): void {
+  if (editorMode.value !== 'edit' || sourceMode.value) return
+  libraryKind.value = kind
   libraryOpen.value = true
 }
 
-function insertLibraryImage(image: LibraryImage): void {
-  const alt = image.name.replace(/\.[^.]+$/, '').trim() || t('editor.imageAlt')
-  editorInstance.value?.insertImageUrl(image.url, alt)
+function openImageLibrary(): void {
+  openMediaLibrary('image')
+}
+
+function insertLibraryMedia(item: LibraryImage): void {
+  const alt = item.name.replace(/\.[^.]+$/, '').trim()
+  if (libraryKind.value === 'image') {
+    editorInstance.value?.insertImageUrl(item.url, alt || t('editor.imageAlt'))
+    libraryOpen.value = false
+    return
+  }
+  const title = alt.replace(/[\r\n"]/g, '').trim() || undefined
+  const audio = libraryKind.value === 'audio'
+  const instance = editorInstance.value
+  if (instance) {
+    instance.focus()
+    const videoApi = instance.getPlugin<VideoApi>('video')?.api
+    if (videoApi?.insert(item.url, { audio, title })) {
+      libraryOpen.value = false
+      return
+    }
+  }
+  const lang = audio ? 'audio' : 'video'
+  const body = serializeVideoBlock(item.url, { audio, title })
+  content.value = `${content.value}\n\`\`\`${lang}\n${body}\n\`\`\`\n`
   libraryOpen.value = false
 }
 
@@ -688,6 +740,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
         <button type="button" @click="directoryVisible = true; focusMode = false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>{{ t('editor.directory') }}</button>
       </div>
       <EditorPalette :open="paletteOpen" :commands="commands" :context="commandContext" :editor-theme="editorThemePreference" :resolved-theme="editorTheme" @close="paletteOpen = false" @run="runCommand" @theme="setEditorThemePreference" />
-      <ImageLibraryDialog v-model="libraryOpen" @insert="insertLibraryImage" />
+      <ImageLibraryDialog v-model="libraryOpen" :kind="libraryKind" @insert="insertLibraryMedia" />
     </main>
 </template>
